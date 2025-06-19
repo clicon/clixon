@@ -164,6 +164,9 @@ populate_self_parent(clixon_handle h,
     char      *ns = NULL;    /* XML namespace of xt */
     char      *nsy = NULL;   /* Yang namespace of xt */
     cbuf      *cb = NULL;
+    yang_stmt *yspec1;
+    yang_stmt *ymod;
+    int        ret;
 
     name = xml_name(xt);
     /* optimization for massive lists - use the first element as role model */
@@ -191,7 +194,30 @@ populate_self_parent(clixon_handle h,
     if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
         goto done;
     /* Special case since action is not a datanode */
-    if ((y = yang_find(yparent, Y_ACTION, name)) == NULL)
+    if ((y = yang_find(yparent, Y_ACTION, name)) == NULL){
+        if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT") &&
+            yang_schema_mount_point(yparent)){
+            yspec1 = NULL;
+            if ((ret = yang_mount_get_yspec_any(yparent, &yspec1)) < 0)
+                goto done;
+            if (ret == 1 && yspec1){
+                if ((ymod = yang_find_module_by_namespace(yspec1, ns)) == NULL){
+                    if ((cb = cbuf_new()) == NULL){
+                        clixon_err(OE_UNIX, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cb, "Failed to find YANG spec of XML node: %s", name);
+                    cprintf(cb, " with parent: %s", xml_name(xp));
+                    if (ns)
+                        cprintf(cb, " in namespace: %s", ns);
+                    if (xerr &&
+                        netconf_unknown_element_xml(xerr, "application", name, "No YANG sp") < 0)
+                        goto done;
+                    goto fail;
+                }
+                yparent = ymod;
+            }
+        }
         if ((y = yang_find_datanode(yparent, name)) == NULL){
             if (_yang_unknown_anydata){
                 /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
@@ -217,6 +243,7 @@ populate_self_parent(clixon_handle h,
                 goto done;
             goto fail;
         }
+    }
     nsy = yang_find_mynamespace(y);
     if (ns == NULL || nsy == NULL){
         if (xerr &&
@@ -358,6 +385,66 @@ populate_self_top(clixon_handle h,
     goto done;
 }
 
+/*! Translate from JSON module:name to XML default ns: xmlns="uri" recursively
+ *
+ * JSON data (eg in RESTCONF) have module-names instead of local namespaces as prefixes
+ * When this is translated to XML without YANG knowledge, the XML still has the module-
+ * names instead of proper namespaces. Its an internal problem that have to do with
+ * parsing first being made without YANG. Only after YANG is bound to the XML may
+ * proper namespaces be derived. Therefore in an intermediate state, the XML looks
+ * "JSON-like" and needs to be translated
+ * Example:
+ *  <ietf-restconf:data> <---
+ *    <example:cont1>    <--
+ *      <interface>
+ * Translates to:
+ *  <data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+ *    <cont1 xmlns="urn:example:clixon">
+ *      <interface>
+ * @param[in]     yspec Yang spec
+ * @param[in,out] x     XML tree. Translate it in-line
+ * @param[out]    xerr  Reason for invalid tree returned as netconf err msg or NULL
+ * @retval        1     OK
+ * @retval        0     Invalid, wrt namespace.  xerr set
+ * @retval       -1     Error
+ * @see RFC7951 Sec 4
+ */
+static int
+translate_jsonenc_xml(cxobj     *x,
+                      yang_stmt *yspec,
+                      cxobj    **xerr)
+{
+    int        retval = -1;
+    yang_stmt *ymod;
+    char      *modname = NULL;
+    char      *namespace;
+
+    if ((modname = xml_prefix(x)) != NULL){ /* prefix is here module name */
+        if (strcmp(modname, "ietf-restconf") == 0)
+            modname = "ietf-netconf";
+        if ((ymod = yang_find_module_by_name(yspec, modname)) == NULL){
+            if (xerr &&
+                netconf_unknown_namespace_xml(xerr, "application",
+                                              modname,
+                                              "No yang module found for corresponding prefix") < 0)
+                goto done;
+            goto fail;
+        }
+        if ((namespace = yang_find_mynamespace(ymod)) == NULL){
+            clixon_err(OE_YANG, 0, "No namespace");
+            goto done;
+        }
+        if (xml_namespace_change(x, namespace, NULL) < 0)
+            goto done;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Find yang spec association of tree of XML nodes
  *
  * Populate xt:s children as top-level symbols
@@ -366,6 +453,7 @@ populate_self_top(clixon_handle h,
  * @param[in]   xt     XML tree node
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
+ * @param[in]   jsonenc JSON encoding according to RFC7951, prefixes are module-names
  * @param[out]  xerr   Reason for failure, on the form <rpc-reply><rpc-error> or NULL,
  *                     free with xml_free()
  * @retval      1      OK yang assignment made
@@ -391,6 +479,7 @@ xml_bind_yang(clixon_handle h,
               cxobj        *xt,
               yang_bind     yb,
               yang_stmt    *yspec,
+              int           jsonenc,
               cxobj       **xerr)
 {
     int    retval = -1;
@@ -398,9 +487,15 @@ xml_bind_yang(clixon_handle h,
     int    ret;
 
     strip_body_objects(xt);
+    if (jsonenc){
+        if ((ret = translate_jsonenc_xml(xt, yspec, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-        if ((ret = xml_bind_yang0(h, xc, yb, yspec, xerr)) < 0)
+        if ((ret = xml_bind_yang0(h, xc, yb, yspec, jsonenc, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -420,6 +515,7 @@ xml_bind_yang(clixon_handle h,
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
  * @param[in]   xsibling
+ * @param[in]   jsonenc JSON encoding according to RFC7951, prefixes are module-names
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
@@ -431,6 +527,7 @@ xml_bind_yang0_opt(clixon_handle h,
                    yang_bind     yb,
                    yang_stmt    *yspec,
                    cxobj        *xsibling,
+                   int           jsonenc,
                    cxobj       **xerr)
 {
     int        retval = -1;
@@ -446,6 +543,12 @@ xml_bind_yang0_opt(clixon_handle h,
     char      *prefix;
     yang_stmt *yspec1 = NULL;
 
+    if (jsonenc){
+        if ((ret = translate_jsonenc_xml(xt, yspec, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
     switch (yb){
     case YB_MODULE:
         if ((ret = populate_self_top(h, xt, yspec, xerr)) < 0)
@@ -475,8 +578,6 @@ xml_bind_yang0_opt(clixon_handle h,
         else{
             if (yspec1)
                 ybc = YB_MODULE;
-            else if (h == NULL)
-                goto ok; /* treat as anydata */
             else{
                 if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
                     goto done;
@@ -505,15 +606,15 @@ xml_bind_yang0_opt(clixon_handle h,
         if (yc0 != NULL &&
             clicon_strcmp(name0, name) == 0 &&
             clicon_strcmp(prefix0, prefix) == 0){
-            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec1, xc0, xerr)) < 0)
+            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec1, xc0, jsonenc, xerr)) < 0)
                 goto done;
         }
         else if (xsibling &&
                  (xs = xml_find_type(xsibling, prefix, name, CX_ELMNT)) != NULL){
-            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec1, xs, xerr)) < 0)
+            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec1, xs, jsonenc, xerr)) < 0)
                 goto done;
         }
-        else if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec1, NULL, xerr)) < 0)
+        else if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec1, NULL, jsonenc, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -537,6 +638,7 @@ xml_bind_yang0_opt(clixon_handle h,
  * @param[in]   xt     XML tree node
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
+ * @param[in]   jsonenc JSON encoding according to RFC7951, prefixes are module-names
  * @param[out]  xerr   Reason for failure, or NULL (call xml_free() after use)
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
@@ -549,12 +651,20 @@ xml_bind_yang0(clixon_handle h,
                cxobj        *xt,
                yang_bind     yb,
                yang_stmt    *yspec,
+               int           jsonenc,
                cxobj       **xerr)
 {
     int        retval = -1;
     cxobj     *xc;           /* xml child */
     int        ret;
+    yang_stmt *yspec1 = NULL;
 
+    if (jsonenc){
+        if ((ret = translate_jsonenc_xml(xt, yspec, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
     switch (yb){
     case YB_MODULE:
         if ((ret = populate_self_top(h, xt, yspec, xerr)) < 0)
@@ -577,9 +687,37 @@ xml_bind_yang0(clixon_handle h,
     else if (ret == 2)     /* ret=2 for anyxml from parent^ */
         goto ok;
     strip_body_objects(xt);
+    if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        yspec1 = NULL;
+        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0) // XXX read här
+            goto done;
+        if (ret == 0)
+            yspec1 = yspec;
+        else{
+            if (yspec1)
+                ;
+            else{
+                if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
+                    goto done;
+                if (ret == 0){ /* Special flag if mount-point but no yanglib */
+                    xml_flag_set(xt, XML_FLAG_ANYDATA);
+                    goto ok;
+                }
+                /* Try again */
+                if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
+                    goto done;
+                if (yspec1)
+                    ;
+                else
+                    goto ok;
+            }
+        }
+        if (yspec1)
+            yspec = yspec1;
+    }
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-        if ((ret = xml_bind_yang0_opt(h, xc, YB_PARENT, yspec, NULL, xerr)) < 0)
+        if ((ret = xml_bind_yang0_opt(h, xc, YB_PARENT, yspec, NULL, jsonenc, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -639,7 +777,7 @@ xml_bind_yang_rpc_rpc(clixon_handle h,
          * recursive population to work. Therefore, assign input yang
          * to rpc level although not 100% intuitive */
         xml_spec_set(x, yi);
-        if ((ret = xml_bind_yang(h, x, YB_PARENT, NULL, xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x, YB_PARENT, NULL, 0, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -679,7 +817,7 @@ xml_bind_yang_rpc_action(clixon_handle h,
     cxobj     *xi;
     yang_stmt *yi;;
 
-    if ((ret = xml_bind_yang(h, xn, YB_MODULE, yspec, xerr)) < 0)
+    if ((ret = xml_bind_yang(h, xn, YB_MODULE, yspec, 0, xerr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -699,14 +837,13 @@ xml_bind_yang_rpc_action(clixon_handle h,
 /*! Find yang spec association of XML node for incoming RPC starting with <rpc>
  *
  * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
- * @param[in]   h      Clixon handle
+
  * @param[in]   xrpc   XML rpc node
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
  * @retval     -1      Error
- * The 
  * @code
  *   if ((ret = xml_bind_yang_rpc(h, x, NULL, &xerr)) < 0)
  *      err;
@@ -899,7 +1036,7 @@ xml_bind_yang_rpc_reply(clixon_handle h,
             goto ok;
         }
         /* Use a temporary xml error tree since it is stringified in the original error on error */
-        if ((ret = xml_bind_yang(h, xrpc, YB_PARENT, NULL, &xerr1)) < 0)
+        if ((ret = xml_bind_yang(h, xrpc, YB_PARENT, NULL, 0, &xerr1)) < 0)
             goto done;
         if (ret == 0){
             if ((cberr = cbuf_new()) == NULL){

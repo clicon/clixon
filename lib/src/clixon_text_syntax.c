@@ -1048,7 +1048,7 @@ _text_syntax_parse(char      *str,
          */
         switch (yb){
         case YB_MODULE_NEXT:
-            if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -1057,7 +1057,7 @@ _text_syntax_parse(char      *str,
             /* xt:<top>     nospec
              * x:   <a> <-- populate from modules
              */
-            if ((ret = xml_bind_yang0(NULL, x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(NULL, x, YB_MODULE, yspec, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;

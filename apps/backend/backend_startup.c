@@ -240,7 +240,7 @@ load_extraxml(clixon_handle h,
     if (xt)
         xml_name_set(xt, NETCONF_INPUT_CONFIG);
     /* Now we can yang bind */
-    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
+    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, 0, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if (netconf_err2cb(h, xerr, cbret) < 0)

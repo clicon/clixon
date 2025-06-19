@@ -728,7 +728,7 @@ xmldb_readfile(clixon_handle    h,
         } /* if msdiff */
         /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT
          */
-        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec1?yspec1:yspec, xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec1?yspec1:yspec, 0, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

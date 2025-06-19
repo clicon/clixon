@@ -864,8 +864,7 @@ api_path2xpath_cvv(cvec      *api_path,
             }
         }
         /* y may have changed to new */
-        if ((ymtpoint = yang_schema_mount_point(y)) < 0)
-            goto done;
+        ymtpoint = yang_schema_mount_point(y);
         if (ymtpoint){
             /* If we cant find a specific mountpoint, we just assign the first.
              * XXX: Ignore return value: if none are mounted, no change of yspec is made here
@@ -1226,10 +1225,10 @@ api_path2xml_vec(char            **vec,
                 xml_spec_set(xn, ykey);
                 if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
                     goto done;
-                if (vi++ < nvalvec){
+                if (vi < nvalvec){
                     /* Here assign and decode key values */
                     val = NULL;
-                    if (uri_percent_decode(valvec[vi-1], &val) < 0)
+                    if (uri_percent_decode(valvec[vi], &val) < 0)
                         goto done;
                     if (xml_value_set(xb, val) < 0)
                         goto done;
@@ -1238,6 +1237,7 @@ api_path2xml_vec(char            **vec,
                         val = NULL;
                     }
                 }
+                vi++;
             }
         }
         break;

@@ -207,7 +207,7 @@ api_root_restconf_exact(clixon_handle  h,
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
-        if (clixon_xml2cbuf(cb, xt, 0, pretty, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cb, xt, 0, pretty, NULL, -1, 0, 0) < 0)
             goto done;
         break;
     case YANG_DATA_JSON:
@@ -293,7 +293,7 @@ api_yang_library_version(clixon_handle h,
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_PATCH_XML:
-        if (clixon_xml2cbuf(cb, xt, 0, pretty, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cb, xt, 0, pretty, NULL, -1, 0, 0) < 0)
             goto done;
         break;
     case YANG_DATA_JSON:
@@ -347,7 +347,6 @@ api_data(clixon_handle h,
     char   *request_method;
     cxobj  *xerr = NULL;
 
-    clixon_debug(CLIXON_DBG_RESTCONF, "");
     request_method = restconf_param_get(h, "REQUEST_METHOD");
     clixon_debug(CLIXON_DBG_RESTCONF, "method:%s", request_method);
 

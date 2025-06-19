@@ -999,7 +999,7 @@ xmldb_populate(clixon_handle h,
         goto done;
     }
     yspec = clicon_dbspec_yang(h);
-    if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, NULL)) < 0)
+    if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, 0, NULL)) < 0)
         goto done;
     if (ret == 1){
         /* Add default global values (to make xpath below include defaults) */

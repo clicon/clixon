@@ -903,18 +903,18 @@ xml_tree_prune_flags1(cxobj *xt,
     return retval;
 }
 
-/*! Change namespace of XML node 
+/*! Change prefix and namespace of XML node
  *
- * @param[in]  x         XML node
- * @param[in]  ns        Change to this namespace (if ns does not exist in tree)
- * @param[in]  prefix    If change, use this prefix
- * @param      0         OK
- * @param     -1         Error
+ * @param[in]  x      XML node
+ * @param[in]  ns     Change to this namespace (if ns does not exist in tree)
+ * @param[in]  prefix If change, use this prefix
+ * @param      0      OK
+ * @param     -1      Error
  */
 int
 xml_namespace_change(cxobj *x,
-                     char   *ns,
-                     char   *prefix)
+                     char  *ns,
+                     char  *prefix)
 {
     int    retval = -1;
     char  *ns0 = NULL;     /* existing namespace */

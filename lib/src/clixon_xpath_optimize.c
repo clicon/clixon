@@ -302,7 +302,7 @@ xpath_list_optimize_fn(xpath_tree  *xt,
             goto ok;
         i++;
     }
-    /* Use 2a form since yc allready given to compute cvk */
+    /* Use 2a form since yc already given to compute cvk */
     if (clixon_xml_find_index(xv, yp, NULL, name, cvk, xvec) < 0)
         goto done;
     retval = 1; /* match */

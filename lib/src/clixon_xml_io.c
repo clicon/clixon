@@ -761,7 +761,7 @@ clixon_xml2cbuf1(cbuf             *cb,
 /*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * @param[in,out] cb      Cligen buffer to write to
- * @param[in]     xn      Top-level xml object
+ * @Param[in]     xn      Top-level xml object
  * @param[in]     level   Indentation level for pretty
  * @param[in]     pretty  Insert \n and spaces to make the xml more readable.
  * @param[in]     prefix  Add string to beginning of each line (or NULL) (if pretty)
@@ -780,17 +780,6 @@ clixon_xml2cbuf1(cbuf             *cb,
  * @see  clixon_xml2file  to file, which is faster
  * @see  clixon_xml2cbuf1 for extended version with wdef
  */
-int
-clixon_xml2cbuf(cbuf   *cb,
-                cxobj  *xn,
-                int     level,
-                int     pretty,
-                char   *prefix,
-                int32_t depth,
-                int     skiptop)
-{
-    return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, 0);
-}
 
 /*! Print actual xml tree datastructures (not xml), mainly for debugging
  *
@@ -838,6 +827,7 @@ xmltree2cbuf(cbuf  *cb,
 /*! Common internal xml parsing function string to parse-tree
  *
  * Given a string containing XML, parse into existing XML tree and return
+ * @param[in]     h     Clixon handle sometimes NULL
  * @param[in]     str   Pointer to string containing XML definition.
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification (only if bind is TOP or CONFIG)
@@ -862,11 +852,12 @@ xmltree2cbuf(cbuf  *cb,
  * @note yang-binding over schema mount-points do not work, you need to make a separate bind call
  */
 static int
-_xml_parse(const char *str,
-           yang_bind   yb,
-           yang_stmt  *yspec,
-           cxobj      *xt,
-           cxobj     **xerr)
+_xml_parse(clixon_handle h,
+           const char   *str,
+           yang_bind     yb,
+           yang_stmt    *yspec,
+           cxobj        *xt,
+           cxobj       **xerr)
 {
     int             retval = -1;
     clixon_xml_yacc xy = {0,};
@@ -915,13 +906,13 @@ _xml_parse(const char *str,
             /* xt:n         Has spec
              * x:   <a> <-- populate from parent
              */
-            if ((ret = xml_bind_yang0(NULL, x, YB_PARENT, NULL, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, YB_PARENT, NULL, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_MODULE_NEXT:
-            if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -930,13 +921,13 @@ _xml_parse(const char *str,
             /* xt:<top>     nospec
              * x:   <a> <-- populate from modules
              */
-            if ((ret = xml_bind_yang0(NULL, x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, YB_MODULE, yspec, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_RPC:
-            if ((ret = xml_bind_yang_rpc(NULL, x, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang_rpc(h, x, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0){ /* Add message-id */
                 if (*xerr && clixon_xml_attr_copy(x, *xerr, "message-id") < 0)
@@ -1036,7 +1027,7 @@ clixon_xml_parse_file(FILE      *fp,
             if (*xt == NULL)
                 if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
                     goto done;
-            if ((ret = _xml_parse(ptr, yb, yspec, *xt, xerr)) < 0)
+            if ((ret = _xml_parse(NULL, ptr, yb, yspec, *xt, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -1070,6 +1061,8 @@ clixon_xml_parse_file(FILE      *fp,
 
 /*! Read an XML definition from string and parse it into a parse-tree, advanced API
  *
+ * @param[in]     h     Clixon handle sometimes NULL
+ * @param[in]     str   String containing XML definition.
  * @param[in]     str   String containing XML definition.
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
@@ -1095,11 +1088,12 @@ clixon_xml_parse_file(FILE      *fp,
  * @note If empty on entry, a new TOP xml will be created named "top"
  */
 int
-clixon_xml_parse_string(const char *str,
-                        yang_bind   yb,
-                        yang_stmt  *yspec,
-                        cxobj     **xt,
-                        cxobj     **xerr)
+clixon_xml_parse_string1(clixon_handle h,
+                         const char   *str,
+                         yang_bind     yb,
+                         yang_stmt    *yspec,
+                         cxobj       **xt,
+                         cxobj       **xerr)
 {
     if (xt==NULL){
         clixon_err(OE_XML, EINVAL, "xt is NULL");
@@ -1113,7 +1107,7 @@ clixon_xml_parse_string(const char *str,
         if ((*xt = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
             return -1;
     }
-    return _xml_parse(str, yb, yspec, *xt, xerr);
+    return _xml_parse(h, str, yb, yspec, *xt, xerr);
 }
 
 /*! Read XML from var-arg list and parse it into xml tree

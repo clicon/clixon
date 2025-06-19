@@ -596,7 +596,7 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
             goto done;
         if (yanglib == NULL)
             continue;
-        if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, xerr)) < 0)
+        if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, 0, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -863,7 +863,7 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
  * @param[in]  h   Clixon handle
  * @param[in]  xt  XML tree node
  * @retval     1   OK
- * @retval     0   No yanglib or problem when parsing yanglib
+ * @retval     0   anydata: No yanglib or problem when parsing yanglib
  * @retval    -1   Error
  */
 int

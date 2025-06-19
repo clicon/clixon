@@ -557,14 +557,14 @@ get_pagination_state_partial(clixon_handle        h,
                     clixon_err_reason());
             if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                 goto done;
             goto fail;
         }
     }
 
     /* System makes the binding */
-    if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, &xerr)) < 0)
+    if ((ret = xml_bind_yang(h, xret, YB_MODULE, yspec, 0, &xerr)) < 0)
         goto done;
     if (ret == 0){
         clixon_debug_xml(CLIXON_DBG_BACKEND, xret, "Yang bind pagination state");
@@ -572,7 +572,7 @@ get_pagination_state_partial(clixon_handle        h,
                                           ". Internal error, state callback returned invalid XML",
                                           NULL) < 0)
             goto done;
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
@@ -758,7 +758,7 @@ get_list_pagination(clixon_handle        h,
             goto ok;
         }
         if (ret == 0){
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                 goto done;
             goto ok;
         }
@@ -782,7 +782,7 @@ get_list_pagination(clixon_handle        h,
             if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
                 goto done;
             if (ret == 0){ /* Error from callback (error in xret) */
-                if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
                     goto done;
                 goto ok;
             }
@@ -1045,7 +1045,7 @@ get_common(clixon_handle        h,
             goto ok;
         }
         if (ret == 0){
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                 goto done;
             goto ok;
         }
@@ -1065,7 +1065,7 @@ get_common(clixon_handle        h,
                 goto ok;
             }
             if (ret == 0){
-                if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                     goto done;
                 goto ok;
             }
@@ -1083,7 +1083,7 @@ get_common(clixon_handle        h,
                 goto ok;
             }
             if (ret == 0){
-                if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                     goto done;
                 goto ok;
             }
@@ -1105,7 +1105,7 @@ get_common(clixon_handle        h,
         if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
-            if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
                 goto done;
             goto ok;
         }
@@ -1135,7 +1135,7 @@ get_common(clixon_handle        h,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
                 goto done;
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                 goto done;
             goto ok;
         }

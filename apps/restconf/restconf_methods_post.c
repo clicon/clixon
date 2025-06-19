@@ -133,6 +133,7 @@ http_location_header(clixon_handle h,
  * @retval    -1         Error
  * restconf POST is mapped to edit-config create.
  * @see RFC8040 Sec 4.4.1
+ * @see api_data_write  for PUT/PATCH
 
  POST:
    target resource type is datastore --> create a top-level resource
@@ -240,7 +241,7 @@ api_data_post(clixon_handle h,
      */
     switch (media_in){
     case YANG_DATA_XML:
-        if ((ret = clixon_xml_parse_string(data, yb, yspec, &xbot, &xerr)) < 0){
+        if ((ret = clixon_xml_parse_string1(h, data, yb, yspec, &xbot, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -254,7 +255,7 @@ api_data_post(clixon_handle h,
         }
         break;
     case YANG_DATA_JSON:
-        if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xbot, &xerr)) < 0){
+        if ((ret = clixon_json_parse_string(h, data, 1, yb, yspec, &xbot, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -366,7 +367,7 @@ api_data_post(clixon_handle h,
             CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clixon_xml2cbuf(cbx, xtop, 0, 0, NULL, -1, 0) < 0)
+    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clixon_debug(CLIXON_DBG_RESTCONF, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
@@ -452,7 +453,7 @@ api_operations_post_input(clixon_handle h,
     case YANG_DATA_XML:
         /* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding
          * support */
-        if ((ret = clixon_xml_parse_string(data, YB_NONE, yspec, &xdata, &xerr)) < 0){
+        if ((ret = clixon_xml_parse_string1(h, data, YB_NONE, yspec, &xdata, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -468,7 +469,7 @@ api_operations_post_input(clixon_handle h,
     case YANG_DATA_JSON:
         /* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding
          * support */
-        if ((ret = clixon_json_parse_string(data, 1, YB_NONE, yspec, &xdata, &xerr)) < 0){
+        if ((ret = clixon_json_parse_string(h, data, 1, YB_NONE, yspec, &xdata, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -669,7 +670,7 @@ api_operations_post_output(clixon_handle h,
  * @param[in]  media_out Output media
  * @retval     0        OK
  * @retval    -1        Error
- * See RFC 8040 Sec 3.6 / 4.4.2
+ * @see RFC 8040 Sec 3.6 / 4.4.2
  * @note We map post to edit-config create.
  *      POST {+restconf}/operations/<operation>
  * 1. Initialize
@@ -837,14 +838,14 @@ api_operations_post(clixon_handle h,
     if ((ret = rpc_callback_call(h, xbot, req, &nr, cbret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &xe, NULL) < 0)
+        if (clixon_xml_parse_string1(h, cbuf_get(cbret), YB_NONE, NULL, &xe, NULL) < 0)
             goto done;
         if (api_return_err(h, req, xe, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
     }
     else if (nr > 0){ /* Handled locally */
-        if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &xret, NULL) < 0)
+        if (clixon_xml_parse_string1(h, cbuf_get(cbret), YB_NONE, NULL, &xret, NULL) < 0)
             goto done;
         /* Local error: return it and quit */
         if ((xe = xpath_first(xret, NULL, "rpc-reply/rpc-error")) != NULL){
@@ -880,7 +881,7 @@ api_operations_post(clixon_handle h,
     cbuf_reset(cbret);
     switch (media_out){
     case YANG_DATA_XML:
-        if (clixon_xml2cbuf(cbret, xoutput, 0, pretty, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xoutput, 0, pretty, NULL, -1, 0, 0) < 0)
             goto done;
         /* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
         break;

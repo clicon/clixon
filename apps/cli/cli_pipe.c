@@ -304,7 +304,7 @@ pipe_showas_fn(clixon_handle h,
     case FORMAT_TEXT:
     case FORMAT_JSON:
         /* Requires binding. Note binding over mountpoints can cause rpc: extra latency */
-        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, 0, &xerr)) < 0)
             goto done;
         if (ret == 0){
             clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Parse top file");

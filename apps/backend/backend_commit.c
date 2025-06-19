@@ -254,7 +254,7 @@ startup_common(clixon_handle       h,
                            * See similar clause below
                            */
             }
-            if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
                 goto done;
             goto fail;
         }
@@ -297,7 +297,7 @@ startup_common(clixon_handle       h,
     /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
     if (clicon_quit_upgrade_get(h) == 1){
         /* bind yang */
-        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 1){
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, 0, &xret)) < 1){
             if (ret == 0){
                 /* invalid */
                 clixon_err(OE_XML, EFAULT, "invalid configuration");
@@ -330,10 +330,10 @@ startup_common(clixon_handle       h,
         goto ok;
     }
     /* After upgrading, XML tree needs to be sorted and yang spec populated */
-    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, &xret)) < 0)
+    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, 0, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
@@ -341,7 +341,7 @@ startup_common(clixon_handle       h,
     if ((ret = xml_non_config_data(xt, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
@@ -369,7 +369,7 @@ startup_common(clixon_handle       h,
     if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail; /* STARTUP_INVALID */
     }
@@ -662,7 +662,7 @@ candidate_validate(clixon_handle h,
             clixon_err(OE_CFG, EINVAL, "xret is NULL");
             goto done;
         }
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         if (!cbuf_len(cbret) &&
             netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
@@ -747,7 +747,7 @@ candidate_commit(clixon_handle  h,
             goto done;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
@@ -1028,7 +1028,7 @@ from_client_restart_one(clixon_handle    h,
     if (ret == 1 && (ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
@@ -1077,7 +1077,7 @@ from_client_restart_one(clixon_handle    h,
     if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }

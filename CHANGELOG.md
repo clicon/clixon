@@ -43,11 +43,16 @@ Expected: July 2025
 
 Developers may need to change their code
 
+* Changed C-API:
+  * `clixon_json_parse_string(str,...)` -> `clixon_json_parse_string(h, str,...)`
+  * `xml_bind_yang(..., xerr)` -> `xml_bind_yang(..., 0, xerr)`
+  * `xml_bind_yang0(..., xerr)` -> `xml_bind_yang0(..., 0, xerr)`
 * Modified data-missing/instance-required error-info field to include tag:
   * Instead of eg `<error-info>42</error-info>` --> `<error-info><tag>42</tag></error-info>`
 
 ### Corrected Bugs
 
+* Fixed: [RESTCONF PUT/POST data does sometimes not work across mountpoint](https://github.com/clicon/clixon-controller/issues/210)
 * Fixed: Only single edit possible if CLICON_AUTOLOCK=true
 * Fixed: [Error when removing leafs in choice](https://github.com/clicon/clixon/issues/610)
 * Fixed: [Mandatory in service code does not work](https://github.com/clicon/clixon-controller/issues/202)

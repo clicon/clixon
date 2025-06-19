@@ -1053,7 +1053,7 @@ clixon_plugin_system_only_all(clixon_handle   h,
         }
         clixon_debug_xml(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, x, "%s SYSTEM-ONLY:", clixon_plugin_name_get(cp));
         /* XXX: ret == 0 invalid yang binding should be handled as internal error */
-        if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, &xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, 0, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (clixon_netconf_internal_error(xerr,

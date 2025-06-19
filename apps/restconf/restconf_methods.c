@@ -192,6 +192,7 @@ match_list_keys(yang_stmt *y,
  * @param[in]  media_out Restconf output media
  * @retval     0         OK
  * @retval    -1         Error
+ * @see api_data_post for POST
  */
 int
 api_data_write(clixon_handle h,
@@ -210,6 +211,8 @@ api_data_write(clixon_handle h,
     enum operation_type op;
     int            i;
     cxobj         *xdata0 = NULL; /* Original -d data struct (including top symbol) */
+    cxobj         *xdata00 = NULL; /* Original -d data struct (including top symbol) */
+    cxobj         *xc;
     cxobj         *xdata;         /* -d data (without top symbol)*/
     cbuf          *cbx = NULL;
     cxobj         *xtop = NULL; /* top of api-path */
@@ -228,13 +231,14 @@ api_data_write(clixon_handle h,
     cxobj         *xerr = NULL;    /* malloced must be freed */
     cxobj         *xe;             /* direct pointer into tree, dont free */
     char          *username;
-    int            ret;
     char          *namespace = NULL;
     char          *dname;
     cvec          *nsc = NULL;
     yang_bind      yb;
     char          *xpath = NULL;
     char          *attr;
+    int            nr;
+    int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "api_path:\"%s\"", api_path0);
     clixon_debug(CLIXON_DBG_RESTCONF, "data:\"%s\"", data);
@@ -291,25 +295,20 @@ api_data_write(clixon_handle h,
     }
     /* Create a dummy data tree parent to hook in the parsed data.
      */
-    if ((xdata0 = xml_new(XML_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+    if ((xdata00 = xml_dup(xtop)) == NULL)
         goto done;
-    if (api_path){ /* XXX mv to copy? */
-        cxobj *xfrom;
-        cxobj *xac;
-
-        if (api_path && (strcmp(api_path, "/") != 0))
-            xfrom = xml_parent(xbot);
-        else
-            xfrom = xbot; // XXX xbot is /config has NULL parent
-        if (xml_copy_one(xfrom, xdata0) < 0)
+    if (xpath){
+        if ((xdata0 = xpath_first(xdata00, nsc, "%s/..", xpath)) == NULL){
+            clixon_err(OE_XML, 0, "XML not found using xpath %s", xpath);
             goto done;
-        xa = NULL;
-        while ((xa = xml_child_each(xfrom, xa, CX_ATTR)) != NULL) {
-            if ((xac = xml_new(xml_name(xa), xdata0, CX_ATTR)) == NULL)
-                goto done;
-            if (xml_copy(xa, xac) < 0) /* recursion */
-                goto done;
         }
+    }
+    else
+        xdata0 = xdata00;
+    /* Mark existing elements as DEL to detect which are added */
+    xc = NULL;
+    while ((xc = xml_child_each(xdata0, xc, CX_ELMNT)) != NULL) {
+        xml_flag_set(xc, XML_FLAG_MARK);
     }
     if (xml_spec(xdata0)==NULL){
         if (api_path==NULL)
@@ -328,7 +327,7 @@ api_data_write(clixon_handle h,
      */
     switch (media_in){
     case YANG_DATA_XML:
-        if ((ret = clixon_xml_parse_string(data, yb, yspec, &xdata0, &xerr)) < 0){
+        if ((ret = clixon_xml_parse_string1(h, data, yb, yspec, &xdata0, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -343,7 +342,7 @@ api_data_write(clixon_handle h,
         break;
     case YANG_DATA_JSON:
         // XXX yspec is top-level, but data may be mounted yspec
-        if ((ret = clixon_json_parse_string(data, 1, yb, yspec, &xdata0, &xerr)) < 0){
+        if ((ret = clixon_json_parse_string(h, data, 1, yb, yspec, &xdata0, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -365,14 +364,22 @@ api_data_write(clixon_handle h,
     /* The message-body MUST contain exactly one instance of the
      * expected data resource.
      */
-    if (xml_child_nr_type(xdata0, CX_ELMNT) != 1){
+    nr = 0;
+    xdata = NULL;
+    xc = NULL;
+    while ((xc = xml_child_each(xdata0, xc, CX_ELMNT)) != NULL) {
+        if (xml_flag(xc, XML_FLAG_MARK) == 0x0){
+            nr++;
+            xdata = xc;
+        }
+    }
+    if (nr != 1){
         if (netconf_malformed_message_xml(&xerr, "The message-body MUST contain exactly one instance of the expected data resource") < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
             goto done;
         goto ok;
     }
-    xdata = xml_child_i_type(xdata0, 0, CX_ELMNT);
     /* If the api-path (above) defines a module, then xdata must have a prefix
      * and it match the module defined in api-path
      * This does not apply if api-path is / (no module)
@@ -539,7 +546,7 @@ api_data_write(clixon_handle h,
             CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clixon_xml2cbuf(cbx, xtop, 0, 0, NULL, -1, 0) < 0)
+    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clixon_debug(CLIXON_DBG_RESTCONF, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
@@ -577,8 +584,8 @@ api_data_write(clixon_handle h,
         xml_free(xretdis);
     if (xtop)
         xml_free(xtop);
-    if (xdata0)
-        xml_free(xdata0);
+    if (xdata00)
+        xml_free(xdata00);
      if (cbx)
         cbuf_free(cbx);
    return retval;
@@ -799,7 +806,7 @@ api_data_delete(clixon_handle h,
             CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clixon_xml2cbuf(cbx, xtop, 0, 0, NULL, -1, 0) < 0)
+    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)

@@ -74,6 +74,7 @@
 #include "clixon_xml_bind.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_nsctx.h" /* namespace context */
+#include "clixon_yang_schema_mount.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
@@ -1354,8 +1355,20 @@ xml2json_vec(FILE             *f,
 
 /*! Translate from JSON module:name to XML default ns: xmlns="uri" recursively
  *
- * Assume an xml tree where prefix:name have been split into "module":"name"
- * In other words, from JSON to XML namespace trees
+ * JSON data (eg in RESTCONF) have module-names instead of local namespaces as prefixes
+ * When this is translated to XML without YANG knowledge, the XML still has the module-
+ * names instead of proper namespaces. Its an internal problem that have to do with
+ * parsing first being made without YANG. Only after YANG is bound to the XML may
+ * proper namespaces be derived. Therefore in an intermediate state, the XML looks
+ * "JSON-like" and needs to be translated
+ * Example:
+ *  <ietf-restconf:data> <---
+ *    <example:cont1>    <--
+ *      <interface>
+ * Translates to:
+ *  <data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+ *    <cont1 xmlns="urn:example:clixon">
+ *      <interface>
  *
  * @param[in]     yspec Yang spec
  * @param[in,out] x     XML tree. Translate it in-line
@@ -1390,7 +1403,7 @@ json_xmlns_translate(yang_stmt *yspec,
             if (xerr &&
                 netconf_unknown_namespace_xml(xerr, "application",
                                               modname,
-                                              "No yang module found corresponding to prefix") < 0)
+                                              "No yang module found for corresponding prefix") < 0)
                 goto done;
             goto fail;
         }
@@ -1423,9 +1436,9 @@ json_xmlns_translate(yang_stmt *yspec,
  *
  * Parsing using yacc according to JSON syntax. Names with <prefix>:<id>
  * are split and interpreted as in RFC7951
- *
+ * @param[in]  h      Clixon handle sometimes NULL
  * @param[in]  str    Input string containing JSON
- * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @param[in]  jsonenc JSON encoding according to RFC7951, prefixes are module-names
  * @param[in]  yb     How to bind yang to XML top-level when parsing (if rfc7951)
  * @param[in]  yspec  Yang specification (if rfc 7951)
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
@@ -1439,12 +1452,13 @@ json_xmlns_translate(yang_stmt *yspec,
  * @see RFC 7951
  */
 static int
-_json_parse(char      *str,
-            int        rfc7951,
-            yang_bind  yb,
-            yang_stmt *yspec,
-            cxobj     *xt,
-            cxobj    **xerr)
+_json_parse(clixon_handle h,
+            char         *str,
+            int           jsonenc,
+            yang_bind     yb,
+            yang_stmt    *yspec,
+            cxobj        *xt,
+            cxobj       **xerr)
 {
     int              retval = -1;
     clixon_json_yacc jy = {0,};
@@ -1453,6 +1467,7 @@ _json_parse(char      *str,
     int              i;
     int              failed = 0; /* yang assignment */
     yang_stmt       *yspec1;
+    yang_stmt       *yt = NULL;
     int              ret;
 
     if (clixon_debug_get() & CLIXON_DBG_DETAIL)
@@ -1473,17 +1488,32 @@ _json_parse(char      *str,
             clixon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");
         goto done;
     }
-    if (xml_spec(xt))
-        yspec1 = ys_spec(xml_spec(xt));
-    else
-        yspec1 = yspec;
+
+    if ((yt = xml_spec(xt)) != NULL)
+        yspec = ys_spec(yt);
+    if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
+        yspec1 = NULL;
+        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0) // XXX read här
+            goto done;
+        if (ret == 1){
+            if (yspec1 == NULL){
+                if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
+                    goto done;
+                /* Try again */
+                if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
+                    goto done;
+            }
+            if (yspec1)
+                yspec = yspec1;
+        }
+    }
     /* Traverse new objects */
     for (i = 0; i < jy.jy_xlen; i++) {
         x = jy.jy_xvec[i];
         /* RFC 7951 Section 4: A namespace-qualified member name MUST be used for all
          * members of a top-level JSON object
          */
-        if (rfc7951 && xml_prefix(x) == NULL){
+        if (jsonenc && xml_prefix(x) == NULL){
             /* XXX: For top-level config file: */
             if (yb != YB_NONE || strcmp(xml_name(x),DATASTORE_TOP_SYMBOL)!=0){
                 if ((cberr = cbuf_new()) == NULL){
@@ -1496,38 +1526,36 @@ _json_parse(char      *str,
                 goto fail;
             }
         }
-        /* Names are split into name/prefix, but now add namespace info */
-        // XXX yspec is top-level but x may be across mtpoint
-        if ((ret = json_xmlns_translate(yspec1, x, xerr)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
         /* Now assign yang stmts to each XML node
          * XXX should be xml_bind_yang0_parent() sometimes.
          */
         switch (yb){
         case YB_NONE:
+            if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
             break;
         case YB_MODULE:
-            if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, yb, yspec, jsonenc, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_MODULE_NEXT:
-            if ((ret = xml_bind_yang(NULL, x, YB_MODULE, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang(h, x, YB_MODULE, yspec, jsonenc, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_PARENT:
-            if ((ret = xml_bind_yang0(NULL, x, yb, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, yb, yspec, jsonenc, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
             break;
         case YB_RPC:
-            if ((ret = xml_bind_yang_rpc(NULL, x, yspec, xerr)) < 0)
+            if ((ret = xml_bind_yang_rpc(h, x, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -1564,8 +1592,9 @@ _json_parse(char      *str,
 
 /*! Parse string containing JSON and return an XML tree
  *
+ * @param[in]     h     Clixon handle sometimes NULL
  * @param[in]     str   String containing JSON
- * @param[in]  rfc7951  Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @param[in]     jsonenc JSON encoding according to RFC7951, prefixes are module-names
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'
@@ -1576,7 +1605,7 @@ _json_parse(char      *str,
  *
  * @code
  *  cxobj *x = NULL;
- *  if (clixon_json_parse_string(str, 1, YB_MODULE, yspec, &x, &xerr) < 0)
+ *  if (clixon_json_parse_string(h, str, 1, YB_MODULE, yspec, &x, &xerr) < 0)
  *    err;
  *  xml_free(x);
  * @endcode
@@ -1585,12 +1614,13 @@ _json_parse(char      *str,
  * @see clixon_json_parse_file   From a file
  */
 int
-clixon_json_parse_string(char      *str,
-                         int        rfc7951,
-                         yang_bind  yb,
-                         yang_stmt *yspec,
-                         cxobj    **xt,
-                         cxobj    **xerr)
+clixon_json_parse_string(clixon_handle h,
+                         char         *str,
+                         int           jsonenc,
+                         yang_bind     yb,
+                         yang_stmt    *yspec,
+                         cxobj       **xt,
+                         cxobj       **xerr)
 {
     clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (xt==NULL){
@@ -1601,7 +1631,7 @@ clixon_json_parse_string(char      *str,
         if ((*xt = xml_new("top", NULL, CX_ELMNT)) == NULL)
             return -1;
     }
-    return _json_parse(str, rfc7951, yb, yspec, *xt, xerr);
+    return _json_parse(h, str, jsonenc, yb, yspec, *xt, xerr);
 }
 
 /*! Read a JSON definition from file and parse it into a parse-tree.
@@ -1617,7 +1647,7 @@ clixon_json_parse_string(char      *str,
  * But this is not done if yspec=NULL, and is not part of the JSON spec
  *
  * @param[in]     fp    File descriptor to the JSON file (ASCII string)
- * @param[in]  rfc7951 Do sanity checks according to RFC 7951 JSON Encoding of Data Modeled with YANG
+ * @param[in]     jsonenc JSON encoding according to RFC7951, prefixes are module-names
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
@@ -1640,7 +1670,7 @@ clixon_json_parse_string(char      *str,
  */
 int
 clixon_json_parse_file(FILE      *fp,
-                       int        rfc7951,
+                       int        jsonenc,
                        yang_bind  yb,
                        yang_stmt *yspec,
                        cxobj    **xt,
@@ -1676,7 +1706,7 @@ clixon_json_parse_file(FILE      *fp,
                 if ((*xt = xml_new(JSON_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
                     goto done;
             if (len){
-                if ((ret = _json_parse(ptr, rfc7951, yb, yspec, *xt, xerr)) < 0)
+                if ((ret = _json_parse(NULL, ptr, jsonenc, yb, yspec, *xt, xerr)) < 0)
                     goto done;
                 if (ret == 0)
                     goto fail;

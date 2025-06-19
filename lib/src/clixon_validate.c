@@ -342,7 +342,7 @@ match_leafref_child_list(cxobj     *x0,
     if (xml_rootchild(x1, 0, &x1) < 0)
         goto done;
     xml_spec_set(x1, yc);
-    if ((ret = xml_bind_yang(NULL, x1, YB_PARENT, NULL, NULL)) < 0)
+    if ((ret = xml_bind_yang(NULL, x1, YB_PARENT, NULL, 0, NULL)) < 0)
         goto done;
     if (ret == 0)
         ;
@@ -1901,7 +1901,7 @@ rpc_reply_check(clixon_handle h,
     if (ret == 0){
         clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
@@ -1910,7 +1910,7 @@ rpc_reply_check(clixon_handle h,
     if (ret == 0){
         clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
-        if (clixon_xml2cbuf(cbret, xret, 0, 0, NULL, -1, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         goto fail;
     }
