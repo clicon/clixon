@@ -1788,11 +1788,13 @@ yang_find_mynamespace(yang_stmt *ys)
 
     if (ys_real_module(ys, &ymod) < 0)
         goto done;
-    if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No namespace found for module %s", yang_argument_get(ymod));
-        goto done;
+    if (ymod){
+        if ((ynamespace = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
+            clixon_err(OE_YANG, ENOENT, "No namespace found for module %s", yang_argument_get(ymod));
+            goto done;
+        }
+        ns = yang_argument_get(ynamespace);
     }
-    ns = yang_argument_get(ynamespace);
  done:
     return ns;
 }
@@ -1839,7 +1841,8 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
         goto done;
     }
     /* First check if namespace is my own module */
-    myns = yang_find_mynamespace(ys);
+    if ((myns = yang_find_mynamespace(ys)) == NULL)
+        goto done;
     if (strcmp(myns, ns) == 0){
         *prefix = yang_find_myprefix(ys); /* or NULL? */
         goto found;
@@ -2201,7 +2204,8 @@ ys_module_by_xml(yang_stmt  *yspec,
  * Ultimate top is yang spec, dont return that
  * The routine recursively finds ancestors.
  * @param[in] ys    Any yang statement in a yang tree
- * @retval    ymod  The top module or sub-module 
+ * @retval    ymod  The top module or sub-module
+ * @retval    NULL  Error
  * @see ys_spec
  * @see ys_real_module find the submodule's belongs-to module
  * @note For an augmented node, the original module is returned
@@ -2211,8 +2215,10 @@ ys_module(yang_stmt *ys)
 {
     yang_stmt *yn;
 
-    if (ys==NULL || ys->ys_keyword==Y_SPEC)
+    if (ys==NULL || !yang_rfc(ys)){
+        clixon_err(OE_YANG, EINVAL, "yang node is NULL or type not applicable");
         return NULL;
+    }
     if (ys->ys_keyword == Y_MODULE || ys->ys_keyword == Y_SUBMODULE)
         return ys;
     while (ys != NULL &&
@@ -2258,24 +2264,24 @@ ys_real_module(yang_stmt  *ys,
         clixon_err(OE_YANG, EINVAL, "ymod is NULL");
         goto done;
     }
-    if ((ym = ys_module(ys)) != NULL){
-        yspec = ys_spec(ym);
-        while (ym && yang_keyword_get(ym) == Y_SUBMODULE){
-            if ((yb = yang_find(ym, Y_BELONGS_TO, NULL)) == NULL){
-                clixon_err(OE_YANG, ENOENT, "No belongs-to statement of submodule %s", yang_argument_get(ym)); /* shouldnt happen */
-                goto done;
-            }
-            if ((name = yang_argument_get(yb)) == NULL){
-                clixon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
-                goto done;
-            }
-            if ((ysubm = yang_find_module_by_name(yspec, name)) == NULL){
-                clixon_err(OE_YANG, ENOENT, "submodule %s references non-existent module %s in its belongs-to statement",
-                           yang_argument_get(ym), name);
-                goto done;
-            }
-            ym = ysubm;
+    if ((ym = ys_module(ys)) == NULL)
+        goto done;
+    yspec = ys_spec(ym);
+    while (ym && yang_keyword_get(ym) == Y_SUBMODULE){
+        if ((yb = yang_find(ym, Y_BELONGS_TO, NULL)) == NULL){
+            clixon_err(OE_YANG, ENOENT, "No belongs-to statement of submodule %s", yang_argument_get(ym)); /* shouldnt happen */
+            goto done;
         }
+        if ((name = yang_argument_get(yb)) == NULL){
+            clixon_err(OE_YANG, ENOENT, "Belongs-to statement of submodule %s has no argument", yang_argument_get(ym)); /* shouldnt happen */
+            goto done;
+        }
+        if ((ysubm = yang_find_module_by_name(yspec, name)) == NULL){
+            clixon_err(OE_YANG, ENOENT, "submodule %s references non-existent module %s in its belongs-to statement",
+                       yang_argument_get(ym), name);
+            goto done;
+        }
+        ym = ysubm;
     }
     *ymod = ym;
     retval = 0;

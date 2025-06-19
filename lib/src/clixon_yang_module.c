@@ -544,10 +544,8 @@ yang_find_module_by_prefix(yang_stmt *ys,
         goto done;
     }
     /* First try own module */
-    if ((my_ymod = ys_module(ys)) == NULL){
-        clixon_err(OE_YANG, 0, "My yang module not found");
+    if ((my_ymod = ys_module(ys)) == NULL)
         goto done;
-    }
     myprefix = yang_find_myprefix(ys);
     if (myprefix && strcmp(myprefix, prefix) == 0){
         ymod = my_ymod;

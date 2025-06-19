@@ -190,7 +190,7 @@ enum rfc_6020{
     Y_WHEN, /* See also ys_when_xpath / ys_when_nsc */
     Y_YANG_VERSION,
     Y_YIN_ELEMENT,
-    /* Note, from here not actual yang statement from the RFC */
+    /* Note, from here not actual yang statement from the RFC, see yang_rfc() */
     Y_MOUNTS, /* Top-level root single object, see clixon_yang_mounts_get() */
     Y_DOMAIN, /* YANG domain: many module revisions allowed but name+revision unique */
     Y_SPEC    /* Module set for single data, config and mount-point: unique module name */
@@ -231,16 +231,22 @@ enum validate_level_t {
 };
 typedef enum validate_level_t validate_level;
 
-/* Yang data definition statement
- * See RFC 7950 Sec 3:
+/*! YANG types in RFC (eg Y_SPEC is not in rfc, but added in implementation)
+ */
+#define yang_rfc(y) (yang_keyword_get(y) != Y_SPEC && yang_keyword_get(y) != Y_MOUNTS && yang_keyword_get(y) != Y_DOMAIN)
+
+/*! Yang data definition statement
+ *
+ * @see RFC 7950 Sec 3:
  *   o  data definition statement: A statement that defines new data
  *      nodes.  One of "container", "leaf", "leaf-list", "list", "choice",
  *      "case", "augment", "uses", "anydata", and "anyxml".
  */
 #define yang_datadefinition(y) (yang_datanode(y) || yang_keyword_get(y) == Y_CHOICE || yang_keyword_get(y) == Y_CASE || yang_keyword_get(y) == Y_AUGMENT || yang_keyword_get(y) == Y_USES)
 
-/* Yang schema node .
- * See RFC 7950 Sec 3:
+/*! Yang schema node .
+ *
+ * @see RFC 7950 Sec 3:
  *    o  schema node: A node in the schema tree.  One of action, container,
  *       leaf, leaf-list, list, choice, case, rpc, input, output,
  *       notification, anydata, and anyxml.
