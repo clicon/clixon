@@ -67,13 +67,13 @@ int modstate_diff_free(modstate_diff_t *);
 
 int yang_modules_init(clixon_handle h);
 char *yang_modules_revision(clixon_handle h);
-int yang_modules_state_build(clixon_handle h, yang_stmt *yspec, char *msid, int brief, cbuf *cb);
-int yang_modules_state_get(clixon_handle h, yang_stmt *yspec, char *xpath,
+int yang_modules_state_build(clixon_handle h, yang_stmt *yspec, const char *msid, int brief, cbuf *cb);
+int yang_modules_state_get(clixon_handle h, yang_stmt *yspec, const char *xpath,
                            cvec *nsc, int brief, cxobj **xret);
 int clixon_module_upgrade(clixon_handle h, cxobj *xt, modstate_diff_t *msd, cbuf *cb);
-yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, char *prefix);
-yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, char *prefix);
-yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, char *ns);
+yang_stmt *yang_find_module_by_prefix(yang_stmt *ys, const char *prefix);
+yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, const char *prefix);
+yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, const char *ns);
 yang_stmt *yang_find_module_by_namespace_revision(yang_stmt *yspec, const char *ns, const char *revision);
 yang_stmt *yang_find_module_by_name_revision(yang_stmt *yspec, const char *name, const char *revision);
 yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);

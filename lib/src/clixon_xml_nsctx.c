@@ -112,8 +112,8 @@ xml_nsctx_namespace_netconf_default(clixon_handle h)
  * @see xml_nsctx_free  Free the reutned handle
  */
 cvec *
-xml_nsctx_init(char *prefix,
-               char *ns)
+xml_nsctx_init(const char *prefix,
+               const char *ns)
 {
     cvec *cvv = NULL;
 
@@ -152,8 +152,8 @@ xml_nsctx_free(cvec *nsc)
  * @retval    NULL   No namespace found (not cached or not found)
  */
 char*
-xml_nsctx_get(cvec *cvv,
-              char *prefix)
+xml_nsctx_get(cvec       *cvv,
+              const char *prefix)
 {
     cg_var *cv;
 
@@ -172,9 +172,9 @@ xml_nsctx_get(cvec *cvv,
  * @note NULL is a valid prefix (default)
  */
 int
-xml_nsctx_get_prefix(cvec  *cvv,
-                     char  *ns,
-                     char **prefix)
+xml_nsctx_get_prefix(cvec       *cvv,
+                     const char *ns,
+                     char      **prefix)
 {
     cg_var *cv = NULL;
     char   *ns0 = NULL;
@@ -201,9 +201,9 @@ xml_nsctx_get_prefix(cvec  *cvv,
  * @retval   -1       Error
  */
 int
-xml_nsctx_add(cvec *cvv,
-              char *prefix,
-              char *ns)
+xml_nsctx_add(cvec       *cvv,
+              const char *prefix,
+              const char *ns)
 {
     int     retval = -1;
     cg_var *cv;
@@ -499,9 +499,9 @@ xml_nsctx_cbuf(cbuf *cb,
  * @note, this function uses a cache.
  */
 int
-xml2ns(cxobj *x,
-       char  *prefix,
-       char **namespace)
+xml2ns(cxobj      *x,
+       const char *prefix,
+       char      **namespace)
 {
     int    retval = -1;
     char  *ns = NULL;
@@ -589,9 +589,9 @@ xml2ns_recurse(cxobj *xt)
  * @see xml_add_attr  generic method for adding an attribute
  */
 int
-xmlns_set(cxobj *x,
-          char  *prefix,
-          char  *ns)
+xmlns_set(cxobj      *x,
+          const char *prefix,
+          const char *ns)
 {
     int    retval = -1;
     cxobj *xa;
@@ -666,9 +666,9 @@ xmlns_set_all(cxobj *x,
  * @see xml2prefixexists to check a specific pair
  */
 int
-xml2prefix(cxobj *xn,
-           char  *namespace,
-           char **prefixp)
+xml2prefix(cxobj      *xn,
+           const char *namespace,
+           char      **prefixp)
 {
     int    retval = -1;
     cxobj *xa = NULL;
@@ -731,10 +731,10 @@ xml2prefix(cxobj *xn,
  * @note x and xp must be different if x is an attribute and may be different otherwise
  */
 int
-xml_add_namespace(cxobj *x,
-                  cxobj *xp,
-                  char  *prefix,
-                  char  *namespace)
+xml_add_namespace(cxobj      *x,
+                  cxobj      *xp,
+                  const char *prefix,
+                  const char *namespace)
 {
     int    retval = -1;
     cxobj *xa = NULL;

@@ -111,9 +111,9 @@ static int yang_expand_grouping(clixon_handle h, yang_stmt *yn);
 /*! Resolve a grouping name from a module, includes looking in submodules
  */
 static yang_stmt *
-ys_grouping_module_resolve(yang_stmt *ymod,
-                           yang_stmt *yspec,
-                           char      *name)
+ys_grouping_module_resolve(yang_stmt  *ymod,
+                           yang_stmt  *yspec,
+                           const char *name)
 {
     yang_stmt *yinc;
     yang_stmt *ysubm;
@@ -161,8 +161,8 @@ ys_grouping_module_resolve(yang_stmt *ymod,
  */
 int
 ys_grouping_resolve(yang_stmt  *yuses,
-                    char       *prefix,
-                    char       *name,
+                    const char *prefix,
+                    const char *name,
                     yang_stmt **ygrouping0)
 {
     int             retval = -1;
@@ -859,9 +859,9 @@ yang_expand_grouping(clixon_handle h,
  * See top of file for diagram of calling order
  */
 yang_stmt *
-yang_parse_str(char         *str,
-               const char   *name, /* just for errs */
-               yang_stmt    *yspec)
+yang_parse_str(const char *str,
+               const char *name, /* just for errs */
+               yang_stmt  *yspec)
 {
     clixon_yang_yacc yy = {0,};
     yang_stmt       *ymod = NULL;
@@ -1209,8 +1209,8 @@ yang_parse_module(clixon_handle h,
                   const char   *module,
                   const char   *revision,
                   yang_stmt    *yspec,
-                  char         *domain,
-                  char         *origname)
+                  const char   *domain,
+                  const char   *origname)
 {
     cbuf      *fbuf = NULL;
     char      *filename;
@@ -1712,21 +1712,27 @@ yang_spec_parse_module(clixon_handle h,
  */
 int
 yang_spec_parse_file(clixon_handle h,
-                     char         *filename,
+                     const char   *filename,
                      yang_stmt    *yspec)
 {
-    int         retval = -1;
-    int         modmin;       /* Existing number of modules */
-    char       *base = NULL;;
+    int   retval = -1;
+    int   modmin;       /* Existing number of modules */
+    char *base = NULL;;
+    char *filename1 = NULL;
+    char *bname;
 
     /* Apply steps 2.. on new modules, ie ones after modmin. */
     modmin = yang_len_get(yspec);
+    if ((filename1 = strdup(filename)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
     /* Find module, and do not load file if module already exists */
-    if (basename(filename) == NULL){
+    if ((bname = basename(filename1)) == NULL){
         clixon_err(OE_YANG, errno, "No basename");
         goto done;
     }
-    if ((base = strdup(basename(filename))) == NULL){
+    if ((base = strdup(bname)) == NULL){
         clixon_err(OE_YANG, errno, "strdup");
         goto done;
     }
@@ -1741,6 +1747,8 @@ yang_spec_parse_file(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (filename1)
+        free(filename1);
     if (base)
         free(base);
     return retval;
@@ -1764,7 +1772,7 @@ yang_spec_parse_file(clixon_handle h,
  */
 int
 yang_spec_load_dir(clixon_handle h,
-                   char         *dir,
+                   const char   *dir,
                    yang_stmt    *yspec)
 {
     int            retval = -1;
@@ -1876,7 +1884,7 @@ yang_spec_load_dir(clixon_handle h,
     return retval;
 }
 
-/*! parse yang date-arg string and return a uint32 useful for arithmetics
+/*! Parse yang date-arg string and return a uint32 useful for arithmetics
  *
  * @param[in]  datearg  yang revision string as "YYYY-MM-DD"
  * @param[out] dateint  Integer version as YYYYMMDD
@@ -1884,8 +1892,8 @@ yang_spec_load_dir(clixon_handle h,
  * @retval    -1        Error, eg str is not on the format "YYYY-MM-DD"
  */
 int
-ys_parse_date_arg(char     *datearg,
-                  uint32_t *dateint)
+ys_parse_date_arg(const char *datearg,
+                  uint32_t   *dateint)
 {
     int      retval = -1;
     int      i;
@@ -2134,8 +2142,8 @@ yspec_nscache_clear(yang_stmt *yspec)
 /*!
  */
 yang_stmt *
-yspec_nscache_get(yang_stmt *yspec,
-                  char      *ns)
+yspec_nscache_get(yang_stmt  *yspec,
+                  const char *ns)
 {
     if (yspec->ys_nscache == NULL){
         if (yspec_nscache_new(yspec) < 0)

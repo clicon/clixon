@@ -361,8 +361,8 @@ xml_name(cxobj *xn)
  * @retval    -1     On error with clicon-err set
  */
 int
-xml_name_set(cxobj *xn,
-             char  *name)
+xml_name_set(cxobj      *xn,
+             const char *name)
 {
     if (xn->x_name){
         free(xn->x_name);
@@ -396,8 +396,8 @@ xml_prefix(cxobj *xn)
  * @retval    -1       Error with clicon-err set
  */
 int
-xml_prefix_set(cxobj *xn,
-               char  *prefix)
+xml_prefix_set(cxobj      *xn,
+               const char *prefix)
 {
     if (xn->x_prefix){
         free(xn->x_prefix);
@@ -421,8 +421,8 @@ xml_prefix_set(cxobj *xn,
  * @note may want to distinguish between not set cache and no namespace?
  */
 char*
-nscache_get(cxobj *x,
-            char  *prefix)
+nscache_get(cxobj      *x,
+            const char *prefix)
 {
     if (!is_element(x))
         return NULL;
@@ -440,9 +440,9 @@ nscache_get(cxobj *x,
  * @retval     0      No prefix found
  */
 int
-nscache_get_prefix(cxobj *x,
-                   char  *namespace,
-                   char **prefix)
+nscache_get_prefix(cxobj      *x,
+                   const char *namespace,
+                   char      **prefix)
 {
     if (!is_element(x))
         return 0;
@@ -476,9 +476,9 @@ nscache_get_all(cxobj *x)
  * @see nscache_replace  to replace the whole context
  */
 int
-nscache_set(cxobj *x,
-            char  *prefix,
-            char  *namespace)
+nscache_set(cxobj      *x,
+            const char *prefix,
+            const char *namespace)
 {
     int     retval = -1;
 
@@ -660,8 +660,8 @@ xml_value(cxobj *xn)
  * @retval    -1     On error with clicon-err set
  */
 int
-xml_value_set(cxobj *xn,
-              char  *val)
+xml_value_set(cxobj      *xn,
+              const char *val)
 {
     int    retval = -1;
     size_t sz;
@@ -695,8 +695,8 @@ xml_value_set(cxobj *xn,
  * @retval     NULL  on error with clicon-err set, or if value is set to NULL
  */
 int
-xml_value_append(cxobj *xn,
-                 char  *val)
+xml_value_append(cxobj      *xn,
+                 const char *val)
 {
     int    retval = -1;
     size_t sz;
@@ -1170,7 +1170,7 @@ clixon_child_xvec_append(cxobj       *xn,
  * @see xml_insert
  */
 cxobj *
-xml_new(char           *name,
+xml_new(const char     *name,
         cxobj          *xp,
         enum cxobj_type type)
 {
@@ -1413,8 +1413,8 @@ xml_addsub(cxobj *xp,
  * @see xml_wrap  (wrap s single node)
  */
 cxobj *
-xml_wrap_all(cxobj *xp,
-             char  *tag)
+xml_wrap_all(cxobj      *xp,
+             const char *tag)
 {
     cxobj *xw; /* new wrap node */
 
@@ -1443,8 +1443,8 @@ xml_wrap_all(cxobj *xp,
  * @see xml_wrap_all  (wrap all children of a node, not just one)
  */
 cxobj *
-xml_wrap(cxobj *xc,
-         char  *tag)
+xml_wrap(cxobj      *xc,
+         const char *tag)
 {
     cxobj *xw; /* new wrap node */
     cxobj *xp; /* parent */
@@ -2387,7 +2387,7 @@ xml_root(cxobj *xn)
  * @endcode
  */
 int
-xml_operation(char                *opstr,
+xml_operation(const char          *opstr,
               enum operation_type *op)
 {
     if (strcmp("merge", opstr) == 0)
@@ -2452,7 +2452,7 @@ xml_operation2str(enum operation_type op)
  * @endcode
  */
 int
-xml_attr_insert2val(char             *instr,
+xml_attr_insert2val(const char       *instr,
                     enum insert_type *ins)
 {
     if (strcmp("first", instr) == 0)
@@ -2481,11 +2481,11 @@ xml_attr_insert2val(char             *instr,
  * @retval     NULL      Error
  */
 cxobj *
-xml_add_attr(cxobj *xn,
-             char  *name,
-             char  *value,
-             char  *prefix,
-             char  *namespace)
+xml_add_attr(cxobj      *xn,
+             const char *name,
+             const char *value,
+             const char *prefix,
+             const char *namespace)
 {
     cxobj *xa = NULL;
     char  *ns = NULL;

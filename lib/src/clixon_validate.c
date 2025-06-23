@@ -284,7 +284,7 @@ match_leafref_child_leaflist(cxobj     *x0p,
                              char      *body,
                              cxobj    **x0cp)
 {
-    int    retval;
+    int    retval = -1;
     char  *name;
     cxobj *xf = NULL;
 
@@ -322,7 +322,7 @@ match_leafref_child_list(cxobj     *x0,
                          char      *body,
                          cxobj    **x0cp)
 {
-    int    retval;
+    int    retval = -1;
     cxobj *x1 = NULL;
     char  *ns = NULL;
     char  *name;

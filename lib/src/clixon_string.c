@@ -84,9 +84,9 @@
  * @see clixon_strsplit
  */
 char **
-clicon_strsep(char *string,
-              char *delim,
-              int  *nvec0)
+clicon_strsep(char       *string,
+              const char *delim,
+              int        *nvec0)
 {
     char **vec = NULL;
     char  *ptr;
@@ -135,11 +135,11 @@ clicon_strsep(char *string,
  * @retval    -1       Error
  */
 int
-clixon_strsep2(char   *str,
-               char   *delim1,
-               char   *delim2,
-               char ***vcp,
-               int    *nvec)
+clixon_strsep2(char       *str,
+               const char *delim1,
+               const char *delim2,
+               char     ***vcp,
+               int        *nvec)
 {
     int   retval = -1;
     size_t sz;
@@ -191,13 +191,16 @@ clixon_strsep2(char   *str,
  *
  * An optional delimiter string can be specified which will be inserted between 
  * each element. 
- * @retval  str   Joined string. Free after use.
- * @retval  NULL  Failure
+ * @param[in] argc   Number of elements in argv
+ * @param[in] argv   Vector of string arguments
+ * @param[in] delim  Delimiter
+ * @retval    str    Joined string. Free after use.
+ * @retval    NULL   Failure
  */
 char *
-clicon_strjoin(int    argc,
-               char **argv,
-               char  *delim)
+clicon_strjoin(int         argc,
+               char      **argv,
+               const char *delim)
 {
     int i;
     int len;
@@ -229,9 +232,9 @@ clicon_strjoin(int    argc,
  * This is somewhat of a special case.
  */
 char*
-clixon_string_del_join(char *str1,
-                       char *del,
-                       char *str2)
+clixon_string_del_join(char       *str1,
+                       const char *del,
+                       const char *str2)
 {
     char *str;
     int   len;
@@ -275,10 +278,10 @@ clixon_string_del_join(char *str1,
  * @see clicon_strsep  not just single split
  */
 int
-clixon_strsplit(char     *string,
-                const int delim,
-                char    **prefix,
-                char    **suffix)
+clixon_strsplit(const char *string,
+                const int   delim,
+                char      **prefix,
+                char      **suffix)
 {
     int   retval = -1;
     char *str;
@@ -413,8 +416,8 @@ uri_percent_encode(char **encp,
  * @see uri_percent_encode
  */
 int
-uri_percent_decode(char  *enc,
-                   char **strp)
+uri_percent_decode(const char *enc,
+                   char      **strp)
 {
     int   retval = -1;
     char *str = NULL;
@@ -648,9 +651,9 @@ xml_chardata_encode(char      **escp,
  * @see xml_chardata_encode for the generic function
  */
 int
-xml_chardata_cbuf_append(cbuf *cb,
-                         int   quote,
-                         char *str)
+xml_chardata_cbuf_append(cbuf       *cb,
+                         int         quote,
+                         const char *str)
 {
     int    retval = -1;
     int    i;
@@ -874,11 +877,11 @@ xml_chardata_decode(char      **decp,
  * XXX differentiate between error and null cvec.
  */
 int
-uri_str2cvec(char  *string,
-             char   delim1,
-             char   delim2,
-             int    decode,
-             cvec **cvp)
+uri_str2cvec(const char *string,
+             const char  delim1,
+             const char  delim2,
+             int         decode,
+             cvec      **cvp)
 {
     int     retval = -1;
     char   *s;
@@ -978,9 +981,9 @@ uri_str2cvec(char  *string,
  * @note caller need to free id and prefix after use
  */
 int
-nodeid_split(char  *nodeid,
-             char **prefix,
-             char **id)
+nodeid_split(const char *nodeid,
+             char      **prefix,
+             char      **id)
 {
     return clixon_strsplit(nodeid, ':', prefix, id);
 }
@@ -1014,8 +1017,8 @@ clixon_trim(char *str)
  * @retval     s      Pointer into existing str after trimming blanks
  */
 char *
-clixon_trim2(char *str,
-             char *trims)
+clixon_trim2(char       *str,
+             const char *trims)
 {
     char *s = str;
     int   i;
@@ -1040,8 +1043,8 @@ clixon_trim2(char *str,
  * @retval    >0   s1 is greater than s2
  */
 int
-clicon_strcmp(char *s1,
-              char *s2)
+clicon_strcmp(const char *s1,
+              const char *s2)
 {
     if (s1 == NULL && s2 == NULL)
         return 0;
@@ -1093,8 +1096,9 @@ clixon_unicode2utf8_one(uint16_t uc16,
 
 /*! Translate unicode hexstring on the form "ABCD" to UTF-8 in string form
  *
- * @param[in]  unicode  Unicode as string of 2-byte hex codes
- * @param[out] utf8     UTF-8 character string must be length >=5
+ * @param[in]  ucstr    Unicode as string of 2-byte hex codes
+ * @param[out] utfstr   UTF-8 character string must be length >=5
+ * @param[out] utflen   Length of utfstr
  * @retval     0        OK
  * @retval    -1        Error
  */

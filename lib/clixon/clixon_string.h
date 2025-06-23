@@ -60,21 +60,21 @@ static inline char * strdup4(char *str)
 /*
  * Prototypes
  */
-char **clicon_strsep(char *string, char *delim, int  *nvec0);
-int    clixon_strsep2(char *str, char *delim1, char *delim2, char ***vcp, int *nvec);
-char  *clicon_strjoin (int argc, char **argv, char *delim);
-char  *clixon_string_del_join(char *str1, char *del, char *str2);
-int    clixon_strsplit(char *nodeid, const int delim, char **prefix, char **id);
-int    uri_str2cvec(char *string, char delim1, char delim2, int decode, cvec **cvp);
+char **clicon_strsep(char *string, const char *delim, int  *nvec0);
+int    clixon_strsep2(char *str, const char *delim1, const char *delim2, char ***vcp, int *nvec);
+char  *clicon_strjoin (int argc, char **argv, const char *delim);
+char  *clixon_string_del_join(char *str1, const char *del, const char *str2);
+int    clixon_strsplit(const char *nodeid, const int delim, char **prefix, char **id);
+int    uri_str2cvec(const char *string, const char delim1, const char delim2, int decode, cvec **cvp);
 int    uri_percent_encode(char **encp, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 int    xml_chardata_encode(char **escp, int quote, const char *fmt, ... ) __attribute__ ((format (printf, 3, 4)));
-int    xml_chardata_cbuf_append(cbuf *cb, int quote, char *str);
+int    xml_chardata_cbuf_append(cbuf *cb, int quote, const char *str);
 int    xml_chardata_decode(char **escp, const char *fmt,...);
-int    uri_percent_decode(char *enc, char **str);
-int    nodeid_split(char *nodeid, char **prefix, char **id);
+int    uri_percent_decode(const char *enc, char **str);
+int    nodeid_split(const char *nodeid, char **prefix, char **id);
 char  *clixon_trim(char *str);
-char  *clixon_trim2(char *str, char *trims);
-int    clicon_strcmp(char *s1, char *s2);
+char  *clixon_trim2(char *str, const char *trims);
+int    clicon_strcmp(const char *s1, const char *s2);
 int    clixon_unicode2utf8(char *ucstr, char *utfstr, size_t utflen);
 int    clixon_str_subst(char *str, cvec *cvv, cbuf *cb);
 

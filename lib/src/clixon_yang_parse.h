@@ -55,7 +55,7 @@ struct clixon_yang_yacc {
     char                 *yy_name;         /* Name of syntax, typically filename
                                               (for error string) */
     int                   yy_linenum;      /* Number of \n in parsed buffer */
-    char                 *yy_parse_string; /* original (copy of) parse string */
+    const char           *yy_parse_string; /* original (copy of) parse string */
     void                 *yy_lexbuf;       /* internal parse buffer from lex */
     struct ys_stack      *yy_stack;     /* Stack of levels: push/pop on () and [] */
     int                   yy_lex_state;  /* lex start condition (ESCAPE/COMMENT) */

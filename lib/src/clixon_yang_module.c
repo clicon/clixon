@@ -197,7 +197,7 @@ yang_modules_revision(clixon_handle h)
 int
 yang_modules_state_build(clixon_handle    h,
                          yang_stmt       *yspec,
-                         char            *msid,
+                         const char      *msid,
                          int              brief,
                          cbuf            *cb)
 {
@@ -319,7 +319,7 @@ x            +--ro namespace           inet:uri
 int
 yang_modules_state_get(clixon_handle    h,
                        yang_stmt       *yspec,
-                       char            *xpath,
+                       const char      *xpath,
                        cvec            *nsc,
                        int              brief,
                        cxobj          **xret)
@@ -528,8 +528,8 @@ clixon_module_upgrade(clixon_handle    h,
  * @see yang_find_namespace_by_prefix
  */
 yang_stmt *
-yang_find_module_by_prefix(yang_stmt *ys,
-                           char      *prefix)
+yang_find_module_by_prefix(yang_stmt  *ys,
+                           const char *prefix)
 {
     yang_stmt *yimport;
     yang_stmt *yprefix;
@@ -577,8 +577,8 @@ yang_find_module_by_prefix(yang_stmt *ys,
  *
  */
 yang_stmt *
-yang_find_module_by_prefix_yspec(yang_stmt *yspec,
-                                 char      *prefix)
+yang_find_module_by_prefix_yspec(yang_stmt  *yspec,
+                                 const char *prefix)
 {
     yang_stmt *ymod;
     yang_stmt *yprefix;
@@ -604,8 +604,8 @@ yang_find_module_by_prefix_yspec(yang_stmt *yspec,
  * @see yang_find_prefix_by_namespace
  */
 yang_stmt *
-yang_find_module_by_namespace(yang_stmt *yspec,
-                              char      *ns)
+yang_find_module_by_namespace(yang_stmt  *yspec,
+                              const char *ns)
 {
 #ifdef OPTIMIZE_YSPEC_NAMESPACE
     return yspec_nscache_get(yspec, ns);

@@ -87,7 +87,7 @@ clicon_int2str(const map_str2int *mstab,
  */
 int
 clicon_str2int(const map_str2int *mstab,
-               char              *str)
+               const char        *str)
 {
     const struct map_str2int *ms;
 
@@ -111,7 +111,7 @@ clicon_str2int(const map_str2int *mstab,
  */
 static int
 str2int_search1(const map_str2int *mstab,
-                char              *str,
+                const char        *str,
                 int                low,
                 int                upper,
                 int                len,
@@ -152,7 +152,7 @@ str2int_search1(const map_str2int *mstab,
  */
 static int
 str2ptr_search1(const map_str2ptr *mptab,
-                char              *str,
+                const char        *str,
                 size_t             low,
                 size_t             upper,
                 size_t             len,
@@ -196,7 +196,7 @@ str2ptr_search1(const map_str2ptr *mptab,
  */
 int
 clicon_str2int_search(const map_str2int *mstab,
-                      char              *str,
+                      const char        *str,
                       int                len)
 {
     int found;
@@ -215,7 +215,7 @@ clicon_str2int_search(const map_str2int *mstab,
  */
 char*
 clicon_str2str(const map_str2str *mstab,
-               char              *str)
+               const char        *str)
 {
     const struct map_str2str *ms;
 
@@ -276,7 +276,7 @@ clixon_str2ptr_sort(map_str2ptr *mptab,
  */
 void*
 clixon_str2ptr(map_str2ptr *mptab,
-               char        *str,
+               const char  *str,
                size_t       len)
 {
     map_str2ptr *mp = NULL;

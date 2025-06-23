@@ -105,7 +105,7 @@ withdefaults_int2str(int keyword)
  * @retval    int  Integer representation of withdefaults values
  */
 int
-withdefaults_str2int(char *str)
+withdefaults_str2int(const char *str)
 {
     return clicon_str2int(wdmap, str);
 }
@@ -120,9 +120,9 @@ withdefaults_str2int(char *str)
  * @retval    -1        Error
  */
 int
-netconf_in_use(cbuf *cb,
-               char *type,
-               char *message)
+netconf_in_use(cbuf       *cb,
+               const char *type,
+               const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -162,9 +162,9 @@ netconf_in_use(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_invalid_value_xml(cxobj **xret,
-                          char   *type,
-                          char   *message)
+netconf_invalid_value_xml(cxobj     **xret,
+                          const char *type,
+                          const char *message)
 {
     int    retval =-1;
     cxobj *xerr = NULL;
@@ -213,9 +213,9 @@ netconf_invalid_value_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_invalid_value(cbuf *cb,
-                      char *type,
-                      char *message)
+netconf_invalid_value(cbuf       *cb,
+                      const char *type,
+                      const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -242,9 +242,9 @@ netconf_invalid_value(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_too_big(cbuf *cb,
-                char *type,
-                char *message)
+netconf_too_big(cbuf       *cb,
+                const char *type,
+                const char *message)
 {
     int     retval = -1;
     char *encstr = NULL;
@@ -285,10 +285,10 @@ netconf_too_big(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_missing_attribute_xml(cxobj **xret,
-                              char   *type,
-                              char   *attr,
-                              char   *message)
+netconf_missing_attribute_xml(cxobj     **xret,
+                              const char *type,
+                              const char *attr,
+                              const char *message)
 {
     int    retval = -1;
     cxobj *xerr = NULL;
@@ -338,10 +338,10 @@ netconf_missing_attribute_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_missing_attribute(cbuf *cb,
-                          char *type,
-                          char *attr,
-                          char *message)
+netconf_missing_attribute(cbuf       *cb,
+                          const char *type,
+                          const char *attr,
+                          const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -369,10 +369,10 @@ netconf_missing_attribute(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_bad_attribute(cbuf *cb,
-                      char *type,
-                      char *info,
-                      char *message)
+netconf_bad_attribute(cbuf       *cb,
+                      const char *type,
+                      const char *info,
+                      const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -398,13 +398,12 @@ netconf_bad_attribute(cbuf *cb,
  * @param[in]  message Error message (will be XML encoded)
  * @retval     0       OK
  * @retval    -1       Error
-
  */
 int
-netconf_bad_attribute_xml(cxobj **xret,
-                          char   *type,
-                          char   *info,
-                          char   *message)
+netconf_bad_attribute_xml(cxobj     **xret,
+                          const char *type,
+                          const char *info,
+                          const char *message)
 {
     int    retval = -1;
     cxobj *xerr = NULL;
@@ -454,10 +453,10 @@ netconf_bad_attribute_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_unknown_attribute(cbuf *cb,
-                          char *type,
-                          char *info,
-                          char *message)
+netconf_unknown_attribute(cbuf       *cb,
+                          const char *type,
+                          const char *info,
+                          const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -501,13 +500,13 @@ netconf_unknown_attribute(cbuf *cb,
  * @retval    -1        Error
  */
 int
-netconf_common_rpc_err(cbuf *cb,
-                       char *ns,
-                       char *type,
-                       char *tag,
-                       char *severity,
-                       char *info,
-                       char *message)
+netconf_common_rpc_err(cbuf       *cb,
+                       const char *ns,
+                       const char *type,
+                       const char *tag,
+                       const char *severity,
+                       const char *info,
+                       const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -558,14 +557,14 @@ netconf_common_rpc_err(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_common_rpc_err_xml(cxobj **xret,
-                           char  *ns,
-                           char  *type,
-                           char  *tag,
-                           char  *severity,
-                           char  *infotag,
-                           char  *info,
-                           char  *message)
+netconf_common_rpc_err_xml(cxobj     **xret,
+                           const char *ns,
+                           const char *type,
+                           const char *tag,
+                           const char *severity,
+                           const char *infotag,
+                           const char *info,
+                           const char *message)
 {
     int    retval =-1;
     cxobj *xerr;
@@ -575,10 +574,8 @@ netconf_common_rpc_err_xml(cxobj **xret,
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
         goto done;
     }
-
     if (!ns)
         ns = NETCONF_BASE_NAMESPACE;
-
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
             goto done;
@@ -639,10 +636,10 @@ netconf_common_rpc_err_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_missing_element(cbuf      *cb,
-                        char      *type,
-                        char      *element,
-                        char      *message)
+netconf_missing_element(cbuf       *cb,
+                        const char *type,
+                        const char *element,
+                        const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -661,6 +658,7 @@ netconf_missing_element(cbuf      *cb,
 }
 
 /*! Create Netconf missing-element error XML tree according to RFC 6241 App A
+ *
  * @param[out] xret    Error XML tree. Free with xml_free after use
  * @param[in]  type    Error type: "application" or "protocol"
  * @param[in]  element bad-element xml
@@ -669,10 +667,10 @@ netconf_missing_element(cbuf      *cb,
  * @retval    -1       Error
  */
 int
-netconf_missing_element_xml(cxobj **xret,
-                            char   *type,
-                            char   *element,
-                            char   *message)
+netconf_missing_element_xml(cxobj     **xret,
+                            const char *type,
+                            const char *element,
+                            const char *message)
 {
     return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
                                       "missing-element", "error",
@@ -691,10 +689,10 @@ netconf_missing_element_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_bad_element(cbuf *cb,
-                    char *type,
-                    char *element,
-                    char *message)
+netconf_bad_element(cbuf       *cb,
+                    const char *type,
+                    const char *element,
+                    const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -713,10 +711,10 @@ netconf_bad_element(cbuf *cb,
 }
 
 int
-netconf_bad_element_xml(cxobj **xret,
-                        char   *type,
-                        char   *element,
-                        char   *message)
+netconf_bad_element_xml(cxobj     **xret,
+                        const char *type,
+                        const char *element,
+                        const char *message)
 {
     return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
                                       "bad-element", "error",
@@ -734,10 +732,10 @@ netconf_bad_element_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_unknown_element(cbuf *cb,
-                        char *type,
-                        char *element,
-                        char *message)
+netconf_unknown_element(cbuf       *cb,
+                        const char *type,
+                        const char *element,
+                        const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -766,10 +764,10 @@ netconf_unknown_element(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_unknown_element_xml(cxobj **xret,
-                            char   *type,
-                            char   *element,
-                            char   *message)
+netconf_unknown_element_xml(cxobj     **xret,
+                            const char *type,
+                            const char *element,
+                            const char *message)
 {
     return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
                                       "unknown-element", "error",
@@ -787,10 +785,10 @@ netconf_unknown_element_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_unknown_namespace(cbuf *cb,
-                          char *type,
-                          char *ns,
-                          char *message)
+netconf_unknown_namespace(cbuf       *cb,
+                          const char *type,
+                          const char *ns,
+                          const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -809,10 +807,10 @@ netconf_unknown_namespace(cbuf *cb,
 }
 
 int
-netconf_unknown_namespace_xml(cxobj **xret,
-                              char   *type,
-                              char   *ns,
-                              char   *message)
+netconf_unknown_namespace_xml(cxobj     **xret,
+                              const char *type,
+                              const char *ns,
+                              const char *message)
 {
     return netconf_common_rpc_err_xml(xret, NETCONF_BASE_NAMESPACE, type,
                                       "unknown-namespace", "error",
@@ -831,9 +829,9 @@ netconf_unknown_namespace_xml(cxobj **xret,
  * @see netconf_access_denied_xml  Same but returns XML tree
  */
 int
-netconf_access_denied(cbuf *cb,
-                      char *type,
-                      char *message)
+netconf_access_denied(cbuf       *cb,
+                      const char *type,
+                      const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -867,9 +865,9 @@ netconf_access_denied(cbuf *cb,
  * @see netconf_access_denied  Same but returns cligen buffer
  */
 int
-netconf_access_denied_xml(cxobj **xret,
-                          char   *type,
-                          char   *message)
+netconf_access_denied_xml(cxobj     **xret,
+                          const char *type,
+                          const char *message)
 {
     int    retval =-1;
     cxobj *xerr;
@@ -918,9 +916,9 @@ netconf_access_denied_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_lock_denied(cbuf *cb,
-                    char *info,
-                    char *message)
+netconf_lock_denied(cbuf       *cb,
+                    const char *info,
+                    const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -960,9 +958,9 @@ netconf_lock_denied(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_resource_denied(cbuf *cb,
-                        char *type,
-                        char *message)
+netconf_resource_denied(cbuf       *cb,
+                        const char *type,
+                        const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -1002,9 +1000,9 @@ netconf_resource_denied(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_rollback_failed(cbuf *cb,
-                        char *type,
-                        char *message)
+netconf_rollback_failed(cbuf       *cb,
+                        const char *type,
+                        const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -1044,8 +1042,8 @@ netconf_rollback_failed(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_data_exists(cbuf      *cb,
-                    char      *message)
+netconf_data_exists(cbuf       *cb,
+                    const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -1085,8 +1083,8 @@ netconf_data_exists(cbuf      *cb,
  * @retval    -1       Error
  */
 int
-netconf_data_missing(cbuf *cb,
-                     char *message)
+netconf_data_missing(cbuf       *cb,
+                     const char *message)
 {
     int   retval = -1;
     cxobj *xret = NULL;
@@ -1113,8 +1111,8 @@ netconf_data_missing(cbuf *cb,
  * @retval    -1       Error
  */
 int
-netconf_data_missing_xml(cxobj **xret,
-                         char   *message)
+netconf_data_missing_xml(cxobj     **xret,
+                         const char *message)
 {
     int   retval = -1;
     char *encstr = NULL;
@@ -1166,11 +1164,11 @@ netconf_data_missing_xml(cxobj **xret,
  * @retval    -1        Error
  */
 int
-netconf_missing_yang_xml(cxobj **xret,
-                         char   *path,
-                         char   *app_tag,
-                         char   *info,
-                         char   *message)
+netconf_missing_yang_xml(cxobj     **xret,
+                         const char *path,
+                         const char *app_tag,
+                         const char *info,
+                         const char *message)
 {
     int    retval = -1;
     char  *encstr = NULL;
@@ -1239,10 +1237,10 @@ netconf_missing_yang_xml(cxobj **xret,
  */
 
 int
-netconf_missing_choice_xml(cxobj **xret,
-                           cxobj  *x,
-                           char   *name,
-                           char   *message)
+netconf_missing_choice_xml(cxobj     **xret,
+                           cxobj      *x,
+                           const char *name,
+                           const char *message)
 {
     int    retval = -1;
     cbuf  *cbinfo = NULL;
@@ -1289,9 +1287,9 @@ netconf_missing_choice_xml(cxobj **xret,
  * @see netconf_operation_not_supported  Same but returns cligen buffer
  */
 int
-netconf_operation_not_supported_xml(cxobj **xret,
-                                    char   *type,
-                                    char   *message)
+netconf_operation_not_supported_xml(cxobj     **xret,
+                                    const char *type,
+                                    const char *message)
 {
     int   retval =-1;
     cxobj *xerr;
@@ -1350,9 +1348,9 @@ netconf_operation_not_supported_xml(cxobj **xret,
  * @retval    -1       Error
  */
 int
-netconf_operation_not_supported(cbuf *cb,
-                                char *type,
-                                char *message)
+netconf_operation_not_supported(cbuf       *cb,
+                                const char *type,
+                                const char *message)
 {
     int   retval = -1;
     cxobj *xret = NULL;
@@ -1380,9 +1378,9 @@ netconf_operation_not_supported(cbuf *cb,
  * @see netconf_operation_failed_xml  Same but returns XML tree
  */
 int
-netconf_operation_failed(cbuf  *cb,
-                         char  *type,
-                         char  *message)
+netconf_operation_failed(cbuf       *cb,
+                         char const *type,
+                         char const *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -1416,9 +1414,9 @@ netconf_operation_failed(cbuf  *cb,
  * @see netconf_operation_failed  Same but returns cligen buffer
  */
 int
-netconf_operation_failed_xml(cxobj **xret,
-                             char  *type,
-                             char  *message)
+netconf_operation_failed_xml(cxobj     **xret,
+                             const char *type,
+                             const char *message)
 {
     int   retval =-1;
     cxobj *xerr;
@@ -1470,8 +1468,8 @@ netconf_operation_failed_xml(cxobj **xret,
  * @see netconf_malformed_message_xml  Same but returns XML tree
  */
 int
-netconf_malformed_message(cbuf  *cb,
-                          char  *message)
+netconf_malformed_message(cbuf       *cb,
+                          const char *message)
 {
     int    retval = -1;
     cxobj *xret = NULL;
@@ -1506,8 +1504,8 @@ netconf_malformed_message(cbuf  *cb,
  * @see netconf_malformed_message  Same but returns cligen buffer
  */
 int
-netconf_malformed_message_xml(cxobj **xret,
-                              char   *message)
+netconf_malformed_message_xml(cxobj     **xret,
+                              const char *message)
 {
     int    retval =-1;
     cxobj *xerr;
@@ -1660,10 +1658,10 @@ netconf_data_not_unique_xml(cxobj **xret,
  * @see RFC7950 Sec 15.1
  */
 int
-netconf_minmax_elements_xml(cxobj **xret,
-                            cxobj  *xp,
-                            char   *name,
-                            int     max)
+netconf_minmax_elements_xml(cxobj     **xret,
+                            cxobj      *xp,
+                            const char *name,
+                            int         max)
 {
     int    retval = -1;
     cxobj *xerr;
@@ -1879,8 +1877,8 @@ netconf_module_load(clixon_handle h)
  * @endcode
  */
 char*
-netconf_db_find(cxobj *xn,
-                char  *name)
+netconf_db_find(cxobj      *xn,
+                const char *name)
 {
     cxobj *xs; /* source */
     cxobj *xi;
@@ -1907,7 +1905,7 @@ static const map_str2int netconf_content_map[] = {
 };
 
 const netconf_content
-netconf_content_str2int(char *str)
+netconf_content_str2int(const char *str)
 {
     return clicon_str2int(netconf_content_map, str);
 }
@@ -2067,9 +2065,9 @@ netconf_hello_server(clixon_handle h,
  * @retval    -1       Error
  */
 int
-clixon_netconf_internal_error(cxobj *xerr,
-                              char  *msg,
-                              char  *arg)
+clixon_netconf_internal_error(cxobj      *xerr,
+                              const char *msg,
+                              const char *arg)
 {
     int    retval = -1;
     cxobj *xr;
@@ -2118,12 +2116,12 @@ clixon_netconf_internal_error(cxobj *xerr,
  * @endcode
  */
 int
-netconf_parse_uint32(char     *name,
-                     char     *valstr,
-                     char     *defaultstr,
-                     uint32_t  defaultvalue,
-                     cbuf     *cbret,
-                     uint32_t *value)
+netconf_parse_uint32(const char *name,
+                     char       *valstr,
+                     const char *defaultstr,
+                     uint32_t    defaultvalue,
+                     cbuf       *cbret,
+                     uint32_t   *value)
 {
     int    retval = -1;
     int    ret;
@@ -2162,12 +2160,12 @@ netconf_parse_uint32(char     *name,
  * @see netconf_parse_uint32_xml
  */
 int
-netconf_parse_uint32_xml(char     *name,
-                         char     *valstr,
-                         char     *defaultstr,
-                         uint32_t  defaultvalue,
-                         cxobj   **xerr,
-                         uint32_t *value)
+netconf_parse_uint32_xml(const char *name,
+                         char       *valstr,
+                         const char *defaultstr,
+                         uint32_t    defaultvalue,
+                         cxobj     **xerr,
+                         uint32_t   *value)
 {
     int    retval = -1;
     int    ret;
@@ -2288,9 +2286,9 @@ netconf_framing_postamble(netconf_framing_type framing,
  * @see netconf_output_encap  for function with encapsulation
  */
 int
-netconf_output(int   s,
-               cbuf *cb,
-               char *msg)
+netconf_output(int         s,
+               cbuf       *cb,
+               const char *msg)
 {
     int   retval = -1;
     char *buf = cbuf_get(cb);
