@@ -1466,7 +1466,6 @@ _json_parse(clixon_handle h,
     cbuf            *cberr = NULL;
     int              i;
     int              failed = 0; /* yang assignment */
-    yang_stmt       *yspec1;
     yang_stmt       *yt = NULL;
     int              ret;
 
@@ -1491,21 +1490,10 @@ _json_parse(clixon_handle h,
 
     if ((yt = xml_spec(xt)) != NULL)
         yspec = ys_spec(yt);
-    if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        yspec1 = NULL;
-        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0) // XXX read här
+    if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT") &&
+        xml_schema_mount_point(xt)) {
+        if (yang_schema_mount_yspec(h, xt, NULL, &yspec, xerr) < 0)
             goto done;
-        if (ret == 1){
-            if (yspec1 == NULL){
-                if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
-                    goto done;
-                /* Try again */
-                if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
-                    goto done;
-            }
-            if (yspec1)
-                yspec = yspec1;
-        }
     }
     /* Traverse new objects */
     for (i = 0; i < jy.jy_xlen; i++) {

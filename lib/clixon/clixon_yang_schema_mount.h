@@ -56,6 +56,7 @@
  */
 int yang_schema_mount_point0(yang_stmt *y);
 int yang_schema_mount_point(yang_stmt *y);
+int xml_schema_mount_point(cxobj *x);
 int yang_mount_get(yang_stmt *yu, char *xpath, yang_stmt **yspec);
 int yang_mount_get_yspec_any(yang_stmt *y, yang_stmt **yspec);
 int yang_mount_set(yang_stmt *yu);
@@ -67,5 +68,7 @@ int yang_schema_yanglib_mount_parse(clixon_handle h, cxobj *xt, cxobj *xyanglib,
 int yang_schema_yanglib_get_mount_parse(clixon_handle h, cxobj *xt);
 int yang_schema_get_child(clixon_handle h, cxobj *x1, cxobj *x1c, yang_stmt **yc);
 int yang_schema_yspec_rm(clixon_handle h, cxobj *xmnt);
+int yang_schema_mount_yspec(clixon_handle h, cxobj *xt, yang_bind *yb,
+                            yang_stmt **yspec, cxobj **xerr);
 
 #endif  /* _CLIXON_YANG_SCHEMA_MOUNT_H_ */

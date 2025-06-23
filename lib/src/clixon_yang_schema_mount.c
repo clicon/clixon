@@ -136,6 +136,7 @@
  * @retval    0   No, y is not
  * @retval   -1   Error
  * @note That this may be a restriction on the usage of "label". The RFC is somewhat unclear.
+ * @see yang_schema_mount_point  cached variant
  */
 int
 yang_schema_mount_point0(yang_stmt *y)
@@ -173,16 +174,32 @@ yang_schema_mount_point0(yang_stmt *y)
     goto done;
 }
 
-/*! Cached variant of yang_schema_mount_point0
+/*! Check if YANG node is a RFC 8528 YANG schema mount, cached variant
  *
  * @param[in]  y   Yang node
  * @retval     1   Yes, node is potential mountpoint
  * @retval     0   No, node is not potential mountpoint
+ * @see yang_schema_mount_point0  set up cache, called at yang parse
  */
 int
 yang_schema_mount_point(yang_stmt *y)
 {
     return yang_flag_get(y, YANG_FLAG_MTPOINT_POTENTIAL) ? 1 : 0;
+}
+
+/*! Check if XML has YANG spec that is an RFC 8528 YANG schema mount point
+ *
+ * @param[in]  x   XML node
+ * @retval     1   Yes, node has YANG and is a potential mountpoint
+ * @retval     0   No, node has no YANG or is not potential mountpoint
+ */
+int
+xml_schema_mount_point(cxobj *x)
+{
+    yang_stmt *y;
+
+    return (y = xml_spec(x)) != NULL &&
+        yang_flag_get(y, YANG_FLAG_MTPOINT_POTENTIAL) ? 1 : 0;
 }
 
 /*! Get yangspec mount-point
@@ -345,6 +362,7 @@ yang_mount_xmnt2ymnt_xpath(clixon_handle h,
  * @retval     1        x is a mount-point: yspec may be set
  * @retval     0        x is not a mount-point
  * @retval    -1        Error
+ * @see yang_schema_mount_point
  */
 int
 xml_yang_mount_get(clixon_handle   h,
@@ -417,7 +435,7 @@ xml_yang_mount_set(clixon_handle h,
 
 /*! Find schema mounts - callback function for xml_apply
  *
- * @param[in]  x    XML node  
+ * @param[in]  x    XML node
  * @param[in]  arg  cvec, if match add node
  * @retval     2    Locally abort this subtree, continue with others
  * @retval     1    Abort, dont continue with others, return 1 to end user
@@ -977,4 +995,63 @@ yang_schema_yspec_rm(clixon_handle h,
     if (xpath)
         free(xpath);
     return retval;
+}
+
+/*! Given xml mtpoint, get new mounted yspec, if not exist, get it and parse new yang
+ *
+ * Assume xt is mount-point, get mounted yspec, if it does not exist, get it and
+ * parse all its yang.
+ * If no yang-lib mark xml node as ANYDATA
+ * @param[in]     h       Clixon handle (sometimes NULL)
+ * @param[in]     xt      XML mount-point
+ * @param[in,out] yb      Yang spec of xn on entry, of module on exit
+ * @param[out]    xerr    Reason for failure, or NULL (call xml_free() after use)
+ * @retval        1       OK, new yspec
+ * @retval        0       Marks as anydata: no yanglib, or yanglib parsing problem
+ * @retval       -1       Error
+ */
+int
+yang_schema_mount_yspec(clixon_handle h,
+                        cxobj        *xt,
+                        yang_bind    *yb,
+                        yang_stmt   **yspec,
+                        cxobj       **xerr)
+{
+    int        retval = -1;
+    yang_stmt *yspec1 = NULL;
+    int        ret;
+
+    if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0) // XXX read här
+        goto done;
+    if (ret == 0){
+        clixon_err(OE_YANG, 0, "xt is not mount-point");
+        goto done;
+    }
+    /* xt is a mount-point: yspec1 may be set */
+    if (yspec1 == NULL){
+        if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
+            goto done;
+        if (ret == 0){ /* No yanglib or problem when parsing yanglib
+                          Special flag if mount-point but no yanglib */
+            xml_flag_set(xt, XML_FLAG_ANYDATA); // <-- XXX
+            goto anydata;
+        }
+        /* Try again */
+        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
+            goto done;
+        if (yspec1 == NULL){
+            clixon_err(OE_YANG, 0, "No yspec1 found");
+            goto done;
+        }
+    }
+    /* Switch yspec and bind */
+    *yspec = yspec1;
+    if (yb)
+        *yb = YB_MODULE;
+    retval = 1;
+ done:
+    return retval;
+ anydata:
+    retval = 0;
+    goto done;
 }
