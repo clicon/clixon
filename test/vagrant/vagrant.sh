@@ -94,11 +94,13 @@ if $destroy; then
     (cd $dir; vagrant destroy -f)
     exit 0
 fi
+cfg=$(cd $dir; vagrant ssh-config $host)
+idfile=$(echo "$cfg" |grep "IdentityFile"|awk '{print $2}')
+# Remove ssh key before vagrant up
+rm -f $idfile
 (cd $dir; vagrant up)
 echo "vagrant is up -----------------"
 # Get ssh config to make proper ssh/scp calls to local vagrant host
-cfg=$(cd $dir; vagrant ssh-config $host)
-idfile=$(echo "$cfg" |grep "IdentityFile"|awk '{print $2}')
 port=$(echo "$cfg" |grep "Port"|awk '{print $2}')
 # make ssh and scp shorthand commands using vagrant-generated keys
 sshcmd="ssh -o StrictHostKeyChecking=no -i $idfile -p $port vagrant@127.0.0.1"
