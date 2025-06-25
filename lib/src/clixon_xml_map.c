@@ -870,6 +870,7 @@ xml_tree_prune_flags(cxobj *xt,
  * @code
  *    xml_tree_prune_flags1(xt, XML_FLAG_MARK, XML_FLAG_MARK|XML_FLAG_DEFAULT, 1, NULL);
  * @endcode
+ * @see  xml_tree_prune_flagged_sub  if child is flagged
  */
 int
 xml_tree_prune_flags1(cxobj *xt,

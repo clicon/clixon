@@ -54,6 +54,15 @@ module example{
        leaf-list z {
          type string;
        }
+       list metric {
+          key "name";
+          leaf name {
+             type string;
+          }
+          leaf value {
+             type string;
+          }
+       }
      }
    }
 }
@@ -94,6 +103,7 @@ function testset()
 function testdel()
 {
     delop=$1
+    new "netconf del"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><edit-config><target><candidate/></target><default-operation>none</default-operation><config><system xmlns=\"urn:example:config\" xmlns:nc=\"${BASENS}\"><conf>${delop}</conf></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 }
 
@@ -155,6 +165,16 @@ testdel "<z nc:operation=\"delete\"/>"
 
 new "Check deleted"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><get-config><source><candidate/></source></get-config></rpc>" "<conf><x>1</x><y/><z>2</z><z>3</z></conf>" ""
+
+# https://github.com/clicon/clixon/issues/611
+conf="<system xmlns=\"urn:example:config\"><conf><metric><name>m1</name></metric></conf></system>"
+new "Unexpected entry at remove"
+testset "$conf"
+
+testdel "<metric><name>m2</name><value nc:operation=\"remove\"/></metric>"
+
+new "Check deleted"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS ><get-config><source><candidate/></source></get-config></rpc>" "<conf><metric><name>m1</name></metric></conf>" ""
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

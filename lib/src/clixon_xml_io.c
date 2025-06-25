@@ -523,6 +523,8 @@ xml_dump1(FILE  *f,
         fprintf(f, " delete");
     if (xml_flag(x, XML_FLAG_CHANGE))
         fprintf(f, " change");
+    if (xml_flag(x, XML_FLAG_NONE))
+        fprintf(f, " none");
     if (xml_flag(x, XML_FLAG_MARK))
         fprintf(f, " mark");
     if (xml_flag(x, XML_FLAG_DENY))

@@ -1093,12 +1093,18 @@ text_modify(clixon_handle       h,
                     goto fail;
             }
             if (changed){
-#ifdef XML_PARENT_CANDIDATE
-                xml_parent_candidate_set(x0, NULL);
-#endif
-                if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
+                /* Add to parent unless tree is 100% none */
+                if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) < 0)
                     goto done;
-                xml_flag_set(x0, XML_FLAG_ADD);
+                if (xml_flag(x0, XML_FLAG_NONE) == 0x0 ||
+                    xml_child_nr_type(x0, CX_ELMNT) > 0) {
+#ifdef XML_PARENT_CANDIDATE
+                    xml_parent_candidate_set(x0, NULL);
+#endif
+                    if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
+                        goto done;
+                    xml_flag_set(x0, XML_FLAG_ADD);
+                }
             }
             break;
         case OP_DELETE:
