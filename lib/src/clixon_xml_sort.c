@@ -48,7 +48,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <assert.h>
 #include <syslog.h>
 
 /* cligen */
@@ -351,7 +350,6 @@ xml_cmp(cxobj  *x1,
                         goto done;
                     if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
                         goto done;
-                    assert(cv1 && cv2);
                     equal = cv_cmp(cv1, cv2);
                 }
             }
@@ -360,57 +358,56 @@ xml_cmp(cxobj  *x1,
 #endif /* XML_EXPLICIT_INDEX */
         }
         else {
-        /* Use Y_LIST cache (see struct yang_stmt) */
-        cvk = yang_cvec_get(y1); /* Use Y_LIST cache, see ys_populate_list() */
-        cvi = NULL;
-        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-            keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
-            x1b = xml_find(x1, keyname);
-            /* match1: key matching skipped for keys not in x1 (see explanation) */
-            if (skip1 && x1b == NULL)
-                continue;
-            x2b = xml_find(x2, keyname);
-            if (x1b == NULL && x2b == NULL)
-                ;
-            else if (x1b == NULL)
-                equal = -1;
-            else if (x2b == NULL)
-                equal = 1;
-            else{
-                b1 = xml_body(x1b);
-                b2 = xml_body(x2b);
-                // XXX b1 = "" and b2 = NULL is not match
-                if (b1 == NULL && b2 == NULL)
+            /* Use Y_LIST cache (see struct yang_stmt) */
+            cvk = yang_cvec_get(y1); /* Use Y_LIST cache, see ys_populate_list() */
+            cvi = NULL;
+            while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+                keyname = cv_string_get(cvi); /* operational data may have NULL keys*/
+                x1b = xml_find(x1, keyname);
+                /* match1: key matching skipped for keys not in x1 (see explanation) */
+                if (skip1 && x1b == NULL)
+                    continue;
+                x2b = xml_find(x2, keyname);
+                if (x1b == NULL && x2b == NULL)
                     ;
-                else if (b1 == NULL && strcmp(b2,"") == 0)
-                    ;
-                else if (b2 == NULL && strcmp(b1,"") == 0)
-                    ;
-                else if (b1 == NULL)
+                else if (x1b == NULL)
                     equal = -1;
-                else if (b2 == NULL)
+                else if (x2b == NULL)
                     equal = 1;
                 else{
-                    if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
-                        goto done;
-                    if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
-                        goto done;
-                    assert(cv1 && cv2);
-                    equal = cv_cmp(cv1, cv2);
+                    b1 = xml_body(x1b);
+                    b2 = xml_body(x2b);
+                    // XXX b1 = "" and b2 = NULL is not match
+                    if (b1 == NULL && b2 == NULL)
+                        ;
+                    else if (b1 == NULL && strcmp(b2,"") == 0)
+                        ;
+                    else if (b2 == NULL && strcmp(b1,"") == 0)
+                        ;
+                    else if (b1 == NULL)
+                        equal = -1;
+                    else if (b2 == NULL)
+                        equal = 1;
+                    else{
+                        if (xml_cv_cache(x1b, &cv1) < 0) /* error case */
+                            goto done;
+                        if (xml_cv_cache(x2b, &cv2) < 0) /* error case */
+                            goto done;
+                        equal = cv_cmp(cv1, cv2);
+                    }
                 }
-            }
-            if (equal)
-                break;
-        } /* while cvi */
+                if (equal)
+                    break;
+            } /* while cvi */
         }
         break;
     default:
         /* This is a very special case such as for two choices - which is not validation correct, but we
            should sort them according to nr1, nr2 since their yang is equal order */
-        if (same)
-            equal = nr1-nr2;
         break;
     } /* switch */
+    if (same && equal == 0)
+        equal = nr1-nr2;
  done:
     clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL2, "%s %s eq:%d nr: %d %d yi: %d %d", xml_name(x1), xml_name(x2), equal, nr1, nr2, yi1, yi2);
     return equal;
