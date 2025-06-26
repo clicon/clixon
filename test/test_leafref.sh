@@ -64,6 +64,14 @@ module example{
                  require-instance true;
             }
          }
+         leaf anyaddr {
+             description "see https://github.com/clicon/clixon/issues/613";
+             type leafref {
+                 path "../../if:interfaces/if:interface"
+                    + "/ip:ipv4/ip:address/ip:ip";
+                 require-instance true;
+            }
+         }
          leaf wrong {
              description "References leading nowhere in yang";
              type leafref {
@@ -169,6 +177,12 @@ new "leafref add correct address"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><default-address xmlns=\"urn:example:clixon\"><address>192.0.2.1</address></default-address></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "leafref validate ok 3"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref add second any address"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><default-address xmlns=\"urn:example:clixon\"><anyaddr>127.0.0.1</anyaddr></default-address></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref validate ok 4"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "leafref delete leaf"

@@ -89,8 +89,8 @@
 /* Global cache data only directly used in validate_leafref()
  */
 struct leafref_opt {
-    yang_stmt *lc_cache_yang;
-    cxobj     *lc_cache_x0;
+    yang_stmt *lc_cache_yang;  /* YANG of leafref xml node*/
+    cxobj     *lc_cache_x0;    /* leafref xml node */
     cxobj    **lc_cache_xvec;
     size_t     lc_cache_xlen;
     int        lc_bin_search;  /* Result is binary searchable */
@@ -217,16 +217,18 @@ leafref_opt_cache_new(yang_stmt *ys,
  * @param[out] search Can do binary search (or not)
  * @param[out] x0p    First object hit, if searchable
  * @retval     0      OK
+ * @note only binary search if xvec have the same parent, this could probably be implemented
  */
 static int
 leafref_opt_search_detect(cxobj **xvec,
                           size_t  xlen,
                           int    *search,
-                          cxobj **x0p)
+                          cxobj **x0pp)
 {
     cxobj     *x;
     cxobj     *x0;
     cxobj     *xp;
+    cxobj     *x0p;
     yang_stmt *y;
     yang_stmt *y0;
     yang_stmt *yp;
@@ -234,17 +236,19 @@ leafref_opt_search_detect(cxobj **xvec,
     int        i;
 
     x0 = NULL;
+    x0p = NULL;
     y0 = NULL;
     for (i = 0; i < xlen; i++) {
         x = xvec[i];
+        if ((xp = xml_parent(x)) == NULL)
+            break;
         // XXX Maybe we could do this in xpath code if we use xpath_vec_ctx instead
         if ((y = xml_spec(x)) == NULL)
             break;
         if (i == 0){
             x0 = x;
             y0 = y;
-            if ((xp = xml_parent(x)) == NULL)
-                break;
+            x0p = xp;
             if ((yp = xml_spec(xp)) == NULL)
                 break;
             if (yang_keyword_get(y) == Y_LEAF_LIST){
@@ -257,13 +261,13 @@ leafref_opt_search_detect(cxobj **xvec,
             else
                 break;
         }
-        else if (y0 != y)
+        else if (y0 != y || x0p != xp)
             break;
     }
     // Does not work in some cases for LISTs
     if (i == xlen && x0 != NULL && xml_parent(x0) && xml_spec(x0)){
         *search = 1;
-        *x0p = x0;
+        *x0pp = x0;
     }
     return 0;
 }
