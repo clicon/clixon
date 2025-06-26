@@ -223,7 +223,7 @@ expectpart "$($clixon_cli -1 -f $cfg validate 2>&1)" 0 "^$"
 
 new "Discard"
 expectpart "$($clixon_cli -1 -f $cfg discard)" 0 "^$"
-exit
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
