@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Yang action, use main exapl backend for registering action
+# Yang action, use main example backend for registering action
 # See RFC 7950 7.15
 
 # Magic line must be first in script (see README.md)

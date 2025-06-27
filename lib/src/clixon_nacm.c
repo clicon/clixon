@@ -966,7 +966,7 @@ nacm_data_read_xrule_xml(cxobj       *xn,
     if (strcmp(module_pattern, "*") != 0){
         if (ys_module_by_xml(yspec, xn, &ymod) < 0)
             goto done;
-        if (strcmp(yang_argument_get(ymod), module_pattern) != 0)
+        if (ymod==NULL || strcmp(yang_argument_get(ymod), module_pattern) != 0)
             goto nomatch;
     }
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
