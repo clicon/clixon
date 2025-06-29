@@ -5,6 +5,7 @@ on:
     branches:
        - master
        - test-actions
+       - privcand
   pull_request:
     branches: [ master ]
 
