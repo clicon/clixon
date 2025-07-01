@@ -201,7 +201,7 @@ restconf_subscription(clixon_handle  h,
     /* Must be there for FCGI caching */
     if (restconf_reply_header(req, "X-Accel-Buffering", "no") < 0)
         goto done;
-    if (restconf_reply_send(req, 201, NULL, 0) < 0)
+    if (restconf_reply_send(req, 200, NULL, 0) < 0)
         goto done;
     *sp = s;
  ok:

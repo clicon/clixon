@@ -43,6 +43,7 @@ Expected: July 2025
 
 Developers may need to change their code
 
+* RESTCONF: GET /streams changed wrong return status from `201` to correct `200`
 * Changed C-API:
   * `clixon_json_parse_string(str,...)` -> `clixon_json_parse_string(h, str,...)`
   * `xml_bind_yang(..., xerr)` -> `xml_bind_yang(..., 0, xerr)`
