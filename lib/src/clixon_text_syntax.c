@@ -67,6 +67,7 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_bind.h"
+#include "clixon_xml_default.h"
 #include "clixon_text_syntax.h"
 #include "clixon_text_syntax_parse.h"
 
@@ -82,7 +83,7 @@
 /* Forward */
 static int text_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1, int level, int skiptop);
 
-/*! x is element and has eactly one child which in turn has none 
+/*! x is element and has eactly one child which in turn has none
  *
  * @see child_type in clixon_json.c
  */
@@ -105,6 +106,89 @@ tleaf(cxobj *x)
     return (xml_child_nr_notype(xc, CX_ATTR) == 0);
 }
 
+/*! For text2 output: compute with-defaults: if object should be printed or not
+ *
+ * @param[in]   x    Clixon xml tree
+ * @param[in]   y    YANG of x
+ * @param[in]   wdef With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
+ * @retval      1    Keep it
+ * @retval      0    Remove it
+ * @retval     -1    Error
+ * XXX xml2output_wdef make common function
+ */
+static int
+text_wdef(cxobj            *x,
+          yang_stmt        *y,
+          withdefaults_type wdef)
+{
+    int        retval = -1;
+    int        keep = 1;
+    cg_var    *cv;
+    char      *yv = NULL;
+    char      *body;
+    cxobj     *xc;
+    yang_stmt *yc;
+    int        ret;
+    int        config;
+
+    switch (wdef){
+    case WITHDEFAULTS_EXPLICIT:
+    case WITHDEFAULTS_TRIM:
+        /* inline of xml_default_nopresence()
+           and xml_flag_state_default_value()
+        */
+        switch(yang_keyword_get(y)){
+        case Y_CONTAINER:
+            if (yang_find(y, Y_PRESENCE, NULL) == NULL){
+                keep = 0;
+                /* Loop thru children */
+                xc = NULL;
+                while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+                    if ((yc = xml_spec(xc)) != NULL){
+                        if ((ret = text_wdef(xc, yc, wdef)) < 0)
+                            goto done;
+                        if (ret == 1)
+                            keep = 1;
+                    }
+                }
+            }
+            break;
+        case Y_LEAF:
+            config = yang_config_ancestor(y);
+            if (xml_flag(x, XML_FLAG_DEFAULT)) {
+                /* RFC 6243: Any value set by the NETCONF server [eg: state-data] that is not the schema
+                   defined default value is also considered explicitly set data.*/
+                if (!config && wdef == WITHDEFAULTS_EXPLICIT)
+                    ;
+                else
+                    keep = 0;
+            }
+            else if (wdef == WITHDEFAULTS_TRIM &&
+                     (cv = yang_cv_get(y)) != NULL &&
+                     (body = xml_body(x)) != NULL){
+                if ((yv = cv2str_dup(cv)) == NULL)
+                    goto done;
+                if (body && strcmp(body, yv) == 0)
+                    keep = 0;
+            }
+            break;
+        default:
+            break;
+        }
+        break;
+    case WITHDEFAULTS_REPORT_ALL:
+    case WITHDEFAULTS_REPORT_ALL_TAGGED:
+        break;
+    default:
+        break;
+    }
+    retval = keep;
+ done:
+    if (yv)
+        free(yv);
+    return retval;
+}
+
 /*! Translate XML to a "pseudo-code" textual format using a callback - internal function
  *
  * @param[in]     xn       XML object to print
@@ -112,8 +196,9 @@ tleaf(cxobj *x)
  * @param[in]     f        File to print to
  * @param[in]     level    Print PRETTYPRINT_INDENT spaces per level in front of each line
  * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in]     wdef     With-defaults parameter
  * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
- * @param[in,out] leaflname Leaflist state for [] 
+ * @param[in,out] leaflname Leaflist state for []
  * @retval        0        OK
  * @retval       -1        Error
  * leaflist state:
@@ -128,6 +213,7 @@ text2file(cxobj            *xn,
           FILE             *f,
           int               level,
           int               autocliext,
+          withdefaults_type wdef,
           int              *leafl,
           char            **leaflname)
 
@@ -135,12 +221,12 @@ text2file(cxobj            *xn,
     int        retval = -1;
     cxobj     *xc = NULL;
     int        children=0;
-    int        exist = 0;
     yang_stmt *yn;
     char      *value;
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
     cbuf      *cbb = NULL;
+    int        ret;
 #ifndef TEXT_SYNTAX_NOPREFIX
     yang_stmt *yp = NULL;
     yang_stmt *ymod;
@@ -152,10 +238,15 @@ text2file(cxobj            *xn,
         goto done;
     }
     if ((yn = xml_spec(xn)) != NULL){
+        if ((ret = text_wdef(xn, yn, wdef)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
         if (autocliext){
-            if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+            ret = 0;
+            if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &ret, NULL) < 0)
                 goto done;
-            if (exist)
+            if (ret)
                 goto ok;
         }
 #ifndef TEXT_SYNTAX_NOPREFIX
@@ -254,7 +345,7 @@ text2file(cxobj            *xn,
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
             if (yn && yang_key_match(yn, xml_name(xc), NULL))
                 continue; /* Skip keys, already printed */
-            if (text2file(xc, fn, f, level+1, autocliext, leafl, leaflname) < 0)
+            if (text2file(xc, fn, f, level+1, autocliext, wdef, leafl, leaflname) < 0)
                 break;
         }
     }
@@ -306,28 +397,30 @@ get_prefix(yang_stmt *yn)
  * @param[in]     level    Print PRETTYPRINT_INDENT spaces per level in front of each line
  * @param[in]     prefix   Add string to beginning of each line (or NULL)
  * @param[in]     autocliext How to handle autocli extensions: 0: ignore 1: follow
+ * @param[in]     wdef     With-defaults parameter
  * @param[in,out] leafl    Leaflist state for keeping track of when [] ends
- * @param[in,out] leaflname Leaflist state for [] 
+ * @param[in,out] leaflname Leaflist state for []
  * @retval        0        OK
  * @retval       -1        Error
  * leaflist state:
  * 0: No leaflist
  * 1: In leaflist
  * @see text2file but to file (faster)
+ * @see xml2cbuf_recurse
  */
 static int
-text2cbuf(cbuf  *cb,
-          cxobj *xn,
-          int    level,
-          char   *prepend,
-          int    autocliext,
-          int   *leafl,
-          char **leaflname)
+text2cbuf(cbuf             *cb,
+          cxobj            *xn,
+          int               level,
+          char             *prepend,
+          int               autocliext,
+          withdefaults_type wdef,
+          int              *leafl,
+          char            **leaflname)
 {
     int        retval = -1;
     cxobj     *xc = NULL;
     int        children=0;
-    int        exist = 0;
     yang_stmt *yn;
     char      *value;
     cg_var    *cvi;
@@ -335,6 +428,7 @@ text2cbuf(cbuf  *cb,
     cbuf      *cbb = NULL;
     int        level1;
     char      *prefix = NULL;
+    int        ret;
 
     if (xn == NULL || cb == NULL){
         clixon_err(OE_XML, EINVAL, "xn or cb is NULL");
@@ -344,10 +438,15 @@ text2cbuf(cbuf  *cb,
     if (prepend)
         level1 -= strlen(prepend);
     if ((yn = xml_spec(xn)) != NULL){
+        if ((ret = text_wdef(xn, yn, wdef)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
         if (autocliext){
-            if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+            ret = 0;
+            if (yang_extension_value(yn, "hide-show", CLIXON_AUTOCLI_NS, &ret, NULL) < 0)
                 goto done;
-            if (exist)
+            if (ret)
                 goto ok;
         }
 #ifndef TEXT_SYNTAX_NOPREFIX
@@ -442,7 +541,7 @@ text2cbuf(cbuf  *cb,
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
             if (yn && yang_key_match(yn, xml_name(xc), NULL))
                 continue; /* Skip keys, already printed */
-            if (text2cbuf(cb, xc, level+1, prepend, autocliext, leafl, leaflname) < 0)
+            if (text2cbuf(cb, xc, level+1, prepend, autocliext, wdef, leafl, leaflname) < 0)
                 break;
         }
     }
@@ -472,7 +571,7 @@ text2cbuf(cbuf  *cb,
  * @param[in]  xn       XML object to print
  * @param[in]  level    Print PRETTYPRINT_INDENT spaces per level in front of each line
  * @param[in]  fn       File print function (if NULL, use fprintf)
- * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0        OK
  * @retval    -1        Error
@@ -495,11 +594,11 @@ clixon_text2file(FILE             *f,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (text2file(xc, fn, f, level, autocliext, &leafl, &leaflname) < 0)
+            if (text2file(xc, fn, f, level, autocliext, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
     }
     else {
-        if (text2file(xn, fn, f, level, autocliext, &leafl, &leaflname) < 0)
+        if (text2file(xn, fn, f, level, autocliext, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
             goto done;
     }
     retval = 0;
@@ -512,7 +611,7 @@ clixon_text2file(FILE             *f,
  * @param[out] cb      Cligen buffer to write to
  * @param[in]  xn       XML object to print
  * @param[in]  level    Print PRETTYPRINT_INDENT spaces per level in front of each line
- * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @param[in]  autocliext How to handle autocli extensions: 0: ignore 1: follow
  * @retval     0        OK
  * @retval    -1        Error
@@ -532,11 +631,11 @@ clixon_text2cbuf(cbuf             *cb,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (text2cbuf(cb, xc, level, NULL, autocliext, &leafl, &leaflname) < 0)
+            if (text2cbuf(cb, xc, level, NULL, autocliext, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
     }
     else {
-        if (text2cbuf(cb, xn, level, NULL, autocliext, &leafl, &leaflname) < 0)
+        if (text2cbuf(cb, xn, level, NULL, autocliext, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
             goto done;
     }
     retval = 0;
@@ -577,7 +676,7 @@ text_diff_keys(cbuf      *cb,
  * @param[in]  x1c     Start of sublist in second XML tree
  * @param[in]  yc      Yang of x0c/x1c
  * @param[in]  level   How many spaces to insert before each line
- * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval     0       Ok
  * @retval    -1       Error
  * @see xml_diff_ordered_by_user
@@ -637,12 +736,13 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
  * @param[in]  x0      First XML tree
  * @param[in]  x1      Second XML tree
  * @param[in]  level   How many spaces to insert before each line
- * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in]  skiptop 0: Include top object 1: Skip top-object, only children,
+
  * @retval     0       OK
  * @retval    -1       Error
  * @cod
  *    cbuf *cb = cbuf_new();
- *    if (clixon_text_diff2cbuf(cb, 0, x0, x1) < 0)
+ *    if (clixon_text_diff2cbuf(cb, 0, x0, x1, 0) < 0)
  *       err();
  * @endcode
  * @see clixon_xml_diff2cbuf
@@ -662,11 +762,11 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
  * @see xml_diff       Diff sets
  */
 static int
-text_diff2cbuf(cbuf  *cb,
-               cxobj *x0,
-               cxobj *x1,
-               int    level,
-               int    skiptop)
+text_diff2cbuf(cbuf             *cb,
+               cxobj            *x0,
+               cxobj            *x1,
+               int               level,
+               int               skiptop)
 {
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
@@ -738,7 +838,7 @@ text_diff2cbuf(cbuf  *cb,
                 cprintf(cb, " {\n");
                 nr++;
             }
-            if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+            if (text2cbuf(cb, x1c, level+1, "+", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -753,7 +853,7 @@ text_diff2cbuf(cbuf  *cb,
                 cprintf(cb, "{\n");
                 nr++;
             }
-            if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+            if (text2cbuf(cb, x0c, level+1, "-", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
@@ -766,7 +866,7 @@ text_diff2cbuf(cbuf  *cb,
             if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c,
                                                level, skiptop) < 0)
                 goto done;
-            /* Add all in x0 marked as DELETE in x0vec 
+            /* Add all in x0 marked as DELETE in x0vec
              * Flags can remain: XXX should apply to all
              */
             xi = x0c;
@@ -782,7 +882,7 @@ text_diff2cbuf(cbuf  *cb,
                         cprintf(cb, " {\n");
                         nr++;
                     }
-                    if (text2cbuf(cb, xi, level+1, "-", 0, &leafl, &leaflname) < 0)
+                    if (text2cbuf(cb, xi, level+1, "-", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                         goto done;
                 }
             }
@@ -804,7 +904,7 @@ text_diff2cbuf(cbuf  *cb,
                         cprintf(cb, " {\n");
                         nr++;
                     }
-                    if (text2cbuf(cb, xj, level+1, "+", 0, &leafl, &leaflname) < 0)
+                    if (text2cbuf(cb, xj, level+1, "+", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                         goto done;
                 }
             }
@@ -823,7 +923,7 @@ text_diff2cbuf(cbuf  *cb,
                 cprintf(cb, " {\n");
                 nr++;
             }
-            if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+            if (text2cbuf(cb, x0c, level+1, "-", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
@@ -838,7 +938,7 @@ text_diff2cbuf(cbuf  *cb,
                 cprintf(cb, " {\n");
                 nr++;
             }
-            if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+            if (text2cbuf(cb, x1c, level+1, "+", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -852,9 +952,9 @@ text_diff2cbuf(cbuf  *cb,
                     cprintf(cb, "%s {\n", xml_name(x0));
                     nr++;
                 }
-                if (text2cbuf(cb, x0c, level+1, "-", 0, &leafl, &leaflname) < 0)
+                if (text2cbuf(cb, x0c, level+1, "-", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                     goto done;
-                if (text2cbuf(cb, x1c, level+1, "+", 0, &leafl, &leaflname) < 0)
+                if (text2cbuf(cb, x1c, level+1, "+", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                     goto done;
             }
             else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
@@ -957,7 +1057,7 @@ text_populate_list(cxobj *xn)
         goto ok;
     if (yang_keyword_get(yn) == Y_LIST){
         cvk = yang_cvec_get(yn);
-        /* Loop over bodies and keys and create key leafs 
+        /* Loop over bodies and keys and create key leafs
          */
         cvi = NULL;
         xb = NULL;
@@ -999,7 +1099,7 @@ text_populate_list(cxobj *xn)
  * @param[in]  yb     How to bind yang to XML top-level when parsing (if rfc7951)
  * @param[in]  yspec  Yang specification (if rfc 7951)
  * @param[out] xt     XML top of tree typically w/o children on entry (but created)
- * @param[out] xerr   Reason for invalid returned as netconf err msg 
+ * @param[out] xerr   Reason for invalid returned as netconf err msg
  * @retval     1      OK and valid
  * @retval     0      Invalid (only if yang spec)
  * @retval    -1      Error
@@ -1074,7 +1174,7 @@ _text_syntax_parse(char      *str,
     if (failed)
         goto fail;
 
-    /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang 
+    /* Sort the complete tree after parsing. Sorting is not really meaningful if Yang
        not bound */
     if (yb != YB_NONE)
         if (xml_sort_recurse(xt) < 0)
@@ -1097,7 +1197,7 @@ _text_syntax_parse(char      *str,
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, mandatory to make module->xmlns translation
  * @param[in,out] xt    Top object, if not exists, on success it is created with name 'top'
- * @param[out]    xerr  Reason for invalid returned as netconf err msg 
+ * @param[out]    xerr  Reason for invalid returned as netconf err msg
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error
@@ -1129,18 +1229,18 @@ clixon_text_syntax_parse_string(char      *str,
     return _text_syntax_parse(str, yb, yspec, *xt, xerr);
 }
 
-/*! Read a TEXT syntax definition from file and parse it into a parse-tree. 
+/*! Read a TEXT syntax definition from file and parse it into a parse-tree.
  *
  * File will be parsed as follows:
  *   (1) parsed according to TEXT syntax; # Only this check if yspec is NULL
- *   (2) sanity checked wrt yang  
+ *   (2) sanity checked wrt yang
  *   (4) an xml parse tree will be returned
- * 
+ *
  * @param[in]     fp    File descriptor to the TEXT syntax file
  * @param[in]     yb    How to bind yang to XML top-level when parsing
  * @param[in]     yspec Yang specification, or NULL
  * @param[in,out] xt    Pointer to (XML) parse tree. If empty, create.
- * @param[out]    xerr  Reason for invalid returned as netconf err msg 
+ * @param[out]    xerr  Reason for invalid returned as netconf err msg
  * @retval        1     OK and valid
  * @retval        0     Invalid (only if yang spec) w xerr set
  * @retval       -1     Error
