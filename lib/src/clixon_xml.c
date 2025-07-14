@@ -2316,7 +2316,7 @@ xml_apply0(cxobj          *xn,
  */
 int
 xml_apply_ancestor(cxobj        *xn,
-                   xml_applyfn_t fn, 
+                   xml_applyfn_t fn,
                    void         *arg)
 {
     int        retval = -1;

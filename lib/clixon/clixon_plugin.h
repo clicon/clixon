@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand and Benny Holmgren
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -42,7 +42,8 @@
 /*
  * Constants
  */
-/* Hardcoded plugin symbol. Must exist in all plugins to kickstart 
+/*! Hardcoded plugin symbol. Must exist in all plugins to kickstart
+ *
  * @see clixon_plugin_init
  */
 #define CLIXON_PLUGIN_INIT     "clixon_plugin_init"
@@ -51,13 +52,13 @@
  * Types
  */
 
-/*! Registered RPC callback function 
+/*! Registered RPC callback function
  *
- * @param[in]  h       Clixon handle 
- * @param[in]  xn      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
- * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request 
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  h       Clixon handle
+ * @param[in]  xn      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     Domain specific arg, ec client-entry or FCGX_Request
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -69,15 +70,15 @@ typedef int (*clicon_rpc_cb)(
     void         *regarg
 );
 
-/*! Registered Upgrade callback function 
+/*! Registered Upgrade callback function
  *
- * @param[in]  h       Clixon handle 
+ * @param[in]  h       Clixon handle
  * @param[in]  xn      XML tree to be updated
  * @param[in]  ns      Namespace of module
  * @param[in]  op      One of XML_FLAG_ADD, _DEL, _CHANGE
  * @param[in]  from    From revision on the form YYYYMMDD (if DEL or CHANGE)
  * @param[in]  to      To revision on the form YYYYMMDD (if ADD or CHANGE)
- * @param[in]  arg     User argument given at rpc_callback_register() 
+ * @param[in]  arg     User argument given at rpc_callback_register()
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..  (if retval = 0)
  * @retval     1       OK
  * @retval     0       Invalid
@@ -100,10 +101,10 @@ typedef int (*clicon_upgrade_cb)(
  */
 enum clixon_auth_type {
     CLIXON_AUTH_NONE = 0,           /* Message is authenticated automatically to
-                                       anonymous user, maye be changed by ca-auth callback 
+                                       anonymous user, maye be changed by ca-auth callback
                                        FEATURE clixon-restconf:allow-auth-none must be enabled */
     CLIXON_AUTH_CLIENT_CERTIFICATE, /* TLS Client certification authentication */
-    CLIXON_AUTH_USER,               /* User-defined authentication according to ca-auth callback. 
+    CLIXON_AUTH_USER,               /* User-defined authentication according to ca-auth callback.
                                        Such as "password" authentication */
 };
 typedef enum clixon_auth_type clixon_auth_type_t;
@@ -115,27 +116,30 @@ typedef enum clixon_auth_type clixon_auth_type_t;
  *   Backend see config_plugin.c
  */
 
-/*! Called when application is "started", (almost) all initialization is complete 
+/*! Called when application is "started", (almost) all initialization is complete
  *
- * Backend: daemon is in the background. If daemon privileges are dropped 
+ * Backend: daemon is in the background. If daemon privileges are dropped
  *          this callback is called *before* privileges are dropped.
  * @param[in] h    Clixon handle
  */
 typedef int (plgstart_t)(clixon_handle); /* Plugin start */
 
-/* Called just before or after a server has "daemonized", ie put in background.             
+/*! Called just before or after a server has "daemonized", ie put in background.
+ *
  * Backend: If daemon privileges are dropped this callback is called *before* privileges are dropped.
  * If daemon is started in foreground (-F): pre-daemon is not called, but daemon called
  * @param[in] h    Clixon handle
  */
 typedef int (plgdaemon_t)(clixon_handle);              /* Plugin pre/post daemonized */
 
-/* Called just before plugin unloaded. 
+/*! Called just before plugin unloaded. 
+ *
  * @param[in] h    Clixon handle
  */
 typedef int (plgexit_t)(clixon_handle);                /* Plugin exit */
 
-/* For yang extension/unknown handling. 
+/*! For yang extension/unknown handling. 
+ *
  * Called at parsing of yang module containing an unknown statement of an extension.
  * A plugin may identify the extension by its name, and perform actions
  * on the yang statement, such as transforming the yang.
@@ -149,15 +153,13 @@ typedef int (plgexit_t)(clixon_handle);                /* Plugin exit */
  */
 typedef int (plgextension_t)(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
 
-/*! Called by restconf on each incoming request to check credentials and return username
- */
-
 /*! Plugin callback for authenticating messages (for restconf)
  *
+ * Called by restconf on each incoming request to check credentials and return username
  * Given a message (its headers) and authentication type, determine if the message
  * passes authentication.
  *
- * If the message is not authenticated, an error message is returned with tag: "access denied" and 
+ * If the message is not authenticated, an error message is returned with tag: "access denied" and
  * HTTP error code 401 Unauthorized  - Client is not authenticated
  *
  * If the message is authenticated, a user is associated with the message. This user can be derived
@@ -171,14 +173,14 @@ typedef int (plgextension_t)(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
  *               A callback can revise this behavior
  *  user:        Default: Message is not authenticated (401 returned)
  *               Typically done by basic auth, eg HTTP_AUTHORIZATION header, and verify password
- * 
+ *
  * If there are multiple callbacks, the first result which is not "ignore" is returned. This is to allow for
  * different callbacks registering different classes, or grouping of authentication.
  *
  * @param[in]  h         Clixon handle
  * @param[in]  req       Per-message request www handle to use with restconf_api.h
  * @param[in]  auth_type Authentication type: none, user-defined, or client-cert
- * @param[out] authp     NULL: Credentials failed, no user set (401 returned). 
+ * @param[out] authp     NULL: Credentials failed, no user set (401 returned).
  *                       String: Credentials OK, the associated user, must be mallloc:ed
  *                       Parameter signtificant only if retval is 1/OK
  * @retval     1         OK, see authp parameter for result.
@@ -190,13 +192,13 @@ typedef int (plgextension_t)(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
  */
 typedef int (plgauth_t)(clixon_handle h, void *req, clixon_auth_type_t auth_type, char **authp);
 
-/*! Reset system status 
+/*! Reset system status
  *
  * Add xml or set state in backend system.
- * plugin_reset in each backend plugin after all plugins have been initialized. 
- * This gives the application a chance to reset system state back to a base state. 
+ * plugin_reset in each backend plugin after all plugins have been initialized.
+ * This gives the application a chance to reset system state back to a base state.
  * This is generally done when a system boots up to make sure the initial system state
- * is well defined. 
+ * is well defined.
  * This involves creating default configuration files for various daemons, set interface
  * flags etc.
  * @param[in]  h   Clixon handle
@@ -247,7 +249,7 @@ typedef int (plglockdb_t)(clixon_handle h, char *db, int lock, int id);
 
 /*! Transaction-data type
  *
- * @see transaction_data_t and clixon_backend_transaction.h for full transaction API 
+ * @see transaction_data_t and clixon_backend_transaction.h for full transaction API
  */
 typedef void *transaction_data;
 
@@ -262,7 +264,7 @@ typedef int (trans_cb_t)(clixon_handle h, transaction_data td);
 
 /*! Hook to override default prompt with explicit function
  *
- * Format prompt before each getline 
+ * Format prompt before each getline
  * @param[in] h      Clixon handle
  * @param[in] mode   Cligen syntax mode
  * @retval    prompt Prompt to prepend all CLigen command lines
@@ -272,7 +274,7 @@ typedef char *(cli_prompthook_t)(clixon_handle, char *mode);
 /*! General-purpose datastore upgrade callback called once on startupo
  *
  * Gets called on startup after initial XML parsing, but before module-specific upgrades
- * and before validation. 
+ * and before validation.
  * @param[in] h    Clixon handle
  * @param[in] db   Name of datastore, eg "running", "startup" or "tmp"
  * @param[in] xt   XML tree. Upgrade this "in place"
@@ -300,7 +302,7 @@ typedef int (datastore_upgrade_t)(clixon_handle h, const char *db, cxobj *xt, mo
  * @param[out] yanglib XML yang-lib module-set tree. Freed by caller.
  * @retval     0       OK
  * @retval    -1       Error
- * @note For optional fields, such as revision, the callback may omit it, but will be resolved 
+ * @note For optional fields, such as revision, the callback may omit it, but will be resolved
  * at proper parse-time, but this is not visible in the yanglib return
  * @see RFC 8528 (schema-mount) and RFC 8525 (yang-lib)
  */
@@ -377,7 +379,7 @@ typedef int (plguserdef_t)(clixon_handle, int type, cxobj *xn, void *arg);
  *
  * Note that for STARTUP_ERR and STARTUP_INVALID, running runs in failsafe mode
  * and startup contains the erroneous or invalid database.
- * The user should repair the startup and 
+ * The user should repair the startup and
  * (1) restart the backend
  * (2) copy startup to candidate and commit.
  */
@@ -387,8 +389,9 @@ enum startup_status{
     STARTUP_OK           /* Everything OK (may still be modules-mismatch) */
 };
 
-/* plugin init struct for the api 
- * Note: Implicit init function
+/*! Plugin init struct for the api
+ *
+ * @note Implicit init function
  */
 struct clixon_plugin_api;
 typedef struct clixon_plugin_api* (plginit_t)(clixon_handle);    /* Clixon plugin Init */
@@ -483,7 +486,7 @@ typedef struct plugin_context plugin_context_t;
  * CLI frontend so far have direct callbacks, ie functions in the cligen
  * specification are directly dlsym:ed to the CLI plugin.
  * It would be possible to use this rpc registering API for CLI plugins as well.
- * 
+ *
  * When namespace and name match, the callback is made
  * Also for hellos in backend (but hello is not an RPC)
  */
@@ -504,7 +507,7 @@ typedef struct {
  * @param[in]  h    Clixon handle
  * @retval     api  Pointer to API struct
  * @retval     NULL Failure (if clixon_err() called), module disabled otherwise.
- * @see CLIXON_PLUGIN_INIT  default symbol 
+ * @see CLIXON_PLUGIN_INIT  default symbol
  */
 clixon_plugin_api *clixon_plugin_init(clixon_handle h);
 

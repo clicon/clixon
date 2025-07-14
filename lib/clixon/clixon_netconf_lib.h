@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -34,7 +34,7 @@
   ***** END LICENSE BLOCK *****
 
  * Netconf library functions. See RFC6241
- * Functions to generate a netconf error message come in two forms: xml-tree and 
+ * Functions to generate a netconf error message come in two forms: xml-tree and
  * cbuf. XML tree is preferred.
  */
 #ifndef _CLIXON_NETCONF_LIB_H
@@ -52,7 +52,7 @@
 #define NETCONF_BASE_NAMESPACE "urn:ietf:params:xml:ns:netconf:base:1.0"
 #define NETCONF_BASE_PREFIX "nc"
 
-/* In cases where message-id is not given by external client, use this 
+/* In cases where message-id is not given by external client, use this
  * Note hardcoded message-id, which is ok for server, but a client should
  * eg assign message-id:s incrementally
  */
@@ -67,7 +67,7 @@
  */
 #define NETCONF_BASE_CAPABILITY_1_1 "urn:ietf:params:netconf:base:1.1"
 
-/* See RFC 7950 Sec 5.3.1: YANG defines an XML namespace for NETCONF <edit-config> 
+/* See RFC 7950 Sec 5.3.1: YANG defines an XML namespace for NETCONF <edit-config>
  * operations, <error-info> content, and the <action> element.
  */
 #define YANG_XML_NAMESPACE "urn:ietf:params:xml:ns:yang:1"
@@ -77,7 +77,7 @@
 #define NETCONF_MONITORING_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"
 
 /* Default STREAM namespace (see rfc5277 3.1)
- * From RFC8040: 
+ * From RFC8040:
  *  The structure of the event data is based on the <notification>
  *  element definition in Section 4 of [RFC5277].  It MUST conform to the
  *  schema for the <notification> element in Section 4 of [RFC5277],

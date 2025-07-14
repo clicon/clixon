@@ -91,7 +91,7 @@
 #define _PARSE_DEBUG(s)
 #endif
 
-void 
+void
 clixon_text_syntax_parseerror(void *arg,
                               char *s)
 {

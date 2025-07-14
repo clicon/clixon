@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -25,15 +25,15 @@
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
   use your version of this file under the terms of Apache License version 2, indicate
-  your decision by deleting the provisions above and replace them with the 
+  your decision by deleting the provisions above and replace them with the
   notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
 
- * 
- * Secondary backend for testing more than one backend plugin, with the following 
+ *
+ * Secondary backend for testing more than one backend plugin, with the following
  * features:
  * - nacm
  * - transaction test
@@ -188,11 +188,11 @@ nacm_abort(clixon_handle    h,
  * @param[in]    h      Clixon handle
  * @param[in]    nsc    External XML namespace context, or NULL
  * @param[in]    xpath  String with XPath syntax. or NULL for all
- * @param[in]    xtop   XML tree, <config/> on entry. 
+ * @param[in]    xtop   XML tree, <config/> on entry.
  * @retval       0      OK
  * @retval      -1      Error
  * @see xmldb_get
- * @note this example code returns a static statedata used in testing. 
+ * @note this example code returns a static statedata used in testing.
  * Real code would poll state
  */
 int

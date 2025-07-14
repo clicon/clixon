@@ -317,7 +317,7 @@ changelog_op(clixon_handle h,
     clixon_debug(CLIXON_DBG_XML, "fail op:%s", op);
     goto done;
 }
-    
+
 /*! Iterate through one changelog item
  *
  * @param[in]  h   Clixon handle

@@ -610,7 +610,7 @@ expand_yang_list(clixon_handle h,
             cvec_add_string(helptexts, NULL, "Service");
     }
     retval = 0;
- done:    
+ done:
     if (cb)
         cbuf_free(cb);
     return retval;

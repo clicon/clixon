@@ -1868,9 +1868,12 @@ xml_yang_validate_exit(clixon_handle h)
 /*! Check validity of outgoing RPC
  *
  * Rewrite return message if errors
- * @param[in,out]  cbret
- * @retval         0       OK
- * @retval        -1       Error
+ * @param[in]     h
+ * @param[in]     rpcname
+ * @param[in,out] cbret
+ * @retval        1       OK
+ * @retval        0       Failed, bind/validation errors
+ * @retval       -1       Error
  * @note Parses cbret which seems one time too many
  */
 int

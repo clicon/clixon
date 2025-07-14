@@ -98,7 +98,7 @@
 #define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_instance_id_parsetext, _IY->iy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
-#define YY_(msgid) msgid 
+#define YY_(msgid) msgid
 
 #include "clixon_config.h"
 
@@ -137,15 +137,15 @@
 /* 
  * Also called from yacc generated code *
  */
-void 
+void
 clixon_instance_id_parseerror(void *_iy,
-                              char *s) 
-{ 
-    clixon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'", 
+                              char *s)
+{
+    clixon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",
                _IY->iy_name,
                _IY->iy_linenum ,
-               s, 
-               clixon_instance_id_parsetext); 
+               s,
+               clixon_instance_id_parsetext);
   return;
 }
 
@@ -226,7 +226,7 @@ keyval_pos(char *uint)
     cvec   *cvv = NULL;
     char   *reason=NULL;
     int     ret;
-    
+
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s(%s)", __func__, uint);
     if ((cvv = cvec_new(1)) == NULL) {
         clixon_err(OE_UNIX, errno, "cvec_new");
@@ -306,15 +306,14 @@ keyval_set(char *name,
     return cv;
 }
 
-%} 
- 
+%}
 
 %%
 
 /*
 */
 
-start          : list X_EOF         { _PARSE_DEBUG("top"); _IY->iy_top=$1; YYACCEPT; } 
+start          : list X_EOF         { _PARSE_DEBUG("top"); _IY->iy_top=$1; YYACCEPT; }
                ;
 
 list           : list SLASH element { if (($$ = path_append($1, $3)) == NULL) YYABORT;
@@ -330,7 +329,7 @@ element        : node_id element2   { $$ = path_add_keyvalue($1, $2);
 node_id        : IDENTIFIER               { $$ = path_new(NULL, $1); free($1);
                                             _PARSE_DEBUG("node_id = IDENTIFIER");}
                | prefix COLON IDENTIFIER  { $$ = path_new($1, $3); free($1); free($3);
-                                            _PARSE_DEBUG("node_id = prefix : IDENTIFIER");} 
+                                            _PARSE_DEBUG("node_id = prefix : IDENTIFIER");}
                ;
 
 prefix         : IDENTIFIER               { $$=$1; _PARSE_DEBUG("prefix = IDENTIFIER");}
@@ -357,7 +356,7 @@ pos            : LSQBR UINT RSQBR        { $$ = keyval_pos($2); free($2);
 key_preds      : key_preds key_pred      { if (($$ = keyval_add($1, $2)) == NULL) YYABORT;
                                            _PARSE_DEBUG("key_preds = key_pred key_preds"); }
                | key_pred                { if (($$ = keyval_add(NULL, $1)) == NULL) YYABORT;
-                                           _PARSE_DEBUG("key_preds = key_pred");} 
+                                           _PARSE_DEBUG("key_preds = key_pred");}
                ;
 
 key_pred       : LSQBR key_pred_expr RSQBR  { $$ = $2;
@@ -368,10 +367,10 @@ key_pred_expr  : node_id_k EQUAL qstring   { $$ = keyval_set($1, $3); free($1); 
                           _PARSE_DEBUG("key_pred_expr = node_id_k = qstring");  }
                ;
 
-node_id_k      : IDENTIFIER               { $$ = $1; 
+node_id_k      : IDENTIFIER               { $$ = $1;
                                             _PARSE_DEBUG("node_id_k = IDENTIFIER"); }
                | prefix COLON IDENTIFIER  { $$ = $3;  /* ignore prefix in key? */
-                          _PARSE_DEBUG("node_id_k = prefix : IDENTIFIER"); free($1);} 
+                          _PARSE_DEBUG("node_id_k = prefix : IDENTIFIER"); free($1);}
                ;
 
 qstring        : DQUOTE STRING DQUOTE { $$=$2;

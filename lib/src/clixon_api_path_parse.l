@@ -84,7 +84,7 @@
 #define _AY ((clixon_api_path_yacc *)_ay)
 
 #undef clixon_api_path_parsewrap
-int 
+int
 clixon_api_path_parsewrap(void)
 {
     return 1;
@@ -101,7 +101,7 @@ identifier {namestart}{namechar}*
 
 %%
 
-<INIT,KEYV>[ \t]            
+<INIT,KEYV>[ \t]
 <INIT,KEYV>\n      { _AY->ay_linenum++; }
 <INIT,KEYV>\r
 <INIT,KEYV><<EOF>> { return X_EOF; }
@@ -109,16 +109,16 @@ identifier {namestart}{namechar}*
 <INIT>\/           { return SLASH;}
 <INIT>\=           { BEGIN(KEYV); return EQUAL; }
 <INIT>\:           { return COLON; }
-<INIT>{identifier} { clixon_api_path_parselval.string = strdup(yytext); 
-                     return IDENTIFIER; } 
+<INIT>{identifier} { clixon_api_path_parselval.string = strdup(yytext);
+                     return IDENTIFIER; }
 <INIT>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
 
-<KEYV>\,           { return COMMA; }                        
+<KEYV>\,           { return COMMA; }
 <KEYV>\/           { BEGIN(INIT); return SLASH; }
 <KEYV>[^:/?#\[\]@,]+ { clixon_api_path_parselval.string = strdup(yytext);
                      return STRING;}
 <KEYV>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
-                     
+
 %%
 
 /*! Initialize scanner.
@@ -130,7 +130,7 @@ api_path_scan_init(clixon_api_path_yacc *ay)
   ay->ay_lexbuf = yy_scan_string(ay->ay_parse_string);
 #if 1 /* XXX: just to use unput to avoid warning  */
   if (0)
-    yyunput(0, ""); 
+    yyunput(0, "");
 #endif
 
   return 0;

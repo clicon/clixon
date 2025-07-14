@@ -1,7 +1,7 @@
  /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
 # Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
 # Copyright (C) 2017-2019 Olof Hagsand
 # Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -262,10 +262,10 @@ xmldb_disconnect(clixon_handle h)
     size_t    klen;
     int       i;
     db_elmnt *de;
-    
+
     if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
         goto done;
-    for(i = 0; i < klen; i++) 
+    for(i = 0; i < klen; i++)
         if ((de = clicon_hash_value(clicon_db_elmnt(h), keys[i], NULL)) != NULL){
             if (de->de_xml){
                 xml_free(de->de_xml);
@@ -338,7 +338,7 @@ check_create_multidir(clixon_handle h,
  * @retval     0     OK
  * @retval    -1     Error
   */
-int 
+int
 xmldb_copy(clixon_handle h,
            const char   *from,
            const char   *to)
@@ -373,7 +373,7 @@ xmldb_copy(clixon_handle h,
         if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
             goto done;
         xml_flag_set(x2, XML_FLAG_TOP);
-        if (xml_copy(x1, x2) < 0) 
+        if (xml_copy(x1, x2) < 0)
             goto done;
     }
     else{ /* copy x1 to x2 */
@@ -382,7 +382,7 @@ xmldb_copy(clixon_handle h,
         if (xml_name_set(x2, xml_name(x1)) < 0)
             goto done;
         xml_flag_set(x2, XML_FLAG_TOP);
-        if (xml_copy(x1, x2) < 0) 
+        if (xml_copy(x1, x2) < 0)
             goto done;
     }
     /* always set cache although not strictly necessary in case 1
@@ -435,9 +435,9 @@ xmldb_copy(clixon_handle h,
  * @retval     0    OK
  * @retval    -1    Error
  */
-int 
-xmldb_lock(clixon_handle h, 
-           const char   *db, 
+int
+xmldb_lock(clixon_handle h,
+           const char   *db,
            uint32_t      id)
 {
     db_elmnt  *de = NULL;
@@ -475,7 +475,7 @@ xmldb_unlock(clixon_handle h,
     return 0;
 }
 
-/*! Unlock all databases locked by session-id (eg process dies) 
+/*! Unlock all databases locked by session-id (eg process dies)
  *
  * @param[in]  h   Clixon handle
  * @param[in]  id  Session id

@@ -248,7 +248,7 @@ clixon_debug_fn(clixon_handle h,
     cprintf(cb, "%s:%d: ", fn, line);
     va_start(ap, format);
     vcprintf(cb, format, ap);
-    va_end(ap);    
+    va_end(ap);
     if (x){
         cprintf(cb, ": ");
         if (clixon_xml2cbuf(cb, x, 0, 0, NULL, -1, 0) < 0)

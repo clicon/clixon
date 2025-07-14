@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -49,7 +49,8 @@
  * Constants
  */
 
-/* Input symbol for netconf edit-config (+validate)
+/*! Input symbol for netconf edit-config (+validate)
+ *
  * ietf-netconf.yang defines is as input:
  *    choice edit-content {
  *       anyxml config;
@@ -68,23 +69,25 @@
  */
 #define IETF_PAGINATON_NC_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc"
 
-/* RFC 6243 With-defaults Capability for NETCONF
+/*! RFC 6243 With-defaults Capability for NETCONF
+ *
  * ietf-netconf-with-defaults
  * First in use in get requests
  */
 #define IETF_NETCONF_WITH_DEFAULTS_YANG_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults"
 
-/* Second in use in by replies for tagged attributes */
+/*! Second in use in by replies for tagged attributes */
 #define IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE "urn:ietf:params:xml:ns:netconf:default:1.0"
 #define IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX "wd"
 
-/* Output symbol for netconf get/get-config
+/*! Output symbol for netconf get/get-config
  *    ietf-netconf.yang defines it as output:
- *       output {    anyxml data; 
+ *       output {    anyxml data;
  */
 #define NETCONF_OUTPUT_DATA "data"
 
-/* Name of xml top object created by xml parse functions 
+/*! Name of xml top object created by xml parse functions
+ *
  * This is a "neutral" symbol without any meaning as opposed to the previous symbols ^
  * @see DATASTORE_TOP_SYMBOL which should be used for clixon top-level config trees
  */
@@ -93,7 +96,7 @@
 /*
  * Types
  */
-/* Netconf operation type */
+/*! Netconf operation type */
 enum operation_type{ /* edit-config operation */
     OP_MERGE,  /* merge config-data */
     OP_REPLACE,/* replace or create config-data */
@@ -103,7 +106,7 @@ enum operation_type{ /* edit-config operation */
     OP_NONE
 };
 
-/* Netconf insert type (see RFC7950 Sec 7.8.6) */
+/*! Netconf insert type (see RFC7950 Sec 7.8.6) */
 enum insert_type{ /* edit-config insert */
     INS_FIRST,
     INS_LAST,
@@ -111,13 +114,14 @@ enum insert_type{ /* edit-config insert */
     INS_AFTER,
 };
 
-/* XML object types */
+/*! XML object types */
 enum cxobj_type {CX_ERROR=-1,
                  CX_ELMNT,
                  CX_ATTR,
                  CX_BODY};
 
-/* How to bind yang to XML top-level when parsing 
+/*! How to bind yang to XML top-level when parsing 
+ *
  * Assume an XML tree x with parent xp (or NULL) and a set of children c1,c2:   
  *
  *                (XML)  xp  
@@ -181,7 +185,8 @@ typedef int (xml_applyfn_t)(cxobj *x, void *arg);
 
 typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
-/* Alternative tree formats,
+/*! Alternative tree formats,
+ *
  * @see format_int2str, format_str2int, datastore_format in clixon-lib.yang
  */
 enum format_enum{
@@ -194,8 +199,7 @@ enum format_enum{
     FORMAT_PIPE_XML_DEFAULT /* Meta: If pipe, xml, if not default */
 };
 
-/*
- * xml_flag() flags:
+/*! XML flags
  */
 #define XML_FLAG_MARK      0x01 /* General-purpose eg expand and xpath_vec selection and
                                  * diffs between candidate and running */

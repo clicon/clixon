@@ -1,8 +1,4 @@
 /*
- * Yang 1.0 parser according to RFC6020.
- * It is hopefully useful but not complete
- * RFC7950 defines Yang version 1.1
- *
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand

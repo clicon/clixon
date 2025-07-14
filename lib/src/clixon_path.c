@@ -1668,7 +1668,7 @@ instance_id_resolve(clixon_path *cplist,
                     if ((yt = yang_find_module_by_prefix_yspec(yspec, cp->cp_prefix)) == NULL){
                         clixon_err(OE_YANG, ENOENT, "Prefix \"%s\" does not correspond to any existing module", cp->cp_prefix);
                         goto fail;
-                    }                    
+                    }
                 }
             }
             if ((yc = yang_find_datanode(yt, cp->cp_id)) == NULL){

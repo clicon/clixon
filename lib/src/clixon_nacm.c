@@ -544,7 +544,7 @@ nacm_datanode_prepare(clixon_handle    h,
             }
             /*  6b) Either (1) the rule does not have a "rule-type" defined or
                 (2) the "rule-type" is "data-node" and the "path" matches the
-                requested data node, action node, or notification node. */    
+                requested data node, action node, or notification node. */
             if ((pathobj = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
                 if (xml_find_body(xrule, "rpc-name") || xml_find_body(xrule, "notification-name"))
                     continue;
@@ -657,7 +657,7 @@ nacm_data_write_xrule_xml(cxobj       *xn,
     action = xml_find_body(xrule, "action"); /* mandatory */
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
         (2) the "rule-type" is "data-node" and the "path" matches the
-        Requested data node, action node, or notification node. */    
+        Requested data node, action node, or notification node. */
     if ((xpath = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
         if (strcmp(action, "deny")==0){
             *xpathp = NULL;
@@ -971,7 +971,7 @@ nacm_data_read_xrule_xml(cxobj       *xn,
     }
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
         (2) the "rule-type" is "data-node" and the "path" matches the
-        requested data node, action node, or notification node. */    
+        requested data node, action node, or notification node. */
     if ((xpath = xml_find_type(xrule, NULL, "path", CX_ELMNT)) == NULL){
         if (nacm_data_read_action(xrule, xn, NULL) < 0)
             goto done;

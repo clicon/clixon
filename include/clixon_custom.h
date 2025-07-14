@@ -1,6 +1,6 @@
 /*
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,14 +24,14 @@
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
   use your version of this file under the terms of Apache License version 2, indicate
-  your decision by deleting the provisions above and replace them with the 
+  your decision by deleting the provisions above and replace them with the
   notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
 
-  Custom file as boilerplate appended by clixon_config.h 
+  Custom file as boilerplate appended by clixon_config.h
   These are compile-time options. Runtime options are in clixon-config.yang.
   In general they are kludges and "should be removed" when code is improved
   and not proper system config options.
@@ -57,9 +57,9 @@
 
 /*! Add explicit search indexes, so that binary search can be made for non-key list indexes
  *
- * This also applies if there are multiple keys and you want to search on only the second for 
+ * This also applies if there are multiple keys and you want to search on only the second for
  * example.
- * There may be some cases where the index vector is not updated, need to verify before 
+ * There may be some cases where the index vector is not updated, need to verify before
  * enabling this completely.
  */
 #define XML_EXPLICIT_INDEX
@@ -80,13 +80,13 @@
  *
  * This is traditionally same as NETCONF_INPUT_CONFIG ("config") but can be different
  * If you change this, you need to change test shell variable in lib.sh: DATASTORE_TOP
- * Consider making this an option (but this has bootstrap problems) or configure option 
+ * Consider making this an option (but this has bootstrap problems) or configure option
  */
 #define DATASTORE_TOP_SYMBOL "config"
 
 /*! If set make an internal redirect if URI path indetifies a directory
  *
- * For example, path is /local, and redirect is 'index.html, the request 
+ * For example, path is /local, and redirect is 'index.html, the request
  * will be redirected to /local/index.html
  */
 #define HTTP_DATA_INTERNAL_REDIRECT "index.html"
@@ -98,7 +98,7 @@
  * Problem is that the tree is in an intermediate state so that a when condition may not see the
  * full context.
  * More specifically, new nodes (x0) are created without hooking them into the existing parent (x0p)
- * and thus an xpath on the form "../PARENT" may not be evaluated as they should. x0 is eventually 
+ * and thus an xpath on the form "../PARENT" may not be evaluated as they should. x0 is eventually
  * added to its parent but then it is more difficult to check the when condition.
  * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
  * an alternative if it exists.
@@ -165,9 +165,9 @@
  *     uses y;
  *     <nodes>
  * }
- * If enabled, do not include "uses y" in the augmentation at "x" AND mark all nodes with 
+ * If enabled, do not include "uses y" in the augmentation at "x" AND mark all nodes with
  * YANG_FLAG_GROUPING
- * If disabled, include "uses y" in the augmentation AND do NOT mark expaneded nodes with 
+ * If disabled, include "uses y" in the augmentation AND do NOT mark expaneded nodes with
  * YANG_FLAG_GROUPING.
  * This affects the AUTOCLI expand-grouping=true behavior.
  * Disabled does not work

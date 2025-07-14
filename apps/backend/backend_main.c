@@ -125,12 +125,12 @@ backend_terminate(clixon_handle h)
     /* Delete all plugins, RPC callbacks, and upgrade callbacks */
     clixon_plugin_module_exit(h);
     /* Delete all process-control entries */
-    clixon_process_delete_all(h); 
+    clixon_process_delete_all(h);
 
     xpath_optimize_exit();
     clixon_pagination_free(h);
     if (pidfile)
-        unlink(pidfile);   
+        unlink(pidfile);
     if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
         unlink(sockpath);
     clixon_event_exit();
@@ -149,7 +149,7 @@ backend_sig_term(int arg)
     static int i=0;
 
     if (i++ == 0)
-        clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d", 
+        clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
                    __PROGRAM__, __func__, getpid(), arg);
     else
         exit(1);
@@ -455,7 +455,7 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int           print_version = 0;
     int32_t       d;
-    
+
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
         return -1;
@@ -470,7 +470,7 @@ main(int    argc,
     extraxml_file = NULL;
     dbg = 0;
     config_dump = 0;
-    
+
     /*
      * Command-line options for help, debug, and config-file
      */
@@ -484,7 +484,7 @@ main(int    argc,
                But this measn that we need to check if 'help' is set before 
                exiting, and then call usage() before exit.
             */
-            help = 1; 
+            help = 1;
             break;
         case 'V':
             cligen_output(stdout, "Clixon version: %s\n", CLIXON_VERSION);
@@ -530,7 +530,7 @@ main(int    argc,
      * XXX: if started in a start-daemon script, there will be irritating
      * double syslogs until fork below. 
      */
-    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clixon_debug_init(h, dbg);
     yang_init(h);
     /* Find and read configfile */
@@ -652,7 +652,6 @@ main(int    argc,
 
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
-    
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
 
     /* Defer: Wait to the last minute to print help message */
@@ -666,7 +665,6 @@ main(int    argc,
 
     if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
         clixon_log_string_limit_set(sz);
-    
     /* Init event handler */
     clixon_event_init(h);
 
@@ -692,15 +690,15 @@ main(int    argc,
         if (pid && pidfile_zapold(pid) < 0)
             return -1;
         if (lstat(pidfile, &st) == 0)
-            unlink(pidfile);   
+            unlink(pidfile);
         if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
-            unlink(sock);   
+            unlink(sock);
         backend_terminate(h);
         exit(0); /* OK */
     }
     else
         if (pid){
-            clixon_err(OE_DAEMON, 0, "Daemon already running with pid %d\n(Try killing it with %s -z)", 
+            clixon_err(OE_DAEMON, 0, "Daemon already running with pid %d\n(Try killing it with %s -z)",
                        pid, argv0);
             return -1; /* goto done deletes pidfile */
         }
@@ -709,9 +707,9 @@ main(int    argc,
      * Here there is either no old process or we have killed it,.. 
      */
     if (lstat(pidfile, &st) == 0)
-        unlink(pidfile);   
+        unlink(pidfile);
     if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
-        unlink(sock);   
+        unlink(sock);
 
     /* Sanity check: backend group exists */
     if ((backend_group = clicon_sock_group(h)) == NULL){
@@ -740,7 +738,7 @@ main(int    argc,
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
-    
+
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below
      */
@@ -830,14 +828,14 @@ main(int    argc,
         goto done;
     /* Startup mode needs to be defined,  */
     startup_mode = clicon_startup_mode(h);
-    if ((int)startup_mode == -1){       
-        clixon_log(h, LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend."); 
+    if ((int)startup_mode == -1){
+        clixon_log(h, LOG_ERR, "Startup mode undefined. Specify option CLICON_STARTUP_MODE or specify -s option to clicon_backend.");
         goto done;
     }
     /* Check that netconf :startup is enabled */
     if ((startup_mode == SM_STARTUP || startup_mode == SM_RUNNING_STARTUP) &&
         !if_feature(yspec, "ietf-netconf", "startup")){
-        clixon_log(h, LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>"); 
+        clixon_log(h, LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>");
         goto done;
     }
 
@@ -853,7 +851,7 @@ main(int    argc,
      */
     if (xmldb_exists(h, "running") != 1){
         if (startup_mode == SM_RUNNING_STARTUP)
-            startup_mode = SM_STARTUP; 
+            startup_mode = SM_STARTUP;
         if (xmldb_create(h, "running") < 0)
             return -1;
     }
@@ -892,7 +890,7 @@ main(int    argc,
         if (ret2status(ret, &status) < 0)
             goto done;
         break;
-    case SM_STARTUP: 
+    case SM_STARTUP:
         /* Copy original running to tmp as backup (restore if error) */
         if (xmldb_copy(h, "running", "tmp") < 0)
             goto done;
@@ -909,7 +907,7 @@ main(int    argc,
         /* if status = STARTUP_INVALID, cbret contains info */
         break;
     default:
-        break;  
+        break;
     }
     /* Quit after upgrade catch-all, running/startup quits in upgrade code */
     if (clicon_quit_upgrade_get(h) == 1)
@@ -949,7 +947,6 @@ main(int    argc,
         status = STARTUP_OK;
         cbuf_reset(cbret); /* cbret contains error info */
     }
-    
     /* Initiate the shared candidate. */
     if (xmldb_copy(h, "running", "candidate") < 0)
         goto done;
@@ -962,7 +959,6 @@ main(int    argc,
 
     if (status == STARTUP_INVALID && cbuf_len(cbret))
         clixon_log(h, LOG_NOTICE, "%s: %u %s", __PROGRAM__, getpid(), cbuf_get(cbret));
-        
     /* Call backend plugin_start with user -- options */
     if (clixon_plugin_start_all(h) < 0)
         goto done;
@@ -978,7 +974,6 @@ main(int    argc,
 
     /* Debug dump of config options */
     clicon_option_dump(h, CLIXON_DBG_INIT);
-    
     /* Daemonize and initiate logging. Note error is initiated here to make
        daemonized errors OK. Before this stage, errors are logged on stderr 
        also */

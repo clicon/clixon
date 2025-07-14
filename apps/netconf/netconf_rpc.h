@@ -42,7 +42,7 @@
 /*
  * Prototypes
  */
-int 
+int
 netconf_rpc_dispatch(clixon_handle h,
                      cxobj        *xn,
                      cxobj       **xret,

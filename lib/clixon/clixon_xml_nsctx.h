@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -33,19 +33,16 @@
 
   ***** END LICENSE BLOCK *****
 
- * XML support functions.
+ * XML namespace support functions.
+ * An xml namespace context is a cligen variable vector containing a list of
+ * <prefix,namespace> pairs.
+ * It is encoded in a cvv as a list of string values, where the c name is the
+ * prefix and the string values are the namespace URI.
+ * The default namespace is decoded as having the name NULL
  * @see     https://www.w3.org/TR/2009/REC-xml-names-20091208/
  */
 #ifndef _CLIXON_XML_NSCTX_H
 #define _CLIXON_XML_NSCTX_H
-
-/*
- * An xml namespace context is a cligen variable vector containing a list of
- * <prefix,namespace> pairs.
- * It is encoded in a cvv as a list of string values, where the c name is the 
- * prefix and the string values are the namespace URI.
- * The default namespace is decoded as having the name NULL
- */
 
 /*
  * Prototypes

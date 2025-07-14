@@ -1748,7 +1748,7 @@ from_client_msg(clixon_handle        h,
      */
     if (op_id != 0 && ce->ce_id != op_id && strcmp(rpcname, "create-subscription")){
         client_entry *ce0;
-        
+
         clixon_debug(CLIXON_DBG_BACKEND, "Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", op_id, ce->ce_id, ce->ce_s);
         /* Copy transport from orig client-entry */
         if (ce->ce_transport == NULL &&

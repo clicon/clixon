@@ -1626,9 +1626,9 @@ xml_diff2cbuf(cbuf  *cb,
  * @see clixon_text_diff2cbuf
  */
 int
-clixon_xml_diff2cbuf(cbuf    *cb,
-                     cxobj   *x0,
-                     cxobj   *x1)
+clixon_xml_diff2cbuf(cbuf  *cb,
+                     cxobj *x0,
+                     cxobj *x1)
 {
     return xml_diff2cbuf(cb, x0, x1, 0, 1);
 }

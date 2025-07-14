@@ -127,7 +127,7 @@ object.
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
-#include "clixon_handle.h"    
+#include "clixon_handle.h"
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_err.h"
@@ -153,7 +153,7 @@ extern int clixon_json_parseget_lineno  (void);
 void
 clixon_json_parseerror(void *_jy,
                        char *s)
-{ 
+{
     clixon_err(OE_JSON, 0, "json_parse: line %d: %s at or before: '%s'",
                _JY->jy_linenum,
                s,

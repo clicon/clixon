@@ -60,7 +60,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 #ifndef _RESTCONF_NATIVE_H_
 #define _RESTCONF_NATIVE_H_
 

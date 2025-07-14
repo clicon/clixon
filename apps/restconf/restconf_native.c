@@ -1577,7 +1577,7 @@ restconf_idle_timer(restconf_conn *rc)
  done:
     return retval;
 }
-    
+
 /*! Callhome timer callback
  *
  * @param[in]  fd   No-op

@@ -1,5 +1,5 @@
-/*
- * Network namespace code 
+/*! Network namespace code
+ *
  * @thanks Anders Franzén, especially get_sock() and send_sock() functions
 */
 

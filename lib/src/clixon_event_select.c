@@ -196,7 +196,7 @@ clixon_event_select_unreg_fd(int   s,
  * @see clixon_event_unreg_timeout
  */
 int
-clixon_event_select_reg_timeout(struct timeval t, 
+clixon_event_select_reg_timeout(struct timeval t,
                                 int          (*fn)(int, void*),
                                 void          *arg,
                                 char          *str)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# XML inserty and merge two trees
+# XML insert and merge two trees
 # This is mainly a development API check
 
 # Magic line must be first in script (see README.md)

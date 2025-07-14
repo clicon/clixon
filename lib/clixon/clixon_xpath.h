@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC (Netgate)
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -57,7 +57,7 @@ enum xp_op{
     XO_UNION,
 };
 
-/* Axis specifiers according to https://www.w3.org/TR/xpath-10/#NT-AxisName 
+/* Axis specifiers according to https://www.w3.org/TR/xpath-10/#NT-AxisName
  * @see axis_type_int2str
  */
 enum axis_type{
@@ -78,7 +78,7 @@ enum axis_type{
     A_ROOT /* XXX Not in https://www.w3.org/TR/xpath-10 */
 };
 
-/* used as non-terminal type in yacc rules 
+/* used as non-terminal type in yacc rules
  * @see xpath_tree_int2str
  */
 enum xp_type{
@@ -140,7 +140,7 @@ int    xpath_vec_bool(cxobj *xcur, cvec *nsc, const char *xpformat, ...) __attri
 int    xpath_vec_flag(cxobj *xcur, cvec *nsc, const char *xpformat, uint16_t flags,
                    cxobj ***vec, size_t *veclen, ...) __attribute__ ((format (printf, 3, 7)));
 
-/* Functions with explicit namespace context (nsc) set. If you do not need 
+/* Functions with explicit namespace context (nsc) set. If you do not need
  * explicit namespace contexts (most do not) consider using the API functions
  * below without nsc set.
  * If you do not know what a namespace context is, see README.md#xml-and-xpath

@@ -1586,7 +1586,7 @@ yang_valstr2enum(yang_stmt *ytype,
 {
     int        retval = -1;
     yang_stmt *yenum;
-    yang_stmt *yval; 
+    yang_stmt *yval;
     int        inext;
 
     if (enumstr == NULL){
@@ -1893,7 +1893,7 @@ yang_bitsstr2flags(yang_stmt *ytype,
  * @see yang_bitsstr2val
  * @note that the output is a vector of bits originally made for SNMP bitvectors (not integers)
  */
-int 
+int
 yang_val2bitsstr(clixon_handle  h,
                  yang_stmt     *ytype,
                  unsigned char *inval,
@@ -1924,7 +1924,7 @@ yang_val2bitsstr(clixon_handle  h,
                     clixon_err(OE_UNIX, EINVAL, "cannot parse bit position val: %s", reason);
                     goto done;
                 }
-                if (ret == 0) 
+                if (ret == 0)
                     goto fail;
             } else {
                 /* Position not defined. Use last known position + 1 (skip first node to start with 0) */

@@ -1194,7 +1194,7 @@ clixon_plugin_errmsg_one(clixon_plugin_t     *cp,
             goto done;
         if (fn(h, fn0, line, type, category, suberr, xerr, format, ap, cbmsg) < 0) {
             if (clixon_err_category() < 0)
-                clixon_log(h, LOG_WARNING, "%s: Internal error: Logmsg callback in plugin: %s returned -1 but did not make a clixon_err call", 
+                clixon_log(h, LOG_WARNING, "%s: Internal error: Logmsg callback in plugin: %s returned -1 but did not make a clixon_err call",
                            __func__, cp->cp_name);
             clixon_resource_check(h, &wh, cp->cp_name, __func__);
             goto done;

@@ -113,7 +113,7 @@
 #define _PARSE_DEBUG(s)
 #endif
 
-void 
+void
 clixon_yang_sub_parseerror(void *arg,
                            char *s)
 {

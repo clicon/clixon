@@ -246,7 +246,7 @@ clixon_xvec_extract(clixon_xvec *xv,
  * @retval     0     OK
  * @retval    -1     Error
  * @code
- *  if (clixon_xvec_append(xv, x) < 0) 
+ *  if (clixon_xvec_append(xv, x) < 0)
  *     err;
  * @endcode
  * @see clixon_cxvec_prepend
@@ -272,7 +272,7 @@ clixon_xvec_append(clixon_xvec *xv,
  * @retval        0     OK, with xv0 with new entries from xv1
  * @retval       -1     Error
  * @code
- *  if (clixon_xvec_merge(xv0, xv1) < 0) 
+ *  if (clixon_xvec_merge(xv0, xv1) < 0)
  *     err;
  * @endcode
  */
@@ -302,7 +302,7 @@ clixon_xvec_merge(clixon_xvec *xv0,
  * @retval     0     OK
  * @retval    -1     Error
  * @code
- *  if (clixon_xvec_prepend(xv, x) < 0) 
+ *  if (clixon_xvec_prepend(xv, x) < 0)
  *     err;
  * @endcode
  * @see clixon_cxvec_append
@@ -323,7 +323,7 @@ clixon_xvec_prepend(clixon_xvec *xv,
 }
 
 /*! Insert XML node x at position i in XML object vector
- * 
+ *
  * @param[in]  xv    XML tree vector
  * @param[in]  x     XML tree (append this to vector)
  * @param[in]  i     Position
@@ -349,7 +349,7 @@ clixon_xvec_insert_pos(clixon_xvec *xv,
 }
 
 /*! Remove XML node x from position i in XML object vector
- * 
+ *
  * @param[in]  xv    XML tree vector
  * @param[in]  i     Position
  * @retval     0     OK

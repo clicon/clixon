@@ -660,7 +660,7 @@ xml_chardata_cbuf_append(cbuf       *cb,
     int    cdata; /* when set, skip encoding */
     size_t len;
 
-    /* The orignal of this code is in xml_chardata_encode */
+    /* The original of this code is in xml_chardata_encode */
     /* Step: encode and expand str --> enc */
     /* Same code again, but now actually encode into output buffer */
     cdata = 0;

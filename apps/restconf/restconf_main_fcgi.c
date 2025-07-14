@@ -330,7 +330,7 @@ main(int    argc,
     int              print_version = 0;
     int              stream_timeout = 0;
     int32_t          d;
-    
+
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)
         goto done;

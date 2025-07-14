@@ -109,7 +109,7 @@ static clixon_handle _err_clixon_h = NULL;
 static clixon_err_cats *_err_cat_list = NULL;
 
 /* See enum clixon_err XXX: hide this and change to err_category */
-static int  _err_category         = 0; 
+static int  _err_category         = 0;
 
 /* Corresponds to errno.h XXX: change to errno */
 static int  _err_subnr      = 0;
@@ -276,7 +276,7 @@ clixon_err_args(clixon_handle h,
     int                     retval = -1;
     struct clixon_err_cats *cec;
     cbuf                   *cb = NULL;
-    
+
     /* Set the global variables */
     strncpy(_err_reason, msg, ERR_STRLEN-1);
     _err_category = category;

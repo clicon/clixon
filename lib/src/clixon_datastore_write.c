@@ -101,7 +101,7 @@ struct xmldb_multi_write_arg {
 };
 
 /*! Given an attribute name and its expected namespace, find its value
- * 
+ *
  * An attribute may have a prefix(or NULL). The routine finds the associated
  * xmlns binding to find the namespace: <namespace>:<name>.
  * If such an attribute is not found, failure is returned with cbret set,
@@ -266,7 +266,7 @@ check_body_namespace(cxobj     *x0,
 /*! Check yang when condition between a new xml x1 and old x0
  *
  * Check if there is a when condition. First try it on the new request (x1), then on the
- * existing (x0). 
+ * existing (x0).
  * This is according to RFC 7950 8.3.2 NETCONF <edit-config> Processing
  *   During this processing [of edit-config] :
  *   o  Modification requests for nodes tagged with "when", and the "when"
@@ -426,7 +426,7 @@ choice_is_other(yang_stmt *y0c,
  *
  * @param[in]  x      Base tree node
  * @param[in]  op     NETCONF operation
- * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0. 
+ * @param[out] cbret  Initialized cligen buffer. Contains return XML if retval is 0.
  * @retval     1      OK
  * @retval     0      Fail with cbret set
  * @retval    -1      Error
@@ -481,7 +481,7 @@ find_first_op_recurse(cxobj               *x,
  * @param[in]  x1c     Tree child
  * @param[in]  y1c     Yang spec of x1c
  * @param[in]  op      NETCONF operation
- * @param[out] cbret   Initialized cligen buffer. Contains return XML if retval is 0. 
+ * @param[out] cbret   Initialized cligen buffer. Contains return XML if retval is 0.
  * @retval     1       OK
  * @retval     0       Fail with cbret set
  * @retval    -1       Error

@@ -150,7 +150,7 @@ clixon_logdst_str2key(char *str)
 int
 clixon_log_init(clixon_handle h,
                 char         *ident,
-                int           upto, 
+                int           upto,
                 uint16_t      flags)
 {
     _log_clixon_h = h;

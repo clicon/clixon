@@ -436,7 +436,7 @@ xml_sort_by(cxobj *x,
             char  *indexvar)
 {
     xml_enumerate_children(x); /* This is to make sorting "stable", ie not change existing order */
-#ifdef HAVE_QSORT_S    
+#ifdef HAVE_QSORT_S
     qsort_s(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);
 #else
     qsort_r(xml_childvec_get(x), xml_child_nr(x), sizeof(cxobj *), xml_cmp_qsort, indexvar);

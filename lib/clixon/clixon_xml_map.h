@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -40,9 +40,9 @@
 #ifndef _CLIXON_XML_MAP_H_
 #define _CLIXON_XML_MAP_H_
 
-/*
- * Maximum number of supported bit positions in YANG "bits" data 
- * type. As defined in RFC7950 (section 9.7.4.2.) the position 
+/*! Maximum number of supported bit positions in YANG "bits" data type.
+ *
+ * As defined in RFC7950 (section 9.7.4.2.) the position 
  * value must be in the range 0 to 4294967295. But who needs
  * that much bit positions? (To set bit 4'294'967'295 it would be
  * necessary to tranfer 4294967295/8 = 536'870'911 bytes!)
@@ -52,7 +52,7 @@
 /*
  * Types
  */
-/* Declared in clixon_yang_internal */
+/*! Declared in clixon_yang_internal */
 typedef enum yang_class yang_class;
 
 /*
