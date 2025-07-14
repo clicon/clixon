@@ -19,6 +19,7 @@ Expected: July 2025
 
 ### Features
 
+* Support `local-name` xpath function
 * Refactor NACM read check with separate mark and purge functions to work with cache
 * Added label `leafref-no-refer` to control CLI leafref expansion
   * See https://clixon-docs.readthedocs.io/en/latest/cli.html#expanding-leafrefs

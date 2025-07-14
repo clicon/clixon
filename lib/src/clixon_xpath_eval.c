@@ -1298,6 +1298,11 @@ xp_eval(xp_ctx     *xc,
                     goto done;
                 goto ok;
                 break;
+            case XPATHFN_LOCAL_NAME:
+                if (xp_function_local_name(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
             case XPATHFN_NAME:
                 if (xp_function_name(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
                     goto done;

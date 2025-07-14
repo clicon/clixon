@@ -648,6 +648,65 @@ xp_function_count(xp_ctx            *xc,
     return retval;
 }
 
+/*! The local-name function returns the local part of the expanded-name of the node
+ *
+ * The local-name function returns the local part of the expanded-name of the node in the
+ * argument node-set that is first in document order. If the argument node-set is empty
+ * or the first node has no expanded-name, an empty string is returned. If the argument is
+ * omitted, it defaults to a node-set with the context node as its only member.
+ * Signature: string local-name(node-set?)
+ */
+int
+xp_function_local_name(xp_ctx            *xc,
+                       struct xpath_tree *xs,
+                       cvec              *nsc,
+                       int                localonly,
+                       xp_ctx           **xrp)
+{
+    int     retval = -1;
+    xp_ctx *xr = NULL;
+    xp_ctx *xr0 = NULL;
+    char   *s0 = NULL;
+    int     i;
+    cxobj  *x;
+    char   *name;
+    char   *local_name;
+
+    if (xs == NULL || xs->xs_c0 == NULL){
+        clixon_err(OE_XML, EINVAL, "not expects but did not get one argument");
+        goto done;
+    }
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
+        goto done;
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_type = XT_STRING;
+    for (i=0; i<xr0->xc_size; i++){
+        if ((x = xr0->xc_nodeset[i]) == NULL)
+            continue;
+        if ((name = xml_name(x)) == NULL)
+            continue;
+        if (nodeid_split(name, NULL, &local_name) < 0)
+            goto done;
+        xr->xc_string = local_name;
+        break;
+    }
+    *xrp = xr;
+    xr = NULL;
+    retval = 0;
+ done:
+    if (xr0)
+        ctx_free(xr0);
+    if (s0)
+        free(s0);
+    if (xr)
+        ctx_free(xr);
+    return retval;
+}
+
 /*! The name function returns a string of a QName
  *
  * The name function returns a string containing a QName representing the expanded-name
@@ -666,6 +725,7 @@ xp_function_name(xp_ctx            *xc,
     xp_ctx *xr = NULL;
     xp_ctx *xr0 = NULL;
     char   *s0 = NULL;
+    char   *name;
     int     i;
     cxobj  *x;
 
@@ -684,7 +744,9 @@ xp_function_name(xp_ctx            *xc,
     for (i=0; i<xr0->xc_size; i++){
         if ((x = xr0->xc_nodeset[i]) == NULL)
             continue;
-        if ((xr->xc_string = strdup(xml_name(x))) == NULL){
+        if ((name = xml_name(x)) == NULL)
+            continue;
+        if ((xr->xc_string = strdup(name)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }

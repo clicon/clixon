@@ -254,7 +254,6 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_ENUM_VALUE: /* Group of NOT IMPLEMENTED xpath functions */
     case XPATHFN_LAST:
     case XPATHFN_ID:
-    case XPATHFN_LOCAL_NAME:
     case XPATHFN_NAMESPACE_URI:
     case XPATHFN_CONCAT:
     case XPATHFN_NORMALIZE_SPACE:
@@ -280,6 +279,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_DERIVED_FROM_OR_SELF:
     case XPATHFN_POSITION:
     case XPATHFN_COUNT:
+    case XPATHFN_LOCAL_NAME:
     case XPATHFN_NAME:
     case XPATHFN_STRING:
     case XPATHFN_STARTS_WITH:
