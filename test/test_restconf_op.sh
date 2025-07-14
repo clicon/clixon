@@ -55,6 +55,17 @@ module example{
          type string;
       }
    }
+   container cont3{
+      list interface{
+        key name;
+        leaf name{
+          type string;
+        }
+        leaf-list ip {
+          type string;
+        }
+      }
+   }
    container types{
      /* A couple of types to test quoting */
      leaf tint {
@@ -236,6 +247,12 @@ if [ ${HAVE_HTTP1} = true ]; then
     expectpart "$(curl $CURLOPTS --http1.1 -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"local7","type":"regular"}}' --next $CURLOPTS --http1.1 -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:cont1 -d '{"example:interface":{"name":"local8","type":"regular"}}')" 0 "HTTP/1.1 201" "localhost/restconf/data/example:cont1/interface=local7" "localhost/restconf/data/example:cont1/interface=local8"
 
 fi
+
+new "restconf PUT with leaf encoding"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example:cont3/interface=eth0%2F7/ip=10.30.30.1%2F24 -d '{"example:ip":"10.30.30.1/24"}')" 0 "HTTP/$HVER 201"
+
+new "Check encoding"
+expectpart "$(curl $CURLOPTS -H "Accept: application/yang-data+xml" -X GET $RCPROTO://localhost/restconf/data/example:cont3/interface=eth0%2F7?content=config)" 0 "HTTP/$HVER 200" "<interface xmlns=\"urn:example:clixon\"><name>eth0/7</name><ip>10.30.30.1/24</ip></interface>"
 
 #--------------- json type tests
 new "restconf POST type x3 POST"

@@ -908,8 +908,15 @@ api_path2xpath_cvv(cvec      *api_path,
                 }
                 break;
             case Y_LEAF_LIST: /* XXX: LOOP? */
-                if (val)
-                    cprintf(xpath, "[.='%s']", val);
+                if (val){
+                    if (uri_percent_decode(val, &decval) < 0)
+                        goto done;
+                    cprintf(xpath, "[.='%s']", decval);
+                    if (decval){
+                        free(decval);
+                        decval = NULL;
+                    }
+                }
                 else
                     cprintf(xpath, "[.='']");
                 break;

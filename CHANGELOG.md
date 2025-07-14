@@ -54,6 +54,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Restconf POST/PUT leaf-list URI encoding failed](https://github.com/clicon/clixon/issues/616)
 * Fixed: [Bug Clixon 7.4.0 about leafref](https://github.com/clicon/clixon/issues/613)
 * Fixed: [Unexpected entry in candidate DB while deleting configuration](https://github.com/clicon/clixon/issues/611)
 * Fixed: [Applying a service twice causes error](https://github.com/clicon/clixon-controller/issues/212)
