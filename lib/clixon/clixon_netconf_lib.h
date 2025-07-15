@@ -94,6 +94,9 @@
  */
 #define EVENT_RFC5277_NAMESPACE "urn:ietf:params:xml:ns:netmod:notification"
 
+/* NETCONF and RESTCONF Private Candidate Datastores draft-ietf-netconf-privcand-07
+ */
+#define NETCONF_PRIVATE_CANDIDATE_CAPABILITY "urn:ietf:params:netconf:capability:private-candidate:1.0"
 /*
  * Types
  */
