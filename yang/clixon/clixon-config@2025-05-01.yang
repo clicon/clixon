@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_EVENT_SELECT
+                CLICON_PRIVATE_CANDIDATE
              Deprecated
                 CLICON_CLI_EXPAND_LEAFREF {
              Obsoleted:
@@ -1246,6 +1247,13 @@ module clixon-config {
                  not read from the system.
                  The system-only data is still not stored in the datastore however.
                  See also extension system-only-config in clixon-lib.yang";
+        }
+        leaf CLICON_PRIVATE_CANDIDATE {
+            type boolean;
+            default false;
+            description "If true enable
+                         NETCONF and RESTCONF Private Candidate Datastores
+                         draft-ietf-netconf-privcand-07.";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;
