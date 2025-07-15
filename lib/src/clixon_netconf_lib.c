@@ -1993,11 +1993,12 @@ netconf_capabilites(clixon_handle h,
      */
     if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING"))
         cprintf(cb, "<capability>%s</capability>", NETCONF_MONITORING_NAMESPACE);
-
     /* It is somewhat arbitrary why some features/capabilities are hardocded and why some are not
      * rfc 6241 Sec 8.4 confirmed-commit capabilities */
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
+    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
+        cprintf(cb, "<capability>%s%s</capability>", NETCONF_PRIVATE_CANDIDATE_CAPABILITY, "?supported-resolution-modes=revert-on-conflict");
     cprintf(cb, "</capabilities>");
     retval = 0;
  done:
