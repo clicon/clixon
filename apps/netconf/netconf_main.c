@@ -156,6 +156,7 @@ netconf_hello_msg(clixon_handle h,
     cxobj  *xcap;
     int     foundbase_10 = 0;
     int     foundbase_11 = 0;
+    int     foundprivcand = 0;
     char   *body;
 
     clixon_debug(CLIXON_DBG_NETCONF, "");
@@ -186,10 +187,19 @@ netconf_hello_msg(clixon_handle h,
                 clixon_debug(CLIXON_DBG_NETCONF, "foundbase11");
                 clicon_data_int_set(h, NETCONF_FRAMING_TYPE, NETCONF_SSH_CHUNKED); /* enable chunked enc */
             }
+            else if (strncmp(body, NETCONF_PRIVATE_CANDIDATE_CAPABILITY, strlen(NETCONF_PRIVATE_CANDIDATE_CAPABILITY)) == 0) {
+                foundprivcand++;
+                clixon_debug(CLIXON_DBG_NETCONF, "foundprivcand");
+            }
         }
     }
     if (foundbase_10 == 0 && foundbase_11 == 0){
         clixon_err(OE_XML, errno, "Server received hello without matching netconf base capability, terminating (see RFC 6241 Sec 8.1");
+        *eof = 1;
+        goto done;
+    }
+    if (foundprivcand == 0 && clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE")) {
+        clixon_err(OE_XML, errno, "Server received hello without private candidate capability, terminating");
         *eof = 1;
         goto done;
     }
