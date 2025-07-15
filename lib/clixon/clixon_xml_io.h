@@ -71,7 +71,7 @@ clixon_xml2cbuf(cbuf   *cb,
                 int32_t depth,
                 int     skiptop)
 {
-    return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, WITHDEFAULTS_EXPLICIT);
+    return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, WITHDEFAULTS_REPORT_ALL);
 }
 
 /* 7.4 backward compatible */
