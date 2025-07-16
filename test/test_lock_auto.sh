@@ -73,7 +73,7 @@ delete("Delete a configuration item") {
 commit("Commit the changes"), cli_commit();
 discard("Discard edits (rollback 0)"), discard_changes();
 show("Show a particular state of the system"){
-configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false, "explicit", "set ");
+  configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false, "explicit", "set ");
 }
 EOF
 
@@ -91,12 +91,7 @@ fi
 new "wait backend"
 wait_backend
 
-# Maybe could use mkfifo:
-# mkfifo $dir/cli1
-# cat > $dir/cli1 &
-# clixon_cli < $dir/cli1 &
-# echo "show devices" > $dir/cli1
-
+# Could use expect
 new "cli 1st edit async"
 sleep 60 | expectpart "$($clixon_cli -f $cfg set table parameter x value a)" 0 "" &
 sleep 1

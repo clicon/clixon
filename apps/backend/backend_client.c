@@ -189,6 +189,10 @@ release_all_dbs(clixon_handle h,
     int       i;
     db_elmnt *de;
 
+    /* RFC 6241, Sec 7.5 <lock>:
+     * The target configuration is <candidate>, it has already been
+     *  modified, and these changes have not been committed or rolled back.
+     */
     if (xmldb_islocked(h, "candidate") == id){
         if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
             if (xmldb_copy(h, "running", "candidate") < 0)
@@ -441,6 +445,7 @@ clixon_stats_yang_get(clixon_handle h,
 
  * @param[in]  h     Clixon handle
  * @param[out] cbret Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  id    Client id
  * @param[in]  db    Datastore
  * @retval     1     OK
  * @retval     0     Failed
@@ -541,7 +546,7 @@ from_client_edit_config(clixon_handle h,
     struct client_entry *ce = (struct client_entry *)arg;
     uint32_t            myid = ce->ce_id;
     uint32_t            iddb;
-    char               *target;
+    char               *target = NULL;
     cxobj              *xc;
     cxobj              *x;
     enum operation_type operation = OP_MERGE;
@@ -760,6 +765,16 @@ from_client_edit_config(clixon_handle h,
                 CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbret, "/></rpc-reply>");
  ok:
+    /* Unwind auto-lock if no changes made, ie put deny */
+    if (target &&
+        xmldb_modified_get(h, target) == 0 &&
+        clicon_option_bool(h, "CLICON_AUTOLOCK") &&
+        xmldb_islocked(h, target) == myid){
+        xmldb_unlock(h, target);
+        /* user callback */
+        if (clixon_plugin_lockdb_all(h, target, 0, myid) < 0)
+            goto done;
+    }
     retval = 0;
  done:
     if (nsc)
