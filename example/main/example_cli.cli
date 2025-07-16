@@ -131,6 +131,9 @@ show("Show a particular state of the system"){
           detail("Show detailed backend memory usage"), cli_show_statistics("backend", "detail");
        }
     }
+    sessions("Show client sessions"), cli_show_sessions();{
+         detail("Show sessions detailed state"), cli_show_sessions("detail");
+    }
 }
 
 save("Save candidate configuration to XML file") <filename:string>("Filename (local filename)"), save_config_file("candidate","filename", "xml");{

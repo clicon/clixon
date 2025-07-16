@@ -143,6 +143,7 @@ int cli_show_auto(clixon_handle h, cvec *cvv, cvec *argv);
 
 int cli_show_options(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_show_version(clixon_handle h, cvec *vars, cvec *argv);
+int cli_show_sessions(clixon_handle h, cvec *cvv, cvec *argv);
 
 /* cli_auto.c: Autocli mode support */
 
