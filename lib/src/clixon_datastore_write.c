@@ -1344,7 +1344,7 @@ static int
 xml_mark_added_ancestors(cxobj *x,
                          void  *arg)
 {
-    int        flags = (intptr_t)arg;
+    int flags = (intptr_t)arg;
 
     if (xml_flag(x, flags)){
         xml_apply_ancestor(x, (xml_applyfn_t*)xml_flag_set, (void*)(XML_FLAG_CHANGE));

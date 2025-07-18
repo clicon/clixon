@@ -171,3 +171,8 @@ lock,cli_lock("candidate");
 unlock,cli_unlock("candidate");
 restart <plugin:string>, cli_restart_plugin();
 ping("Check packend liveness"), cli_ping();
+
+session("Client sessions") {
+   kill("Kill client session")
+      <session:uint32>("Client session number"), cli_kill_session("session");
+}
