@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.5.0](#750) Expected: July 2025
+* [7.5.0](#750) 29 July 2025
 * [7.4.0](#740) 3 April 2025
 * [7.3.0](#730) 30 January 2025
 * [7.2.0](#720) 28 October 2024
@@ -15,12 +15,12 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.5.0
-Expected: July 2025
+29 July 2025
 
 ### Features
 
+* Autocli cache for faster loading of generated CLIspecs
 * Support `local-name` xpath function
-* Refactor NACM read check with separate mark and purge functions to work with cache
 * Added label `leafref-no-refer` to control CLI leafref expansion
   * See https://clixon-docs.readthedocs.io/en/latest/cli.html#expanding-leafrefs
 * Added ability to switch between poll-based and select-based event handling
@@ -28,10 +28,10 @@ Expected: July 2025
   * Added option: `CLICON_EVENT_SELECT`
   * Deprecated: `CLICON_CLI_EXPAND_LEAFREF`
   * Obsoleted: `CLICON_STREAM_URL`
-* Autocli cache for faster loading of generated CLIspecs
 * New `clixon-autocli@2025-05-01.yang` revision
   * Added options: `clispec-cache` and `clispec-cache-dir` options
 * Revised NACM work
+  * Refactor read check with separate mark and purge functions to work with cache
   * Generic handling of proxyusers, such as RESTCONF daemon
   * Support for mount-points
   * Improved debug trace
