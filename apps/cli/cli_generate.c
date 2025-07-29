@@ -313,7 +313,7 @@ yang2cli_cmd_encode(cbuf       *cb,
  * @retval    -1      Error
  */
 int
-yang2cli_cmd_decode(char       *cmd,
+yang2cli_cmd_decode(const char *cmd,
                     const char *delim,
                     char      **tag,
                     char      **domain,
@@ -1617,7 +1617,7 @@ yang2cli_post(clixon_handle h,
  */
 static int
 ph_add_set(cligen_handle h,
-           char         *treename,
+           const char   *treename,
            parse_tree   *pt)
 {
     int      retval = -1;
@@ -1828,11 +1828,11 @@ cli_autocli_gen_cache(clixon_handle h,
  * XXX merge with yang2cli_yspec
  */
 static int
-yang2cli_grouping(clixon_handle      h,
-                  yang_stmt         *ys,
-                  yang_stmt         *ymod,
-                  char              *domain,
-                  char              *treename)
+yang2cli_grouping(clixon_handle h,
+                  yang_stmt    *ys,
+                  yang_stmt    *ymod,
+                  char         *domain,
+                  const char   *treename)
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
@@ -2114,7 +2114,7 @@ yang2cli_yspec(clixon_handle h,
  */
 int
 yang2cli_grouping_wrap(cligen_handle ch,
-                       char         *name,
+                       const char   *name,
                        cvec         *cvt,
                        void         *arg,
                        char        **namep)
