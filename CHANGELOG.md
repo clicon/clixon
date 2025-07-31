@@ -18,6 +18,10 @@
 ## 7.6.0
 Expected: October 2025
 
+### Corrected Bugs
+
+* Fixed: Do not use d_type from readdir()
+
 ## 7.5.0
 29 July 2025
 

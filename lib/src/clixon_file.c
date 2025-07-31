@@ -100,29 +100,24 @@ clicon_files_recursive1(const char *dir,
     }
     if ((dirp = opendir(dir)) != NULL)
         while ((dent = readdir(dirp)) != NULL) {
-            if (dent->d_type == DT_DIR) {
-                /* If we find a directory we might want to enter it, unless it
-                   is the current directory (.) or parent (..) */
-                if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
-                    continue;
-
-                /* Build the new directory and enter it. */
-                sprintf(path, "%s/%s", dir, dent->d_name);
+            /* Skip entries for the current directory (.) or parent (..) */
+            if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
+                continue;
+            snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
+            if (lstat(path, &st) < 0){
+                clixon_err(OE_UNIX, errno, "lstat");
+                goto done;
+            }
+            if ((st.st_mode & S_IFDIR) != 0) {
+                /* Enter the new directory. */
                 if (clicon_files_recursive1(path, re, cvv) < 0)
                     goto done;
             }
-            else if (dent->d_type == DT_REG) {
+            else if ((st.st_mode & S_IFREG) != 0) {
                 /* If we encounter a file, match it against the regexp and
                    add it to the list of found files.*/
                 if (re != NULL &&
                     regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
-                    continue;
-                snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
-                if (lstat(path, &st) < 0){
-                    clixon_err(OE_UNIX, errno, "lstat");
-                    goto done;
-                }
-                if ((st.st_mode & S_IFREG) == 0)
                     continue;
                 if (cvec_add_string(cvv, dent->d_name, path) < 0){
                     clixon_err(OE_UNIX, errno, "cvec_add_string");
@@ -331,6 +326,7 @@ clicon_dir_copy(char *srcdir,
     DIR           *dirp = NULL;
     char           srcfile[MAXPATHLEN];
     char           dstfile[MAXPATHLEN];
+    struct stat    st = {0,};
 
     if (srcdir == NULL || dstdir == NULL){
         clixon_err(OE_UNIX, EINVAL, "Requires src and dst dir != NULL");
@@ -338,9 +334,13 @@ clicon_dir_copy(char *srcdir,
     }
     if ((dirp = opendir(srcdir)) != NULL)
         while ((dent = readdir(dirp)) != NULL) {
-            if (dent->d_type != DT_REG)
-                continue;
             snprintf(srcfile, MAXPATHLEN-1, "%s/%s", srcdir, dent->d_name);
+            if (lstat(srcfile, &st) < 0){
+                clixon_err(OE_UNIX, errno, "lstat");
+                goto done;
+            }
+            if ((st.st_mode & S_IFREG) == 0)
+                continue;
             snprintf(dstfile, MAXPATHLEN-1, "%s/%s", dstdir, dent->d_name);
             if (clicon_file_copy(srcfile, dstfile) < 0)
                 goto done;
