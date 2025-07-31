@@ -1415,7 +1415,9 @@ main(int    argc,
     clixon_debug(CLIXON_DBG_RESTCONF, "restconf_main_openssl done");
     if (xrestconf)
         xml_free(xrestconf);
-    restconf_native_terminate(h);
-    restconf_terminate(h);
+    if (h){
+        restconf_native_terminate(h);
+        restconf_terminate(h);
+    }
     return retval;
 }

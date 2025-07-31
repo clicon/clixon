@@ -1047,8 +1047,9 @@ main(int    argc,
  done:
     if (cbret)
         cbuf_free(cbret);
-    clixon_log(h, LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
-    backend_terminate(h); /* Cannot use h after this */
-
+    if (h){
+        clixon_log(h, LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
+        backend_terminate(h); /* Cannot use h after this */
+    }
     return retval;
 }

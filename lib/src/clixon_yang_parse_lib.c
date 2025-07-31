@@ -1387,6 +1387,7 @@ ys_list_check(clixon_handle h,
     keyw = yang_keyword_get(ys);
     /* Check if list and if keys do not exist */
     if (keyw == Y_LIST &&
+        yroot &&
         yang_find(ys, Y_KEY, NULL) == 0){
         ymod = ys_module(ys);
         /* Except nokey exceptions such as rrc 8040 yang-data */

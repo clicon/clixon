@@ -727,7 +727,9 @@ main(int    argc,
  ok:
     retval = 0;
  done:
-    stream_child_freeall(h);
-    restconf_terminate(h);
+    if (h){
+        stream_child_freeall(h);
+        restconf_terminate(h);
+    }
     return retval;
 }

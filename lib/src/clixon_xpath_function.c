@@ -1196,6 +1196,14 @@ xp_function_translate(xp_ctx            *xc,
             goto done;
         if (ctx2string(xr2, &s2) < 0)
             goto done;
+        if (s2 == NULL){
+            clixon_err(OE_UNIX, 0, "s2 is NULL");
+            goto done;
+        }
+    }
+    else if ((s2 = strdup("")) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
     }
     if ((xr = malloc(sizeof(*xr))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");

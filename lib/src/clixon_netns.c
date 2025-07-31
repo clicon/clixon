@@ -251,7 +251,7 @@ fork_netns_socket(const char      *netns,
 #endif
 
     /* Check namespace exists */
-    sprintf(nspath,"/var/run/netns/%s", netns);
+    snprintf(nspath, MAXPATHLEN-1, "/var/run/netns/%s", netns);
     if (stat(nspath, &st) < 0){
         clixon_err(OE_UNIX, errno, ": stat(%s)", nspath);
         goto done;

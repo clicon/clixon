@@ -1062,7 +1062,7 @@ xp_relop(xp_ctx    *xc1,
                 case XO_EQ:
                     if (s1 == NULL && s2 == NULL)
                         xr->xc_bool = 1;
-                    if (s1 == NULL){
+                    else if (s1 == NULL){
                         if (strlen(s2) == 0)
                             xr->xc_bool = 1;
                         else
@@ -1426,7 +1426,7 @@ xp_eval(xp_ctx     *xc,
     case XP_RELLOCPATH:
         use_xr0++;
         if (xs->xs_int == A_DESCENDANT_OR_SELF){
-            if (use_xr0)
+            if (xr0)
                 xr0->xc_descendant = 1; /* XXX need to set to 0 in sub */
             else
                 xc->xc_descendant = 1; /* XXX need to set to 0 in sub */

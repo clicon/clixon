@@ -344,9 +344,12 @@ snmp_yang_type_get(yang_stmt  *ys,
     if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
     restype = yrestype?yang_argument_get(yrestype):NULL;
-    if (restype && strcmp(restype, "union") == 0){
+    if (restype == NULL){
+        clixon_err(OE_YANG, 0, "Internal error: restype == NULL");
+        goto done;
+    }
+    if (strcmp(restype, "union") == 0){
         is_same_subtypes_union(yrestype, &restype);
-
     }
     if ((restype2 = clicon_str2str(yang_snmp_types, restype)) == NULL)
         restype2 = restype;

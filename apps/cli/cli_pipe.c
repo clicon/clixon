@@ -132,7 +132,7 @@ pipe_grep_fn(clixon_handle h,
              cvec         *argv)
 {
     int     retval = -1;
-    char   *pattern = NULL;
+    char   *pattern = "";
     cg_var *cv;
     char   *str;
     char   *option = NULL;
@@ -153,15 +153,15 @@ pipe_grep_fn(clixon_handle h,
         (str = cv_string_get(cv)) != NULL &&
         strlen(str))
         argname = str;
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
-    }
     if (argname && strlen(argname)){
         if ((cv = cvec_find_var(cvv, argname)) != NULL &&
             (str = cv_string_get(cv)) != NULL &&
             strlen(str))
             pattern = str;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
     }
     /* quote | in pattern into cbuf */
     for (i=0; i<strlen(pattern); i++){

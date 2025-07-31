@@ -1680,7 +1680,7 @@ yang_find_schemanode(yang_stmt *yn,
         ys = yn->ys_stmt[i];
         if (yang_keyword_get(ys) == Y_CHOICE){
             /* First check choice itself */
-            if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
+            if (ys->ys_argument && argument && strcmp(argument, ys->ys_argument) == 0){
                 ysmatch = ys;
                 goto match;
             }
@@ -1693,9 +1693,10 @@ yang_find_schemanode(yang_stmt *yn,
                     if (yang_schemanode(yc)){
                         if (argument == NULL)
                             ysmatch = yc;
-                        else
+                        else{
                             if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
                                 ysmatch = yc;
+                        }
                     }
                 if (ysmatch)
                     goto match;
@@ -1703,11 +1704,11 @@ yang_find_schemanode(yang_stmt *yn,
         } /* Y_CHOICE */
         else
             if (yang_schemanode(ys)){
-                if (strcmp(argument, "input") == 0 && yang_keyword_get(ys) == Y_INPUT)
+                if (argument == NULL)
+                    ysmatch = ys;
+                else if (strcmp(argument, "input") == 0 && yang_keyword_get(ys) == Y_INPUT)
                     ysmatch = ys;
                 else if (strcmp(argument, "output") == 0 && yang_keyword_get(ys) == Y_OUTPUT)
-                    ysmatch = ys;
-                else if (argument == NULL)
                     ysmatch = ys;
                 else
                     if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)

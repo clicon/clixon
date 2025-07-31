@@ -973,8 +973,10 @@ main(int    argc,
     if (ignore_packet_errors)
         retval = 0;
     clixon_exit_set(1); /* This is to disable resend mechanism in close-session */
-    clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
-    clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
-    netconf_terminate(h);
+    if (h){
+        clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+        clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
+        netconf_terminate(h);
+    }
     return retval;
 }

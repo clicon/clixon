@@ -541,6 +541,10 @@ xml2json_encode_leafs(cxobj     *xb,
         if (yang_type_get(yp, &origtype, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
             goto done;
         restype = ytype?yang_argument_get(ytype):NULL;
+        if (restype == NULL){
+            clixon_err(OE_YANG, 0, "Internal error: restype == NULL");
+            goto done;
+        }
         cvtype = yang_type2cv(yp);
         switch (cvtype){
         case CGV_STRING:

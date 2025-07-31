@@ -1509,6 +1509,7 @@ clicon_rpc_commit(clixon_handle h,
     if (persist_id) {
         if ((persist_id_xml = malloc(strlen(persist_id) + strlen(PERSIST_ID_XML_FMT) + 1)) == NULL) {
             clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+            goto done;
         }
         sprintf(persist_id_xml, PERSIST_ID_XML_FMT, persist_id);
     }
@@ -1516,7 +1517,8 @@ clicon_rpc_commit(clixon_handle h,
     if (persist) {
         if ((persist_xml = malloc(strlen(persist) + strlen(PERSIST_XML_FMT) + 1)) == NULL) {
             clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
-        };
+            goto done;
+        }
         sprintf(persist_xml, PERSIST_XML_FMT, persist);
     }
 
@@ -1528,6 +1530,7 @@ clicon_rpc_commit(clixon_handle h,
 
         if ((timeout_xml = malloc(10 + 1 + strlen(TIMEOUT_XML_FMT))) == NULL) {
             clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+            goto done;
         };
         sprintf(timeout_xml, TIMEOUT_XML_FMT, timeout);
     }
