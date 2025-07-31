@@ -108,6 +108,75 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS
 new "Build test data: netconf get-config verify running"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_one</name><description>Link to London</description><type>ex:eth</type></interface><interface xmlns:ex=\"urn:example:clixon\"><name>intf_two</name><description>Link to Tokyo</description><type>ex:eth</type></interface></interfaces></data></rpc-reply>"
 
+new "Spawn expect script"
+# -d to debug matching info
+sudo expect - "$clixon_netconf" "$cfg" $(whoami) <<'EOF'
+# Use of expect to start two NETCONF sessions
+log_user 0
+set timeout 2
+set clixon_netconf [lindex $argv 0]
+set CFG [lindex $argv 1]
+set USER [lindex $argv 2]
+
+# Spawn first NETCONF session
+spawn {*}sudo -u $USER clixon_netconf -f $CFG -- -e
+set session_1 $spawn_id
+
+# wait for hello message from server
+expect {
+    -i $session_1
+    -re "revert-on-conflict.*]]>]]>" { puts "< server(1) hello"}
+    timeout { puts "timeout"; exit 2 }
+    eof { puts "1 eof"; exit 3 }
+}
+
+# Spawn second NETCONF session
+spawn {*}sudo -u $USER clixon_netconf -f $CFG -- -e
+set session_2 $spawn_id
+
+# wait for hello message from server
+expect {
+    -i $session_2
+    -re "revert-on-conflict.*]]>]]>" { puts "< server(2) hello"}
+    timeout { puts "timeout"; exit 2 }
+    eof { puts "1 eof"; exit 3 }
+}
+
+# send hello message without framing
+set msg "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:private-candidate:1.0</capability></capabilities></hello>]]>]]>\r"
+puts "> client(1) hello"
+send -i session_1 $msg
+puts "> client(2) hello"
+send -i session_2 $msg
+sleep 1
+
+# get-config
+set msg "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><get-config><source><running/></source></get-config></rpc>]]>]]>\r"
+puts "> client(1) get-config"
+send -i $session_1 $msg
+expect {
+    -i $session_1
+    -re "London.*Tokyo.*</rpc-reply>.*]]>]]>" { puts "< server(1) rpc-reply" }
+    timeout { puts "timeout"; exit 2 }
+    eof { puts "eof"; exit 3 }
+}
+puts "> client(2) get-config"
+send -i $session_2 $msg
+expect {
+    -i $session_2
+    -re "London.*Tokyo.*</rpc-reply>.*]]>]]>" { puts "< server(2) rpc-reply" }
+    timeout { puts "timeout"; exit 2 }
+    eof { puts "eof"; exit 3 }
+}
+
+close $session_1
+close $session_2
+EOF
+
+if [ $? -ne 0 ]; then
+    err1 "Failed: test private candidate using expect"
+fi
+
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
