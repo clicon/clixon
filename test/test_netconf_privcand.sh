@@ -125,9 +125,9 @@ set session_1 $spawn_id
 # wait for hello message from server
 expect {
     -i $session_1
-    -re "revert-on-conflict.*]]>]]>" { puts "< server(1) hello"}
-    timeout { puts "timeout"; exit 2 }
-    eof { puts "1 eof"; exit 3 }
+    -re "revert-on-conflict.*]]>]]>" {}
+    timeout { puts "timeout: No hello from server session 1"; exit 2 }
+    eof { puts "1 eof: No hello from server session 1"; exit 3 }
 }
 
 # Spawn second NETCONF session
@@ -137,37 +137,44 @@ set session_2 $spawn_id
 # wait for hello message from server
 expect {
     -i $session_2
-    -re "revert-on-conflict.*]]>]]>" { puts "< server(2) hello"}
-    timeout { puts "timeout"; exit 2 }
-    eof { puts "1 eof"; exit 3 }
+    -re "revert-on-conflict.*]]>]]>" {}
+    timeout { puts "timeout: No hello from server session 2"; exit 2 }
+    eof { puts "1 eof: No hello from server session 2"; exit 3 }
 }
 
 # send hello message without framing
 set msg "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:private-candidate:1.0</capability></capabilities></hello>]]>]]>\r"
-puts "> client(1) hello"
 send -i session_1 $msg
-puts "> client(2) hello"
 send -i session_2 $msg
 sleep 1
 
-# get-config
-set msg "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><get-config><source><running/></source></get-config></rpc>]]>]]>\r"
-puts "> client(1) get-config"
-send -i $session_1 $msg
-expect {
-    -i $session_1
-    -re "London.*Tokyo.*</rpc-reply>.*]]>]]>" { puts "< server(1) rpc-reply" }
-    timeout { puts "timeout"; exit 2 }
-    eof { puts "eof"; exit 3 }
+# NETCONF rpc operation
+proc rpc {session command reply} {
+	send -i $session "<rpc message-id=\"42\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">$command</rpc>]]>]]>\r"
+	expect {
+	    -i $session
+	    -re "$reply.*</rpc-reply>.*]]>]]>" {}
+	    timeout { puts "timeout: $command $reply"; exit 2 }
+	    eof { puts "eof": $command $reply"; exit 3 }
+	}
 }
-puts "> client(2) get-config"
-send -i $session_2 $msg
-expect {
-    -i $session_2
-    -re "London.*Tokyo.*</rpc-reply>.*]]>]]>" { puts "< server(2) rpc-reply" }
-    timeout { puts "timeout"; exit 2 }
-    eof { puts "eof"; exit 3 }
-}
+
+# Verify test data
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo" 
+
+# 4.7.3.3.  Revert-on-conflict
+# Session 1 edits the configuration
+rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces></config></edit-config>" "ok/"
+
+# Session 2 edits the configuration
+rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>" "ok/"
+
+# TODO A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
+#rpc $session_1 "<update><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
+# TODO Verify private candidates
+#rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris" 
 
 close $session_1
 close $session_2
