@@ -92,6 +92,8 @@ RUN make DESTDIR=/clixon/build install
 WORKDIR /clixon
 RUN git clone https://github.com/clicon/clixon-util.git
 WORKDIR /clixon/clixon-util
+# XXX Fix test environment to 7.5.0 until master merge
+RUN git checkout 7.5.0
 RUN ./configure --prefix=/usr/local --with-cligen=/clixon/build/usr/local --with-clixon=/clixon/build/usr/local
 RUN make
 RUN make DESTDIR=/clixon/build install
