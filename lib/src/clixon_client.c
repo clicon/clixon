@@ -149,74 +149,6 @@ clixon_client_terminate(clixon_handle h)
     return 0;
 }
 
-/*! Send a lock request (internal)
- *
- * @param[in]  h      Clixon handle
- * @param[in]  sock   Open socket
- * @param[in]  descr  Description of peer for logging
- * @param[in]  lock   0: unlock, 1: lock  
- * @param[in]  db     Datastore name
- * @retval     0      OK
- * @retval    -1      Error
- */
-int
-clixon_client_lock(clixon_handle h,
-                   int           sock,
-                   const char   *descr,
-                   const int     lock,
-                   const char   *db)
-{
-    int    retval = -1;
-    cxobj *xret = NULL;
-    cxobj *xd;
-    cbuf  *msg = NULL;
-    cbuf  *msgret = NULL;
-    int    eof = 0;
-
-    clixon_debug(CLIXON_DBG_DEFAULT, "");
-    if (db == NULL){
-        clixon_err(OE_XML, EINVAL, "Expected db");
-        goto done;
-    }
-    if ((msg = cbuf_new()) == NULL){
-        clixon_err(OE_PLUGIN, errno, "cbuf_new");
-        goto done;
-    }
-    if ((msgret = cbuf_new()) == NULL){
-        clixon_err(OE_PLUGIN, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(msg, "<rpc xmlns=\"%s\" %s>"
-            "<%slock><target><%s/></target></%slock></rpc>",
-            NETCONF_BASE_NAMESPACE,
-            NETCONF_MESSAGE_ID_ATTR,
-            lock?"":"un", db, lock?"":"un");
-    if (clixon_rpc10(sock, descr, msg, msgret, &eof) < 0)
-        goto done;
-    if (eof){
-        close(sock);
-        clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-        goto done;
-    }
-    if (clixon_xml_parse_string(cbuf_get(msgret), YB_NONE, NULL, &xret, NULL) < 0)
-        goto done;
-    if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL){
-        xd = xml_parent(xd); /* point to rpc-reply */
-        clixon_err_netconf(h, OE_NETCONF, 0, xd, "Get configuration");
-        goto done; /* Not fatal */
-    }
-    retval = 0;
- done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
-    if (xret)
-        xml_free(xret);
-    if (msg)
-        cbuf_free(msg);
-    if (msgret)
-        cbuf_free(msgret);
-    return retval;
-}
-
 /*! Internal function to construct the encoding and hello message
  *
  * @param[in]  sock    Socket to netconf server
@@ -244,7 +176,6 @@ clixon_client_hello(int         sock,
     cprintf(msg, "<capability>%s</capability>", version==0?NETCONF_BASE_CAPABILITY_1_0:NETCONF_BASE_CAPABILITY_1_1);
     cprintf(msg, "</capabilities>");
     cprintf(msg, "</hello>");
-    cprintf(msg, "]]>]]>");
     if (clixon_msg_send10(sock, descr, msg) < 0)
         goto done;
     retval = 0;
@@ -378,7 +309,7 @@ clixon_client_connect(clixon_handle      h,
     cch->cch_h = h;
     switch (socktype){
     case CLIXON_CLIENT_IPC:
-        if (clicon_rpc_connect(h, &cch->cch_socket) < 0)
+        if (clixon_rpc_connect(h, &cch->cch_socket) < 0)
             goto err;
         break;
     case CLIXON_CLIENT_NETCONF:
@@ -513,10 +444,6 @@ clixon_client_get_xdata(clixon_handle h,
         clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    if ((msgret = cbuf_new()) == NULL){
-        clixon_err(OE_PLUGIN, errno, "cbuf_new");
-        goto done;
-    }
     cprintf(msg, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(msg, " xmlns:%s=\"%s\"",
             NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
@@ -534,11 +461,9 @@ clixon_client_get_xdata(clixon_handle h,
         cprintf(msg, "/>");
     }
     cprintf(msg, "</get-config></rpc>");
-    if (netconf_output_encap(0, msg) < 0) // XXX configurable session
-        goto done;
     if (clixon_msg_send10(sock, descr, msg) < 0)
         goto done;
-    if (clixon_msg_rcv10(sock, descr, msgret, &eof) < 0)
+    if (clixon_msg_rcv10(sock, descr, &msgret, &eof) < 0)
         goto done;
     if (eof){
         close(sock);

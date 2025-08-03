@@ -18,6 +18,31 @@
 ## 7.6.0
 Expected: October 2025
 
+### C/CLI-API changes on existing features
+
+* Refactor rpc_msg API:
+  * Replaced `clicon_msg` parameter with cbuf:
+    * `clicon_rpc_msg(h, msg,...)` -> `clicon_rpc_msg(h, cb,...)`
+    * `clicon_rpc_msg_persistent(h, msg, ...)` -> `clicon_rpc_msg(h, cb, ...)`
+    * `clicon_rpc(..., msg, &xret, eof)` -> `clixon_rpc11(..., cb, &cbret, eof)`
+  * Removed `struct clicon_msg` and `clicon_msg_encode()`:
+    * Replace:
+    ```
+       struct clicon_msg *msg=clicon_msg_encode(..., cbuf_get(cb));
+       clicon_rpc_msg(h, msg, NULL);
+    ```
+    * With:
+    ```
+       clicon_rpc_msg(h, cb, NULL);
+    ```
+  * Change receive message handling to create cb:
+    * `clixon_msg_rcv10(..., cb, eof)` -> `clixon_msg_rcv10(..., &cb, eof)`
+    * `clixon_rpc10(..., cb, eof)` -> `clixon_rpc10(, &cb, eof)`
+  * Rename rpc connect API:
+    * `clicon_rpc_connect()` -> `clixon_rpc_connect()`
+    * `clicon_rpc_connect_unix()` -> `clixon_rpc_connect_unix()`
+    * `clicon_rpc_connect_inet()` -> `clixon_rpc_connect_inet()`
+
 ### Corrected Bugs
 
 * Fixed: Do not use d_type from readdir()

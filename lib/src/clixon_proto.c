@@ -35,7 +35,7 @@
 
  *
  * Protocol to communicate between clients (eg clixon_cli, clixon_netconf) 
- * and server (clicon_backend)
+ * and server (clixon_backend)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -131,47 +131,6 @@ clixon_inet2sin(const char       *addrtype,
     return 0;
 }
 
-/*! Encode a clicon netconf message using variable argument lists
- *
- * @param[in] id      Session id of client
- * @param[in] format  Variable agrument list format an XML netconf string
- * @retval    msg     Clicon message to send to eg clicon_msg_send()
- * @retval    NULL    Error
- * @note if format includes %, they will be expanded according to printf rules.
- *       if this is a problem, use ("%s", xml) instaead of (xml)
- *       Notaly this may an issue of RFC 3896 encoded strings
- */
-struct clicon_msg *
-clicon_msg_encode(uint32_t    id,
-                  const char *format, ...)
-{
-    va_list            args;
-    uint32_t           xmllen;
-    uint32_t           len;
-    struct clicon_msg *msg = NULL;
-    int                hdrlen = sizeof(*msg);
-
-    va_start(args, format);
-    xmllen = vsnprintf(NULL, 0, format, args) + 1;
-    va_end(args);
-
-    len = hdrlen + xmllen;
-    if ((msg = (struct clicon_msg *)malloc(len)) == NULL){
-        clixon_err(OE_PROTO, errno, "malloc");
-        return NULL;
-    }
-    memset(msg, 0, len);
-    /* hdr */
-    msg->op_len = htonl(len);
-    msg->op_id = htonl(id);
-    /* body */
-    va_start(args, format);
-    vsnprintf(msg->op_body, xmllen, format, args);
-    va_end(args);
-
-    return msg;
-}
-
 /*! Open local connection using unix domain sockets
  *
  * @param[in]  h        Clixon handle
@@ -179,8 +138,8 @@ clicon_msg_encode(uint32_t    id,
  * @retval     s        Socket
  * @retval    -1        Error
  */
-int
-clicon_connect_unix(clixon_handle h,
+static int
+clixon_connect_unix(clixon_handle h,
                     char         *sockpath)
 {
     struct sockaddr_un addr;
@@ -220,12 +179,11 @@ clicon_connect_unix(clixon_handle h,
  * @param[out] sock0    Return socket in case of asynchronous notify
  * @retval     0        OK
  * @retval    -1        Error
- * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_unix(clixon_handle  h,
-                        char          *sockpath,
-                        int           *sock0)
+clixon_rpc_connect_unix(clixon_handle h,
+                        char         *sockpath,
+                        int          *sock0)
 {
     int         retval = -1;
     int         s = -1;
@@ -245,7 +203,7 @@ clicon_rpc_connect_unix(clixon_handle  h,
         clixon_err(OE_PROTO, EIO, "%s: Not unix socket", sockpath);
         goto done;
     }
-    if ((s = clicon_connect_unix(h, sockpath)) < 0)
+    if ((s = clixon_connect_unix(h, sockpath)) < 0)
         goto done;
     *sock0 = s;
     retval = 0;
@@ -253,7 +211,7 @@ clicon_rpc_connect_unix(clixon_handle  h,
     return retval;
 }
 
-/*! Connect to server, send a clicon_msg message and wait for result using an inet socket
+/*! Connect to server on inet socket, send NETCONF msg and wait for result
  *
  * @param[in]  h       Clixon handle (not used)
  * @param[in]  dst     IPv4 address
@@ -262,10 +220,9 @@ clicon_rpc_connect_unix(clixon_handle  h,
  * @param[out] sock0   Return socket in case of asynchronous notify
  * @retval     0       OK
  * @retval    -1       Error
- * @see clicon_rpc  But this is one-shot rpc: open, send, get reply and close.
  */
 int
-clicon_rpc_connect_inet(clixon_handle h,
+clixon_rpc_connect_inet(clixon_handle h,
                         char         *dst,
                         uint16_t      port,
                         int          *sock0)
@@ -297,6 +254,56 @@ clicon_rpc_connect_inet(clixon_handle h,
     *sock0 = s;
     retval = 0;
   done:
+    return retval;
+}
+
+/*! Connect to internal netconf socket
+ *
+ * @param[in]  h     Clixon handle
+ * @param[out] sockp Socket
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+clixon_rpc_connect(clixon_handle h,
+                   int          *sockp)
+{
+    int    retval = -1;
+    char  *sockstr = NULL;
+    int    port;
+
+    if ((sockstr = clicon_sock_str(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
+        goto done;
+    }
+    /* What to do if inet socket? */
+    switch (clicon_sock_family(h)){
+    case AF_UNIX:
+        if (clixon_rpc_connect_unix(h, sockstr, sockp) < 0){
+#if 0
+            if (errno == ESHUTDOWN)
+                /* Maybe could reconnect on a higher layer, but lets fail
+                   loud and proud */
+                cligen_exiting_set(cli_cligen(h), 1);
+#endif
+            goto done;
+        }
+        break;
+    case AF_INET:
+        if ((port = clicon_sock_port(h)) < 0){
+            clixon_err(OE_FATAL, 0, "CLICON_SOCK option not set");
+            goto done;
+        }
+        if (port < 0){
+            clixon_err(OE_FATAL, 0, "CLICON_SOCK_PORT not set");
+            goto done;
+        }
+        if (clixon_rpc_connect_inet(h, sockstr, port, sockp) < 0)
+            goto done;
+        break;
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -346,7 +353,16 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
     return (pos);
 }
 
-static int
+/*! Send a message using NETCONF without encapsulation
+ *
+ * That is, NETCONF 1.0 / 1.1 encapsulation must have been done
+ * @param[in]  s     socket (unix or inet) to communicate with backend
+ * @param[in]  descr Description of peer for logging
+ * @param[in]  cb    data buffer including NETCONF (and EOM)
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
 clixon_msg_send(int         s,
                 const char *descr,
                 cbuf       *cb)
@@ -383,7 +399,7 @@ clixon_msg_send(int         s,
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[in]   descr  Description of peer for logging
- * @param[out]  cb     cligen buf struct containing the incoming message
+ * @param[out]  msg    Incoming message, created
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK
  * @retval     -1      Error
@@ -393,7 +409,7 @@ clixon_msg_send(int         s,
 int
 clixon_msg_rcv10(int         s,
                  const char *descr,
-                 cbuf       *cb,
+                 cbuf      **msg,
                  int        *eof)
 {
     int           retval = -1;
@@ -402,23 +418,28 @@ clixon_msg_rcv10(int         s,
     int           len;
     int           xml_state = 0;
     int           poll;
+    cbuf         *cbmsg = NULL;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     *eof = 0;
     memset(buf, 0, sizeof(buf));
+    if ((cbmsg = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
     while (1){
         if ((len = netconf_input_read2(s, buf, sizeof(buf), eof)) < 0)
             goto done;
         for (i=0; i<len; i++){
             if (buf[i] == 0)
                 continue; /* Skip NULL chars (eg from terminals) */
-            cprintf(cb, "%c", buf[i]);
+            cprintf(cbmsg, "%c", buf[i]);
             if (detect_endtag("]]>]]>",
                               buf[i],
                               &xml_state)) {
                 /* OK, we have an xml string from a client */
                 /* Remove trailer */
-                *(((char*)cbuf_get(cb)) + cbuf_len(cb) - strlen("]]>]]>")) = '\0';
+                *(((char*)cbuf_get(cbmsg)) + cbuf_len(cbmsg) - strlen("]]>]]>")) = '\0';
                 goto ok;
             }
         }
@@ -438,21 +459,27 @@ clixon_msg_rcv10(int         s,
     else {
         if (descr){
             if (clixon_debug_detail())
-                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv [%s]: %s", descr, cbuf_get(cb));
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv [%s]: %s", descr, cbuf_get(cbmsg));
             else
-                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_TRUNC, "Recv [%s]: %s", descr, cbuf_get(cb));
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_TRUNC, "Recv [%s]: %s", descr, cbuf_get(cbmsg));
         }
         else{
             if (clixon_debug_detail())
-                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv: %s", cbuf_get(cb));
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "Recv: %s", cbuf_get(cbmsg));
             else
-                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_TRUNC, "Recv: %s", cbuf_get(cb));
+                clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_TRUNC, "Recv: %s", cbuf_get(cbmsg));
         }
 
+    }
+    if (msg){
+        *msg = cbmsg;
+        cbmsg = NULL;
     }
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "done");
+    if (cbmsg)
+        cbuf_free(cbmsg);
     return retval;
 }
 
@@ -464,13 +491,22 @@ clixon_msg_rcv10(int         s,
  * @retval     0     OK
  * @retval    -1     Error
  * @see clixon_msg_send11 version 1.1 - chunked
+ * @see clixon_msg_send   No encapsulation
  */
 int
 clixon_msg_send10(int         s,
                   const char *descr,
-                  cbuf       *cb)
+                  cbuf       *msg)
 {
-    return clixon_msg_send(s, descr, cb);
+    int retval = -1;
+
+    if (netconf_output_encap(NETCONF_SSH_EOM, msg) < 0)
+        goto done;
+    if (clixon_msg_send(s, descr, msg) < 0)
+        goto done;
+    retval = 0;
+  done:
+    return retval;
 }
 
 /*! Send a netconf message and recieve result using NETCONF 1.0 EOM encoding
@@ -478,27 +514,23 @@ clixon_msg_send10(int         s,
  * This is mainly used by the client API. 
  * @param[in]  sock    Socket / file descriptor
  * @param[in]  descr   Description of peer for logging
- * @param[in]  msgin   Clixon msg data structure. It has fixed header and variable body.
- * @param[out] msgret  Returned data as netconf xml tree.
+ * @param[in]  msg     NETCONF Message buffer
+ * @param[out] msgret  Returned NETCONF data
  * @param[out] eof     Set if eof encountered
  * @retval     0       OK
  * @retval    -1       Error
- * @see clicon_rpc using clicon_msg protocol header
+ * @see clixon_rpc11 using NETCONF 1.1
  */
 int
 clixon_rpc10(int         sock,
              const char *descr,
              cbuf       *msg,
-             cbuf       *msgret,
+             cbuf      **msgret,
              int        *eof)
 {
     int retval = -1;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
-    if (netconf_framing_preamble(NETCONF_SSH_EOM, msg) < 0)
-        goto done;
-    if (netconf_framing_postamble(NETCONF_SSH_EOM, msg) < 0)
-        goto done;
     if (clixon_msg_send10(sock, descr, msg) < 0)
         goto done;
     if (clixon_msg_rcv10(sock, descr, msgret, eof) < 0)
@@ -513,21 +545,22 @@ clixon_rpc10(int         sock,
 
 /*! Send a message using NETCONF 1.1 w chunked framing
  *
- * @param[in]   s      socket (unix or inet) to communicate with backend
- * @param[in]   descr  Description of peer for logging
- * @param[out]  msg    CLICON msg data reply structure. Free with free()
+ * @param[in]  s      socket (unix or inet) to communicate with backend
+ * @param[in]  descr  Description of peer for logging
+ * @param[out] msg    Outgoing Cbuf
  * @see clixon_msg_send10  1.0 EOM
+ * @see clixon_msg_send    No encapsulation
  */
-static int
+int
 clixon_msg_send11(int         s,
                   const char *descr,
-                  cbuf       *cb)
+                  cbuf       *msg)
 {
     int retval = -1;
 
-    if (netconf_output_encap(NETCONF_SSH_CHUNKED, cb) < 0)
+    if (netconf_output_encap(NETCONF_SSH_CHUNKED, msg) < 0)
         goto done;
-    if (clixon_msg_send(s, descr, cb) < 0)
+    if (clixon_msg_send(s, descr, msg) < 0)
         goto done;
     retval = 0;
   done:
@@ -544,8 +577,8 @@ atomicio_sig_handler(int arg)
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[in]   descr  Description of peer for logging
- * @param[in]   intr   If set, make a ^C cause an error   (OBSOLETE?)
- * @param[out]  cb     cligen buf struct containing the incoming message
+ * @param[in]   intr   If set, make a ^C cause an error
+ * @param[out]  cb     Incoming message, created
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK (check eof)
  * @retval     -1      Error
@@ -556,7 +589,7 @@ int
 clixon_msg_rcv11(int         s,
                  const char *descr,
                  int         intr,
-                 cbuf      **cb,
+                 cbuf      **msg,
                  int        *eof)
 {
     int              retval = -1;
@@ -632,8 +665,8 @@ clixon_msg_rcv11(int         s,
         }
 
     }
-    if (cb){
-        *cb = cbmsg;
+    if (msg){
+        *msg = cbmsg;
         cbmsg = NULL;
     }
     retval = 0;
@@ -652,65 +685,39 @@ clixon_msg_rcv11(int         s,
     return retval;
 }
 
-/*! Send a NETCONF message and wait for result.
+/*! Send a netconf message and recieve result using NETCONF 1.1 framing
  *
- * TBD: timeout, interrupt?
- * retval may be -1 and
- * errno set to ENOTCONN/ESHUTDOWN which means that socket is now closed probably
- * due to remote peer disconnecting. The caller may have to do something,...
- * @param[in]  sock   Socket / file descriptor
- * @param[in]  descr  Description of peer for logging
- * @param[in]  msg    Clixon msg data structure. It has fixed header and variable body.
- * @param[out] xret   Returned data as netconf xml tree.
- * @param[out] eof    Set if eof encountered
- * @retval     0      OK (check eof)
- * @retval    -1      Error
+ * This is mainly used by the client API.
+ * @param[in]  sock    Socket / file descriptor
+ * @param[in]  descr   Description of peer for logging
+ * @param[in]  msg     NETCONF Message buffer
+ * @param[out] msgret  Returned NETCONF data
+ * @param[out] eof     Set if eof encountered
+ * @retval     0       OK
+ * @retval    -1       Error
  * @see clixon_rpc10 using NETCONF 1.0 EOM
  */
 int
-clicon_rpc(int                sock,
-           const char        *descr,
-           struct clicon_msg *msg,
-           char             **ret,
-           int               *eof)
+clixon_rpc11(int         sock,
+             const char *descr,
+             cbuf       *msg,
+             cbuf      **msgret,
+             int        *eof)
 {
-    int                retval = -1;
-    struct clicon_msg *reply = NULL;
-    cbuf              *cbsend = NULL;
-    cbuf              *cbrcv = NULL;
+    int retval = -1;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
-    if ((cbsend = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, errno, "cbuf_new");
+    if (clixon_msg_send11(sock, descr, msg) < 0)
         goto done;
-    }
-    cprintf(cbsend, "%s", msg->op_body);
-    if (clixon_msg_send11(sock, descr, cbsend) < 0)
+    if (clixon_msg_rcv11(sock, descr, 0, msgret, eof) < 0)
         goto done;
-    if (clixon_msg_rcv11(sock, descr, 0, &cbrcv, eof) < 0)
-        goto done;
-    if (*eof)
-        goto ok;
-    if (cbrcv){
-        if ((*ret = strdup(cbuf_get(cbrcv))) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
-            goto done;
-        }
-    }
- ok:
     retval = 0;
  done:
-    if (cbsend)
-        cbuf_free(cbsend);
-    if (cbrcv)
-        cbuf_free(cbrcv);
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (reply)
-        free(reply);
     return retval;
 }
 
-/*! Send a clicon_msg message as reply to a clicon rpc request
+/*! Send NETCONF message as reply to a clicon rpc request
  *
  * @param[in]  s       Socket to communicate with client
  * @param[in]  descr   Description of peer for logging
@@ -745,7 +752,7 @@ send_msg_reply(int         s,
     return retval;
 }
 
-/*! Send a clicon_msg NOTIFY message asynchronously to client
+/*! Send a NETCONF NOTIFY message asynchronously to client
  *
  * @param[in]  s       Socket to communicate with client
  * @param[in]  descr   Description of peer for logging
@@ -776,7 +783,7 @@ send_msg_notify(int         s,
     return retval;
 }
 
-/*! Send a clicon_msg NOTIFY message asynchronously to client
+/*! Send NETCONF XML NOTIFY message asynchronously to client
  *
  * @param[in]  h     Clixon handle
  * @param[in]  s     Socket to communicate with client

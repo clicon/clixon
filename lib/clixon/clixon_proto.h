@@ -41,40 +41,29 @@
 #define _CLIXON_PROTO_H_
 
 /*
- * Types
- */
-
-/*! Protocol message header (histoorical)
- * Current use is a shim layer for sending packets
- */
-struct clicon_msg {
-    uint32_t    op_len;     /* length of whole message: body+header, network byte order. */
-    uint32_t    op_id;      /* session-id. network byte order. 1..max(u32), can be zero in client hello */
-    char        op_body[0]; /* rest of message, actual data */
-};
-
-/*
  * Prototypes
  */
-int clixon_inet2sin(const char *addrtype, const char *addrstr, uint16_t port, struct sockaddr *sa, size_t *sa_len);
 
-struct clicon_msg *clicon_msg_encode(uint32_t id, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
-int clicon_connect_unix(clixon_handle h, char *sockpath);
-int clicon_rpc_connect_unix(clixon_handle         h,
-                            char                 *sockpath,
-                            int                  *sock0);
-int clicon_rpc_connect_inet(clixon_handle         h,
-                            char                 *dst,
-                            uint16_t              port,
-                            int                  *sock0);
+int clixon_inet2sin(const char *addrtype, const char *addrstr, uint16_t port,
+                    struct sockaddr *sa, size_t *sa_len);
+
+/* Connect */
+int clixon_rpc_connect_unix(clixon_handle h, char *sockpath, int *sock0);
+int clixon_rpc_connect_inet(clixon_handle h, char *dst, uint16_t port,
+                            int *sock0);
+int clixon_rpc_connect(clixon_handle h, int *sock0);
+
 /* NETCONF 1.0 */
-int clixon_msg_rcv10(int s, const char *descr, cbuf *cb, int *eof);
-int clixon_msg_send10(int s, const char *descr, cbuf *cb);
-int clixon_rpc10(int sock, const char *descr, cbuf *msgin, cbuf *msgret, int *eof);
+int clixon_msg_rcv10(int s, const char *descr, cbuf **msg, int *eof);
+int clixon_msg_send10(int s, const char *descr, cbuf *msg);
+int clixon_rpc10(int sock, const char *descr, cbuf *msgin, cbuf **msgret, int *eof);
 
 /* NETCONF 1.1 */
-int clixon_msg_rcv11(int s, const char *descr, int intr, cbuf **cb, int *eof);
-int clicon_rpc(int sock, const char *descr, struct clicon_msg *msg, char **xret, int *eof);
+int clixon_msg_rcv11(int s, const char *descr, int intr, cbuf **msg, int *eof);
+int clixon_rpc11(int sock, const char *descr, cbuf *msg, cbuf **msgret, int *eof);
+int clixon_msg_send11(int s, const char *descr, cbuf *msg);
+
+int clixon_msg_send(int s, const char *descr, cbuf *cb);
 int send_msg_reply(int s, const char *descr, char *data, uint32_t datalen);
 int send_msg_notify_xml(clixon_handle h, int s, const char *descr, cxobj *xev);
 

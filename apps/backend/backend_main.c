@@ -1010,7 +1010,7 @@ main(int    argc,
         clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
-    /* Client exit in the middle of a transaction, handled in clicon_msg_send */
+    /* Client exit in the middle of a transaction */
     if (set_signal(SIGPIPE, SIG_IGN, NULL) < 0){
         clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;

@@ -35,16 +35,15 @@
 
  *
  * Client-side functions for clicon_proto protocol
- * Historically this code was part of the clicon_cli application. But
- * it should (is?) be general enough to be used by other applications.
+ * Not strict delimiter between these functions and the ones in
+ * clixon_proto.[ch], but these are "higher level"
  */
 
 #ifndef _CLIXON_PROTO_CLIENT_H_
 #define _CLIXON_PROTO_CLIENT_H_
 
-int clicon_rpc_connect(clixon_handle h, int *sock0);
-int clicon_rpc_msg(clixon_handle h, struct clicon_msg *msg, cxobj **xret0);
-int clicon_rpc_msg_persistent(clixon_handle h, struct clicon_msg *msg, cxobj **xret0, int *sock0);
+int clicon_rpc_msg(clixon_handle h, cbuf *cbsend, cxobj **xret0);
+int clicon_rpc_msg_persistent(clixon_handle h, cbuf *cbsend, cxobj **xret0, int *sock0);
 int clicon_rpc_netconf(clixon_handle h, char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clixon_handle h, cxobj *xml, cxobj **xret, int *sp);
 int clicon_rpc_get_config(clixon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, cxobj **xret);

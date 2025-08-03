@@ -43,10 +43,6 @@
 #define strndup(s, n) clicon_strndup(s, n)
 #endif
 
-/* Set if you want to assert that all rpc messages have set username
- */
-#undef RPC_USERNAME_ASSERT
-
 /*! Optimize special list key searches in XPath finds
  *
  * Identify xpaths that search for exactly a list key, eg: "y[k='3']" and then call

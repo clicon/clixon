@@ -2244,6 +2244,13 @@ netconf_framing_preamble(netconf_framing_type framing,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
+        if (cbuf_len(cb) > 3){
+            char *t = cbuf_get(cb)+cbuf_len(cb)-4;
+            if (strcmp(t, "\n##\n") == 0){
+                clixon_err(OE_NETCONF, 0, "Already encapsulated");
+                goto done;
+            }
+        }
         cbuf_reset(cb);
         cprintf(cb, "\n#%zu\n", strlen(body));     /* Add RFC6242 chunked-end */
         cbuf_append_str(cb, body);
@@ -2258,22 +2265,36 @@ netconf_framing_preamble(netconf_framing_type framing,
 
 /*! Add netconf xml postamble of message. I.e, xml after the body of the message.
  *
- * @param[in]      framing Netconf framing
- * @param[in,out]  cb  Netconf packet (cligen buffer)
+ * @param[in]     framing Netconf framing
+ * @param[in,out] cb      Netconf packet (cligen buffer)
+ * @retval        0       OK
+ * @retval       -1       Error
  */
 int
 netconf_framing_postamble(netconf_framing_type framing,
                           cbuf                *cb)
 {
+    int retval = -1;
+
     switch (framing){
     case NETCONF_SSH_EOM:
+        char *t;
+        if (cbuf_len(cb)>=6){
+            t = cbuf_get(cb)+cbuf_len(cb)-6;
+            if (strcmp(t, "]]>]]>") == 0){
+                clixon_err(OE_NETCONF, 0, "Already encapsulated");
+                goto done;
+            }
+        }
         cprintf(cb, "]]>]]>");     /* Add RFC4742 end-of-message marker */
         break;
     case NETCONF_SSH_CHUNKED:
         cprintf(cb, "\n##\n");     /* Add RFC6242 chunked-end */
         break;
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Send netconf message from cbuf on socket
