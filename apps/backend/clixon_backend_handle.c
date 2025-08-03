@@ -133,6 +133,7 @@ backend_handle_exit(clixon_handle h)
 
 /*! Add new client, typically frontend such as cli, netconf, restconf
  *
+ * Increment backend session-id counter
  * @param[in]  h        Clixon handle
  * @param[in]  addr     Address of client
  * @retval     ce       Client entry
@@ -158,6 +159,7 @@ backend_client_add(clixon_handle    h,
         free(ce);
         return NULL;
     }
+    clixon_debug(CLIXON_DBG_BACKEND, "New session id:%u", ce->ce_id);
     clicon_session_id_set(h, ce->ce_id + 1);
     gettimeofday(&ce->ce_time, NULL);
     netconf_monitoring_counter_inc(h, "in-sessions");

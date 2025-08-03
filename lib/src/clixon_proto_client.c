@@ -89,20 +89,73 @@
 #define PERSIST_XML_FMT "<persist>%s</persist>"
 #define TIMEOUT_XML_FMT "<confirm-timeout>%u</confirm-timeout>"
 
-/*! Close and reset socket, mark as -1
- *
- * @param[in]     h  Clixon handle
- * @param[in,out] s  Socket
- * @retval        0  OK
- */
 static int
-close_socket(clixon_handle h,
-             int          *s)
+create_hello(clixon_handle h,
+             cbuf         *cb,
+             char         *transport,
+             char         *source_host)
 {
-    close(*s);
-    *s = -1;
-    clicon_client_socket_set(h, -1);
+    char  *username;
+    int    clixon_lib = 0;
+    char  *ns = NULL;
+    char  *prefix = NULL;
+
+    cprintf(cb, "<hello xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        clixon_lib++;
+    }
+    /* RFC 6022 session parameters transport and source-host */
+    clicon_data_get(h, "session-namespace", &ns);
+    clicon_data_get(h, "session-namespace-prefix", &prefix);
+    if (transport == NULL)
+        clicon_data_get(h, "session-transport", &transport);
+    if (transport){
+        cprintf(cb, " %s:transport=\"%s\"", CLIXON_LIB_PREFIX, transport);
+        clixon_lib++;
+    }
+    if (source_host == NULL)
+        clicon_data_get(h, "session-source-host", &source_host);
+    if (source_host){
+        cprintf(cb, " %s:source-host=\"%s\"", CLIXON_LIB_PREFIX, source_host);
+        clixon_lib++;
+    }
+    if (clixon_lib)
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    cprintf(cb, ">");
+    cprintf(cb, "<capabilities><capability>%s</capability></capabilities>",
+            NETCONF_BASE_CAPABILITY_1_1);
+    cprintf(cb, "</hello>");
     return 0;
+}
+
+static int
+parse_hello(clixon_handle h,
+            cxobj        *xret,
+            uint32_t     *id)
+{
+    int    retval = -1;
+    cxobj *xerr;
+    cxobj *x;
+    char  *b;
+    int    ret;
+
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Hello");
+        goto done;
+    }
+    if ((x = xpath_first(xret, NULL, "hello/session-id")) == NULL){
+        clixon_err(OE_XML, 0, "hello session-id");
+        goto done;
+    }
+    b = xml_body(x);
+    if (id && (ret = parse_uint32(b, id, NULL)) <= 0){
+        clixon_err(OE_XML, errno, "parse_uint32");
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Send internal netconf rpc from client to backend, opt return new socket
@@ -114,74 +167,36 @@ close_socket(clixon_handle h,
  * event streams are gone
  * @param[in]   h      Clixon handle
  * @param[in]   cbsend NETCONF Message buffer
+ * @param[in]   s0     Socket to use
  * @param[out]  xret0  Return value from backend as xml tree. Free w xml_free
  * @param[out]  sock0  If pointer exists, dont close socket to backend onsuccess
  *                     and return it here. For keeping notify socket open.
- * @retval      0      OK
+ * @retval      1      OK
+ * @retval      0      EOF
  * @retval     -1      Error
  */
 static int
 clixon_rpc_msg2(clixon_handle h,
                 cbuf         *cbsend,
-                cxobj       **xret0,
-                int          *sock0)
+                int           s,
+                cxobj       **xret0)
 {
     int    retval = -1;
     cbuf  *cbrcv = NULL;
     cxobj *xret = NULL;
-    int    s = -1;
     int    eof = 0;
 
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
-    /* Create socket (or use cache) and connect to it */
-    if (sock0 == NULL){ /* Use socket cache */
-        if ((s = clicon_client_socket_get(h)) < 0){
-            if (clixon_rpc_connect(h, &s) < 0)
-                goto done;
-            clicon_client_socket_set(h, s);
-        }
-    }
-    else if (clixon_rpc_connect(h, &s) < 0) /* Create socket */
+    if (s < 0){
+        clixon_err(OE_NETCONF, EINVAL, "s is < 0");
         goto done;
+    }
     if (clixon_rpc11(s, clicon_sock_str(h), cbsend, &cbrcv, &eof) < 0){
         /* 2. check socket shutdown AFTER rpc */
-        close_socket(h, &s);
         goto done;
     }
-    if (eof){
-        /* 2. check socket shutdown AFTER rpc */
-        close_socket(h, &s);
-#ifdef PROTO_RESTART_RECONNECT
-        if (sock0 == NULL &&
-            !clixon_exit_get()) { /* May be part of termination */
-            if (cbrcv){
-                cbuf_free(cbrcv);
-                cbrcv = NULL;
-            }
-            if (clixon_rpc_connect(h, &s) < 0) /* Create socket */
-                goto done;
-            /* Second time do not encapsulate by not calling the 11 fn */
-            eof = 0;
-            if (clixon_msg_send(s, clicon_sock_str(h), cbsend) < 0 ||
-                clixon_msg_rcv11(s, clicon_sock_str(h), 0, &cbrcv, &eof) < 0){
-                close_socket(h, &s);
-                goto done;
-            }
-            if (eof){
-                close_socket(h, &s);
-                clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-                goto done;
-            }
-            clicon_session_id_del(h);
-            clixon_log(h, LOG_WARNING, "The backend was probably restarted and the client has reconnected to the backend. Any locks or candidate edits are lost.");
-        }
-        else
-#endif
-            {
-                clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
-                goto done;
-            }
-    }
+    if (eof)
+        goto eof;
     if (cbrcv && cbuf_get(cbrcv)){
         /* NONE: Cannot bind yang, need to know RPC name (eg "lock") */
         if (clixon_xml_parse_string(cbuf_get(cbrcv), YB_NONE, NULL, &xret, NULL) < 0)
@@ -191,20 +206,17 @@ clixon_rpc_msg2(clixon_handle h,
         *xret0 = xret;
         xret = NULL;
     }
-    if (sock0){
-        *sock0 = s;
-        s = -1;
-    }
-    retval = 0;
+    retval = 1;
  done:
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (sock0 && s >= 0)
-        close(s);
     if (cbrcv)
         cbuf_free(cbrcv);
     if (xret)
         xml_free(xret);
     return retval;
+ eof:
+    retval = 0;
+    goto done;
 }
 
 /*! Send internal netconf rpc from client to backend
@@ -214,7 +226,7 @@ clixon_rpc_msg2(clixon_handle h,
  * @param[out]   xret0  Return value from backend as xml tree. Free w xml_free
  * @retval       0      OK
  * @retval      -1      Error
- * @note side-effect, a socket created here is cached
+ * @note side-effect, a socket created here is cached in clicon_client_socket
  * @see clicon_rpc_msg_persistent
  */
 int
@@ -222,7 +234,86 @@ clicon_rpc_msg(clixon_handle h,
                cbuf         *cbsend,
                cxobj       **xret0)
 {
-    return clixon_rpc_msg2(h, cbsend, xret0, NULL);
+    int      retval = -1;
+    int      s = -1;
+    cbuf    *cb = NULL;
+    cbuf    *cbrcv = NULL;
+    cxobj   *xret = NULL;
+    uint32_t id;
+    int      cached = 1;
+    int      ret;
+
+    if ((s = clicon_client_socket_get(h)) < 0){
+        cached = 0;
+        if (clixon_rpc_connect(h, &s) < 0)
+            goto done;
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        if (create_hello(h, cb, NULL, NULL) < 0)
+            goto done;
+        if ((ret = clixon_rpc_msg2(h, cb, s, &xret)) < 0){
+            close(s); s = -1;
+            goto done;
+        }
+        if (ret == 0){
+            clixon_err(OE_PROTO, ESHUTDOWN, "NETCONF Hello to backend failed with EOF.");
+            close(s); s = -1;
+            goto done;
+        }
+        if (parse_hello(h, xret, &id) < 0)
+            goto done;
+    }
+    if ((ret = clixon_rpc_msg2(h, cbsend, s, xret0)) < 0){
+        close(s); s = -1;
+        goto done;
+    }
+    if (ret == 0){
+        close(s); s = -1;
+#ifdef PROTO_RESTART_RECONNECT
+        if (cached && !clixon_exit_get()){ /* try again */
+            int eof = 0;
+
+            if (clixon_rpc_connect(h, &s) < 0) /* Create socket */
+                goto done;
+            /* Second time do not encapsulate by not calling the 11 fn */
+            if (clixon_msg_send(s, clicon_sock_str(h), cbsend) < 0){
+                close(s); s = -1;
+                goto done;
+            }
+            if (clixon_msg_rcv11(s, clicon_sock_str(h), 0, &cbrcv, &eof) < 0){
+                close(s); s = -1;
+                goto done;
+            }
+            if (eof == 1){
+                clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+                close(s); s = -1;
+                goto done;
+            }
+            if (cbrcv && cbuf_get(cbrcv)){
+                /* NONE: Cannot bind yang, need to know RPC name (eg "lock") */
+                if (clixon_xml_parse_string(cbuf_get(cbrcv), YB_NONE, NULL, xret0, NULL) < 0)
+                    goto done;
+            }
+        }
+        else
+#endif
+            {
+                clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+                goto done;
+            }
+    }
+    retval = 0;
+ done:
+    clicon_client_socket_set(h, s);
+    if (xret)
+        xml_free(xret);
+    if (cb)
+        cbuf_free(cb);
+    if (cbrcv)
+        cbuf_free(cbrcv);
+    return retval;
 }
 
 /*! Send netconf rpc from client to backend and return a persistent socket
@@ -242,11 +333,55 @@ clicon_rpc_msg_persistent(clixon_handle h,
                           cxobj       **xret0,
                           int          *sock0)
 {
-    if (sock0 == NULL){ // XXX: use this as persistent
+    int      retval = -1;
+    int      s = -1;
+    cbuf    *cb = NULL;
+    cxobj   *xret = NULL;
+    uint32_t id;
+    int      ret;
+
+    if (sock0 == NULL){
         clixon_err(OE_NETCONF, EINVAL, "Missing socket pointer");
-        return -1;
+        goto done;
     }
-    return clixon_rpc_msg2(h, cbsend, xret0, sock0);
+    if (clixon_rpc_connect(h, &s) < 0) /* Create socket */
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    if (create_hello(h, cb, NULL, NULL) < 0)
+        goto done;
+    if ((ret = clixon_rpc_msg2(h, cb, s, &xret)) < 0 ||
+        ret == 0){
+        close(s);
+        goto done;
+    }
+    if (ret == 0){
+        clixon_err(OE_PROTO, ESHUTDOWN, "NETCONF Hello to backend failed with EOF.");
+        close(s);
+        goto done;
+    }
+    if (parse_hello(h, xret, &id) < 0)
+        goto done;
+    if ((ret = clixon_rpc_msg2(h, cbsend, s, xret0)) < 0){
+        close(s);
+        goto done;
+    }
+    if (ret == 0){
+        clixon_err(OE_PROTO, ESHUTDOWN, "Unexpected close of CLICON_SOCK. Clixon backend daemon may have crashed.");
+        close(s);
+        goto done;
+    }
+    if (sock0)
+        *sock0 = s;
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
 }
 
 /*! Check if there is a valid (cached) session-id. If not, send a hello request to backend
@@ -268,7 +403,8 @@ session_id_check(clixon_handle h,
     int      retval = -1;
     uint32_t id;
 
-    if (clicon_session_id_get(h, &id) < 0){ /* Not set yet */
+    /* Check if main session exist, or force new */
+    if (clicon_session_id_get(h, &id) < 0){
         if (clicon_hello_req(h, NULL, NULL, &id) < 0)
             goto done;
         clicon_session_id_set(h, id);
@@ -308,6 +444,9 @@ clicon_rpc_netconf(clixon_handle h,
     uint32_t session_id;
     cbuf    *cbsend = NULL;
 
+#if 1
+    if (sp == NULL)
+#endif
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cbsend = cbuf_new()) == NULL){
@@ -1674,6 +1813,7 @@ clicon_rpc_restconf_debug(clixon_handle h,
     return retval;
 }
 
+
 /*! Send a hello request to the backend server on INTERNAL netconf connection
  *
  * @param[in]  h           Clixon handle
@@ -1697,62 +1837,18 @@ clicon_hello_req(clixon_handle h,
 {
     int    retval = -1;
     cxobj *xret = NULL;
-    cxobj *xerr;
-    cxobj *x;
-    char  *username;
-    char  *b;
     cbuf  *cb = NULL;
-    int    clixon_lib = 0;
-    char  *ns = NULL;
-    char  *prefix = NULL;
-    int    ret;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "<hello xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
-        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
-        clixon_lib++;
-    }
-    /* RFC 6022 session parameters transport and source-host */
-    clicon_data_get(h, "session-namespace", &ns);
-    clicon_data_get(h, "session-namespace-prefix", &prefix);
-    if (transport == NULL)
-        clicon_data_get(h, "session-transport", &transport);
-    if (transport){
-        cprintf(cb, " %s:transport=\"%s\"", CLIXON_LIB_PREFIX, transport);
-        clixon_lib++;
-    }
-    if (source_host == NULL)
-        clicon_data_get(h, "session-source-host", &source_host);
-    if (source_host){
-        cprintf(cb, " %s:source-host=\"%s\"", CLIXON_LIB_PREFIX, source_host);
-        clixon_lib++;
-    }
-    if (clixon_lib)
-        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    cprintf(cb, ">");
-    cprintf(cb, "<capabilities><capability>%s</capability></capabilities>",
-            NETCONF_BASE_CAPABILITY_1_1);
-    cprintf(cb, "</hello>");
-
-    if (clicon_rpc_msg(h, cb, &xret) < 0)
+    if (create_hello(h, cb, transport, source_host) < 0)
         goto done;
-    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Hello");
+    if (clicon_rpc_msg(h, cb, &xret) < 0) // In turn sends on main socket
         goto done;
-    }
-    if ((x = xpath_first(xret, NULL, "hello/session-id")) == NULL){
-        clixon_err(OE_XML, 0, "hello session-id");
+    if (parse_hello(h, xret, id) < 0)
         goto done;
-    }
-    b = xml_body(x);
-    if ((ret = parse_uint32(b, id, NULL)) <= 0){
-        clixon_err(OE_XML, errno, "parse_uint32");
-        goto done;
-    }
     retval = 0;
  done:
     if (cb)

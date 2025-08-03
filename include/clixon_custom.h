@@ -109,10 +109,13 @@
  */
 #undef LIST_PAGINATION_REMAINING
 
-/*! If backend is restarted, cli and netconf client will retry (once) and reconnect
+/*! If backend is restarted, clients will retry (once) and reconnect
  *
+ * But only if the socket is cached, ie was created in the prior message,
+ * (which also includes notification subscriptions)
+ * This applies to all clients: cli, netconf, restconf, snmp
  * Note, if client has locked or had edits in progress, these will be lost
- * A warning will be printed
+ * A warning will be logged
  * If not set, client will exit
  */
 #define PROTO_RESTART_RECONNECT

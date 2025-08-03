@@ -945,7 +945,7 @@ main(int    argc,
     clicon_session_id_set(h, id);
 
     /* Send hello to northbound client
-     * Note that this is a violation of RDFC 6241 Sec 8.1:
+     * Note that this is a violation of RFC 6241 Sec 8.1:
      * When the NETCONF session is opened, each peer(both client and server) MUST send a <hello..
      */
     if (!quiet){

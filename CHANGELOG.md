@@ -18,6 +18,10 @@
 ## 7.6.0
 Expected: October 2025
 
+### Features
+
+* All internal session clients start with NETCONF hello
+
 ### C/CLI-API changes on existing features
 
 * Refactor rpc_msg API:

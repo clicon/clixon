@@ -66,7 +66,7 @@
 #define CLIXON_DBG_XML		0x00000008	/* XML processing */
 #define CLIXON_DBG_XPATH	0x00000010	/* XPath processing */
 #define CLIXON_DBG_YANG		0x00000020	/* YANG processing */
-#define CLIXON_DBG_BACKEND	0x00000040	/* Backend-specific */
+#define CLIXON_DBG_BACKEND	0x00000040	/* Backend-specific, sessions */
 #define CLIXON_DBG_CLI	        0x00000080	/* CLI frontend */
 #define CLIXON_DBG_NETCONF      0x00000100	/* NETCONF frontend/client */
 #define CLIXON_DBG_RESTCONF     0x00000200	/* RESTCONF frontend */
