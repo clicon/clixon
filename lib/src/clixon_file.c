@@ -79,6 +79,60 @@ clicon_file_dirent_sort(const void* arg1,
     return strcoll(d1->d_name, d2->d_name);
 }
 
+/*! Determine file type via readdir d_type with lstat as fallback
+ *
+ * If DT_UNKNOWN then fallback to check filetype via lstat and adjust to lstat
+ * Only relying on lstat has performance penalties
+ * If DT_REG, check if regular file otherwise adjust do unknown
+ * Also return lstat status if regular file
+ * @param[in]  dent   Directory structure according to readdir(3)
+ * @param[in]  path   File path
+ * @param[out] d_type Adjusted d_type from dent using lstat if unknown
+ * @param[out] st     lstat if d_type is DT_UNKNOWN->DT_REG
+ * @param[out] stset  lstat called
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+static int
+clixon_filetype(struct dirent *dent,
+                const char    *path,
+                unsigned char *d_type,
+                struct stat   *st,
+                int           *stset)
+{
+    int           retval = -1;
+    unsigned char d;
+
+    if (st == NULL){
+        clixon_err(OE_UNIX, EINVAL, "st == NULL");
+        goto done;
+    }
+    d = dent->d_type;
+    switch (d){
+    case DT_UNKNOWN:
+        if (lstat(path, st) < 0){
+            clixon_err(OE_UNIX, errno, "lstat");
+            goto done;
+        }
+        (*stset)++;
+        if ((st->st_mode & S_IFDIR) != 0)
+            d = DT_DIR;
+        else if ((st->st_mode & S_IFREG) != 0)
+            d = DT_REG;
+        break;
+    case DT_REG:
+    case DT_DIR:
+    default:
+        *stset = 0;
+        break;
+    }
+    if (d_type)
+        *d_type = d;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! List files recursive
  *
  * @param[in,out] cvv  On the format: (name, path)*
@@ -92,7 +146,9 @@ clicon_files_recursive1(const char *dir,
     struct dirent *dent = NULL;
     char           path[MAXPATHLEN];
     DIR           *dirp = NULL;
-    struct stat    st = {0,};
+    struct stat    st;
+    unsigned char  d_type;
+    int            stset;
 
     if (dir == NULL){
         clixon_err(OE_UNIX, EINVAL, "Requires dir != NULL");
@@ -100,24 +156,30 @@ clicon_files_recursive1(const char *dir,
     }
     if ((dirp = opendir(dir)) != NULL)
         while ((dent = readdir(dirp)) != NULL) {
-            /* Skip entries for the current directory (.) or parent (..) */
-            if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
-                continue;
             snprintf(path, MAXPATHLEN-1, "%s/%s", dir, dent->d_name);
-            if (lstat(path, &st) < 0){
-                clixon_err(OE_UNIX, errno, "lstat");
+            if (clixon_filetype(dent, path, &d_type, &st, &stset) < 0) /* Adjust d_type */
                 goto done;
-            }
-            if ((st.st_mode & S_IFDIR) != 0) {
-                /* Enter the new directory. */
+            if (d_type == DT_DIR) {
+                /* If we find a directory we might want to enter it, unless it
+                   is the current directory (.) or parent (..) */
+                if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0)
+                    continue;
                 if (clicon_files_recursive1(path, re, cvv) < 0)
                     goto done;
             }
-            else if ((st.st_mode & S_IFREG) != 0) {
+            else if (d_type == DT_REG) {
                 /* If we encounter a file, match it against the regexp and
-                   add it to the list of found files.*/
+                 * add it to the list of found files.
+                 * Note important before lstat for perf reasons
+                 */
                 if (re != NULL &&
                     regexec(re, dent->d_name, (size_t)0, NULL, 0) != 0)
+                    continue;
+                if (stset == 0 && lstat(path, &st) < 0){
+                    clixon_err(OE_UNIX, errno, "lstat");
+                    goto done;
+                }
+                if ((st.st_mode & S_IFREG) == 0)
                     continue;
                 if (cvec_add_string(cvv, dent->d_name, path) < 0){
                     clixon_err(OE_UNIX, errno, "cvec_add_string");
@@ -161,10 +223,10 @@ clicon_files_recursive(const char *dir,
 
 /*! Return alphabetically sorted files from a directory matching regexp
  *
- * @param[in]  dir     Directory path 
+ * @param[in]  dir     Directory path
  * @param[out] ent     Entries pointer, will be filled in with dir entries. Free after use
- * @param[in]  regexp  Regexp filename matching 
- * @param[in]  type    File type matching, see stat(2) 
+ * @param[in]  regexp  Regexp filename matching
+ * @param[in]  type    File type matching, see stat(2)
  * @retval  n  Number of matching files in directory
  * @retval -1  Error
  *
@@ -174,13 +236,13 @@ clicon_files_recursive(const char *dir,
  *   int            ndp;
  *   if ((ndp = clicon_file_dirent(dir, &dp, "\\.so$", S_IFREG)) < 0)
  *       return -1;
- *   for (i = 0; i < ndp; i++) 
+ *   for (i = 0; i < ndp; i++)
  *       do something with dp[i].d_name;
  *   free(dp);
  * @endcode
  * @note "ent" is an array with n fixed entries
  *       But this is not what is returned from the syscall, see man readdir:
- *       ... the  use sizeof(struct dirent) to capture the size of the record including 
+ *       ... the  use sizeof(struct dirent) to capture the size of the record including
  *       the size of d_name is also incorrect.
  * @note May block on file I/O
 */
@@ -241,8 +303,8 @@ clicon_file_dirent(const char     *dir,
            goto quit;
        } /* realloc */
        clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "memcpy(%p %p %u", &new[nent], dent, direntStructSize);
-       /* man (3) readdir: 
-        * By implication, the  use sizeof(struct dirent) to capture the size of the record including 
+       /* man (3) readdir:
+        * By implication, the  use sizeof(struct dirent) to capture the size of the record including
         * the size of d_name is also incorrect. */
        memset(&new[nent], 0, sizeof(struct dirent));
        memcpy(&new[nent], dent, direntStructSize);
@@ -326,25 +388,26 @@ clicon_dir_copy(char *srcdir,
     DIR           *dirp = NULL;
     char           srcfile[MAXPATHLEN];
     char           dstfile[MAXPATHLEN];
-    struct stat    st = {0,};
+    struct stat    st;
+    int            stset;
+    unsigned char  d_type;
 
     if (srcdir == NULL || dstdir == NULL){
         clixon_err(OE_UNIX, EINVAL, "Requires src and dst dir != NULL");
         goto done;
     }
-    if ((dirp = opendir(srcdir)) != NULL)
+    if ((dirp = opendir(srcdir)) != NULL){
         while ((dent = readdir(dirp)) != NULL) {
             snprintf(srcfile, MAXPATHLEN-1, "%s/%s", srcdir, dent->d_name);
-            if (lstat(srcfile, &st) < 0){
-                clixon_err(OE_UNIX, errno, "lstat");
+            if (clixon_filetype(dent, srcfile, &d_type, &st, &stset) < 0) /* Adjust d_type */
                 goto done;
-            }
-            if ((st.st_mode & S_IFREG) == 0)
+            if (d_type != DT_REG)
                 continue;
             snprintf(dstfile, MAXPATHLEN-1, "%s/%s", dstdir, dent->d_name);
             if (clicon_file_copy(srcfile, dstfile) < 0)
                 goto done;
         }
+    }
     retval = 0;
  done:
     if (dirp)
