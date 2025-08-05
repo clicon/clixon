@@ -1787,6 +1787,11 @@ netconf_module_features(clixon_handle h)
     if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>",
                                 YB_PARENT, NULL, &xc, NULL) < 0)
         goto done;
+    /* draft-ietf-netconf-privcand.txt */
+    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
+        if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf-private-candidate:private-candidate</CLICON_FEATURE>",
+                                    YB_PARENT, NULL, &xc, NULL) < 0)
+        goto done;
     retval = 0;
  done:
     return retval;
@@ -1847,6 +1852,10 @@ netconf_module_load(clixon_handle h)
     /* RFC6022 YANG Module for NETCONF Monitoring */
     if (yang_spec_parse_module(h, "ietf-netconf-monitoring", NULL, yspec)< 0)
         goto done;
+    /* draft-ietf-netconf-privcand.txt */
+    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
+        if (yang_spec_parse_module(h, "ietf-netconf-private-candidate", NULL, yspec)< 0)
+            goto done;
     /* Framing: If hello protocol skipped, set framing direct, ie fix chunked framing if NETCONF-1.1
      * But start with default: RFC 4741 EOM ]]>]]>
      * For now this only applies to external protocol

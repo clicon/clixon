@@ -45,6 +45,7 @@ YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 YANGSPECS += ietf-inet-types@2021-02-22.yang
 YANGSPECS += ietf-netconf@2011-06-01.yang
 YANGSPECS += ietf-netconf-acm@2018-02-14.yang
+YANGSPECS += ietf-netconf-private-candidate@2024-09-12.yang
 YANGSPECS += ietf-restconf@2017-01-26.yang
 YANGSPECS += ietf-restconf-monitoring@2017-01-26.yang
 YANGSPECS += ietf-yang-library@2019-01-04.yang
@@ -89,6 +90,4 @@ install-include:
 
 depend:
 
-
 #include .depend
-

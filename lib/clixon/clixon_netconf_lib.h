@@ -76,6 +76,10 @@
  */
 #define NETCONF_MONITORING_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"
 
+/*! draft-ietf-netconf-privcand  NETCONF and RESTCONF Private Candidate Datastores
+ */
+#define NETCONF_PRIVCAND_NAMESPACE "urn:ietf:params:xml:ns:netconf:private-candidate:1.0"
+
 /* Default STREAM namespace (see rfc5277 3.1)
  * From RFC8040:
  *  The structure of the event data is based on the <notification>
