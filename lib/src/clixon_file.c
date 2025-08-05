@@ -89,7 +89,7 @@ clicon_file_dirent_sort(const void* arg1,
  * @param[in]  path   File path
  * @param[out] d_type Adjusted d_type from dent using lstat if unknown
  * @param[out] st     lstat if d_type is DT_UNKNOWN->DT_REG
- * @param[out] stset  lstat called
+ * @param[out] stset  lstat called (to avoid double lstat calls)
  * @retval     0      OK
  * @retval    -1      Error
  */
@@ -103,11 +103,12 @@ clixon_filetype(struct dirent *dent,
     int           retval = -1;
     unsigned char d;
 
-    if (st == NULL){
+    if (st == NULL || stset == NULL){
         clixon_err(OE_UNIX, EINVAL, "st == NULL");
         goto done;
     }
     d = dent->d_type;
+    *stset = 0;
     switch (d){
     case DT_UNKNOWN:
         if (lstat(path, st) < 0){
