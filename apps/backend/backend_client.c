@@ -72,7 +72,7 @@
 #include "backend_get.h"
 #include "backend_client.h"
 
-/*! Find client by session-id 
+/*! Find client by session-id
  *
  * @param[in] ce_list   List of clients
  * @param[in] id        Session id
@@ -1397,6 +1397,33 @@ from_client_get_schema(clixon_handle h,
     return retval;
 }
 
+/*! Updates the private candidate from the running configuration.
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register()
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see draft-ietf-netconf-privcand
+ */
+static int
+from_client_update(clixon_handle h,
+                   cxobj        *xe,
+                   cbuf         *cbret,
+                   void         *arg,
+                   void         *regarg)
+{
+    int         retval = -1;
+
+    clixon_debug(CLIXON_DBG_BACKEND, "");
+    retval = 0;
+    // NYI
+    // done:
+    return retval;
+}
+
 /*! Set debug level.
  *
  * @param[in]  h       Clixon handle
@@ -2100,6 +2127,11 @@ backend_rpc_init(clixon_handle h)
     /* RFC 6022 */
     if (rpc_callback_register(h, from_client_get_schema, NULL,
                       NETCONF_MONITORING_NAMESPACE, "get-schema") < 0)
+        goto done;
+    /* draft-ietf-netconf-privcand */
+    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
+        if (rpc_callback_register(h, from_client_update, NULL,
+                                  NETCONF_PRIVCAND_NAMESPACE, "update") < 0)
         goto done;
     /* Clixon RPC */
     if (rpc_callback_register(h, from_client_debug, NULL,
