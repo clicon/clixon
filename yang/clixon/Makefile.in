@@ -42,7 +42,7 @@ datarootdir     = @datarootdir@
 YANG_INSTALLDIR   = @YANG_INSTALLDIR@
 
 # Note: mirror these to test/config.sh.in
-YANGSPECS	 = clixon-config@2025-05-01.yang   # 7.5
+YANGSPECS	 = clixon-config@2025-08-01.yang   # 7.6
 YANGSPECS	+= clixon-lib@2024-11-01.yang      # 7.3
 YANGSPECS	+= clixon-rfc5277@2008-07-01.yang
 YANGSPECS	+= clixon-xml-changelog@2019-03-21.yang
@@ -68,4 +68,3 @@ install-include:
 depend:
 
 #include .depend
-

@@ -22,7 +22,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE> 
+  <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
@@ -45,7 +45,7 @@ module clixon-example{
    yang-version 1.1;
    namespace "urn:example:clixon";
    prefix ex;
-   import ietf-interfaces { 
+   import ietf-interfaces {
         prefix if;
    }
    /* Example interface type for tests, local callbacks, etc */
@@ -85,7 +85,7 @@ expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 ## Build test data
 
 new "Build test data: netconf get-config empty candidate"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>" 
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
 
 new "Build test data: netconf get-config single quotes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
@@ -161,7 +161,7 @@ proc rpc {session command reply} {
 
 # Verify test data
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
-rpc $session_2 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo" 
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
 
 # 4.7.3.3.  Revert-on-conflict
 # Session 1 edits the configuration
@@ -174,7 +174,7 @@ rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xm
 #rpc $session_1 "<update><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
 # TODO Verify private candidates
 #rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
-rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris" 
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris"
 
 close $session_1
 close $session_2
