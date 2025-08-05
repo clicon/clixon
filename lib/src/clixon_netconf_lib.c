@@ -2235,6 +2235,7 @@ netconf_framing_preamble(netconf_framing_type framing,
 {
     int   retval = -1;
     char *body = NULL;
+    char *t;
 
     switch (framing){
     case NETCONF_SSH_EOM:
@@ -2244,8 +2245,8 @@ netconf_framing_preamble(netconf_framing_type framing,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
-        if (cbuf_len(cb) > 3){
-            char *t = cbuf_get(cb)+cbuf_len(cb)-4;
+        if (cbuf_len(cb) >= strlen("\n##\n")){
+            t = cbuf_get(cb)+cbuf_len(cb)-strlen("\n##\n");
             if (strcmp(t, "\n##\n") == 0){
                 clixon_err(OE_NETCONF, 0, "Already encapsulated");
                 goto done;
@@ -2274,13 +2275,13 @@ int
 netconf_framing_postamble(netconf_framing_type framing,
                           cbuf                *cb)
 {
-    int retval = -1;
+    int   retval = -1;
+    char *t;
 
     switch (framing){
     case NETCONF_SSH_EOM:
-        char *t;
-        if (cbuf_len(cb)>=6){
-            t = cbuf_get(cb)+cbuf_len(cb)-6;
+        if (cbuf_len(cb) >= strlen("]]>]]>")){
+            t = cbuf_get(cb)+cbuf_len(cb)-strlen("]]>]]>");
             if (strcmp(t, "]]>]]>") == 0){
                 clixon_err(OE_NETCONF, 0, "Already encapsulated");
                 goto done;
