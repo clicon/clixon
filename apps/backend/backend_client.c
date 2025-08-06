@@ -2175,9 +2175,8 @@ backend_rpc_init(clixon_handle h)
                       NETCONF_MONITORING_NAMESPACE, "get-schema") < 0)
         goto done;
     /* draft-ietf-netconf-privcand */
-    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
-        if (rpc_callback_register(h, from_client_update, NULL,
-                                  NETCONF_PRIVCAND_NAMESPACE, "update") < 0)
+    if (rpc_callback_register(h, from_client_update, NULL,
+                              NETCONF_PRIVCAND_NAMESPACE, "update") < 0)
         goto done;
     /* Clixon RPC */
     if (rpc_callback_register(h, from_client_debug, NULL,

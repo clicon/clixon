@@ -18,6 +18,7 @@ cat <<EOF > $cfg
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-netconf-private-candidate:private-candidate</CLICON_FEATURE>
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
@@ -55,7 +56,7 @@ module clixon-example{
 }
 EOF
 
-new "test params: -f $cfg -- -s"
+new "test params: -f $cfg"
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
@@ -64,8 +65,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend  -s init -f $cfg -- -s"
-    start_backend -s init -f $cfg -- -s
+    new "start backend  -s init -f $cfg"
+    start_backend -s init -f $cfg
 fi
 
 new "wait backend"
