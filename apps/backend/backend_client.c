@@ -1407,6 +1407,7 @@ from_client_get_schema(clixon_handle h,
  * @retval     0       OK
  * @retval    -1       Error
  * @see draft-ietf-netconf-privcand
+ * XXX Preliminary: Always returns OK
  */
 static int
 from_client_update(clixon_handle h,
@@ -1415,12 +1416,57 @@ from_client_update(clixon_handle h,
                    void         *arg,
                    void         *regarg)
 {
-    int         retval = -1;
+    int                      retval = -1;
+    yang_stmt               *yspec;
+    enum privcand_resolution resolution = PR_REVERT;
+    cxobj                   *xres;
+    int                      conflict = 0;
+    cxobj                   *xorig = NULL;
+    cxobj                   *xcand = NULL;
+    cxobj                   *xrun = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec9");
+        goto done;
+    }
+    if ((xres = xml_find(xe, "resolution")) != NULL){
+        if ((resolution = privcand_res_str2key(xml_body(xres))) < 0){
+            if (netconf_invalid_value(cbret, "protocol", "Unrecognized resolution value") < 0)
+                goto done;
+            goto ok;
+        }
+    }
+    switch (resolution){
+    case PR_REVERT:
+        break;
+    case PR_PREFCAND:
+    case PR_PREFRUN:
+        if (netconf_operation_not_supported(cbret, "application", "Resolution mode not supported") < 0)
+            goto done;
+        goto ok;
+        break;
+    default:
+        break;
+    }
+    if (xmldb_get_cache(h, "candidate", YB_NONE, &xorig, NULL, NULL) < 0) // XXX orig
+        goto done;
+    if (xmldb_get_cache(h, "candidate", YB_NONE, &xcand, NULL, NULL) < 0)
+        goto done;
+    if (xmldb_get_cache(h, "running", YB_NONE, &xrun, NULL, NULL) < 0)
+        goto done;
+    if (xml_rebase_check(h, xorig, xcand, xrun, &conflict) < 0)
+        goto done;
+    if (conflict == 0)
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
+    else{
+        if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
+            goto done;
+        goto ok;
+    }
+ ok:
     retval = 0;
-    // NYI
-    // done:
+ done:
     return retval;
 }
 

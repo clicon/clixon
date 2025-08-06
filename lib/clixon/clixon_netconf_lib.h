@@ -151,6 +151,17 @@ enum withdefaults_type{
 };
 typedef enum withdefaults_type withdefaults_type;
 
+/*! Privcand keywords from ietf-netconf-private-candidate.yang update RPC
+ *
+ * @see pcmap for string/symbol mapping
+ */
+enum privcand_resolution{
+    PR_REVERT,
+    PR_PREFCAND,
+    PR_PREFRUN
+};
+typedef enum privcand_resolution privcand_resolution;
+
 /*
  * Macros
  */
@@ -159,6 +170,7 @@ typedef enum withdefaults_type withdefaults_type;
  */
 char *withdefaults_int2str(int keyword);
 int withdefaults_str2int(const char *str);
+int privcand_res_str2key(const char *str);
 int netconf_in_use(cbuf *cb, const char *type, const char *message);
 int netconf_invalid_value(cbuf *cb, const char *type, const char *message);
 int netconf_invalid_value_xml(cxobj **xret, const char *type, const char *message);
