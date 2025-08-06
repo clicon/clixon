@@ -110,6 +110,26 @@ withdefaults_str2int(const char *str)
     return clicon_str2int(wdmap, str);
 }
 
+/*! Mapping between privcand resolution string <--> constants
+ */
+static const map_str2int prmap[] = {
+    {"revert-on-conflict", PR_REVERT},
+    {"prefer-candidate",   PR_PREFCAND},
+    {"prefer-candidate",   PR_PREFRUN},
+    {NULL,                -1}
+};
+
+/*! Map from private-candidate update resolution mode strings to ints
+ *
+ * @param[in] int  Integer representation of privcand resolution
+ * @retval    str  String representation of privcand resolution
+ */
+int
+privcand_res_str2key(const char *str)
+{
+    return clicon_str2int(prmap, str);
+}
+
 /*! Create Netconf in-use error XML tree according to RFC 6241 Appendix A
  *
  * The request requires a resource that already is in use.
