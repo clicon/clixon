@@ -1807,11 +1807,6 @@ netconf_module_features(clixon_handle h)
     if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>",
                                 YB_PARENT, NULL, &xc, NULL) < 0)
         goto done;
-    /* draft-ietf-netconf-privcand.txt */
-    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
-        if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf-private-candidate:private-candidate</CLICON_FEATURE>",
-                                    YB_PARENT, NULL, &xc, NULL) < 0)
-        goto done;
     retval = 0;
  done:
     return retval;
@@ -1873,9 +1868,8 @@ netconf_module_load(clixon_handle h)
     if (yang_spec_parse_module(h, "ietf-netconf-monitoring", NULL, yspec)< 0)
         goto done;
     /* draft-ietf-netconf-privcand.txt */
-    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
-        if (yang_spec_parse_module(h, "ietf-netconf-private-candidate", NULL, yspec)< 0)
-            goto done;
+    if (yang_spec_parse_module(h, "ietf-netconf-private-candidate", NULL, yspec)< 0)
+        goto done;
     /* Framing: If hello protocol skipped, set framing direct, ie fix chunked framing if NETCONF-1.1
      * But start with default: RFC 4741 EOM ]]>]]>
      * For now this only applies to external protocol
@@ -2026,7 +2020,7 @@ netconf_capabilites(clixon_handle h,
      * rfc 6241 Sec 8.4 confirmed-commit capabilities */
     if (if_feature(yspec, "ietf-netconf", "confirmed-commit"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
-    if (clicon_option_bool(h, "CLICON_PRIVATE_CANDIDATE"))
+    if (if_feature(yspec, "ietf-netconf-private-candidate", "private-candidate"))
         cprintf(cb, "<capability>%s%s</capability>", NETCONF_PRIVATE_CANDIDATE_CAPABILITY, "?supported-resolution-modes=revert-on-conflict");
     cprintf(cb, "</capabilities>");
     retval = 0;

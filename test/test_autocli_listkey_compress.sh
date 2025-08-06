@@ -171,7 +171,7 @@ function setconfig()
     compress=$2
     openconfig=$3
 
-        if $compress; then
+    if $compress; then
 COMPRESS=$(cat <<EOF
       <rule>
          <name>compress</name>
