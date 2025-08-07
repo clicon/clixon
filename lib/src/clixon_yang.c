@@ -3674,6 +3674,7 @@ yang_features(clixon_handle h,
                     break;
                 case 0: /* disabled: remove ys */
                     /* Change datanodes YANG to ANYDATA, other nodes are removed
+                     * XXX: Why not remove it altogether? Hint: look at disabled flag
                      */
                     if (yang_datanode(ys) && yang_config_ancestor(ys)){
                         ys->ys_keyword = Y_ANYDATA;
