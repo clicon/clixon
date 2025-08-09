@@ -1,6 +1,56 @@
 #!/usr/bin/env bash
-# Netconf private candidate functionality
-# See NETCONF and RESTCONF Private Candidate Datastores draft-ietf-netconf-privcand-07
+### Netconf private candidate functionality
+### See NETCONF and RESTCONF Private Candidate Datastores draft-ietf-netconf-privcand-07
+
+## Test cases implemented
+# 4.5.1 NETCONF server advertise private candidate capability according to runtime (startup) configuration
+# 4.5.2 NETCONF client does not support private candidate. Verify that connection not possible.
+# 4.7.5 Support revert-on-conflict resolution mode capability.
+# 4.8.1.1 <update> operation by client without conflict: There is a change of any value
+# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry
+# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
+# 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
+# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
+
+## Test cases to be implemented
+# 4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate.
+# 4.5.3 RESTCONF client always operates on private candidate
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is a change of any value
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of any list entry
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a presence container
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of any component member of a leaf-list
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a leaf
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to any YANG metadata associated with the node
+# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node
+# 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
+# 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
+# 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
+# 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
+# 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution
+# 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
+# 4.8.2.1 <commit> implicit update ok
+# 4.8.2.1.1 <confirned/> commit ok/canceled/timeout
+# 4.8.2.2 <get-config> creates private candidate
+# 4.8.2.2 <get-config> operates on private candidate
+# 4.8.2.3 <edit-config> creates private candidate
+# 4.8.2.3 <edit-config> operates on private candidate
+# 4.8.2.4 <copy-config> creates private candidate
+# 4.8.2.4 <copy-config> operates on private candidate
+# 4.8.2.5 <get-data> creates private candidate
+# 4.8.2.5 <get-data> operates on private candidate
+# 4.8.2.6 <edit-data> creates private candidate
+# 4.8.2.6 <edit-data> operates on private candidate
+# 4.8.2.7 <compare> not supported !
+# 4.8.2.8 <lock> operates on private candidate
+# 4.8.2.9 <unlock> operates on private candidate
+# 4.8.2.10 <delete-config> operates on private candidate
+# 4.8.2.11 <discard-changes> operates on private candidate
+# 4.8.2.12 <get> no private candidate
+# 4.8.2.13 <cancel-commit>
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -48,10 +98,28 @@ module clixon-example{
    import ietf-interfaces {
         prefix if;
    }
-   /* Example interface type for tests, local callbacks, etc */
+   /* Example interface type for tests */
    identity eth {
         base if:interface-type;
    }
+   /* container used by update tests */
+   container table{
+        list parameter{
+            key name;
+            leaf name{
+                type string;
+            }
+            leaf value{
+                type string;
+            }
+        }
+    }
+    leaf-list ll {
+        type string;
+    }
+    leaf l {
+        type string;
+    }
 }
 EOF
 
@@ -73,11 +141,13 @@ wait_backend
 
 ## Test client and server capabilities
 
+# 4.5.2 NETCONF client does not support private candidate. Verify that connection not possible.
 new "Client does not support private candidate"
 expecteof "$clixon_netconf -ef $cfg " 255 "$DEFAULTHELLO" ""
 
 PRIVCANDHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:capability:private-candidate:1.0</capability></capabilities></hello>]]>]]>"
 
+# 4.5.1 NETCONF server advertise private candidate capability according to runtime (startup) configuration
 new "Client supports private candidate. Server advertices resolution mode revert-on-conflict capability."
 expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 "<capability>urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>" "^$"
@@ -119,6 +189,7 @@ set CFG [lindex $argv 1]
 set USER [lindex $argv 2]
 
 # Spawn first NETCONF session
+global session_1
 spawn {*}sudo -u $USER clixon_netconf -f $CFG -- -e
 set session_1 $spawn_id
 
@@ -131,6 +202,7 @@ expect {
 }
 
 # Spawn second NETCONF session
+global session_2
 spawn {*}sudo -u $USER clixon_netconf -f $CFG -- -e
 set session_2 $spawn_id
 
@@ -149,13 +221,13 @@ send -i session_2 $msg
 sleep 1
 
 # NETCONF rpc operation
-proc rpc {session command reply} {
-	send -i $session "<rpc message-id=\"42\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">$command</rpc>]]>]]>\r"
+proc rpc {session operation reply} {
+	send -i $session "<rpc message-id=\"42\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">$operation</rpc>]]>]]>\r"
 	expect {
 	    -i $session
 	    -re "$reply.*</rpc-reply>.*]]>]]>" {}
-	    timeout { puts "timeout: $command $reply"; exit 2 }
-	    eof { puts "eof": $command $reply"; exit 3 }
+	    timeout { puts "timeout: $operation $reply"; exit 2 }
+	    eof { puts "eof": $operation $reply"; exit 3 }
 	}
 }
 
@@ -171,10 +243,41 @@ rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces x
 rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>" "ok/"
 
 # TODO A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
-#rpc $session_1 "<update><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
+#rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
 # TODO Verify private candidates
 #rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
-rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris"
+#rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris"
+
+## 4.7.1 No conflicts between sessions
+
+# Conflict est sequence: update session 1, update and commit session 2, update session 1
+proc conflict { content_1 content_2 update_reply} {
+	global session_1
+	global session_2
+	puts "conflict $content_1  $content_2 $update_reply"
+	rpc $session_1 "<discard-changes/>" "<ok/>"
+	rpc $session_2 "<discard-changes/>" "<ok/>"
+	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/"
+	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>" "<ok/>"
+	rpc $session_2 "<commit/>" "<ok/>"
+	rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
+}
+# 4.8.1.1 <update> operation by client without conflict: There is a change of any value
+conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
+
+# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry
+conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
+
+# There is a change to the order of any list items in a list configured as "ordered-by user"
+
+# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
+conflict "<table xmlns=\"urn:example:clixon\" operation=\"delete\"></table>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Gothenburg</description></interface></interfaces>" "ok/"
+
+# 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
+conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Stockholm</description></interface></interfaces>" "ok/"
+
+# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
+conflict "<l xmlns=\"urn:example:clixon\">foo</l>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Visby</description></interface></interfaces>" "ok/"
 
 close $session_1
 close $session_2
