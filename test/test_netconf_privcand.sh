@@ -84,7 +84,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_CLI_OUTPUT_FORMAT>cli</CLICON_CLI_OUTPUT_FORMAT>
 </clixon-config>
@@ -123,7 +123,9 @@ module clixon-example{
 }
 EOF
 
-new "test params: -f $cfg"
+new "test params: -f $cfg -s startup"
+echo "<${DATASTORE_TOP}><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_one</name><description>Link to London</description><type>ex:eth</type></interface><interface xmlns:ex=\"urn:example:clixon\"><name>intf_two</name><description>Link to Tokyo</description><type>ex:eth</type></interface></interfaces></${DATASTORE_TOP}>" > $dir/startup_db
+
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
@@ -132,8 +134,8 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend  -s init -f $cfg"
-    start_backend -s init -f $cfg
+    new "start backend  -s startup -f $cfg"
+    start_backend -s startup -f $cfg
 fi
 
 new "wait backend"
@@ -151,32 +153,6 @@ PRIVCANDHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><ca
 new "Client supports private candidate. Server advertices resolution mode revert-on-conflict capability."
 expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 "<capability>urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>" "^$"
-
-## Build test data
-
-new "Build test data: netconf get-config empty candidate"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
-
-new "Build test data: netconf get-config single quotes"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
-
-new "Build test data: Add interf_one"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"${BASENS}\"><interface nc:operation=\"create\"><name>intf_one</name><description>Link to London</description><type xmlns:ex=\"urn:example:clixon\">ex:eth</type></interface></interfaces></config><default-operation>none</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "Build test data: Add interf_two"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"${BASENS}\"><interface nc:operation=\"create\"><name>intf_two</name><description>Link to Tokyo</description><type xmlns:ex=\"urn:example:clixon\">ex:eth</type></interface></interfaces></config><default-operation>none</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "Build test data: netconf get-config verify candidate"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_one</name><description>Link to London</description><type>ex:eth</type></interface><interface xmlns:ex=\"urn:example:clixon\"><name>intf_two</name><description>Link to Tokyo</description><type>ex:eth</type></interface></interfaces></data></rpc-reply>"
-
-new "Build test data: netconf get-config verify running empty"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data/></rpc-reply>"
-
-new "Build test data: netconf commit"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
-
-new "Build test data: netconf get-config verify running"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_one</name><description>Link to London</description><type>ex:eth</type></interface><interface xmlns:ex=\"urn:example:clixon\"><name>intf_two</name><description>Link to Tokyo</description><type>ex:eth</type></interface></interfaces></data></rpc-reply>"
 
 new "Spawn expect script"
 # -d to debug matching info
