@@ -11,8 +11,9 @@
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
 # 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
+# 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
 
-## Test cases to be implemented
+## TODO Test cases to be implemented
 # 4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate.
 # 4.5.3 RESTCONF client always operates on private candidate
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is a change of any value
@@ -26,7 +27,6 @@
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node
-# 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
 # 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
 # 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
@@ -154,6 +154,19 @@ new "Client supports private candidate. Server advertices resolution mode revert
 expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 "<capability>urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>" "^$"
 
+# 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
+new "Resolution mode parameter revert-on-conflict"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Default resolution mode parameter is revert-on-conflict"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# TODO new "Resolution mode parameter prefer-candidate not supported"
+# expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-candidate</resolution-mode></update></rpc>" "" "</rpc-error></rpc-reply>"
+
+# TODO new "Resolution mode parameter prefer-running not supported"
+# expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "</rpc-error></rpc-reply>"
+
 new "Spawn expect script"
 # -d to debug matching info
 sudo expect - "$clixon_netconf" "$cfg" $(whoami) <<'EOF'
@@ -243,8 +256,6 @@ conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><int
 
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry
 conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
-
-# There is a change to the order of any list items in a list configured as "ordered-by user"
 
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
 conflict "<table xmlns=\"urn:example:clixon\" operation=\"delete\"></table>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Gothenburg</description></interface></interfaces>" "ok/"
