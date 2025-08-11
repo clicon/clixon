@@ -115,7 +115,7 @@ withdefaults_str2int(const char *str)
 static const map_str2int prmap[] = {
     {"revert-on-conflict", PR_REVERT},
     {"prefer-candidate",   PR_PREFCAND},
-    {"prefer-candidate",   PR_PREFRUN},
+    {"prefer-running",     PR_PREFRUN},
     {NULL,                -1}
 };
 

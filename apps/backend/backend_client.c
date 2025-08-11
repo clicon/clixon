@@ -1430,7 +1430,7 @@ from_client_update(clixon_handle h,
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
-    if ((xres = xml_find(xe, "resolution")) != NULL){
+    if ((xres = xml_find(xe, "resolution-mode")) != NULL){
         if ((resolution = privcand_res_str2key(xml_body(xres))) < 0){
             if (netconf_invalid_value(cbret, "protocol", "Unrecognized resolution value") < 0)
                 goto done;
@@ -1462,7 +1462,6 @@ from_client_update(clixon_handle h,
     else{
         if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
             goto done;
-        goto ok;
     }
  ok:
     retval = 0;
