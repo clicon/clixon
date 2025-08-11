@@ -12,6 +12,8 @@
 # 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
 # 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
+# 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
+# 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
 
 ## TODO Test cases to be implemented
 # 4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate.
@@ -27,8 +29,6 @@
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node
-# 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
-# 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution
 # 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
@@ -161,11 +161,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS
 new "Default resolution mode parameter is revert-on-conflict"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-# TODO new "Resolution mode parameter prefer-candidate not supported"
-# expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-candidate</resolution-mode></update></rpc>" "" "</rpc-error></rpc-reply>"
+# 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
+new "Resolution mode parameter prefer-candidate not supported"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-candidate</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
 
-# TODO new "Resolution mode parameter prefer-running not supported"
-# expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "</rpc-error></rpc-reply>"
+# 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
+new "Resolution mode parameter prefer-running not supported"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
 
 new "Spawn expect script"
 # -d to debug matching info
