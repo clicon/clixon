@@ -1417,7 +1417,6 @@ from_client_update(clixon_handle h,
                    void         *regarg)
 {
     int                      retval = -1;
-    struct client_entry     *ce = (struct client_entry *)arg;
     yang_stmt               *yspec;
     enum privcand_resolution resolution = PR_REVERT;
     cxobj                   *xres;
@@ -1425,7 +1424,6 @@ from_client_update(clixon_handle h,
     cxobj                   *xorig = NULL;
     cxobj                   *xcand = NULL;
     cxobj                   *xrun = NULL;
-    cbuf                    *cbce = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1446,7 +1444,7 @@ from_client_update(clixon_handle h,
     case PR_PREFRUN:
         if (netconf_operation_not_supported(cbret, "application", "Resolution mode not supported") < 0)
             goto done;
-        goto reply;
+        goto ok;
         break;
     default:
         break;
@@ -1464,34 +1462,6 @@ from_client_update(clixon_handle h,
     else{
         if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
             goto done;
-    }
-    goto ok;
-reply:
-    if (cbuf_len(cbret) == 0)
-        if (netconf_operation_failed(cbret, "application",
-                                     clixon_err_category()?clixon_err_reason():"unknown")< 0)
-            goto done;
-    // XXX    clixon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));
-    /* XXX problem here is that cbret has not been parsed so may contain
-       parse errors */
-    if (ce_client_descr(ce, &cbce) < 0)
-        goto done;
-    if (send_msg_reply(ce->ce_s, cbuf_get(cbce), cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
-        switch (errno){
-        case EPIPE:
-            /* man (2) write:
-             * EPIPE  fd is connected to a pipe or socket whose reading end is
-             * closed.  When this happens the writing process will also receive
-             * a SIGPIPE signal.
-             * In Clixon this means a client, eg restconf, netconf or cli closes
-             * the (UNIX domain) socket.
-             */
-        case ECONNRESET:
-            clixon_log(h, LOG_WARNING, "client rpc reset");
-            break;
-        default:
-            goto done;
-        }
     }
  ok:
     retval = 0;
