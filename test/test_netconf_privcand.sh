@@ -11,6 +11,9 @@
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
 # 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
+# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
+# (4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node Note. metadata cannot be changed in Clixon.)
 # 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
 # 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
 # 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
@@ -26,9 +29,6 @@
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a leaf
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to any YANG metadata associated with the node
-# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
-# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
-# 4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution
 # 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
@@ -102,8 +102,18 @@ module clixon-example{
    identity eth {
         base if:interface-type;
    }
-   /* container used by update tests */
-   container table{
+    list lu {
+        key k;
+        ordered-by user;
+        leaf k {
+            type string;
+        }
+    }
+    leaf-list llu {
+        type string;
+        ordered-by user;
+    }
+    container table{
         list parameter{
             key name;
             leaf name{
@@ -124,7 +134,26 @@ module clixon-example{
 EOF
 
 new "test params: -f $cfg -s startup"
-echo "<${DATASTORE_TOP}><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_one</name><description>Link to London</description><type>ex:eth</type></interface><interface xmlns:ex=\"urn:example:clixon\"><name>intf_two</name><description>Link to Tokyo</description><type>ex:eth</type></interface></interfaces></${DATASTORE_TOP}>" > $dir/startup_db
+cat <<EOF > $dir/startup_db
+<${DATASTORE_TOP}>
+    <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+        <interface xmlns:ex="urn:example:clixon">
+            <name>intf_one</name>
+            <description>Link to London</description>
+            <type>ex:eth</type>
+        </interface>
+        <interface xmlns:ex="urn:example:clixon">
+            <name>intf_two</name>
+            <description>Link to Tokyo</description>
+            <type>ex:eth</type>
+        </interface>
+    </interfaces>
+    <lu  xmlns="urn:example:clixon"><k>a</k></lu>
+    <lu  xmlns="urn:example:clixon"><k>b</k></lu>
+    <llu  xmlns="urn:example:clixon">a</llu>
+    <llu  xmlns="urn:example:clixon">b</llu>
+</${DATASTORE_TOP}>"
+EOF
 
 # Bring your own backend
 if [ $BE -ne 0 ]; then
@@ -245,7 +274,7 @@ rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xm
 proc conflict { content_1 content_2 update_reply} {
 	global session_1
 	global session_2
-	puts "conflict $content_1  $content_2 $update_reply"
+	#puts "conflict $content_1  $content_2 $update_reply"
 	rpc $session_1 "<discard-changes/>" "<ok/>"
 	rpc $session_2 "<discard-changes/>" "<ok/>"
 	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/"
@@ -267,6 +296,16 @@ conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" "<interfaces xmlns=\"urn:ie
 
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
 conflict "<l xmlns=\"urn:example:clixon\">foo</l>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Visby</description></interface></interfaces>" "ok/"
+
+# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>a</k></lu><lu xmlns=\"urn:example:clixon\"><k>b</k></lu>"
+conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>b</k></lu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
+
+# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">a</llu><llu xmlns=\"urn:example:clixon\">b</llu>"
+conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
 
 close $session_1
 close $session_2
