@@ -14,7 +14,8 @@
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
 # (4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node Note. metadata cannot be changed in Clixon.)
-# 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
+# 4.8.1.1.1 <resolution-mode> parameter> revert-on-conflict accepted
+# 4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional
 # 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
 # 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
 
@@ -172,33 +173,28 @@ wait_backend
 
 ## Test client and server capabilities
 
-# 4.5.2 NETCONF client does not support private candidate. Verify that connection not possible.
-new "Client does not support private candidate"
+new "4.5.2 NETCONF client does not support private candidate. Verify that connection not possible."
 expecteof "$clixon_netconf -ef $cfg " 255 "$DEFAULTHELLO" ""
 
 PRIVCANDHELLO="<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello $DEFAULTONLY><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:base:1.1</capability><capability>urn:ietf:params:netconf:capability:private-candidate:1.0</capability></capabilities></hello>]]>]]>"
 
-# 4.5.1 NETCONF server advertise private candidate capability according to runtime (startup) configuration
-new "Client supports private candidate. Server advertices resolution mode revert-on-conflict capability."
+new "4.5.1 NETCONF server advertise private candidate capability according to runtime (startup) configuration"
 expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 "<capability>urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>" "^$"
 
-# 4.8.1.1.1 <resolution-mode-parameter> revert-on-conflict accepted
-new "Resolution mode parameter revert-on-conflict"
+new "4.8.1.1.1 <resolution-mode> parameter revert-on-conflict accepted"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Default resolution mode parameter is revert-on-conflict"
+new "# 4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-# 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
-new "Resolution mode parameter prefer-candidate not supported"
+new "4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution."
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-candidate</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
 
-# 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
-new "Resolution mode parameter prefer-running not supported"
+new "4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
 
-new "Spawn expect script"
+new "Spawn expect script to simulate two NETCONF sessions"
 # -d to debug matching info
 sudo expect - "$clixon_netconf" "$cfg" $(whoami) <<'EOF'
 # Use of expect to start two NETCONF sessions
@@ -208,25 +204,28 @@ set clixon_netconf [lindex $argv 0]
 set CFG [lindex $argv 1]
 set USER [lindex $argv 2]
 
-# Spawn first NETCONF session
+puts "Spawn first NETCONF session"
 global session_1
 spawn {*}sudo -u $USER clixon_netconf -f $CFG -- -e
 set session_1 $spawn_id
 
-# wait for hello message from server
+puts "Wait for hello message from server"
 expect {
     -i $session_1
     -re "revert-on-conflict.*]]>]]>" {}
     timeout { puts "timeout: No hello from server session 1"; exit 2 }
     eof { puts "1 eof: No hello from server session 1"; exit 3 }
 }
+set hello_msg "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:private-candidate:1.0</capability></capabilities></hello>]]>]]>\r"
+puts "Send hello message"
+send -i session_1 $hello_msg
 
-# Spawn second NETCONF session
+puts "Spawn second NETCONF session"
 global session_2
 spawn {*}sudo -u $USER clixon_netconf -f $CFG -- -e
 set session_2 $spawn_id
 
-# wait for hello message from server
+puts "Wait for hello message from server"
 expect {
     -i $session_2
     -re "revert-on-conflict.*]]>]]>" {}
@@ -234,10 +233,8 @@ expect {
     eof { puts "1 eof: No hello from server session 2"; exit 3 }
 }
 
-# send hello message without framing
-set msg "<?xml version=\"1.0\" encoding=\"UTF-8\"?><hello xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:private-candidate:1.0</capability></capabilities></hello>]]>]]>\r"
-send -i session_1 $msg
-send -i session_2 $msg
+puts "Send hello message"
+send -i session_2 $hello_msg
 sleep 1
 
 # NETCONF rpc operation
@@ -255,7 +252,7 @@ proc rpc {session operation reply} {
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
 
-# 4.7.3.3.  Revert-on-conflict
+puts "4.7.3.3  Revert-on-conflict example"
 # Session 1 edits the configuration
 rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces></config></edit-config>" "ok/"
 
@@ -282,27 +279,27 @@ proc conflict { content_1 content_2 update_reply} {
 	rpc $session_2 "<commit/>" "<ok/>"
 	rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
 }
-# 4.8.1.1 <update> operation by client without conflict: There is a change of any value
+puts "4.8.1.1 <update> operation by client without conflict: There is a change of any value"
 conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
 
-# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry
+puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry"
 conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
 
-# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
+puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container"
 conflict "<table xmlns=\"urn:example:clixon\" operation=\"delete\"></table>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Gothenburg</description></interface></interfaces>" "ok/"
 
-# 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
+puts "4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list"
 conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Stockholm</description></interface></interfaces>" "ok/"
 
-# 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
+puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf"
 conflict "<l xmlns=\"urn:example:clixon\">foo</l>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Visby</description></interface></interfaces>" "ok/"
 
-# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
+puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as ordered-by user"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>a</k></lu><lu xmlns=\"urn:example:clixon\"><k>b</k></lu>"
 conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>b</k></lu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
 
-# 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
+puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">a</llu><llu xmlns=\"urn:example:clixon\">b</llu>"
 conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
