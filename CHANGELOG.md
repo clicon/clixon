@@ -21,6 +21,8 @@ Expected: October 2025
 ### Features
 
 * All internal session clients start with NETCONF hello
+* New `clixon-config@2025-08-01.yang` revision
+   * Added option: `CLICON_XMLDB_CANDIDATE_INMEM` to run candidate datastore in-mem
 
 ### C/CLI-API changes on existing features
 
@@ -2239,7 +2241,7 @@ Developers may need to change their code
 * Simplified the _module-specific_ upgrade API.
   * The new API is documented here: [Module-specific upgrade](https://clixon-docs.readthedocs.io/en/latest/upgrade.html#module-specific-upgrade)
   * The change is not backward compatible. The API has been simplified which means more has to be done by the programmer.
-  * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system. 
+  * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system.
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
   * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
 
