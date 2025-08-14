@@ -246,19 +246,21 @@ check_drop_priv(clixon_handle h,
             goto done;
     if (xmldb_drop_priv(h, "running", newuid, gid) < 0)
         goto done;
-    if (xmldb_exists(h, "candidate") != 1)
-        if (xmldb_create(h, "candidate") < 0)
+    if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if (xmldb_exists(h, "candidate") != 1)
+            if (xmldb_create(h, "candidate") < 0)
+                goto done;
+        if (xmldb_drop_priv(h, "candidate", newuid, gid) < 0)
             goto done;
-    if (xmldb_drop_priv(h, "candidate", newuid, gid) < 0)
-        goto done;
-    if (if_feature(yspec, "ietf-netconf", "startup")) {
+    }
+    if (if_feature(h, "ietf-netconf", "startup")) {
         if (xmldb_exists(h, "startup") != 1)
             if (xmldb_create(h, "startup") < 0)
                 goto done;
         if (xmldb_drop_priv(h, "startup", newuid, gid) < 0)
             goto done;
     }
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+    if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
         if (xmldb_exists(h, "rollback") != 1)
             if (xmldb_create(h, "rollback") < 0)
                 goto done;
@@ -819,7 +821,7 @@ main(int    argc,
         if (clixon_xml_changelog_init(h) < 0)
             goto done;
     /* Init commit confirmed */
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+    if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
         if (confirmed_commit_init(h) < 0)
             goto done;
     }
@@ -834,7 +836,7 @@ main(int    argc,
     }
     /* Check that netconf :startup is enabled */
     if ((startup_mode == SM_STARTUP || startup_mode == SM_RUNNING_STARTUP) &&
-        !if_feature(yspec, "ietf-netconf", "startup")){
+        !if_feature(h, "ietf-netconf", "startup")){
         clixon_log(h, LOG_ERR, "Startup mode selected but Netconf :startup feature is not enabled. Enable with option: <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>");
         goto done;
     }
@@ -858,7 +860,8 @@ main(int    argc,
     else
         if (startup_mode == SM_RUNNING_STARTUP)
             startup_mode = SM_RUNNING;
-    xmldb_delete(h, "candidate");
+    if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate"))
+        xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -879,7 +882,7 @@ main(int    argc,
         break;
     case SM_RUNNING: /* Use running as startup */
         /* Copy original running to tmp as backup (restore if error) */
-        if (xmldb_copy(h, "running", "tmp") < 0)
+        if (xmldb_copy_file(h, "running", "tmp") < 0)
             goto done;
         ret = startup_mode_startup(h, "tmp", cbret);
         /* If ret fails, copy tmp back to running */
@@ -892,7 +895,7 @@ main(int    argc,
         break;
     case SM_STARTUP:
         /* Copy original running to tmp as backup (restore if error) */
-        if (xmldb_copy(h, "running", "tmp") < 0)
+        if (xmldb_copy_file(h, "running", "tmp") < 0)
             goto done;
         /* Load and commit from startup */
         ret = startup_mode_startup(h, "startup", cbret);
@@ -947,12 +950,10 @@ main(int    argc,
         status = STARTUP_OK;
         cbuf_reset(cbret); /* cbret contains error info */
     }
-    /* Initiate the shared candidate. */
-    if (xmldb_copy(h, "running", "candidate") < 0)
-        goto done;
-
-    if (xmldb_modified_set(h, "candidate", 0) <0)
-        goto done;
+    if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if (xmldb_candidate_new(h, "candidate", NULL) == NULL)
+            goto done;
+    }
     /* Set startup status */
     if (clicon_startup_status_set(h, status) < 0)
         goto done;

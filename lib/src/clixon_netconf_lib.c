@@ -1969,7 +1969,6 @@ netconf_capabilites(clixon_handle h,
     int        retval = -1;
     char      *encstr = NULL;
     char      *ietf_yang_library_revision;
-    yang_stmt *yspec = clicon_dbspec_yang(h);
     char      *module_set_id;
 
     module_set_id = clicon_option_str(h, "CLICON_MODULE_SET_ID");
@@ -2001,7 +2000,7 @@ netconf_capabilites(clixon_handle h,
     /* RFC6241 Sec 8.6.  Validate Capability */
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:validate:1.1</capability>");
     /* rfc 6241 Sec 8.7 Distinct Startup Capability */
-    if (if_feature(yspec, "ietf-netconf", "startup"))
+    if (if_feature(h, "ietf-netconf", "startup"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:startup:1.0</capability>");
     /* RFC6241 Sec 8.9.  XPath Capability */
     cprintf(cb, "<capability>urn:ietf:params:netconf:capability:xpath:1.0</capability>");
@@ -2018,9 +2017,9 @@ netconf_capabilites(clixon_handle h,
         cprintf(cb, "<capability>%s</capability>", NETCONF_MONITORING_NAMESPACE);
     /* It is somewhat arbitrary why some features/capabilities are hardocded and why some are not
      * rfc 6241 Sec 8.4 confirmed-commit capabilities */
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit"))
+    if (if_feature(h, "ietf-netconf", "confirmed-commit"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
-    if (if_feature(yspec, "ietf-netconf-private-candidate", "private-candidate"))
+    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate"))
         cprintf(cb, "<capability>%s%s</capability>", NETCONF_PRIVATE_CANDIDATE_CAPABILITY, "?supported-resolution-modes=revert-on-conflict");
     cprintf(cb, "</capabilities>");
     retval = 0;

@@ -21,6 +21,8 @@ Expected: October 2025
 ### Features
 
 * All internal session clients start with NETCONF hello
+* New `clixon-config@2025-08-01.yang` revision
+   * Added option: `CLICON_XMLDB_CANDIDATE_INMEM` to run candidate datastore in-mem
 
 ### C/CLI-API changes on existing features
 
@@ -52,6 +54,17 @@ Expected: October 2025
 * Fixed: Fixed: memory error in rpc_get2 when error handling
 * Fixed: [RESTCONF crashes after sending request that ends with &](https://github.com/clicon/clixon/issues/618)
 * Fixed: Do not use d_type from readdir()
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Modified and re-factor datastore API
+  * Any direct access to db-elemnt/de must use API instead
+  * `clicon_db_elmnt_get()` -> `xmldb_find()`
+  * `clicon_db_elmnt_set()` is replaced by `xmldb_new()` but needs some rewrite
+  * `xmldb_get_cache(h, db, yb, xp, md, xe)` -> `xmldb_get_cache(h, db, xp, xe)`
+>>>>>>> 08539362 (Modified and re-factor datastore API)
 
 ## 7.5.0
 29 July 2025
@@ -2240,7 +2253,7 @@ Developers may need to change their code
 * Simplified the _module-specific_ upgrade API.
   * The new API is documented here: [Module-specific upgrade](https://clixon-docs.readthedocs.io/en/latest/upgrade.html#module-specific-upgrade)
   * The change is not backward compatible. The API has been simplified which means more has to be done by the programmer.
-  * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system. 
+  * In summary, a user registers an upgrade callback per module. The callback is called at startup if the module is added, has been removed or if the revision on file is different from the one in the system.
   * The register function has removed `from` and `rev` parameters: `upgrade_callback_register(h, cb, namespace, arg)`
   * The callback function has a new `op` parameter with possible values: `XML_FLAG_ADD`, `XML_FLAG_CHANGE` or `XML_FLAG_CHANGE`: `clicon_upgrade_cb(h, xn, ns, op, from, to, arg, cbret)`
 

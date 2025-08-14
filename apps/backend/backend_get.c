@@ -968,6 +968,10 @@ get_common(clixon_handle        h,
     char             *wdefstr;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
+    if (db == NULL){
+        clixon_err(OE_DB, EINVAL, "db is NULL");
+        goto done;
+    }
     wdef = WITHDEFAULTS_EXPLICIT;
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1206,15 +1210,30 @@ from_client_get_config(clixon_handle h,
                        void         *regarg)
 {
     int                  retval = -1;
-    char                *db;
+    char                *db0;
+    char                *db = NULL;;
     struct client_entry *ce = (struct client_entry *)arg;
+    db_elmnt            *de;
 
-    if ((db = netconf_db_find(xe, "source")) == NULL){
+    if ((db0 = netconf_db_find(xe, "source")) == NULL){
         clixon_err(OE_XML, 0, "db not found");
+        goto done;
+    }
+    if (strcmp(db0, "candidate") == 0){
+        if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+            clixon_err(OE_XML, 0, "datastore not found");
+            goto done;
+        }
+        db0 = xmldb_name_get(de);
+    }
+    if ((db = strdup(db0)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     retval = get_common(h, ce, xe, CONTENT_CONFIG, db, cbret);
  done:
+    if (db)
+        free(db);
     return retval;
 }
 

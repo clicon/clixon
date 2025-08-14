@@ -44,12 +44,13 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <assert.h>
 #include <syslog.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/param.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -76,6 +77,7 @@
 #include "clixon_path.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
+#include "clixon_plugin.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_default.h"
@@ -293,10 +295,10 @@ xml_copy_from_bottom(cxobj  *x0t,
  *    4a) If there is no such module in the file -> add to list mark as ADD
  */
 static int
-text_read_modstate(clixon_handle       h,
-                   yang_stmt          *yspec,
-                   cxobj              *xt,
-                   modstate_diff_t    *msdiff)
+text_read_modstate(clixon_handle     h,
+                   yang_stmt        *yspec,
+                   cxobj            *xt,
+                   modstate_diff_t  *msdiff)
 {
     int    retval = -1;
     cxobj *xmodfile = NULL;   /* modstate of system (loaded yang modules in runtime) */
@@ -541,15 +543,15 @@ xmldb_multi_read_applyfn(cxobj *x,
  * @note retval 0 is NYI because calling functions cannot handle it yet
  * XXX if this code pass tests this code can be rewritten, esp the modstate stuff
  */
-int
-xmldb_readfile(clixon_handle    h,
-               const char      *db,
-               yang_bind        yb,
-               yang_stmt       *yspec,
-               cxobj          **xp,
-               db_elmnt        *de,
-               modstate_diff_t *msdiff0,
-               cxobj          **xerr)
+static int
+xmldb_readfile(clixon_handle     h,
+               const char       *db,
+               yang_bind         yb,
+               yang_stmt        *yspec,
+               cxobj           **xp,
+               db_elmnt         *de,
+               modstate_diff_t **msdiff0,
+               cxobj           **xerr)
 {
     int              retval = -1;
     cxobj           *x0 = NULL;
@@ -559,12 +561,6 @@ xmldb_readfile(clixon_handle    h,
     enum format_enum format;
     int              ret;
     modstate_diff_t *msdiff = NULL;
-    cxobj           *xmsd;           /* XML module state diff */
-    yang_stmt       *ymod;
-    char            *name;
-    char            *ns;             /* namespace */
-    char            *rev;            /* revision */
-    int              needclone;
     cxobj           *xmodfile = NULL;
     cxobj           *x;
     yang_stmt       *yspec1 = NULL;
@@ -645,7 +641,7 @@ xmldb_readfile(clixon_handle    h,
 
     xml_flag_set(x0, XML_FLAG_TOP);
     if (xml_child_nr(x0) == 0 && de)
-        de->de_empty = 1;
+        xmldb_empty_set(de, 1);
     /* Check if we support modstate */
     if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
         if ((msdiff = modstate_diff_new()) == NULL)
@@ -662,70 +658,11 @@ xmldb_readfile(clixon_handle    h,
      */
     if (text_read_modstate(h, yspec, x0, msdiff) < 0)
         goto done;
+    if (msdiff && xmodfile){
+        msdiff->md_xmodfile = xmodfile;
+        xmodfile = NULL;
+    }
     if (yb == YB_MODULE){
-        if (msdiff){
-            /* Check if old/deleted yangs not present in the loaded/running yangspec.
-             * If so, append them to the global yspec
-             */
-            needclone = 0;
-            xmsd = NULL;
-            while ((xmsd = xml_child_each(msdiff->md_diff, xmsd, CX_ELMNT)) != NULL) {
-                if (xml_flag(xmsd, XML_FLAG_CHANGE|XML_FLAG_DEL) == 0)
-                    continue;
-                needclone++;
-                /* Extract name, namespace, and revision */
-                if ((name = xml_find_body(xmsd, "name")) == NULL)
-                    continue;
-                if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
-                    continue;
-                /* Extract revision */
-                if ((rev = xml_find_body(xmsd, "revision")) == NULL)
-                    continue;
-                /* Add old/deleted yangs not present in the loaded/running yangspec. */
-                if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
-                    /* YANG Module not found, look for it and append if found */
-                    if (yang_spec_parse_module(h, name, rev, yspec) < 0){
-                        /* Special case: file-not-found errors */
-                        if (clixon_err_subnr() == ENOENT){
-                            cbuf *cberr = NULL;
-                            if ((cberr = cbuf_new()) == NULL){
-                                clixon_err(OE_XML, errno, "cbuf_new");
-                                goto done;
-                            }
-                            cprintf(cberr, "Internal error: %s", clixon_err_reason());
-                            clixon_err_reset();
-                            if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
-                                goto done;
-                            cbuf_free(cberr);
-                            goto fail;
-                        }
-                        goto done;
-                    }
-                }
-            }
-            /* If we found an obsolete yang module, we need to make a clone yspec with the
-             * exactly the yang modules found
-             * Same ymodules are inserted into yspec1, ie pointers only
-             */
-            if (needclone && xmodfile){
-                if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "prevyang")) == NULL)
-                    goto done;
-                xmsd = NULL;
-                while ((xmsd = xml_child_each(xmodfile, xmsd, CX_ELMNT)) != NULL) {
-                    if (strcmp(xml_name(xmsd), "module"))
-                        continue;
-                    if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
-                        continue;
-                    if ((rev = xml_find_body(xmsd, "revision")) == NULL)
-                        continue;
-                    if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL)
-                        continue; // XXX error?
-                    if (yn_insert1(yspec1, ymod) < 0)
-                        goto done;
-                    yang_ref_inc(ymod);
-                }
-            }
-        } /* if msdiff */
         /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT
          */
         if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec1?yspec1:yspec, 0, xerr)) < 0)
@@ -739,9 +676,8 @@ xmldb_readfile(clixon_handle    h,
         *xp = x0;
         x0 = NULL;
     }
-    if (msdiff0){
-        *msdiff0 = *msdiff;
-        free(msdiff); /* Just body */
+    if (msdiff && msdiff->md_diff){
+        *msdiff0 = msdiff;
         msdiff = NULL;
     }
     retval = 1;
@@ -764,14 +700,151 @@ xmldb_readfile(clixon_handle    h,
     goto done;
 }
 
+/*!
+ */
+static int
+xmldb_upgrade(clixon_handle    h,
+              db_elmnt        *de,
+              modstate_diff_t *msdiff,
+              cxobj          **xerr)
+{
+    int    retval = -1;
+    cxobj *xt;
+    char  *db;
+    cbuf  *cbret = NULL;
+    int    ret;
+
+    if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
+        clixon_log(h, LOG_WARNING, "Modstate expected in startup datastore but not found\n"
+                   "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"
+                   "It may also be normal bootstrapping since module state will be written on next datastore save");
+    }
+    xt = xmldb_cache_get(de);
+    db = xmldb_name_get(de);
+    xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
+               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
+        /* Here xt is old syntax */
+    /* General purpose datastore upgrade */
+    if (clixon_plugin_datastore_upgrade_all(h, db, xt, msdiff) < 0)
+       goto done;
+    /* Module-specific upgrade callbacks */
+    if (msdiff){
+        if ((cbret = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if ((ret = clixon_module_upgrade(h, xt, msdiff, cbret)) < 0)
+            goto done;
+        if (ret == 0){
+            if (cbuf_len(cbret) == 0)
+                cprintf(cbret, "Module-set upgrade function returned failure but lacks reason (cbret is not set)");
+            goto fail;
+        }
+        // XXX cbret to xerr
+    }
+    retval = 1;
+ done:
+    if (cbret)
+        cbuf_free(cbret);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+static int
+xmldb_msdiff(clixon_handle    h,
+             modstate_diff_t *msdiff,
+             yang_stmt       *yspec,
+             cxobj          **xerr,
+             yang_stmt      **yspecp)
+{
+    int        retval = -1;
+    cxobj     *xmsd;           /* XML module state diff */
+    yang_stmt *ymod;
+    char      *name;
+    char      *ns;             /* namespace */
+    char      *rev;            /* revision */
+    int        needclone;
+    yang_stmt *yspec1 = NULL;
+
+    /* Check if old/deleted yangs not present in the loaded/running yangspec.
+     * If so, append them to the global yspec
+     */
+    needclone = 0;
+    xmsd = NULL;
+    while ((xmsd = xml_child_each(msdiff->md_diff, xmsd, CX_ELMNT)) != NULL) {
+        if (xml_flag(xmsd, XML_FLAG_CHANGE|XML_FLAG_DEL) == 0)
+            continue;
+        needclone++;
+        /* Extract name, namespace, and revision */
+        if ((name = xml_find_body(xmsd, "name")) == NULL)
+            continue;
+        if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
+            continue;
+        /* Extract revision */
+        if ((rev = xml_find_body(xmsd, "revision")) == NULL)
+            continue;
+        /* Add old/deleted yangs not present in the loaded/running yangspec. */
+        if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
+            /* YANG Module not found, look for it and append if found */
+            if (yang_spec_parse_module(h, name, rev, yspec) < 0){
+                /* Special case: file-not-found errors */
+                if (clixon_err_subnr() == ENOENT){
+                    cbuf *cberr = NULL;
+                    if ((cberr = cbuf_new()) == NULL){
+                        clixon_err(OE_XML, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cberr, "Internal error: %s", clixon_err_reason());
+                    clixon_err_reset();
+                    if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
+                        goto done;
+                    cbuf_free(cberr);
+                    goto fail;
+                }
+                goto done;
+            }
+        }
+    }
+    /* If we found an obsolete yang module, we need to make a clone yspec with the
+     * exactly the yang modules found
+     * Same ymodules are inserted into yspec1, ie pointers only
+     */
+    if (needclone && msdiff->md_xmodfile){
+        if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "prevyang")) == NULL)
+            goto done;
+        xmsd = NULL;
+        while ((xmsd = xml_child_each(msdiff->md_xmodfile, xmsd, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(xmsd), "module"))
+                continue;
+            if ((ns = xml_find_body(xmsd, "namespace")) == NULL)
+                continue;
+            if ((rev = xml_find_body(xmsd, "revision")) == NULL)
+                continue;
+            if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL)
+                continue; // XXX error?
+            if (yn_insert1(yspec1, ymod) < 0)
+                goto done;
+            yang_ref_inc(ymod);
+        }
+    }
+    retval = 1;
+    if (yspecp)
+        *yspecp = yspec1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Get cache directly, read from datastore file if cache-miss
  *
  * Return the actual cache tree. With-default is report-all.
  * @param[in]  h      Clixon handle
  * @param[in]  db     Name of database to search in (filename including dir path
- * @param[in]  yb     How to bind yang to XML top-level when parsing
  * @param[out] xtp    Top-level XML tree, direct cache pointer
- * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
  * @retval     1      OK
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
@@ -782,50 +855,78 @@ xmldb_readfile(clixon_handle    h,
 int
 xmldb_get_cache(clixon_handle     h,
                 const char       *db,
-                yang_bind         yb,
                 cxobj           **xtp,
-                modstate_diff_t  *msdiff,
                 cxobj           **xerr)
 {
-    int        retval = -1;
-    cxobj     *xt = NULL; /* (cached) top of tree */
-    db_elmnt  *de = NULL;
-    db_elmnt   de0 = {0,};
-    yang_stmt *yspec0;
-    int        ret;
+    int              retval = -1;
+    cxobj           *xt = NULL; /* (cached) top of tree */
+    db_elmnt        *de = NULL;
+    yang_stmt       *yspec0;
+    yang_stmt       *yspec1 = NULL;
+    modstate_diff_t *msdiff = NULL;
+    int              ret;
 
     clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
-    de = clicon_db_elmnt_get(h, db);
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    if (de == NULL || de->de_xml == NULL){ /* Cache miss, read XML from file */
-        /* If there is no xml x0 tree (in cache), then read it from file */
-        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-        if ((ret = xmldb_readfile(h, db, yb, yspec0, &xt, &de0, msdiff, xerr)) < 0)
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        if ((de = xmldb_new(h, db)) == NULL)
             goto done;
-        if (ret == 0)
-            goto fail;
-        /* Should we validate file if read from disk?
-         * No, argument against: we may want to have a semantically wrong file and wish to edit?
-         */
-        de0.de_xml = xt;
-        if (de)
-            de0.de_id = de->de_id;
-        clicon_db_elmnt_set(h, db, &de0); /* Content is copied */
-        /* Add default global values (to make xpath below include defaults) */
-        // Alt:  xmldb_populate(h, db)
-        if (yb != YB_NONE) {
-            if (xml_global_defaults(h, xt, NULL, "/", yspec0, 0) < 0)
+    }
+    if ((xt = xmldb_cache_get(de)) == NULL){
+        if (xmldb_candidate_get(de)){
+            clixon_err(OE_DB, 0, "Candidate db cache is NULL");
+            goto done;
+        }
+        else {
+            /* If there is no xml x0 tree (in cache), then read it from file */
+            /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+            if ((ret = xmldb_readfile(h, db, YB_NONE, yspec0, &xt, de, &msdiff, xerr)) < 0)
                 goto done;
-            /* Add default recursive values */
-            if (xml_default_recurse(xt, 0, 0) < 0)
+            if (ret == 0)
+                goto fail;
+            /* Should we validate file if read from disk?
+             * No, argument against: we may want to have a semantically wrong file and wish to edit?
+             */
+            xmldb_cache_set(de, xt);
+            if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
+                if (msdiff){
+                    if ((ret = xmldb_msdiff(h, msdiff, yspec0, xerr, &yspec1)) < 0)
+                        goto done;
+                    if (ret == 0)
+                        goto fail;
+                }
+                if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+                if ((ret = xmldb_upgrade(h, de, msdiff, xerr)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+            else{
+                if ((ret = xmldb_upgrade(h, de, msdiff, xerr)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+                if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
+            if (xml_sort_recurse(xt) < 0)
                 goto done;
         }
+        /* Add default global values (to make xpath below include defaults) */
+        if (xml_global_defaults(h, xt, NULL, "/", yspec0, 0) < 0)
+            goto done;
+        /* Add default recursive values */
+        if (xml_default_recurse(xt, 0, 0) < 0)
+            goto done;
     } /* xt == NULL */
-    else
-        xt = de->de_xml;
     *xtp = xt;
     retval = 1;
  done:
@@ -846,7 +947,6 @@ xmldb_get_cache(clixon_handle     h,
  * @param[in]  nsc    External XML namespace context, or NULL
  * @param[in]  xpath  String with XPath syntax. or NULL for all
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msdiff If set, return modules-state differences
  * @param[out] xerr   XML error if retval is 0
  * @retval     1      OK
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
@@ -856,11 +956,9 @@ xmldb_get_cache(clixon_handle     h,
 static int
 xmldb_get_copy(clixon_handle     h,
                const char       *db,
-               yang_bind         yb,
                cvec             *nsc,
                const char       *xpath,
                cxobj           **xret,
-               modstate_diff_t  *msdiff,
                cxobj           **xerr)
 {
     int        retval = -1;
@@ -871,6 +969,7 @@ xmldb_get_copy(clixon_handle     h,
     size_t     xlen;
     int        i;
     cxobj     *x1t = NULL;
+    db_elmnt  *de;
     int        ret;
 
     clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
@@ -882,7 +981,7 @@ xmldb_get_copy(clixon_handle     h,
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    if ((ret = xmldb_get_cache(h, db, yb, &x0t, msdiff, xerr)) < 0)
+    if ((ret = xmldb_get_cache(h, db, &x0t, xerr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -932,12 +1031,14 @@ xmldb_get_copy(clixon_handle     h,
             goto done;
     }
     /* Unless a modified/locked candidate, add system-only-config data */
-    if (strcmp(db, "candidate") != 0 ||
-        (xmldb_modified_get(h, db) == 0 &&
-         xmldb_islocked(h, db) == 0)){
-        if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG"))
-            if (xmldb_system_only_config(h, xpath?xpath:"/", nsc, &x1t) < 0)
-                goto done;
+    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+        if (xmldb_candidate_get(de) == 0 ||
+            (xmldb_modified_get(de) == 0 &&
+             xmldb_islocked(h, db) == 0)){
+            if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG"))
+                if (xmldb_system_only_config(h, xpath?xpath:"/", nsc, &x1t) < 0)
+                    goto done;
+        }
     }
     /* If empty NACM config, then disable NACM if loaded
      */
@@ -1001,7 +1102,6 @@ xmldb_get(clixon_handle    h,
  * @param[in]  copy   Force copy. Overrides cache_zerocopy -> cache
  * @param[in]  wdef   With-defaults parameter, see RFC 6243
  * @param[out] xret   Single return XML tree. Free with xml_free()
- * @param[out] msdiff If set, return modules-state differences (upgrade code)
  * @param[out] xerr   XML error if retval is 0
  * @retval     1      OK
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
@@ -1037,22 +1137,22 @@ xmldb_get(clixon_handle    h,
 int
 xmldb_get0(clixon_handle    h,
            const char      *db,
-           yang_bind        yb,
+           int              notused0,
            cvec            *nsc,
            const char      *xpath,
-           int              copy, // XXX notused
+           int              notused1,
            withdefaults_type wdef,
-           cxobj          **xret,
-           modstate_diff_t *msdiff,
-           cxobj          **xerr)
+           cxobj           **xret,
+           void             *notused2,
+           cxobj           **xerr)
 {
     int    retval = -1;
     int    ret;
     cxobj *x = NULL;
 
     if (wdef != WITHDEFAULTS_EXPLICIT)
-        return xmldb_get_copy(h, db, yb, nsc, xpath, xret, msdiff, xerr);
-    if ((ret = xmldb_get_copy(h, db, yb, nsc, xpath, &x, msdiff, xerr)) < 0)
+        return xmldb_get_copy(h, db, nsc, xpath, xret, xerr);
+    if ((ret = xmldb_get_copy(h, db, nsc, xpath, &x, xerr)) < 0)
         goto done;
     if (ret == 0)
         goto fail;

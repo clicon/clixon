@@ -537,7 +537,7 @@ api_data_write(clixon_handle h,
      * as a consequence of a RESTCONF edit operation.
      */
     if ((IETF_DS_NONE == ds) &&
-        if_feature(yspec, "ietf-netconf", "startup") &&
+        if_feature(h, "ietf-netconf", "startup") &&
         !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
         cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
         cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
@@ -797,7 +797,7 @@ api_data_delete(clixon_handle h,
      * as a consequence of a RESTCONF edit operation.
      */
     if ((IETF_DS_NONE == ds) &&
-        if_feature(yspec, "ietf-netconf", "startup") &&
+        if_feature(h, "ietf-netconf", "startup") &&
         !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
         cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
         cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);

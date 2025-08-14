@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -572,7 +572,7 @@ choice_other_match(cxobj              *x0,
  * @param[in]  x1       XML tree which modifies base
  * @param[in]  x1t      Request root node (nacm needs this)
  * @param[in]  y0       Yang spec corresponding to xml-node x0. NULL if x0 is NULL
- * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc
  * @param[in]  username User name of requestor for nacm
  * @param[in]  xnacm    NACM XML tree (only if !permit)
  * @param[in]  permit   If set, no NACM tests using xnacm required
@@ -654,7 +654,7 @@ text_modify(clixon_handle       h,
         if (x0 == NULL || xml_default_nopresence(x0, 0, 0)){ /* does not exist or is default */
             if (strcmp(createstr, "false")==0){
                 /* RFC 8040 4.6 PATCH:
-                 * If the target resource instance does not exist, the server MUST NOT create it. 
+                 * If the target resource instance does not exist, the server MUST NOT create it.
                  */
                 if (netconf_data_missing(cbret,
           "RFC 8040 4.6. PATCH: If the target resource instance does not exist, the server MUST NOT create it") < 0)
@@ -672,7 +672,7 @@ text_modify(clixon_handle       h,
     if (yang_keyword_get(y0) == Y_LEAF_LIST ||
         yang_keyword_get(y0) == Y_LEAF){
         /* This is a check that a leaf does not have sub-elements
-         * such as: <leaf>a <leaf>b</leaf> </leaf> 
+         * such as: <leaf>a <leaf>b</leaf> </leaf>
          */
         if (xml_child_nr_type(x1, CX_ELMNT)){
             if (netconf_unknown_element(cbret, "application", x1name, "Leaf contains sub-element") < 0)
@@ -796,13 +796,13 @@ text_modify(clixon_handle       h,
                         strcmp(restype, "bits") == 0)
                         x1bstr = clixon_trim2(x1bstr, " \t\n");
 #if 0 /* Passes regression test without, keep for some time until other test requires it */
-                    /* If origin body has namespace definitions, copy them. The reason is that
-                     * some bodies rely on namespace prefixes, such as NACM path, but there is 
-                     * no way we can know this here.
-                     * However, this may lead to namespace collisions if these prefixes are not
-                     * canonical, and may collide with the assign_namespace_element() above (but that 
-                     * is for element symbols)
-                     * Oh well.
+                    /* If origin body has namespace definitions, copy them. The reason
+                     * is that some bodies rely on namespace prefixes, such as NACM
+                     * path, but there is no way we can know this here.
+                     * However, this may lead to namespace collisions if these prefixes
+                     * are not canonical, and may collide with
+                     * assign_namespace_element() above (but that is for element
+                     * symbols).   Oh well.
                      */
                     if (assign_namespace_body(x1, x0) < 0)
                         goto done;
@@ -941,11 +941,11 @@ text_modify(clixon_handle       h,
                 }
             } /* OP_MERGE & insert */
         case OP_NONE: /* fall thru */
-            /* Special case: anyxml, just replace tree, 
+            /* Special case: anyxml, just replace tree,
                See rfc6020 7.10.3
                An anyxml node is treated as an opaque chunk of data.  This data
                can be modified in its entirety only.
-               Any "operation" attributes present on subelements of an anyxml 
+               Any "operation" attributes present on subelements of an anyxml
                node are ignored by the NETCONF server.*/
             if (yang_keyword_get(y0) == Y_ANYXML ||
                 yang_keyword_get(y0) == Y_ANYDATA ||
@@ -977,7 +977,7 @@ text_modify(clixon_handle       h,
                     permit = 1;
                 }
                 /* Add new xml node but without parent - insert when node fully
-                 * copied (see changed conditional below) 
+                 * copied (see changed conditional below)
                  * Note x0 may dangle cases if exit before changed conditional
                  */
                 if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
@@ -996,7 +996,7 @@ text_modify(clixon_handle       h,
                 if (op==OP_NONE)
                     xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
             }
-            /* First pass: Loop through children of the x1 modification tree 
+            /* First pass: Loop through children of the x1 modification tree
              * collect matching nodes from x0 in x0vec (no changes to x0 children)
              */
             if ((x0vec = calloc(xml_child_nr_type(x1, CX_ELMNT), sizeof(x1))) == NULL){
@@ -1057,7 +1057,7 @@ text_modify(clixon_handle       h,
                 i++;
             }
             /* Second pass: Loop through children of the x1 modification tree again
-             * Now potentially modify x0:s children 
+             * Now potentially modify x0:s children
              * Here x0vec contains one-to-one matching nodes of x1:s children.
              */
             x1c = NULL;
@@ -1161,7 +1161,7 @@ text_modify(clixon_handle       h,
  * @param[in]  x0t      Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1t       XML tree which modifies base
  * @param[in]  yspec    Top-level yang spec (if y is NULL)
- * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc 
+ * @param[in]  op       OP_MERGE, OP_REPLACE, OP_REMOVE, etc
  * @param[in]  username User name of requestor for nacm
  * @param[in]  xnacm    NACM XML tree (only if !permit)
  * @param[in]  permit   If set, no NACM tests using xnacm required
@@ -1331,7 +1331,7 @@ text_modify_top(clixon_handle       h,
 
 /*! Mark ancestor if any changes to children. Also mark changed xml as cache dirty
  *
- * @param[in]  x    XML node  
+ * @param[in]  x    XML node
  * @param[in]  arg  General-purpose argument
  * @retval     2    Locally abort this subtree, continue with others
  * @retval     1    Abort, dont continue with others, return 1 to end user
@@ -1405,12 +1405,10 @@ xmldb_put(clixon_handle       h,
     yang_stmt  *yspec;
     cxobj      *x0 = NULL;
     db_elmnt   *de = NULL;
-    db_elmnt    de0 = {0,};
     int         ret;
     cxobj      *xnacm = NULL;
     int         permit = 0; /* nacm permit all */
     cvec       *nsc = NULL; /* nacm namespace context */
-    int         firsttime = 0;
     cxobj      *xerr = NULL;
 
     clixon_debug(CLIXON_DBG_DATASTORE|CLIXON_DBG_DETAIL, "db %s", db);
@@ -1427,17 +1425,31 @@ xmldb_put(clixon_handle       h,
                    xml_name(x1), NETCONF_INPUT_CONFIG);
         goto done;
     }
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
-        x0 = de->de_xml; /* XXX flag is not XML_FLAG_TOP */
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        if ((de = xmldb_new(h, db)) == NULL)
+            goto done;
     }
+    x0 = xmldb_cache_get(de); /* XXX flag is not XML_FLAG_TOP */
     /* If there is no xml x0 tree (in cache), then read it from file */
     if (x0 == NULL){
-        firsttime++; /* to avoid leakage on error, see fail from text_modify */
-        /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-        if ((ret = xmldb_readfile(h, db, YB_MODULE, yspec, &x0, de, NULL, &xerr)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
+        if (xmldb_candidate_get(de)){
+            /* Copy from running */
+            if (xmldb_copy(h, "running", db) < 0)
+                goto done;
+            if ((x0 = xmldb_cache_get(de)) == NULL){
+                if ((x0 = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+                    goto done;
+                xml_flag_set(x0, XML_FLAG_TOP);
+            }
+        }
+        else {
+            /* xml looks like: <top><config><x>... where "x" is a top-level symbol
+             * in a module */
+            if ((ret = xmldb_get_cache(h, db, &x0, &xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
         /* Add default global values (see also xmldb_populate) */
         if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
             goto done;
@@ -1445,12 +1457,20 @@ xmldb_put(clixon_handle       h,
         if (xml_default_recurse(x0, 0, 0) < 0)
             goto done;
     }
-    if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0 ||
-        xml_flag(x0, XML_FLAG_TOP) == 0){
+    if (x0 == NULL){
+        clixon_err(OE_XML, 0, "x0 is NULL");
+        goto done;
+    }
+    else if (strcmp(xml_name(x0), DATASTORE_TOP_SYMBOL) !=0){
         clixon_err(OE_XML, 0, "Top-level symbol is %s, expected \"%s\"",
                    xml_name(x0), DATASTORE_TOP_SYMBOL);
         goto done;
     }
+    if (xml_flag(x0, XML_FLAG_TOP) == 0){
+        clixon_err(OE_XML, 0, "Top-level symbol is not flagged with XML_FLAG_TOP");
+        goto done;
+    }
+
     /* Here x0 looks like: <config>...</config> */
     xnacm = clicon_nacm_cache(h);
     permit = (xnacm==NULL);
@@ -1463,14 +1483,8 @@ xmldb_put(clixon_handle       h,
     if ((ret = text_modify_top(h, x0, x1, yspec, op, username, xnacm, permit, cbret)) < 0)
         goto done;
     /* If xml return - ie netconf error xml tree, then stop and return OK */
-    if (ret == 0){
-        /* If first time and quit here, x0 is not written back into cache and leaks */
-        if (firsttime && x0){
-            xml_free(x0);
-            x0 = NULL;
-        }
+    if (ret == 0)
         goto fail;
-    }
     /* Remove NONE nodes if all subs recursively are also NONE */
     if (xml_tree_prune_flagged_sub(x0, XML_FLAG_NONE, 0, NULL) <0)
         goto done;
@@ -1498,14 +1512,9 @@ xmldb_put(clixon_handle       h,
         goto done;
 #endif
     /* Write back to datastore cache if first time */
-    if (de != NULL)
-        de0 = *de;
-    if (de0.de_xml == NULL)
-        de0.de_xml = x0;
-    de0.de_empty = (xml_child_nr(de0.de_xml) == 0);
-    clicon_db_elmnt_set(h, db, &de0);
+    xmldb_empty_set(de, xml_child_nr(xmldb_cache_get(de)) == 0);
     /* Write cache to file unless volatile (ie stop syncing to store) */
-    if (xmldb_volatile_get(h, db) == 0){
+    if (xmldb_volatile_get(de) == 0){
         if (xmldb_write_cache2file(h, db) < 0)
             goto done;
         /* Clear flags from previous steps + dirty */
@@ -1706,7 +1715,7 @@ xmldb_write_cache2file(clixon_handle h,
                        const char   *db)
 {
     int               retval = -1;
-    cxobj            *xt;
+    cxobj            *xt = NULL;
     char             *formatstr;
     enum format_enum  format = FORMAT_XML;
     withdefaults_type wdef = WITHDEFAULTS_EXPLICIT;
@@ -1714,9 +1723,11 @@ xmldb_write_cache2file(clixon_handle h,
     int               multi;
     FILE             *f = NULL;
     char             *dbfile = NULL;
+    db_elmnt         *de;
     int               ret;
 
-    if ((xt = xmldb_cache_get(h, db)) == NULL){
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL ||
+        (xt = xmldb_cache_get(de)) == NULL){
         clixon_err(OE_XML, 0, "XML cache not found");
         goto done;
     }

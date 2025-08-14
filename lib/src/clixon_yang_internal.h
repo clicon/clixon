@@ -63,7 +63,7 @@ typedef struct yang_type_cache yang_type_cache;
 /*! yang statement 
  *
  * This is an internal type, not exposed in the API
- * The external type is "yang_stmt" defined in clixon_yang.h
+ * @see yang_stmt  The external type defined in clixon_yang.h
  * @note  There is additional info in maps, yang_when_set and yang_mymodule_set
  */
 struct yang_stmt {

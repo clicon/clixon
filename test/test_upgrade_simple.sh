@@ -60,7 +60,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "wait backend"
+new "wait backend 1"
 wait_backend
 
 new "add hello world (with modstate)"
@@ -106,13 +106,12 @@ module $APPNAME {
 EOF
 
 # Now start again from running with modstate enabled and new revision
-
 if [ $BE -ne 0 ]; then
     new "start backend -s running -f $cfg"
     start_backend -s running -f $cfg
 fi
 
-new "wait backend"
+new "wait backend 2"
 wait_backend
 
 new "netconf get config"
