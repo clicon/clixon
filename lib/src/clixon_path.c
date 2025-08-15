@@ -1144,9 +1144,14 @@ api_path2xml_vec(char            **vec,
         yang_find_schemanode(y0, name):
         yang_find_datanode(y0, name); // <--
     if (y == NULL){
-        if (xerr &&
-            netconf_unknown_element_xml(xerr, "application", name, "Unknown element") < 0)
+        char *nameenc = NULL;
+        if (xml_chardata_encode(&nameenc, 0, "%s", name) < 0)
             goto done;
+        if (xerr &&
+            netconf_unknown_element_xml(xerr, "application", nameenc, "Unknown element") < 0)
+            goto done;
+        if (nameenc)
+            free(nameenc);
         goto fail;
     }
     if (prefix && namespace == NULL){
