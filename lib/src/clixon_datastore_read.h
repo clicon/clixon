@@ -41,7 +41,5 @@
 /*
  * Prototypes
  */
-int xmldb_readfile(clixon_handle h, const char *db, yang_bind yb, yang_stmt *yspec,
-                   cxobj **xp, db_elmnt *de, modstate_diff_t *msd, cxobj **xerr);
 
 #endif /* _CLIXON_DATASTORE_READ_H */

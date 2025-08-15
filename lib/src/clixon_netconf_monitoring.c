@@ -109,17 +109,25 @@ per_datastore(clixon_handle h,
  */
 static int
 netconf_monitoring_datastores(clixon_handle h,
-                              yang_stmt  *yspec,
-                              cbuf       *cb)
+                              yang_stmt    *yspec,
+                              cbuf         *cb)
 {
-    int      retval = -1;
+    int retval = -1;
 
     cprintf(cb, "<datastores>");
     if (per_datastore(h, cb, "running") < 0)
         goto done;
+#if 0 // XXX For private candidate, but ce is not available here
+    db_elmnt *de;
+    de = xmldb_candidate_find(h, "candidate", ce);
+    xmldb_name_get(de);
+    if (per_datastore(h, cb, xmldb_name_get(de)) < 0) // XXX private candidates?
+        goto done;
+#else
     if (per_datastore(h, cb, "candidate") < 0)
         goto done;
-    if (if_feature(yspec, "ietf-netconf", "startup")){
+#endif
+    if (if_feature(h, "ietf-netconf", "startup")){
         if (per_datastore(h, cb, "startup") < 0)
             goto done;
     }

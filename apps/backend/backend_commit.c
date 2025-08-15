@@ -223,18 +223,11 @@ startup_common(clixon_handle       h,
     int                 retval = -1;
     yang_stmt          *yspec;
     int                 ret;
-    modstate_diff_t    *msdiff = NULL;
     cxobj              *xt = NULL;
     cxobj              *xret = NULL;
     cxobj              *xerr = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND, "Reading initial config from %s", db);
-    /* If CLICON_XMLDB_MODSTATE is enabled, then get the db XML with 
-     * potentially non-matching module-state in msdiff
-     */
-    if (clicon_option_bool(h, "CLICON_XMLDB_MODSTATE"))
-        if ((msdiff = modstate_diff_new()) == NULL)
-            goto done;
     /* Add system-only config to running */
     if ((td->td_src = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -243,7 +236,7 @@ startup_common(clixon_handle       h,
             goto done;
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
-        if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &xt, msdiff, &xerr)) < 0)
+        if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &xt, NULL, &xerr)) < 0)
             goto done;
         if (ret == 0){     /* ret should not be 0 */
             /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
@@ -263,15 +256,15 @@ startup_common(clixon_handle       h,
         /* Get the startup datastore WITHOUT binding to YANG, sorting and default setting.
          * It is done below, later in this function
          */
-        if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, msdiff, &xerr) < 0)
+        if ((ret = xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, NULL, &xerr)) < 0)
             goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+                goto done;
+            goto fail;
+        }
     }
     clixon_debug_xml(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, xt, "startup");
-    if (msdiff && msdiff->md_status == 0){ // Possibly check for CLICON_XMLDB_MODSTATE
-        clixon_log(h, LOG_WARNING, "Modstate expected in startup datastore but not found\n"
-                   "This may indicate that the datastore is not initialized corrrectly, such as copy/pasted.\n"
-                   "It may also be normal bootstrapping since module state will be written on next datastore save");
-    }
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, 0, "Yang spec not set");
         goto done;
@@ -280,20 +273,6 @@ startup_common(clixon_handle       h,
     /* Clear flags xpath for get */
     xml_apply0(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
-    /* Here xt is old syntax */
-    /* General purpose datastore upgrade */
-    if (clixon_plugin_datastore_upgrade_all(h, db, xt, msdiff) < 0)
-       goto done;
-    /* Module-specific upgrade callbacks */
-    if (msdiff){
-        if ((ret = clixon_module_upgrade(h, xt, msdiff, cbret)) < 0)
-            goto done;
-        if (ret == 0){
-            if (cbuf_len(cbret) == 0)
-                cprintf(cbret, "Module-set upgrade function returned failure but lacks reason (cbret is not set)");
-            goto fail;
-        }
-    }
     /* Print upgraded db: -q backend switch for debugging/ showing upgraded config only */
     if (clicon_quit_upgrade_get(h) == 1){
         /* bind yang */
@@ -389,8 +368,6 @@ startup_common(clixon_handle       h,
         xml_free(xret);
     if (xt)
         xml_free(xt);
-    if (msdiff)
-        modstate_diff_free(msdiff);
     return retval;
  fail:
     retval = 0;
@@ -564,17 +541,21 @@ validate_common(clixon_handle       h,
 {
     int         retval = -1;
     yang_stmt  *yspec;
+    db_elmnt   *de;
     int         ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    if (xmldb_cache_get(h, db) != NULL){
+    /* This is mysterious: If cache, then populate it,.. */
+    if ((de = clicon_db_elmnt_get(h, db)) != NULL &&
+        xmldb_cache_get(de) != NULL){
         if (xmldb_populate(h, db) < 0)
             goto done;
-        if (xmldb_write_cache2file(h, db) < 0)
-            goto done;
+        if (!xmldb_volatile_get(de))
+            if (xmldb_write_cache2file(h, db) < 0)
+                goto done;
     }
     /* This is the state we are going to */
     if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, xret)) < 0)
@@ -700,6 +681,7 @@ candidate_validate(clixon_handle h,
  * @retval     0          Validation failed (with cbret set)
  * @retval    -1          Error - or validation failed 
  * @see startup_commit  for commit on startup
+ * @note db should be a candidate with loaded cache
  */
 int
 candidate_commit(clixon_handle  h,
@@ -711,9 +693,10 @@ candidate_commit(clixon_handle  h,
 {
     int                 retval = -1;
     transaction_data_t *td = NULL;
-    int                 ret;
     cxobj              *xret = NULL;
     yang_stmt          *yspec;
+    db_elmnt           *de;
+    int                 ret;
 
     clixon_debug(CLIXON_DBG_DATASTORE, "db: %s", db);
     /* 1. Start transaction */
@@ -740,7 +723,7 @@ candidate_commit(clixon_handle  h,
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")
+    if (if_feature(h, "ietf-netconf", "confirmed-commit")
         && confirmed_commit_state_get(h) != ROLLBACK
         && xe != NULL){
         if (handle_confirmed_commit(h, xe, myid) < 0)
@@ -768,7 +751,11 @@ candidate_commit(clixon_handle  h,
         xmldb_clear(h, db);
 #endif
     }
-    xmldb_modified_set(h, db, 0); /* reset dirty bit */
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_DB, 0, "DB not found %s", db);
+        goto done;
+    }
+    xmldb_modified_set(de, 0); /* reset dirty bit */
     /* Here pointers to old (source) tree are obsolete */
     if (td->td_dvec){
         td->td_dlen = 0;
@@ -838,19 +825,30 @@ from_client_commit(clixon_handle h,
     cbuf                *cbx = NULL; /* Assist cbuf */
     int                  ret;
     yang_stmt           *yspec;
+    db_elmnt            *de;
+    char                *db = NULL;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+    if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
         if ((ret = from_client_confirmed_commit(h, xe, myid, cbret)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
     }
     /* Check if target locked by other client */
-    iddb = xmldb_islocked(h, "candidate");
+    if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+        if (netconf_operation_failed(cbret, "application", "Candidate not found, shouldnt happen")< 0)
+            goto done;
+        goto ok;
+    }
+    if ((db = strdup(xmldb_name_get(de))) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    iddb = xmldb_islocked(h, db);
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
@@ -870,7 +868,7 @@ from_client_commit(clixon_handle h,
             goto done;
         goto ok;
     }
-    if ((ret = candidate_commit(h, xe, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
+    if ((ret = candidate_commit(h, xe, db, myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
             if (clixon_plugin_report_err(h, cbret) < 0)
@@ -878,7 +876,7 @@ from_client_commit(clixon_handle h,
         goto ok;
     }
     if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
-        xmldb_unlock(h, "candidate");
+        xmldb_unlock(h, db);
     if (ret == 0)
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
     else
@@ -886,6 +884,8 @@ from_client_commit(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (db)
+        free(db);
     if (cbx)
         cbuf_free(cbx);
     return retval; /* may be zero if we ignoring errors from commit */
@@ -914,9 +914,17 @@ from_client_discard_changes(clixon_handle h,
     uint32_t             myid = ce->ce_id;
     uint32_t             iddb;
     cbuf                *cbx = NULL; /* Assist cbuf */
+    db_elmnt            *de;
+    char                *db;
 
     /* Check if target locked by other client */
-    iddb = xmldb_islocked(h, "candidate");
+    if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+        if (netconf_operation_failed(cbret, "application", "Candidate not found, shouldnt happen")< 0)
+            goto done;
+        goto ok;
+    }
+    db = xmldb_name_get(de);
+    iddb = xmldb_islocked(h, db);
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
@@ -927,14 +935,14 @@ from_client_discard_changes(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (xmldb_copy(h, "running", "candidate") < 0){
+    if (xmldb_copy(h, "running", db) < 0){
         if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
             goto done;
         goto ok;
     }
-    xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
+    xmldb_modified_set(de, 0); /* reset dirty bit */
     if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
-        xmldb_unlock(h, "candidate");
+        xmldb_unlock(h, db);
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
@@ -963,16 +971,18 @@ from_client_validate(clixon_handle h,
                      void         *arg,
                      void         *regarg)
 {
-    int   retval = -1;
-    int   ret;
-    char *db;
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    char                *db;
+    db_elmnt            *de;
+    int                  ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
-    if ((db = netconf_db_find(xe, "source")) == NULL){
-        if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
-            goto done;
+    if ((ret = xmldb_client_find(h, xe, "source", ce, &de, cbret)) < 0)
+        goto done;
+    if (ret == 0)
         goto ok;
-    }
+    db = xmldb_name_get(de);
     if ((ret = candidate_validate(h, db, cbret)) < 0)
         goto done;
     if (ret == 1)
@@ -1004,7 +1014,7 @@ from_client_restart_one(clixon_handle    h,
     cxobj              *xn;
     void               *wh = NULL;
 
-    yspec =  clicon_dbspec_yang(h);
+    yspec = clicon_dbspec_yang(h);
     if (xmldb_db_reset(h, db) < 0)
         goto done;
     /* Application may define extra xml in its reset function*/
@@ -1126,7 +1136,6 @@ load_failsafe(clixon_handle h,
     cbuf *cbret = NULL;
 
     phase = phase == NULL ? "(unknown)" : phase;
-
     if ((cbret = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -1171,10 +1180,12 @@ int
 system_only_data_add(clixon_handle h,
                      char         *db)
 {
-    int    retval = -1;
-    cxobj *x;
+    int       retval = -1;
+    db_elmnt *de;
+    cxobj    *x;
 
-    if ((x = xmldb_cache_get(h, db)) != NULL){
+    if ((de = clicon_db_elmnt_get(h, db)) != NULL &&
+        (x = xmldb_cache_get(de)) != NULL){
         if (xmldb_system_only_config(h, "/", NULL, &x) < 0)
             goto done;
     }
@@ -1187,7 +1198,7 @@ system_only_data_add(clixon_handle h,
         if (xml_child_nr(x)){
             db_elmnt *de;
             if ((de = clicon_db_elmnt_get(h, db)) != NULL)
-                de->de_xml = x;
+                xmldb_cache_set(de, x);
         }
         else
             xml_free(x);
@@ -1195,4 +1206,140 @@ system_only_data_add(clixon_handle h,
     retval = 0;
  done:
     return retval;
+}
+
+/*! Get candidate datastore, if privcand return private, otherwise shared
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  ce   Client-entry
+ * @retval     de   Datastore element
+ * @retval     NULL Not found or Error
+ */
+db_elmnt*
+xmldb_candidate_find(clixon_handle        h,
+                     const char          *name,
+                     struct client_entry *ce)
+{
+    cbuf     *cb = NULL;
+    db_elmnt *de = NULL;
+    int       privcand;
+
+    privcand = if_feature(h, "ietf-netconf-private-candidate", "private-candidate");
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s", name);
+    if (privcand){
+        if (ce == NULL){
+            clixon_err(OE_DB, 0, "When privcand is enabled, ce is mandatory");
+            goto done;
+        }
+        cprintf(cb, ".%u", ce->ce_id);
+    }
+    de = xmldb_find(h, cbuf_get(cb));
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return de;
+}
+
+/*! Find datastore in incoming NETCONF request
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xn      Request: <rpc><xn></rpc>
+ * @param[in]  name    Name of datastore
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ */
+int
+xmldb_client_find(clixon_handle        h,
+                  cxobj               *xn,
+                  const char          *name,
+                  struct client_entry *ce,
+                  db_elmnt           **dep,
+                  cbuf                *cbret)
+{
+    int       retval = -1;
+    char     *db = NULL;
+    db_elmnt *de = NULL;
+
+    if ((db = netconf_db_find(xn, name)) == NULL){
+        if (netconf_missing_element(cbret, "protocol", name, NULL) < 0)
+            goto done;
+        goto fail;
+    }
+    if (strcmp(db, "candidate") == 0){
+        de = xmldb_candidate_find(h, "candidate", ce);
+    }
+    else if ((de = xmldb_find(h, db)) == NULL){
+        if ((de = xmldb_new(h, db)) == NULL)
+            goto done;
+    }
+    if (dep)
+        *dep = de;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Create candidate datastore
+ *
+ * If ce is given, a private candidate is created, if ce=NULL a shared is created
+ * @param[in]  h    Clixon handle
+ * @param[in]  name Name prefix, typically "candidate" (but could be eg "failsafe")
+ * @param[in]  ce   Client-entry (for private)
+ * @retval     de   Datastore element
+ * @retval     NULL Error
+ */
+db_elmnt*
+xmldb_candidate_new(clixon_handle        h,
+                 const char          *name,
+                 struct client_entry *ce)
+{
+    cbuf      *cb = NULL;
+    char      *db;
+    db_elmnt  *de = NULL;
+    cxobj     *xt;
+    yang_stmt *yspec;
+    int        ret;
+
+    yspec = clicon_dbspec_yang(h);
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s", name);
+    if (ce)
+        cprintf(cb, ".%u", ce->ce_id);
+    db = cbuf_get(cb);
+    if ((de = xmldb_new(h, db)) == NULL)
+        goto done;
+    if (clicon_option_bool(h, "CLICON_XMLDB_CANDIDATE_INMEM"))
+        xmldb_volatile_set(de, 1);
+    xmldb_candidate_set(de, 1);
+    if (xmldb_copy(h, "running", db) < 0)
+        goto done;
+    if (xmldb_modified_set(de, 0) < 0)
+        goto done;
+    if ((xt = xmldb_cache_get(de)) == NULL){
+        if ((xt = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(xt, XML_FLAG_TOP);
+    }
+    if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, 0, NULL)) < 0)
+        goto done;
+    if (ret == 1){
+        if (xml_global_defaults(h, xt, NULL, "/", yspec, 0) < 0)
+            goto done;
+        if (xml_default_recurse(xt, 0, 0) < 0)
+            goto done;
+    }
+    xmldb_cache_set(de, xt);
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return de;
 }

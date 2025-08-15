@@ -3259,17 +3259,19 @@ ys_populate_identity(clixon_handle h,
  * @param[in] feature Name of feature
  * @retval    1       Found and set
  * @retval    0       Not found or not set
- * XXX: should the in-param be h, ymod, or yspec?
  */
 int
-if_feature(yang_stmt    *yspec,
+if_feature(clixon_handle h,
            char         *module,
            char         *feature)
 {
+    yang_stmt *yspec;
     yang_stmt *ym; /* module */
     yang_stmt *yf; /* feature */
     cg_var    *cv;
 
+    if ((yspec = clicon_dbspec_yang(h)) == NULL)
+        return 0;
     if ((ym = yang_find_module_by_name(yspec, module)) == NULL)
         return 0;
     if ((yf = yang_find(ym, Y_FEATURE, feature)) == NULL)

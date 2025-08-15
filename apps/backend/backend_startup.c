@@ -68,6 +68,7 @@
 #include "clixon_backend_transaction.h"
 #include "clixon_backend_plugin.h"
 #include "backend_handle.h"
+#include "clixon_backend_client.h"
 #include "clixon_backend_commit.h"
 #include "backend_startup.h"
 
@@ -137,7 +138,6 @@ startup_mode_startup(clixon_handle h,
     int        retval = -1;
     int        ret = 0;
     int        rollback_exists;
-    yang_stmt *yspec = clicon_dbspec_yang(h);
 
     if (strcmp(db, "running")==0){
         clixon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
@@ -156,7 +156,7 @@ startup_mode_startup(clixon_handle h,
      * database was deleted, either clixon_backend crashed or the machine
      * rebooted.
      */
-    if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+    if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
         if ((rollback_exists = xmldb_exists(h, "rollback")) < 0) {
             clixon_err(OE_DAEMON, 0, "Error checking for the existence of the rollback database");
             goto done;
@@ -272,7 +272,7 @@ load_extraxml(clixon_handle h,
  * @retval     1       OK
  * @retval     0       Validation failed
  * @retval    -1       Error
-                
+
 running -----------------+----+------>
            reset  loadfile   / merge
 tmp     |-------+-----+-----+
@@ -285,9 +285,10 @@ startup_extraxml(clixon_handle h,
 {
     int         retval = -1;
     char       *tmp_db = "tmp";
+    cxobj      *xt0 = NULL;
+    cxobj      *xt = NULL;
+    db_elmnt   *de;
     int         ret;
-    cxobj       *xt0 = NULL;
-    cxobj       *xt = NULL;
 
     /* Clear tmp db */
     if (xmldb_db_reset(h, tmp_db) < 0)
@@ -314,7 +315,9 @@ startup_extraxml(clixon_handle h,
         clixon_err(OE_DB, 0, "Error when reading from %s, unknown error", tmp_db);
         goto done;
     }
-    if ((ret = xmldb_empty_get(h, tmp_db)) < 0)
+    if ((de = clicon_db_elmnt_get(h, tmp_db)) == NULL)
+        goto done;
+    if ((ret = xmldb_empty_get(de)) < 0)
         goto done;
     if (ret == 1)
         goto ok;

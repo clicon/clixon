@@ -158,10 +158,8 @@ netconf_hello_msg(clixon_handle h,
     int     foundbase_11 = 0;
     int     foundprivcand = 0;
     char   *body;
-    yang_stmt *yspec;
 
     clixon_debug(CLIXON_DBG_NETCONF, "");
-    yspec = clicon_dbspec_yang(h);
     _netconf_hello_nr++;
     if (xml_find_type(xn, NULL, "session-id", CX_ELMNT) != NULL) {
         clixon_err(OE_XML, errno, "Server received hello with session-id from client, terminating (see RFC 6241 Sec 8.1");
@@ -200,7 +198,7 @@ netconf_hello_msg(clixon_handle h,
         *eof = 1;
         goto done;
     }
-    if (foundprivcand == 0 && if_feature(yspec, "ietf-netconf-private-candidate", "private-candidate")) {
+    if (foundprivcand == 0 && if_feature(h, "ietf-netconf-private-candidate", "private-candidate")) {
         clixon_err(OE_XML, errno, "Server received hello without private candidate capability, terminating");
         *eof = 1;
         goto done;

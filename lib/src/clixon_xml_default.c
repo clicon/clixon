@@ -508,8 +508,8 @@ xml_global_defaults_create(cxobj     *xt,
  * @param[in]   flags   Only traverse nodes where flag is set
  * @retval      0       OK
  * @retval     -1       Error
- * Uses cache?
  * @see xml_default_recurse
+ * @note  sets datastore cache of special db elmnt symbol "global-defaults-config/state"
  */
 int
 xml_global_defaults(clixon_handle h,
@@ -520,7 +520,6 @@ xml_global_defaults(clixon_handle h,
                     int           state)
 {
     int        retval = -1;
-    db_elmnt   de0 = {0,};
     db_elmnt  *de = NULL;
     cxobj     *xcache = NULL;
     cxobj     *xpart = NULL;
@@ -535,17 +534,17 @@ xml_global_defaults(clixon_handle h,
     key = state ? "global-defaults-state" : "global-defaults-config";
     /* First get or compute global xml tree cache */
     if ((de = clicon_db_elmnt_get(h, key)) == NULL){
-        /* Create it */
+        if ((de = xmldb_new(h, key)) == NULL)
+            goto done;
         if ((xcache = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
             goto done;
         if (xml_global_defaults_create(xcache, yspec, state) < 0)
             goto done;
-        de0.de_xml = xcache;
-        clicon_db_elmnt_set(h, key, &de0);
+        xmldb_cache_set(de, xcache);
+
     }
     else
-        xcache = de->de_xml;
-
+        xcache = xmldb_cache_get(de);
     /* Here xcache has all global defaults. Now find the matching nodes 
      * XXX: nsc as 2nd argument
      */

@@ -34,6 +34,7 @@
 
  * Clixon Datastore (XMLDB)
  * Saves Clixon data as clear-text XML (or JSON)
+ * Backend-specific
  */
 #ifndef _CLIXON_DATASTORE_H
 #define _CLIXON_DATASTORE_H
@@ -41,50 +42,51 @@
 /*
  * Types
  */
-/* Struct per database in hash
- * Semantics of de_modified is to implement this from RFC 6241 Sec 7.5:
- *       The target configuration is <candidate>, it has already been
- *       modified, and these changes have not been committed or rolled back.
- */
-struct db_elmnt {
-    uint32_t       de_id;       /* If set, locked by this client/session id */
-    struct timeval de_tv;       /* Timevalue, set by lock/unlock */
-    cxobj         *de_xml;      /* cache */
-    int            de_modified; /* Dirty since loaded/copied/committed/etc
-                                 * For NETCONF lock. Set by edit-config, copy, delete,
-                                 * reset by commit, discard
-                                 */
-    int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
-    int            de_volatile; /* Disable auto-sync of cache to disk on every update (ie xmldb_put)
-                                 * Objects are marked with XML_FLAG_CACHE_DIRTY that are not written
-                                 */
-};
+/* This is the external handle type exposed in the API.
+ * The internal struct is defined in clixon_yang_internal.h */
 typedef struct db_elmnt db_elmnt;
 
 /*
  * Prototypes
  */
+/* Backward compatible */
+#define clicon_db_elmnt_get(h, db) xmldb_find((h), (db))
 
-db_elmnt *clicon_db_elmnt_get(clixon_handle h, const char *db);
-int clicon_db_elmnt_set(clixon_handle h, const char *db, db_elmnt *xc);
+/* Access functions */
+char    *xmldb_name_get(db_elmnt *de);
+uint32_t xmldb_id_get(db_elmnt *de);
+int      xmldb_id_set(db_elmnt *de, uint32_t id);
+cxobj   *xmldb_cache_get(db_elmnt *de);
+int      xmldb_cache_set(db_elmnt *de, cxobj *xml);
+int      xmldb_modified_get(db_elmnt *de);
+int      xmldb_modified_set(db_elmnt *de, int value);
+int      xmldb_empty_get(db_elmnt *de);
+int      xmldb_empty_set(db_elmnt *de, int value);
+int      xmldb_candidate_get(db_elmnt *de);
+int      xmldb_candidate_set(db_elmnt *de, int value);
+int      xmldb_volatile_get(db_elmnt *de);
+int      xmldb_volatile_set(db_elmnt *de, int value);
+
+/* Creator */
+db_elmnt *xmldb_new(clixon_handle h, const char *db);
+db_elmnt *xmldb_find(clixon_handle h, const char *db);
 int xmldb_db2file(clixon_handle h, const char *db, char **filename);
 int xmldb_db2subdir(clixon_handle h, const char *db, char **dir);
-
-/* API */
 int xmldb_connect(clixon_handle h);
 int xmldb_disconnect(clixon_handle h);
- /* in clixon_datastore_read.[ch]: */
+
+/* in clixon_datastore_read.[ch]: */
 int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xret);
-int xmldb_get0(clixon_handle h, const char *db, yang_bind yb,
+int xmldb_get0(clixon_handle h, const char *db, int yb,
                cvec *nsc, const char *xpath, int copy, withdefaults_type wdef,
-               cxobj **xret, modstate_diff_t *msd, cxobj **xerr);
-int xmldb_get_cache(clixon_handle h, const char *db, yang_bind yb,
-                    cxobj **xtp, modstate_diff_t *msdiff, cxobj **xerr);
+               cxobj **xret, void *md, cxobj **xerr);
+int xmldb_get_cache(clixon_handle h, const char *db, cxobj **xtp, cxobj **xerr);
 /* in clixon_datastore_write.[ch]: */
 int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
 int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt, enum format_enum format, int pretty, withdefaults_type wdef, int multi, const char *multidb);
 int xmldb_write_cache2file(clixon_handle h, const char *db);
 
+int xmldb_copy_file(clixon_handle h, const char *from, const char *to);
 int xmldb_copy(clixon_handle h, const char *from, const char *to);
 int xmldb_lock(clixon_handle h, const char *db, uint32_t id);
 int xmldb_unlock(clixon_handle h, const char *db);
@@ -97,13 +99,7 @@ int xmldb_delete(clixon_handle h, const char *db);
 int xmldb_create(clixon_handle h, const char *db);
 /* utility functions */
 int xmldb_db_reset(clixon_handle h, const char *db);
-cxobj *xmldb_cache_get(clixon_handle h, const char *db);
-int xmldb_modified_get(clixon_handle h, const char *db);
-int xmldb_modified_set(clixon_handle h, const char *db, int value);
-int xmldb_empty_get(clixon_handle h, const char *db);
-int xmldb_empty_set(clixon_handle h, const char *db, int value);
-int xmldb_volatile_get(clixon_handle h, const char   *db);
-int xmldb_volatile_set(clixon_handle h, const char *db, int value);
+
 int xmldb_print(clixon_handle h, FILE *f);
 int xmldb_rename(clixon_handle h, const char *db, const char *newdb, const char *suffix);
 int xmldb_populate(clixon_handle h, const char *db);

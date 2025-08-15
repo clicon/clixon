@@ -59,8 +59,9 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 APPNAME=example
 
 cfg=$dir/conf_yang.xml
-tmp=$dir/tmp.x
+dbdir=$dir/db
 fyang=$dir/clixon-example.yang
+test -d $dbdir || mkdir -p $dbdir
 
 # Use yang in example
 
@@ -85,7 +86,8 @@ cat <<EOF > $cfg
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
+  <CLICON_XMLDB_CANDIDATE_INMEM>false</CLICON_XMLDB_CANDIDATE_INMEM>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_CLI_OUTPUT_FORMAT>cli</CLICON_CLI_OUTPUT_FORMAT>
 </clixon-config>
@@ -135,7 +137,7 @@ module clixon-example{
 EOF
 
 new "test params: -f $cfg -s startup"
-cat <<EOF > $dir/startup_db
+cat <<EOF > $dbdir/startup_db
 <${DATASTORE_TOP}>
     <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
         <interface xmlns:ex="urn:example:clixon">
@@ -185,7 +187,7 @@ expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 new "4.8.1.1.1 <resolution-mode> parameter revert-on-conflict accepted"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "# 4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional"
+new "4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution."
@@ -288,7 +290,7 @@ conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><int
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container"
 conflict "<table xmlns=\"urn:example:clixon\" operation=\"delete\"></table>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Gothenburg</description></interface></interfaces>" "ok/"
 
-puts "4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list"
+puts "4.8.1.1 <update> operation by client without conflict: There is a change of any component member of a leaf-list"
 conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Stockholm</description></interface></interfaces>" "ok/"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf"
@@ -311,7 +313,6 @@ EOF
 if [ $? -ne 0 ]; then
     err1 "Failed: test private candidate using expect"
 fi
-
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

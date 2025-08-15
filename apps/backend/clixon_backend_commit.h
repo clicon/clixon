@@ -79,4 +79,8 @@ int from_client_restart_one(clixon_handle h, clixon_plugin_t *cp, cbuf *cbret);
 int load_failsafe(clixon_handle h, char *phase);
 int system_only_data_add(clixon_handle h, char *db);
 
+db_elmnt *xmldb_candidate_find(clixon_handle h, const char *name, client_entry *ce);
+int       xmldb_client_find(clixon_handle h, cxobj *xn, const char *name, struct client_entry *ce, db_elmnt **de, cbuf *cbret);
+db_elmnt *xmldb_candidate_new(clixon_handle h, const char *name, struct client_entry *ce);
+
 #endif  /* _CLIXON_BACKEND_COMMIT_H_ */

@@ -173,15 +173,16 @@ ce_event_cb(clixon_handle h,
     return retval;
 }
 
-/*! Unlock all db:s of a client and call user unlock calback 
+/*! Unlock all db:s of a client and call user unlock callback
  *
  * @param[in]  h       Clixon handle
  * @param[in]  id      Session id
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
  */
 static int
-release_all_dbs(clixon_handle h,
-                uint32_t      id)
+release_all_dbs(clixon_handle        h,
+                struct client_entry *ce,
+                uint32_t             id)
 {
     int       retval = -1;
     char    **keys = NULL;
@@ -191,13 +192,14 @@ release_all_dbs(clixon_handle h,
 
     /* RFC 6241, Sec 7.5 <lock>:
      * The target configuration is <candidate>, it has already been
-     *  modified, and these changes have not been committed or rolled back.
+     * modified, and these changes have not been committed or rolled back.
      */
-    if (xmldb_islocked(h, "candidate") == id){
-        if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
-            if (xmldb_copy(h, "running", "candidate") < 0)
+    if ((de = xmldb_candidate_find(h, "candidate", ce)) != NULL){
+        if (xmldb_islocked(h, xmldb_name_get(de)) == id &&
+            clicon_option_bool(h, "CLICON_AUTOLOCK")){
+            if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)
                 goto done;
-            xmldb_modified_set(h, "candidate", 0); /* reset dirty bit */
+            xmldb_modified_set(de, 0); /* reset dirty bit */
         }
     }
     /* get all db:s */
@@ -206,9 +208,8 @@ release_all_dbs(clixon_handle h,
     /* Identify the ones locked by client id */
     for (i = 0; i < klen; i++) {
         if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
-            de->de_id == id){
-            de->de_id = 0; /* unlock */
-            clicon_db_elmnt_set(h, keys[i], de);
+            xmldb_id_get(de) == id){
+            xmldb_id_set(de, 0); /* unlock */
             if (clixon_plugin_lockdb_all(h, keys[i], 0, id) < 0)
                 goto done;
         }
@@ -327,7 +328,7 @@ backend_client_rm(clixon_handle        h,
 
     /* If the confirmed-commit feature is enabled, rollback any ephemeral commit originated by this client */
     if ((yspec = clicon_dbspec_yang(h)) != NULL) {
-        if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+        if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
             if (confirmed_commit_state_get(h) == EPHEMERAL) {
                 /* See if this client is the origin */
                 clixon_debug(CLIXON_DBG_BACKEND, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
@@ -355,7 +356,7 @@ backend_client_rm(clixon_handle        h,
                 clixon_event_unreg_fd(ce->ce_s, from_client);
                 close(ce->ce_s);
                 ce->ce_s = 0;
-                if (release_all_dbs(h, ce->ce_id) < 0)
+                if (release_all_dbs(h, ce, ce->ce_id) < 0)
                     return -1;
             }
             break;
@@ -383,18 +384,20 @@ clixon_stats_datastore_get(clixon_handle h,
     uint64_t  nr = 0;
     size_t    sz = 0;
     cxobj    *xn = NULL;
+    db_elmnt *de;
     int       ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
     /* This is the db cache */
-    if ((xt = xmldb_cache_get(h, dbname)) == NULL){
+    if ((de = clicon_db_elmnt_get(h, dbname)) != NULL &&
+        (xt = xmldb_cache_get(de)) == NULL){
         /* Trigger cache if no exist (trick to ensure cache is present) */
         if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
             //goto done;
             goto ok;
         if (ret == 0)
             goto ok;
-        xt = xmldb_cache_get(h, dbname);
+        xt = xmldb_cache_get(de);
     }
     if (xt != NULL){
         if (xml_stats(xt, &nr, &sz) < 0)
@@ -455,17 +458,19 @@ static int
 do_lock(clixon_handle h,
         cbuf         *cbret,
         uint32_t      id,
-        char         *db)
+        db_elmnt     *de)
 {
     int        retval = -1;
     uint32_t   otherid;
     cbuf      *cbx = NULL; /* Assist cbuf */
     yang_stmt *yspec;
+    char      *db;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
+    db = xmldb_name_get(de);
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -473,8 +478,9 @@ do_lock(clixon_handle h,
     /* 2) The target configuration is <candidate>, it has already been modified, and
      *    these changes have not been committed or rolled back.
      */
-    if (strcmp(db, "candidate") == 0) {
-        if (xmldb_exists(h, db) && xmldb_modified_get(h, db)){
+    if (xmldb_candidate_get(de)) {
+        if (xmldb_exists(h, db) &&
+            xmldb_modified_get(de)){
             if (netconf_lock_denied(cbret, "<session-id>0</session-id>",
                                     "Operation failed, candidate has already been modified and the changes have not been committed or rolled back (RFC 6241 7.5)") < 0)
                 goto done;
@@ -485,7 +491,7 @@ do_lock(clixon_handle h,
      *    session has an ongoing confirmed commit
      */
     if (strcmp(db, "running") == 0 &&
-        if_feature(yspec, "ietf-netconf", "confirmed-commit") &&
+        if_feature(h, "ietf-netconf", "confirmed-commit") &&
         confirmed_commit_state_get(h) != INACTIVE){
         if ((otherid = confirmed_commit_session_id_get(h)) != 0){
             cprintf(cbx, "<session-id>%u</session-id>", otherid);
@@ -497,10 +503,10 @@ do_lock(clixon_handle h,
     }
     if (xmldb_lock(h, db, id) < 0)
         goto done;
-    if (strcmp(db, "candidate") == 0) {
+    if (xmldb_candidate_get(de)) {
         /* Add system-only config to candidate cache */
         if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
-            if (system_only_data_add(h, "candidate") < 0)
+            if (system_only_data_add(h, db) < 0)
                 goto done;
         }
     }
@@ -561,17 +567,18 @@ from_client_edit_config(clixon_handle h,
     char               *val = NULL;
     cvec               *nsc = NULL;
     char               *prefix = NULL;
+    db_elmnt           *de = NULL;
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
-    if ((target = netconf_db_find(xn, "target")) == NULL){
-        if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-            goto done;
+    if ((ret = xmldb_client_find(h, xn, "target", ce, &de, cbret)) < 0)
+        goto done;
+    if (ret == 0)
         goto ok;
-    }
+    target = xmldb_name_get(de);
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -584,17 +591,21 @@ from_client_edit_config(clixon_handle h,
             goto done;
         goto ok;
     }
+    if ((de = clicon_db_elmnt_get(h, target)) == NULL){
+        clixon_err(OE_DB, 0, "DB not found %s", target);
+        goto done;
+    }
     /* Here iddb is =0 (not locked) or locked by this process =myid */
     if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
-        if ((ret = do_lock(h, cbret, myid, target)) < 0)
+        if ((ret = do_lock(h, cbret, myid, de)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
     }
-    if (strcmp(target, "candidate") == 0) {
+    if (xmldb_candidate_get(de)) {
         /* Add system-only config to candidate cache */
         if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
-            if (system_only_data_add(h, "candidate") < 0)
+            if (system_only_data_add(h, target) < 0)
                 goto done;
         }
     }
@@ -694,7 +705,7 @@ from_client_edit_config(clixon_handle h,
     }
     if (ret == 0)
         goto ok;
-    xmldb_modified_set(h, target, 1); /* mark as dirty */
+    xmldb_modified_set(de, 1); /* mark as dirty */
     /* Clixon extension: autocommit */
     if ((attr = xml_find_value(xn, "autocommit")) != NULL &&
         strcmp(attr,"true") == 0)
@@ -714,7 +725,7 @@ from_client_edit_config(clixon_handle h,
          *              then the RESTCONF edit operation MUST fail with a "409 Conflict"
          *              status-line.  The error-tag "in-use" is used in this case.
          */
-        if (if_feature(yspec, "ietf-netconf", "confirmed-commit")) {
+        if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
             switch (confirmed_commit_state_get(h)){
             case INACTIVE:
                 break;
@@ -729,14 +740,14 @@ from_client_edit_config(clixon_handle h,
                 break;
             }
         }
-        if ((ret = candidate_commit(h, NULL, "candidate", myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
+        if ((ret = candidate_commit(h, NULL, target, myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
             if (clixon_plugin_report_err(h, cbret) < 0)
                 goto done;
-            xmldb_copy(h, "running", "candidate");
+            xmldb_copy(h, "running", target);
             goto ok;
         }
         if (ret == 0){ /* discard */
-            if (xmldb_copy(h, "running", "candidate") < 0){
+            if (xmldb_copy(h, "running", target) < 0){
                 if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                     goto done;
                 goto ok;
@@ -766,8 +777,8 @@ from_client_edit_config(clixon_handle h,
     cprintf(cbret, "/></rpc-reply>");
  ok:
     /* Unwind auto-lock if no changes made, ie put deny */
-    if (target &&
-        xmldb_modified_get(h, target) == 0 &&
+    if (de &&
+        xmldb_modified_get(de) == 0 &&
         clicon_option_bool(h, "CLICON_AUTOLOCK") &&
         xmldb_islocked(h, target) == myid){
         xmldb_unlock(h, target);
@@ -810,31 +821,33 @@ from_client_copy_config(clixon_handle h,
 {
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    char                *source;
-    char                *target;
+    char                *source = NULL;
+    char                *target = NULL;
     uint32_t             iddb;
     uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
+    db_elmnt            *detgt = NULL;
+    db_elmnt            *desrc = NULL;
     int                  ret;
 
-    if ((source = netconf_db_find(xe, "source")) == NULL){
-        if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
-            goto done;
-        goto ok;
-    }
-    if ((cbx = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
+    if ((ret = xmldb_client_find(h, xe, "target", ce, &detgt, cbret)) < 0)
         goto done;
-    }
-    if ((target = netconf_db_find(xe, "target")) == NULL){
-        if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-            goto done;
+    if (ret == 0)
         goto ok;
-    }
+    target = xmldb_name_get(detgt);
+    if ((ret = xmldb_client_find(h, xe, "source", ce, &desrc, cbret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto ok;
+    source = xmldb_name_get(desrc);
     /* Check if target locked by other client */
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
+        if ((cbx = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Copy failed, lock is already held") < 0)
             goto done;
@@ -842,7 +855,7 @@ from_client_copy_config(clixon_handle h,
     }
     /* Here iddb is =0 (not locked) or locked by this process =myid */
     if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
-        if ((ret = do_lock(h, cbret, myid, target)) < 0)
+        if ((ret = do_lock(h, cbret, myid, detgt)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
@@ -857,17 +870,16 @@ from_client_copy_config(clixon_handle h,
             goto done;
         goto ok;
     }
-
-    if (strcmp(target, "candidate") == 0){
-        xmldb_modified_set(h, target, 1); /* mark as dirty */
+    if (xmldb_candidate_get(detgt)){
+        xmldb_modified_set(detgt, 1); /* mark as dirty */
         /* Add system-only config to candidate */
         if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
-            if (system_only_data_add(h, "candidate") < 0)
+            if (system_only_data_add(h, target) < 0)
                 goto done;
         }
     }
     /* Remove system-only-config data from destination cache */
-    if (strcmp(source, "candidate") == 0){
+    if (xmldb_candidate_get(desrc)){
         if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
             xmldb_clear(h, target);
         }
@@ -907,11 +919,16 @@ from_client_delete_config(clixon_handle h,
     uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
+    db_elmnt            *de;
+    int                  ret;
 
-    /* XXX should use prefix cf edit_config */
-    if ((target = netconf_db_find(xe, "target")) == NULL ||
-        strcmp(target, "running")==0){
-        if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
+    if ((ret = xmldb_client_find(h, xe, "target", ce, &de, cbret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto ok;
+    target = xmldb_name_get(de);
+    if (strcmp(target, "running")==0){
+        if (netconf_missing_element(cbret, "protocol", "target", "Target cannot be running in delete-config") < 0)
             goto done;
         goto ok;
     }
@@ -947,7 +964,7 @@ from_client_delete_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    xmldb_modified_set(h, target, 1); /* mark as dirty */
+    xmldb_modified_set(de, 1); /* mark as dirty */
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -980,15 +997,16 @@ from_client_lock(clixon_handle h,
     struct client_entry *ce = (struct client_entry *)arg;
     uint32_t             id = ce->ce_id;
     char                *db;
-    int                  ret;
     cbuf                *cbx = NULL; /* Assist cbuf */
+    db_elmnt            *de;
     uint32_t             iddb;
+    int                  ret;
 
-    if ((db = netconf_db_find(xe, "target")) == NULL){
-        if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-            goto done;
+    if ((ret = xmldb_client_find(h, xe, "target", ce, &de, cbret)) < 0)
+        goto done;
+    if (ret == 0)
         goto ok;
-    }
+    db = xmldb_name_get(de);
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -1003,7 +1021,11 @@ from_client_lock(clixon_handle h,
             goto done;
         goto ok;
     }
-    if ((ret = do_lock(h, cbret, id, db)) < 0)
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        clixon_err(OE_DB, 0, "DB not found %s", db);
+        goto done;
+    }
+    if ((ret = do_lock(h, cbret, id, de)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1043,12 +1065,14 @@ from_client_unlock(clixon_handle h,
     uint32_t             iddb; /* DBs lock, if any */
     char                *db;
     cbuf                *cbx = NULL; /* Assist cbuf */
+    db_elmnt            *de;
+    int                  ret;
 
-    if ((db = netconf_db_find(xe, "target")) == NULL){
-        if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
-            goto done;
+    if ((ret = xmldb_client_find(h, xe, "target", ce, &de, cbret)) < 0)
+        goto done;
+    if (ret == 0)
         goto ok;
-    }
+    db = xmldb_name_get(de);
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -1110,7 +1134,7 @@ from_client_close_session(clixon_handle h,
     struct client_entry *ce = (struct client_entry *)arg;
     uint32_t             id = ce->ce_id;
 
-    if (release_all_dbs(h, id) < 0)
+    if (release_all_dbs(h, ce, id) < 0)
         return -1;
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
@@ -1135,9 +1159,10 @@ from_client_kill_session(clixon_handle h,
                          void         *regarg)
 {
     int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
     uint32_t             id; /* session id */
     char                *str = NULL;
-    struct client_entry *ce;
+    struct client_entry *ce1;
     cxobj               *x;
     int                  ret;
     char                *reason = NULL;
@@ -1153,10 +1178,10 @@ from_client_kill_session(clixon_handle h,
     if (ret == 0)
         goto ok;
     /* may or may not be in active client list, probably not */
-    if ((ce = ce_find_byid(backend_client_list(h), id)) != NULL){
-        backend_client_rm(h, ce); /* Removes client struct */
+    if ((ce1 = ce_find_byid(backend_client_list(h), id)) != NULL){
+        backend_client_rm(h, ce1); /* Removes client struct */
     }
-    if (release_all_dbs(h, id) < 0)
+    if (release_all_dbs(h, ce, id) < 0)
         goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
@@ -1417,6 +1442,7 @@ from_client_update(clixon_handle h,
                    void         *regarg)
 {
     int                      retval = -1;
+    struct client_entry     *ce = (struct client_entry *)arg;
     yang_stmt               *yspec;
     enum privcand_resolution resolution = PR_REVERT;
     cxobj                   *xres;
@@ -1424,6 +1450,8 @@ from_client_update(clixon_handle h,
     cxobj                   *xorig = NULL;
     cxobj                   *xcand = NULL;
     cxobj                   *xrun = NULL;
+    db_elmnt                *de0;
+    db_elmnt                *de1;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
@@ -1449,11 +1477,23 @@ from_client_update(clixon_handle h,
     default:
         break;
     }
-    if (xmldb_get_cache(h, "candidate", YB_NONE, &xorig, NULL, NULL) < 0) // XXX orig
+    if ((de0 = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+        clixon_err(OE_DB, 0, "candidate not found");
         goto done;
-    if (xmldb_get_cache(h, "candidate", YB_NONE, &xcand, NULL, NULL) < 0)
+    }
+    if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+        clixon_err(OE_DB, 0, "candidate-orig not found");
         goto done;
-    if (xmldb_get_cache(h, "running", YB_NONE, &xrun, NULL, NULL) < 0)
+    }
+    if ((xcand = xmldb_cache_get(de0)) == NULL){
+        clixon_err(OE_DB, 0, "candidate cache not found");
+        goto done;
+    }
+    if ((xorig = xmldb_cache_get(de1)) == NULL){
+        clixon_err(OE_DB, 0, "candidate-orig cache not found");
+        goto done;
+    }
+    if (xmldb_get_cache(h, "running", &xrun, NULL) < 0)
         goto done;
     if (xml_rebase_check(h, xorig, xcand, xrun, &conflict) < 0)
         goto done;
@@ -1462,6 +1502,7 @@ from_client_update(clixon_handle h,
     else{
         if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
             goto done;
+        goto ok;
     }
  ok:
     retval = 0;
@@ -1549,7 +1590,6 @@ from_client_stats(clixon_handle h,
     uint64_t   nr;
     char      *str;
     int        modules = 0;
-    yang_stmt *yspec0;
     yang_stmt *ymounts;
     yang_stmt *ydomain;
     yang_stmt *yspec;
@@ -1562,7 +1602,6 @@ from_client_stats(clixon_handle h,
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
-    yspec0 = clicon_dbspec_yang(h);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
@@ -1577,7 +1616,7 @@ from_client_stats(clixon_handle h,
         goto done;
     if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
         goto done;
-    if (if_feature(yspec0, "ietf-netconf", "startup"))
+    if (if_feature(h, "ietf-netconf", "startup"))
 	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
 	    goto done;
     cprintf(cbret, "</datastores>");

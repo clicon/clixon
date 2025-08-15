@@ -1,4 +1,4 @@
- /*
+/*
  *
   ***** BEGIN LICENSE BLOCK *****
 
@@ -35,6 +35,7 @@
 
  * Clixon Datastore (XMLDB)
  * Saves Clixon data as clear-text XML (or JSON)
+ * Backend-specific
  */
 
 #ifdef HAVE_CONFIG_H
@@ -86,6 +87,244 @@
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
 
+/*! XML datastore including cache and and meta-data
+ *
+ * This is an internal type, not exposed in the API
+ * @see db_elmnt  The external type in clixon_datastore.h
+ */
+struct db_elmnt {
+    char          *de_name;     /* Name of datastore */
+    uint32_t       de_id;       /* If set, locked by this client/session id */
+    struct timeval de_tv;       /* Timevalue, set by lock/unlock */
+    cxobj         *de_xml;      /* XML tree cache */
+    int            de_modified; /* Dirty since loaded/copied/committed/etc
+                                 * For NETCONF lock. Set by edit-config, copy, delete,
+                                 * reset by commit, discard
+                                 */
+    int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
+    int            de_candidate; /* Is shared/private candidate */
+    int            de_volatile; /* Disable auto-sync of cache to disk on every update (ie xmldb_put)
+                                 * Objects are marked with XML_FLAG_CACHE_DIRTY that are not written */
+};
+
+/*-------------- Access functions ----------------*/
+/*! Get datastore name
+ *
+ * @param[in] de   XMLDB element
+ * @retval    name Name of datastore
+ */
+char*
+xmldb_name_get(db_elmnt *de)
+{
+    return de->de_name;
+}
+
+/*! Get datastore session id
+ *
+ * @param[in] de   XMLDB element
+ * @retval    xml  XML cached tree or NULL
+ */
+uint32_t
+xmldb_id_get(db_elmnt *de)
+{
+    return de->de_id;
+}
+
+/*! Get datastore session id
+ *
+ * @param[in]  de    XMLDB element
+ * @param[in]  xml  XML cached tree or NULL
+ */
+int
+xmldb_id_set(db_elmnt *de,
+             uint32_t  id)
+{
+    de->de_id = id;
+    return 0;
+}
+
+/*! Get datastore XML cache
+ *
+ * @param[in]  de    XMLDB element
+ * @retval     xml  XML cached tree or NULL
+ */
+cxobj *
+xmldb_cache_get(db_elmnt *de)
+{
+    return de->de_xml;
+}
+
+/*! Set datastore XML cache
+ *
+ * @param[in]  de    XMLDB element
+ * @retval     xml  XML cached tree or NULL
+ */
+int
+xmldb_cache_set(db_elmnt *de,
+                cxobj    *xml)
+
+{
+    de->de_xml = xml;
+    return 0;
+}
+
+/*! Get modified flag from datastore
+ *
+ * @param[in]  de    XMLDB element
+ * @retval     1     Db is modified
+ * @retval     0     Db is not modified
+ * @retval    -1     Error (datastore does not exist)
+ * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
+ * @note This only works if db cache is used,...
+ */
+int
+xmldb_modified_get(db_elmnt *de)
+{
+    return de->de_modified;
+}
+
+/*! Set modified flag from datastore
+ *
+ * @param[in]  de    XMLDB element
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
+ */
+int
+xmldb_modified_set(db_elmnt *de,
+                   int       value)
+{
+    de->de_modified = value;
+    return 0;
+}
+
+/*! Get empty flag from datastore (the datastore was empty ON LOAD)
+ *
+ * @param[in]  de    XMLDB element
+ * @retval     1     Db was empty on load
+ * @retval     0     Db was not empty on load
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_empty_get(db_elmnt *de)
+{
+    return de->de_empty;
+}
+
+/*! Set empty flag from datastore (the datastore was empty ON LOAD)
+ *
+ * @param[in]  de    XMLDB element
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_empty_set(db_elmnt *de,
+                int       value)
+{
+    de->de_empty = value;
+    return 0;
+}
+
+/*! Get candidate flag of datastore cache
+ *
+ * @param[in]  de    XMLDB element
+ * @retval     1     Candidate
+ * @retval     0     Not candidate
+ */
+int
+xmldb_candidate_get(db_elmnt *de)
+{
+    return de->de_candidate;
+}
+
+/*! Set candidate flag of datastore cache
+ *
+ * @param[in]  de    XMLDB element
+ * @param[in]  value Candidate Flag
+ * @retval     0     Ok
+ */
+int
+xmldb_candidate_set(db_elmnt *de,
+                    int       value)
+{
+    de->de_candidate = value;
+    return 0;
+}
+
+/*! Get volatile flag of datastore cache
+ *
+ * Whether to sync cache to disk on every update (ie xmldb_put)
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @retval     1     Volatile
+ * @retval     0     Sync to disc
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_volatile_get(db_elmnt *de)
+{
+    return de->de_volatile;
+}
+
+/*! Set datastore status of datastore cache
+ *
+ * Whether to sync cache to disk on every update (ie xmldb_put)
+ * @param[in]  h     Clixon handle
+ * @param[in]  db    Database name
+ * @param[in]  value 0 or 1
+ * @retval     0     OK
+ * @retval    -1     Error (datastore does not exist)
+ */
+int
+xmldb_volatile_set(db_elmnt *de,
+                   int       value)
+{
+    de->de_volatile = value;
+    return 0;
+}
+
+/*! Create new xmldb object
+ */
+db_elmnt *
+xmldb_new(clixon_handle h,
+          const char   *db)
+{
+    db_elmnt *de = NULL;
+
+    if ((de = calloc(1, sizeof(*de))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    if ((de->de_name = strdup(db)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        free(de);
+        de = NULL;
+        goto done;
+    }
+    clicon_hash_add(clicon_db_elmnt(h), de->de_name, &de, sizeof(de))==NULL?-1:0;
+ done:
+    return de;
+}
+
+static int
+xmldb_free(db_elmnt *de,
+           int       self)
+{
+    if (de->de_name){
+        free(de->de_name);
+        de->de_name = NULL;
+    }
+    if (de->de_xml){
+        xml_free(de->de_xml);
+        de->de_xml = NULL;
+    }
+    if (self)
+        free(de);
+    return 0;
+}
+
 /*! Get xml database element including id, xml cache, empty on startup and dirty bit
  *
  * @param[in]  h    Clixon handle
@@ -94,36 +333,19 @@
  * @retval     NULL None found
  */
 db_elmnt *
-clicon_db_elmnt_get(clixon_handle h,
-                    const char   *db)
+xmldb_find(clixon_handle h,
+           const char   *db)
 {
+    void          *ptr = NULL;
     clicon_hash_t *cdat = clicon_db_elmnt(h);
     void          *p;
+    size_t         vlen;
 
-    if ((p = clicon_hash_value(cdat, db, NULL)) != NULL)
-        return (db_elmnt *)p;
-    return NULL;
-}
-
-/*! Set xml database element including id, xml cache, empty on startup and dirty bit
- *
- * @param[in] h   Clixon handle
- * @param[in] db  Name of database
- * @param[in] de  Database element
- * @retval    0   OK
- * @retval   -1   Error
- * @see xmldb_disconnect
-*/
-int
-clicon_db_elmnt_set(clixon_handle h,
-                    const char   *db,
-                    db_elmnt     *de)
-{
-    clicon_hash_t  *cdat = clicon_db_elmnt(h);
-
-    if (clicon_hash_add(cdat, db, de, sizeof(*de))==NULL)
-        return -1;
-    return 0;
+    if (clicon_hash_lookup(cdat, db) == NULL)
+        return NULL;
+    p = clicon_hash_value(cdat, db, &vlen);
+    memcpy(&ptr, p, vlen);
+    return (db_elmnt*)ptr;
 }
 
 /*! Translate from symbolic database name to actual filename in file-system
@@ -140,7 +362,7 @@ static int
 xmldb_db2file1(clixon_handle h,
                const char   *db,
                int           multi,
-              char         **filename)
+               char         **filename)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -262,16 +484,13 @@ xmldb_disconnect(clixon_handle h)
     size_t    klen;
     int       i;
     db_elmnt *de;
+    clicon_hash_t *cdat = clicon_db_elmnt(h);
 
-    if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
+    if (clicon_hash_keys(cdat, &keys, &klen) < 0)
         goto done;
-    for(i = 0; i < klen; i++)
-        if ((de = clicon_hash_value(clicon_db_elmnt(h), keys[i], NULL)) != NULL){
-            if (de->de_xml){
-                xml_free(de->de_xml);
-                de->de_xml = NULL;
-            }
-        }
+    for (i = 0; i < klen; i++)
+        if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL)
+            xmldb_free(de, 0);
     retval = 0;
  done:
     if (keys)
@@ -329,73 +548,29 @@ check_create_multidir(clixon_handle h,
     return retval;
 }
 
-/*! Copy datastore from db1 to db2, both cache and datastore
+/*! Copy datastores files only
  *
- * May include copying datastore directory structure
  * @param[in]  h     Clixon handle
  * @param[in]  from  Source datastore
  * @param[in]  to    Destination datastore
  * @retval     0     OK
  * @retval    -1     Error
-  */
+ */
 int
-xmldb_copy(clixon_handle h,
-           const char   *from,
-           const char   *to)
+xmldb_copy_file(clixon_handle h,
+                const char   *from,
+                const char   *to)
 {
-    int         retval = -1;
-    char       *fromfile = NULL;
-    char       *tofile = NULL;
-    db_elmnt   *de1 = NULL; /* from */
-    db_elmnt   *de2 = NULL; /* to */
-    db_elmnt    de0 = {0,};
-    cxobj      *x1 = NULL;  /* from */
-    cxobj      *x2 = NULL;  /* to */
-    char       *fromdir = NULL;
-    char       *todir = NULL;
+    int   retval = -1;
+    char *fromfile = NULL;
+    char *tofile = NULL;
+    char *fromdir = NULL;
+    char *todir = NULL;
 
-    clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
-    /* XXX lock */
-    /* Copy in-memory cache */
-    /* 1. "to" xml tree in x1 */
-    if ((de1 = clicon_db_elmnt_get(h, from)) != NULL)
-        x1 = de1->de_xml;
-    if ((de2 = clicon_db_elmnt_get(h, to)) != NULL)
-        x2 = de2->de_xml;
-    if (x1 == NULL && x2 == NULL){
-        /* do nothing */
-    }
-    else if (x1 == NULL){  /* free x2 and set to NULL */
-        xml_free(x2);
-        x2 = NULL;
-    }
-    else  if (x2 == NULL){ /* create x2 and copy from x1 */
-        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
-            goto done;
-        xml_flag_set(x2, XML_FLAG_TOP);
-        if (xml_copy(x1, x2) < 0)
-            goto done;
-    }
-    else{ /* copy x1 to x2 */
-        xml_free0(x2);
-        xml_type_set(x2, CX_ELMNT);
-        if (xml_name_set(x2, xml_name(x1)) < 0)
-            goto done;
-        xml_flag_set(x2, XML_FLAG_TOP);
-        if (xml_copy(x1, x2) < 0)
-            goto done;
-    }
-    /* always set cache although not strictly necessary in case 1
-     * above, but logic gets complicated due to differences with
-     * de and de->de_xml */
-    if (de2)
-        de0 = *de2;
-    de0.de_xml = x2; /* The new tree */
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
         if (check_create_multidir(h, to) < 0)
             goto done;
     }
-    clicon_db_elmnt_set(h, to, &de0);
     /* Copy the files themselves (above only in-memory cache)
      * Alt, dump the cache to file
      */
@@ -415,16 +590,111 @@ xmldb_copy(clixon_handle h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
-    if (fromdir)
-        free(fromdir);
-    if (todir)
-        free(todir);
     if (fromfile)
         free(fromfile);
     if (tofile)
         free(tofile);
+    if (fromdir)
+        free(fromdir);
+    if (todir)
+        free(todir);
     return retval;
+}
+
+static int
+xmldb_copy_de(clixon_handle h,
+              db_elmnt     *de1,
+              db_elmnt     *de2)
+{
+    int              retval = -1;
+    cxobj           *x1 = NULL;  /* from */
+    cxobj           *x2 = NULL;  /* to */
+    char            *from;
+    char            *to;
+    int              ret;
+
+    /* Copy in-memory cache */
+    /* 1. "to" xml tree in x1 */
+    from = xmldb_name_get(de1);
+    to = xmldb_name_get(de2);
+    x1 = xmldb_cache_get(de1);
+    x2 = xmldb_cache_get(de2);
+    if (x1 == NULL && x2 == NULL){
+        if ((ret = xmldb_get_cache(h, from, &x1, NULL)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_err(OE_XML, 0, "Error when reading cache");
+            goto done;
+        }
+        if ((x2 = xml_dup(x1)) == NULL)
+            goto done;
+    }
+    else if (x1 == NULL){  /* free x2 and set to NULL */
+        xml_free(x2);
+        x2 = NULL;
+        de2->de_xml = NULL;
+        if ((ret = xmldb_get_cache(h, from, &x1, NULL)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_err(OE_XML, 0, "Error when reading cache");
+            goto done;
+        }
+        if ((x2 = xml_dup(x1)) == NULL)
+            goto done;
+    }
+    else  if (x2 == NULL){ /* create x2 and copy from x1 */
+        if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
+            goto done;
+        xml_flag_set(x2, XML_FLAG_TOP);
+        if (xml_copy(x1, x2) < 0)
+            goto done;
+    }
+    else{ /* copy x1 to x2 */
+        xml_free0(x2);
+        xml_type_set(x2, CX_ELMNT);
+        if (xml_name_set(x2, xml_name(x1)) < 0)
+            goto done;
+        xml_flag_set(x2, XML_FLAG_TOP);
+        if (xml_copy(x1, x2) < 0)
+            goto done;
+    }
+    /* Always set cache although not strictly necessary in case 1
+     * above, but logic gets complicated due to differences with
+     * de and de->de_xml */
+    de2->de_xml = x2;
+    if (de2->de_volatile == 0){
+        if (xmldb_copy_file(h, from, to) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
+    return retval;
+}
+
+/*! Copy datastore from db1 to db2, both cache and datastore
+ *
+ * May include copying datastore directory structure
+ * @param[in]  h     Clixon handle
+ * @param[in]  from  Source datastore
+ * @param[in]  to    Destination datastore
+ * @retval     0     OK
+ * @retval    -1     Error
+  */
+int
+xmldb_copy(clixon_handle h,
+           const char   *from,
+           const char   *to)
+{
+    db_elmnt   *de1;
+    db_elmnt   *de2;
+
+    clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
+    if ((de1 = clicon_db_elmnt_get(h, from)) == NULL)
+        de1 = xmldb_new(h, from);
+    if ((de2 = clicon_db_elmnt_get(h, to)) == NULL)
+        de2 = xmldb_new(h, to);
+    return xmldb_copy_de(h, de1, de2);
 }
 
 /*! Lock database
@@ -440,14 +710,14 @@ xmldb_lock(clixon_handle h,
            const char   *db,
            uint32_t      id)
 {
-    db_elmnt  *de = NULL;
-    db_elmnt   de0 = {0,};
+    db_elmnt *de = NULL;
 
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL)
-        de0 = *de;
-    de0.de_id = id;
-    gettimeofday(&de0.de_tv, NULL);
-    clicon_db_elmnt_set(h, db, &de0);
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+        if ((de = xmldb_new(h, db)) == NULL)
+            return -1;
+    }
+    de->de_id = id;
+    gettimeofday(&de->de_tv, NULL);
     clixon_debug(CLIXON_DBG_DATASTORE, "%s: locked by %u",  db, id);
     return 0;
 }
@@ -464,13 +734,11 @@ int
 xmldb_unlock(clixon_handle h,
              const char   *db)
 {
-    db_elmnt  *de = NULL;
+    db_elmnt *de = NULL;
 
     if ((de = clicon_db_elmnt_get(h, db)) != NULL){
         de->de_id = 0;
         memset(&de->de_tv, 0, sizeof(struct timeval));
-        clicon_db_elmnt_set(h, db, de);
-
     }
     return 0;
 }
@@ -501,7 +769,6 @@ xmldb_unlock_all(clixon_handle h,
             de->de_id == id){
             de->de_id = 0;
             memset(&de->de_tv, 0, sizeof(struct timeval));
-            clicon_db_elmnt_set(h, keys[i], de);
         }
     }
     retval = 0;
@@ -527,7 +794,7 @@ xmldb_islocked(clixon_handle h,
 
     if ((de = clicon_db_elmnt_get(h, db)) == NULL)
         return 0;
-    return de->de_id;
+    return xmldb_id_get(de);
 }
 
 /*! Get timestamp of when database was locked
@@ -564,9 +831,9 @@ int
 xmldb_exists(clixon_handle h,
              const char   *db)
 {
-    int                 retval = -1;
-    char               *filename = NULL;
-    struct stat         sb;
+    int         retval = -1;
+    char       *filename = NULL;
+    struct stat sb;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if (xmldb_db2file(h, db, &filename) < 0)
@@ -744,161 +1011,6 @@ xmldb_db_reset(clixon_handle h,
     return 0;
 }
 
-/*! Get datastore XML cache (Dont treat cache miss)
- *
- * @param[in]  h    Clixon handle
- * @param[in]  db   Database name
- * @retval     xml  XML cached tree or NULL
- * @see xmldb_get_cache  Read from store if miss
- */
-cxobj *
-xmldb_cache_get(clixon_handle h,
-                const char   *db)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
-        return NULL;
-    return de->de_xml;
-}
-
-/*! Get modified flag from datastore
- *
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @retval     1     Db is modified
- * @retval     0     Db is not modified
- * @retval    -1     Error (datastore does not exist)
- * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
- * @note This only works if db cache is used,...
- */
-int
-xmldb_modified_get(clixon_handle h,
-                   const char   *db)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
-    return de->de_modified;
-}
-
-/*! Set modified flag from datastore
- *
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @param[in]  value 0 or 1
- * @retval     0     OK
- * @retval    -1     Error (datastore does not exist)
- * @note This only makes sense for "candidate", see RFC 6241 Sec 7.5
- */
-int
-xmldb_modified_set(clixon_handle h,
-                   const char   *db,
-                   int           value)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
-    de->de_modified = value;
-    return 0;
-}
-
-/*! Get empty flag from datastore (the datastore was empty ON LOAD)
- *
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @retval     1     Db was empty on load
- * @retval     0     Db was not empty on load
- * @retval    -1     Error (datastore does not exist)
- */
-int
-xmldb_empty_get(clixon_handle h,
-                const char   *db)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
-    return de->de_empty;
-}
-
-/*! Set empty flag from datastore (the datastore was empty ON LOAD)
- *
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @param[in]  value 0 or 1
- * @retval     0     OK
- * @retval    -1     Error (datastore does not exist)
- */
-int
-xmldb_empty_set(clixon_handle h,
-                const char   *db,
-                int           value)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
-    de->de_empty = value;
-    return 0;
-}
-
-/*! Get volatile flag of datastore cache
- *
- * Whether to sync cache to disk on every update (ie xmldb_put)
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @retval     1     Db was empty on load
- * @retval     0     Db was not empty on load
- * @retval    -1     Error (datastore does not exist)
- */
-int
-xmldb_volatile_get(clixon_handle h,
-                   const char   *db)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
-    return de->de_volatile;
-}
-
-/*! Set datastore status of datastore cache
- *
- * Whether to sync cache to disk on every update (ie xmldb_put)
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @param[in]  value 0 or 1
- * @retval     0     OK
- * @retval    -1     Error (datastore does not exist)
- */
-int
-xmldb_volatile_set(clixon_handle h,
-                   const char   *db,
-                   int           value)
-{
-    db_elmnt *de;
-
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
-        clixon_err(OE_CFG, EFAULT, "datastore %s does not exist", db);
-        return -1;
-    }
-    de->de_volatile = value;
-    return 0;
-}
-
 /* Print the datastore meta-info to file
  */
 int
@@ -990,11 +1102,13 @@ xmldb_populate(clixon_handle h,
                const char   *db)
 {
     int        retval = -1;
-    cxobj     *x;
+    cxobj     *x = NULL;
     yang_stmt *yspec;
+    db_elmnt  *de;
     int        ret;
 
-    if ((x = xmldb_cache_get(h, db)) == NULL){
+    if ((de = clicon_db_elmnt_get(h, db)) == NULL ||
+        (x = xmldb_cache_get(de)) == NULL){
         clixon_err(OE_XML, 0, "XML cache not found");
         goto done;
     }

@@ -118,6 +118,8 @@ modstate_diff_free(modstate_diff_t *md)
        free(md->md_content_id);
     if (md->md_diff)
         xml_free(md->md_diff);
+    if (md->md_xmodfile)
+        xml_free(md->md_xmodfile);
     free(md);
     return 0;
 }

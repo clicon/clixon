@@ -338,7 +338,7 @@ int        yang_deviation(yang_stmt *ys, void *arg);
 int        yang_spec_print(FILE *f, yang_stmt *yspec);
 int        yang_spec_dump(yang_stmt *yspec, int debuglevel);
 int        yang_mounts_print(FILE *f, yang_stmt *ymounts);
-int        if_feature(yang_stmt *yspec, char *module, char *feature);
+int        if_feature(clixon_handle h, char *module, char *feature);
 int        ys_populate(yang_stmt *ys, void *arg);
 int        ys_populate2(yang_stmt *ys, void *arg);
 int        yang_apply(yang_stmt *yn, enum rfc_6020 key, yang_applyfn_t fn, int from, void *arg);
