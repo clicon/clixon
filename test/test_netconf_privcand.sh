@@ -151,10 +151,12 @@ cat <<EOF > $dbdir/startup_db
             <type>ex:eth</type>
         </interface>
     </interfaces>
+    <table xmlns="urn:example:clixon"><parameter><name>foo</name><value>0</value></parameter></table>
     <lu  xmlns="urn:example:clixon"><k>a</k></lu>
     <lu  xmlns="urn:example:clixon"><k>b</k></lu>
     <llu  xmlns="urn:example:clixon">a</llu>
     <llu  xmlns="urn:example:clixon">b</llu>
+    <l xmlns="urn:example:clixon">0</l>
 </${DATASTORE_TOP}>"
 EOF
 
@@ -245,9 +247,22 @@ proc rpc {session operation reply} {
 	expect {
 	    -i $session
 	    -re "$reply.*</rpc-reply>.*]]>]]>" {}
-	    timeout { puts "timeout: $operation $reply"; exit 2 }
-	    eof { puts "eof": $operation $reply"; exit 3 }
+	    timeout { puts "timeout: $operation $reply"; dump; exit 2 }
+	    eof { puts "eof: $operation $reply"; exit 3 }
 	}
+}
+
+# Dump both private candidates and running configuration
+proc dump {} {
+    log_user 1
+    global session_1
+    global session_2
+    puts "\nprivate candidate session 1:"
+    rpc $session_1 "<get-config><source><candidate/></source></get-config>" "data"
+    puts "\n\nprivate candidate session 2:"
+    rpc $session_2 "<get-config><source><candidate/></source></get-config>" "data"
+    puts "\n\nrunning:"
+    rpc $session_1 "<get-config><source><running/></source></get-config>" "data"
 }
 
 ## Start of 4.7.3.3  Revert-on-conflict example
@@ -260,7 +275,7 @@ rpc $session_2 "<get-config><source><candidate/></source></get-config>" "London.
 rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces></config></edit-config>" "ok/"
 
 # Session 2 edits the configuration
-rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>" "ok/"
+rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name >intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>" "ok/"
 
 puts "4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
@@ -269,28 +284,32 @@ rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris"
 # Session 2 commits the change
 rpc $session_2 "<commit/>" "ok/"
 
+rpc $session_2 "<get-config><source><running/></source></get-config>" "Paris"
 puts "4.7.3.3  Revert-on-conflict example"
 # A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
 rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
+# Reset private database
+rpc $session_1 "<discard-changes/>" "<ok/>"
 
-# Conflict est sequence: update session 1, update and commit session 2, update session 1
+# Conflict est sequence: reset session 1, edit and commit session 2, edit and update session 1
 proc conflict { content_1 content_2 update_reply} {
 	global session_1
 	global session_2
 	#puts "conflict $content_1  $content_2 $update_reply"
 	rpc $session_1 "<discard-changes/>" "<ok/>"
-	rpc $session_2 "<discard-changes/>" "<ok/>"
-	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/"
+	#rpc $session_2 "<discard-changes/>" "<ok/>"
 	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>" "<ok/>"
 	rpc $session_2 "<commit/>" "<ok/>"
-	rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
+	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/"
+    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
 }
+
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of any value"
-conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
+conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_two</name><description>Link to San Francisco</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>"  "ok/"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry"
-conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name operation=\"delete\">intf_one</name></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value operation=\"replace\">[info cmdcount]</value></parameter></table>" "ok/"
+conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_three</name><description>New interface</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value >[info cmdcount]</value></parameter></table>" "ok/"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container"
 conflict "<table xmlns=\"urn:example:clixon\" operation=\"delete\"></table>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Gothenburg</description></interface></interfaces>" "ok/"
