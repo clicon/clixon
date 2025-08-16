@@ -93,6 +93,7 @@ RUN make DESTDIR=/clixon/build install
 WORKDIR /clixon
 RUN git clone https://github.com/clicon/clixon-util.git
 WORKDIR /clixon/clixon-util
+
 RUN ./configure --prefix=/usr/local --with-cligen=/clixon/build/usr/local --with-clixon=/clixon/build/usr/local
 RUN make
 RUN make DESTDIR=/clixon/build install

@@ -26,7 +26,14 @@ Expected: October 2025
 
 ### C/CLI-API changes on existing features
 
-* Refactor rpc_msg API:
+Developers may need to change their code
+
+* Modified and re-factor datastore API
+  * Use API instead of direct access of db-elemnt struct
+  * `clicon_db_elmnt_get()` -> `xmldb_find()`
+  * `clicon_db_elmnt_set()` is replaced by `xmldb_new()` but needs some rewrite
+  * `xmldb_get_cache(h, db, yb, xp, md, xe)` -> `xmldb_get_cache(h, db, xp, xe)`
+* Modified and refactor rpc_msg API:
   * Replaced `clicon_msg` parameter with cbuf:
     * `clicon_rpc_msg(h, msg,...)` -> `clicon_rpc_msg(h, cb,...)`
     * `clicon_rpc_msg_persistent(h, msg, ...)` -> `clicon_rpc_msg(h, cb, ...)`
@@ -54,17 +61,6 @@ Expected: October 2025
 * Fixed: Fixed: memory error in rpc_get2 when error handling
 * Fixed: [RESTCONF crashes after sending request that ends with &](https://github.com/clicon/clixon/issues/618)
 * Fixed: Do not use d_type from readdir()
-
-### C/CLI-API changes on existing features
-
-Developers may need to change their code
-
-* Modified and re-factor datastore API
-  * Any direct access to db-elemnt/de must use API instead
-  * `clicon_db_elmnt_get()` -> `xmldb_find()`
-  * `clicon_db_elmnt_set()` is replaced by `xmldb_new()` but needs some rewrite
-  * `xmldb_get_cache(h, db, yb, xp, md, xe)` -> `xmldb_get_cache(h, db, xp, xe)`
->>>>>>> 08539362 (Modified and re-factor datastore API)
 
 ## 7.5.0
 29 July 2025
@@ -483,7 +479,7 @@ Users may have to change how they access the system
 
 ### C/CLI-API changes on existing features
 Developers may need to change their code
-p
+
 * Changed return value of `xml_add_attr` from 0/-1 to xa/NULL
   * You need to change eg `if (xml_add_attr < 0)` to if (xml_add_attr == NULL)`
 * Changed signature of `clicon_netconf_error()` and `netconf_err2cb()`
