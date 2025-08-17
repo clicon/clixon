@@ -65,6 +65,7 @@ int clicon_rpc_kill_session(clixon_handle h, uint32_t session_id);
 int clicon_rpc_validate(clixon_handle h, char *db);
 int clicon_rpc_commit(clixon_handle h, int confirmed, int cancel, uint32_t timeout, char *persist, char *persist_id);
 int clicon_rpc_discard_changes(clixon_handle h);
+int clicon_rpc_update(clixon_handle h);
 int clicon_rpc_create_subscription(clixon_handle h, char *stream, char *filter, int *s);
 int clicon_rpc_debug(clixon_handle h, int level);
 int clicon_rpc_restconf_debug(clixon_handle h, int level);
