@@ -1323,6 +1323,7 @@ discard_changes(clixon_handle h,
     return clicon_rpc_discard_changes(h);
 
 }
+
 /*! Copy from one database to another, eg running->startup
  *
  * @param[in] argv  a string: "<db1> <db2>" Copy from db1 to db2
@@ -1340,6 +1341,16 @@ db_copy(clixon_handle h,
     db1 = cv_string_get(cvec_i(argv, 0));
     db2 = cv_string_get(cvec_i(argv, 1));
     return clicon_rpc_copy_config(h, db1, db2);
+}
+
+/*! Discard all changes in candidate and replace with running
+ */
+int
+cli_update(clixon_handle h,
+           cvec         *cvv,
+           cvec         *argv)
+{
+    return clicon_rpc_update(h);
 }
 
 /*! This is the callback used by cli_setlog to print log message in CLI
