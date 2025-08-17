@@ -940,6 +940,16 @@ from_client_discard_changes(clixon_handle h,
             goto done;
         goto ok;
     }
+    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        db_elmnt *de0;
+        if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+            if (xmldb_copy(h, "running", xmldb_name_get(de0)) < 0){
+                if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+                    goto done;
+                goto ok;
+            }
+        }
+    }
     xmldb_modified_set(de, 0); /* reset dirty bit */
     if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
         xmldb_unlock(h, db);
