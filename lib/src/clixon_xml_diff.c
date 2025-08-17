@@ -314,8 +314,13 @@ xml_rebase_check(clixon_handle h,
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
                 goto next;
             }
+            else if (same20 > 0){ /* Deleted both in x1c and x2c */
+                clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both removed object",
+                             (*conflict+1), xpath0, xpath1, xpath2);
+                (*conflict)++;
+                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            }
         }
-        assert(same10 == same20 && same10 == same12);
         if (xml_rebase_check(h, x0c, x1c, x2c, conflict) < 0)
             goto done;
         x0c = xml_child_each(x0, x0c, CX_ELMNT);

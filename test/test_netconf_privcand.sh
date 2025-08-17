@@ -76,7 +76,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_REGEXP>example_backend.so$</CLICON_BACKEND_REGEXP>
   <CLICON_NETCONF_DIR>/usr/local/lib/$APPNAME/netconf</CLICON_NETCONF_DIR>
@@ -89,7 +89,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
   <CLICON_XMLDB_CANDIDATE_INMEM>false</CLICON_XMLDB_CANDIDATE_INMEM>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
-  <CLICON_CLI_OUTPUT_FORMAT>cli</CLICON_CLI_OUTPUT_FORMAT>
+  <CLICON_CLI_OUTPUT_FORMAT>xml</CLICON_CLI_OUTPUT_FORMAT>
 </clixon-config>
 EOF
 
@@ -158,6 +158,105 @@ cat <<EOF > $dbdir/startup_db
     <llu  xmlns="urn:example:clixon">b</llu>
     <l xmlns="urn:example:clixon">0</l>
 </${DATASTORE_TOP}>"
+EOF
+
+cat <<EOF > $dir/example_pipe.cli
+CLICON_MODE="|example_pipe"; # Must start with |
+\| {
+   grep("Search for pattern") <arg:string>, pipe_grep_fn("-e", "arg");
+   except("Inverted search") <arg:string>, pipe_grep_fn("-v", "arg");
+   tail("Output last part") <arg:string>, pipe_tail_fn("-n", "arg");
+   count("Line count"), pipe_wc_fn("-l");
+   show("Show other format") {
+     cli("set Input cli syntax"), pipe_showas_fn("cli", true, "set ");
+     xml("XML"), pipe_showas_fn("xml", true);
+     json("JSON"), pipe_showas_fn("json");
+     text("Text curly braces"), pipe_showas_fn("text");
+   }
+   save("Save to file") <filename:string>("Local filename"), pipe_save_file("filename");
+}
+EOF
+
+cat <<EOF > $dir/privcand.cli
+CLICON_MODE="example";
+CLICON_PROMPT="%U@%H %W> ";
+CLICON_PLUGIN="example_cli";
+
+# Autocli syntax tree operations
+edit @datamodelmode, cli_auto_edit("basemodel");
+up, cli_auto_up("basemodel");
+top, cli_auto_top("basemodel");
+set @datamodel, cli_auto_set();
+set default {
+   format("Set default output format") <fmt:string choice:xml|json|text|cli>("CLI output format"), cli_format_set();
+}
+merge @datamodel, cli_auto_merge();
+create @datamodel, cli_auto_create();
+delete("Delete a configuration item") {
+      @datamodel, @add:leafref-no-refer, cli_auto_del();
+      all("Delete whole candidate configuration"), delete_all("candidate");
+}
+validate("Validate changes"), cli_validate();
+commit("Commit the changes") {
+  [persist-id("Specify the 'persist' value of a previous confirmed-commit") <persist-id-val:string show:"string">("The 'persist' value of the persistent confirmed-commit")], cli_commit(); {
+    <cancel:string keyword:cancel>("Cancel an ongoing confirmed-commit"), cli_commit();
+    <confirmed:string keyword:confirmed>("Require a confirming commit") {
+       [persist("Make this confirmed-commit persistent") <persist-val:string show:"string">("The value that must be provided as 'persist-id' in the confirming-commit or cancel-commit")]
+       [<timeout:uint32 range[1:4294967295] show:"1..4294967295">("The rollback timeout in seconds")], cli_commit();
+    }
+  }
+}
+quit("Quit"), cli_quit();
+
+debug("Debugging parts of the system"){
+    cli("Set cli debug")	 <level:int32>("Set debug level (0..n)"), cli_debug_cli();
+    backend("Set backend debug") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
+    restconf("Set restconf debug") <level:int32>("Set debug level (0..n)"), cli_debug_restconf();
+}
+
+shell("System command"), cli_start_shell("bash");{
+  <source:rest>("Single shell command"), cli_start_shell("bash");
+}
+copy("Copy and create a new object") {
+    running("Copy from running db")  startup("Copy to startup config"), db_copy("running", "startup");
+    interface("Copy interface"){
+	(<name:string>|<name:string expand_dbvar("candidate","/ietf-interfaces:interfaces/interface=%s/name")>("name of interface to copy from")) to("Copy to interface") <toname:string>("Name of interface to copy to"), cli_copy_config("candidate","//interface[%s='%s']","urn:ietf:params:xml:ns:yang:ietf-interfaces","name","name","toname");
+    }
+}
+discard("Discard edits (rollback 0)"), discard_changes();
+
+show("Show a particular state of the system"){
+    default{
+       format("Show default output format"), cli_format_show();
+    }
+    configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false);{
+       @|example_pipe, cli_show_auto_mode("candidate", "default", true, false);
+       @datamodelshow, cli_show_auto("candidate", "default", true, false);
+    }
+    2configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false, "explicit", "set ");{
+       @|example_pipe, cli_show_auto_mode("candidate", "xml", true, false, "explicit");
+    }
+    debug("Show debug"), cli_debug_show();{
+          cli("Show cli debug"), cli_debug_show();
+    }
+    xpath("Show configuration") <xpath:string>("XPATH expression")
+       [<ns:string>("Namespace")], show_conf_xpath("candidate");
+    version("Show version"), cli_show_version("candidate", "text", "/");
+    options("Show clixon options"), cli_show_options();
+    compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "default");{
+	    xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
+		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
+    }
+
+    sessions("Show client sessions"), cli_show_sessions();{
+         detail("Show sessions detailed state"), cli_show_sessions("detail");
+    }
+}
+session("Client sessions") {
+   kill("Kill client session")
+      <session:uint32>("Client session number"), cli_kill_session("session");
+}
+update("Send private candidate update"), cli_update();
 EOF
 
 # Bring your own backend

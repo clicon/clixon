@@ -784,6 +784,65 @@ candidate_commit(clixon_handle  h,
     goto done;
 }
 
+/*! Check private candidate from the running configuration.
+ *
+ * @param[in]   h       Clixon handle
+ * @retval      1       OK
+ * @retval      0       Validation failed (with cbret set)
+ * @retval     -1       Error
+ */
+static int
+backend_update(clixon_handle        h,
+               struct client_entry *ce,
+               db_elmnt            *de0,
+               cbuf                *cbret)
+{
+    int       retval = -1;
+    cxobj    *xorig = NULL;
+    cxobj    *xcand = NULL;
+    cxobj    *xrun = NULL;
+    db_elmnt *de1;
+    int       conflict = 0;
+
+    if ((xcand = xmldb_cache_get(de0)) == NULL){
+        clixon_err(OE_DB, 0, "candidate cache not found");
+        goto done;
+    }
+    if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+        clixon_err(OE_DB, 0, "candidate-orig not found");
+        goto done;
+    }
+    if ((xorig = xmldb_cache_get(de1)) == NULL){
+        clixon_err(OE_DB, 0, "candidate-orig cache not found");
+        goto done;
+    }
+    if (xmldb_get_cache(h, "running", &xrun, NULL) < 0)
+        goto done;
+    if (xml_rebase_check(h, xorig, xcand, xrun, &conflict) < 0)
+        goto done;
+    if (conflict == 0){
+        /* Rebase candidate */
+        /* Reset candidate-orig to running */
+        if (xmldb_copy(h, "running", xmldb_name_get(de1)) < 0){
+            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+                goto done;
+            goto fail;
+        }
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
+    }
+    else{
+        if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
+            goto done;
+        goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Commit the candidate configuration as the device's new current configuration
  *
  * @param[in]  h       Clixon handle
@@ -844,10 +903,7 @@ from_client_commit(clixon_handle h,
             goto done;
         goto ok;
     }
-    if ((db = strdup(xmldb_name_get(de))) == NULL){
-        clixon_err(OE_UNIX, errno, "strdup");
-        goto done;
-    }
+    db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
@@ -868,6 +924,12 @@ from_client_commit(clixon_handle h,
             goto done;
         goto ok;
     }
+    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if ((ret = backend_update(h, ce, de, cbret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto ok;
+    }
     if ((ret = candidate_commit(h, xe, db, myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
         if (ret < 0)
@@ -884,8 +946,6 @@ from_client_commit(clixon_handle h,
  ok:
     retval = 0;
  done:
-    if (db)
-        free(db);
     if (cbx)
         cbuf_free(cbx);
     return retval; /* may be zero if we ignoring errors from commit */
@@ -916,6 +976,7 @@ from_client_discard_changes(clixon_handle h,
     cbuf                *cbx = NULL; /* Assist cbuf */
     db_elmnt            *de;
     char                *db;
+    db_elmnt            *de0;
 
     /* Check if target locked by other client */
     if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
@@ -939,6 +1000,15 @@ from_client_discard_changes(clixon_handle h,
         if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
             goto done;
         goto ok;
+    }
+    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+            if (xmldb_copy(h, "running", xmldb_name_get(de0)) < 0){
+                if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+                    goto done;
+                goto ok;
+            }
+        }
     }
     xmldb_modified_set(de, 0); /* reset dirty bit */
     if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
@@ -992,6 +1062,71 @@ from_client_validate(clixon_handle h,
  done:
     return retval;
 } /* from_client_validate */
+
+/*! Updates the private candidate from the running configuration.
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register()
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see draft-ietf-netconf-privcand
+ * XXX Merge dont work properly
+ */
+int
+from_client_update(clixon_handle h,
+                   cxobj        *xe,
+                   cbuf         *cbret,
+                   void         *arg,
+                   void         *regarg)
+{
+    int                      retval = -1;
+    struct client_entry     *ce = (struct client_entry *)arg;
+    yang_stmt               *yspec;
+    enum privcand_resolution resolution = PR_REVERT;
+    cxobj                   *xres;
+    db_elmnt                *de0;
+    int                      ret;
+
+    clixon_debug(CLIXON_DBG_BACKEND, "");
+    if ((yspec =  clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec9");
+        goto done;
+    }
+    if ((xres = xml_find(xe, "resolution-mode")) != NULL){
+        if ((resolution = privcand_res_str2key(xml_body(xres))) < 0){
+            if (netconf_invalid_value(cbret, "protocol", "Unrecognized resolution value") < 0)
+                goto done;
+            goto ok;
+        }
+    }
+    switch (resolution){
+    case PR_REVERT:
+        break;
+    case PR_PREFCAND:
+    case PR_PREFRUN:
+        if (netconf_operation_not_supported(cbret, "application", "Resolution mode not supported") < 0)
+            goto done;
+        goto ok;
+        break;
+    default:
+        break;
+    }
+    if ((de0 = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+        clixon_err(OE_DB, 0, "candidate not found");
+        goto done;
+    }
+    if ((ret = backend_update(h, ce, de0, cbret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto ok;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! Restart specific backend plugins without full backend restart
  *

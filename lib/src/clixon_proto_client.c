@@ -1699,6 +1699,57 @@ clicon_rpc_create_subscription(clixon_handle h,
     return retval;
 }
 
+/*! Send private candidate update
+ *
+ * @param[in] h        Clixon handle
+ * @retval    1        OK
+ * @retval    0        Invalid, netconf error return, and logged to syslog
+ * @retval   -1        Error and logged to syslog
+ * @note error returns are logged but not returned
+ */
+int
+clicon_rpc_update(clixon_handle h)
+{
+    int      retval = -1;
+    cxobj   *xret = NULL;
+    cxobj   *xerr;
+    char    *username;
+    uint32_t session_id;
+    cbuf    *cb = NULL;
+
+    if (session_id_check(h, &session_id) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);  /* XXX: use incrementing sequence */
+    cprintf(cb, ">");
+    cprintf(cb, "<update xmlns=\"%s\">", NETCONF_PRIVCAND_NAMESPACE);
+    cprintf(cb, "<resolution-mode>revert-on-conflict</resolution-mode>");
+    cprintf(cb, "</update>");
+    cprintf(cb, "</rpc>");
+    if (clicon_rpc_msg(h, cb, &xret) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Deleting configuration");
+        goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
 /*! Send a debug request to backend server
  *
  * @param[in] h        Clixon handle
