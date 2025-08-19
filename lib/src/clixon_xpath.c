@@ -890,7 +890,7 @@ xpath_vec_flag(cxobj      *xcur,
     xp_ctx    *xr = NULL;
     int        i;
     cxobj     *x;
-    int        ilen = 0; /* change when cxvec_append uses size_t */
+    size_t     ilen = 0; /* change when cxvec_append uses size_t */
 
     va_start(ap, veclen);
     len = vsnprintf(NULL, 0, xpformat, ap);

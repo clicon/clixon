@@ -20,6 +20,7 @@ Expected: October 2025
 
 ### Features
 
+* New: [NETCONF and RESTCONF Private candidate datastores](https://github.com/clicon/clixon/issues/615)
 * All internal session clients start with NETCONF hello
 * New `clixon-config@2025-08-01.yang` revision
    * Added option: `CLICON_XMLDB_CANDIDATE_INMEM` to run candidate datastore in-mem
@@ -28,6 +29,8 @@ Expected: October 2025
 
 Developers may need to change their code
 
+* Change int to size_t in `cxvec_append()` and related functions and data-types
+  * Calling types may need to be adjusted
 * Modified and re-factor datastore API
   * Use API instead of direct access of db-elemnt struct
   * `clicon_db_elmnt_get()` -> `xmldb_find()`

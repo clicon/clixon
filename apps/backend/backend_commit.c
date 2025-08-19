@@ -784,46 +784,73 @@ candidate_commit(clixon_handle  h,
     goto done;
 }
 
-/*! Check private candidate from the running configuration.
+/*! Check private candidate, rebase to running if no conflict
  *
- * @param[in]   h       Clixon handle
- * @retval      1       OK
- * @retval      0       Validation failed (with cbret set)
- * @retval     -1       Error
+ * @param[in]   h     Clixon handle
+ * @param[in]   ce    Client entry
+ * @param[in]   de0   Datastore entry of
+ * @param[out]  cbret Reply msg if retval=0
+ * @retval      1     OK
+ * @retval      0     Validation failed (with cbret set)
+ * @retval     -1     Error
  */
 static int
 backend_update(clixon_handle        h,
                struct client_entry *ce,
-               db_elmnt            *de0,
+               db_elmnt            *de1,
                cbuf                *cbret)
 {
-    int       retval = -1;
-    cxobj    *xorig = NULL;
-    cxobj    *xcand = NULL;
-    cxobj    *xrun = NULL;
-    db_elmnt *de1;
-    int       conflict = 0;
+    int            retval = -1;
+    db_elmnt      *de0;
+    cxobj         *xorig = NULL;
+    char          *db0;
+    cxobj         *xcand = NULL;
+    char          *db1;
+    cxobj         *xrun = NULL;
+    int            conflict = 0;
+    diff_rebase_t *dr = NULL;
 
-    if ((xcand = xmldb_cache_get(de0)) == NULL){
-        clixon_err(OE_DB, 0, "candidate cache not found");
-        goto done;
-    }
-    if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+    /* Original candidate */
+    if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
         clixon_err(OE_DB, 0, "candidate-orig not found");
         goto done;
     }
-    if ((xorig = xmldb_cache_get(de1)) == NULL){
+    if ((xorig = xmldb_cache_get(de0)) == NULL){
         clixon_err(OE_DB, 0, "candidate-orig cache not found");
         goto done;
     }
+    db0 = xmldb_name_get(de0);
+    /* Private candidate */
+    if ((xcand = xmldb_cache_get(de1)) == NULL){
+        clixon_err(OE_DB, 0, "candidate cache not found");
+        goto done;
+    }
+    db1 = xmldb_name_get(de1);
+    /* Running */
     if (xmldb_get_cache(h, "running", &xrun, NULL) < 0)
         goto done;
-    if (xml_rebase_check(h, xorig, xcand, xrun, &conflict) < 0)
+    if ((dr = diff_rebase_new()) == NULL)
+        goto done;
+    if (xml_rebase(h, xorig, xcand, xrun, &conflict, dr) < 0)
         goto done;
     if (conflict == 0){
-        /* Rebase candidate */
+        /* Rebase candidate, step 1 of 4.8.2.1.  <commit>
+         * Apply all changes of xorig->xrun to xcand
+         * 1. run xml_diff(xorig, xrun) and apply to xcand (see device_create_edit_config_diff())
+         *   Hm no, how to do actual mod from a diff vector?
+         * 2. adjust xml_rebase_check to do the actual modification of xcand
+         */
+        if (diff_rebase_exec(dr) < 0)
+            goto done;
+        if (xml_sort_recurse(xcand) < 0)
+            goto done;
+        if (xmldb_populate(h, db1) < 0) // ??
+            goto done;
+        if (!xmldb_volatile_get(de1))
+            if (xmldb_write_cache2file(h, db1) < 0)
+                goto done;
         /* Reset candidate-orig to running */
-        if (xmldb_copy(h, "running", xmldb_name_get(de1)) < 0){
+        if (xmldb_copy(h, db1, db0) < 0){
             if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                 goto done;
             goto fail;
@@ -837,6 +864,8 @@ backend_update(clixon_handle        h,
     }
     retval = 1;
  done:
+    if (dr)
+        diff_rebase_free(dr);
     return retval;
  fail:
     retval = 0;
@@ -897,14 +926,11 @@ from_client_commit(clixon_handle h,
         if (ret == 0)
             goto ok;
     }
-    /* Check if target locked by other client */
-    if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
-        if (netconf_operation_failed(cbret, "application", "Candidate not found, shouldnt happen")< 0)
-            goto done;
-        goto ok;
-    }
+    if (xmldb_netconf_db_find(h, "candidate", ce, &de) < 0)
+        goto done;
     db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
+    /* Is candidate locked? */
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
@@ -925,6 +951,7 @@ from_client_commit(clixon_handle h,
         goto ok;
     }
     if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        /* First step, rebase private candidate with running */
         if ((ret = backend_update(h, ce, de, cbret)) < 0)
             goto done;
         if (ret == 0)
@@ -978,12 +1005,8 @@ from_client_discard_changes(clixon_handle h,
     char                *db;
     db_elmnt            *de0;
 
-    /* Check if target locked by other client */
-    if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
-        if (netconf_operation_failed(cbret, "application", "Candidate not found, shouldnt happen")< 0)
-            goto done;
-        goto ok;
-    }
+    if (xmldb_netconf_db_find(h, "candidate", ce, &de) < 0)
+        goto done;
     db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
     if (iddb && myid != iddb){
@@ -996,19 +1019,24 @@ from_client_discard_changes(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (xmldb_copy(h, "running", db) < 0){
-        if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
-            goto done;
-        goto ok;
-    }
     if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        /* The behaviour of the <discard-changes> operation is updated such that
+         * discarding the changes in a private candidate will reset it to the
+         * state it was when it was initially created, or to the state following
+         * the latest <update> operation, whichever is most recent.
+         */
         if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
-            if (xmldb_copy(h, "running", xmldb_name_get(de0)) < 0){
+            if (xmldb_copy(h, xmldb_name_get(de0), db) < 0){
                 if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                     goto done;
                 goto ok;
             }
         }
+    }
+    else if (xmldb_copy(h, "running", db) < 0){
+        if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            goto done;
+        goto ok;
     }
     xmldb_modified_set(de, 0); /* reset dirty bit */
     if (clicon_option_bool(h, "CLICON_AUTOLOCK")){
@@ -1048,7 +1076,7 @@ from_client_validate(clixon_handle h,
     int                  ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
-    if ((ret = xmldb_client_find(h, xe, "source", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1087,7 +1115,7 @@ from_client_update(clixon_handle h,
     yang_stmt               *yspec;
     enum privcand_resolution resolution = PR_REVERT;
     cxobj                   *xres;
-    db_elmnt                *de0;
+    db_elmnt                *de;
     int                      ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
@@ -1114,11 +1142,9 @@ from_client_update(clixon_handle h,
     default:
         break;
     }
-    if ((de0 = xmldb_candidate_find(h, "candidate", ce)) == NULL){
-        clixon_err(OE_DB, 0, "candidate not found");
+    if (xmldb_netconf_db_find(h, "candidate", ce, &de) < 0)
         goto done;
-    }
-    if ((ret = backend_update(h, ce, de0, cbret)) < 0)
+    if ((ret = backend_update(h, ce, de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1379,32 +1405,39 @@ xmldb_candidate_find(clixon_handle        h,
     return de;
 }
 
-/*! Find datastore in incoming NETCONF request
+/*! Find datastore given name, create if not exist
  *
  * @param[in]  h       Clixon handle
- * @param[in]  xn      Request: <rpc><xn></rpc>
- * @param[in]  name    Name of datastore
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  db      Name of datastore (or NULL)
+ * @param[in]  ce      Client entry
+ * @param[out] dep     Returned datastore-element
+ * @retval     0       OK, datastore element returned in dep
+ * @retval    -1       Error
  */
 int
-xmldb_client_find(clixon_handle        h,
-                  cxobj               *xn,
-                  const char          *name,
-                  struct client_entry *ce,
-                  db_elmnt           **dep,
-                  cbuf                *cbret)
+xmldb_netconf_db_find(clixon_handle        h,
+                      const char          *db,
+                      struct client_entry *ce,
+                      db_elmnt           **dep)
 {
     int       retval = -1;
-    char     *db = NULL;
     db_elmnt *de = NULL;
 
-    if ((db = netconf_db_find(xn, name)) == NULL){
-        if (netconf_missing_element(cbret, "protocol", name, NULL) < 0)
-            goto done;
-        goto fail;
-    }
     if (strcmp(db, "candidate") == 0){
-        de = xmldb_candidate_find(h, "candidate", ce);
+        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+            if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+                /* Create candidates, copies from running when created */
+                if ((de = xmldb_candidate_new(h, "candidate", ce)) == NULL)
+                    goto done;
+            }
+            /* Save original candidate for rebasing match, see from_client_update */
+            if (xmldb_candidate_find(h, "candidate-orig", ce) == NULL){
+                if (xmldb_candidate_new(h, "candidate-orig", ce) == NULL)
+                    goto done;
+            }
+        }
+        else
+            de = xmldb_candidate_find(h, "candidate", ce);
     }
     else if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
@@ -1412,12 +1445,41 @@ xmldb_client_find(clixon_handle        h,
     }
     if (dep)
         *dep = de;
-    retval = 1;
+    retval = 0;
  done:
     return retval;
- fail:
-    retval = 0;
-    goto done;
+}
+
+/*! Find datastore in incoming NETCONF request
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xn      Request: <rpc><xn></rpc>
+ * @param[in]  name    Name of NETCONF reference to datastore (eg "target") (or NULL)
+ * @param[in]  ce      Client entry
+ * @param[out] dep     Returned datastore-element
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @retval     1       OK, datastore element returned in dep
+ * @retval     0       Datastore not found, error returned in cbret
+ * @retval    -1       Error
+ */
+int
+xmldb_netconf_name_find(clixon_handle        h,
+                        cxobj               *xn,
+                        const char          *name,
+                        struct client_entry *ce,
+                        db_elmnt           **dep,
+                        cbuf                *cbret)
+{
+    char     *db;
+
+    if ((db = netconf_db_find(xn, name)) == NULL){
+        if (netconf_missing_element(cbret, "protocol", name, NULL) < 0)
+            return -1;
+        return 0;
+    }
+    if (xmldb_netconf_db_find(h, db, ce, dep) < 0)
+        return -1;
+    return 1;
 }
 
 /*! Create candidate datastore

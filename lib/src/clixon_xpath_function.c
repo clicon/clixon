@@ -158,7 +158,7 @@ xp_function_current(xp_ctx            *xc0,
 {
     int         retval = -1;
     cxobj     **vec = NULL;
-    int         veclen = 0;
+    size_t      veclen = 0;
     xp_ctx     *xc = NULL;
 
     if ((xc = ctx_dup(xc0)) == NULL)
@@ -295,7 +295,7 @@ xp_function_deref(xp_ctx            *xc0,
     xp_ctx     *xc = NULL;
     int         i;
     cxobj     **vec = NULL;
-    int         veclen = 0;
+    size_t      veclen = 0;
     cxobj      *xv;
     cxobj      *xref;
     yang_stmt  *ys;

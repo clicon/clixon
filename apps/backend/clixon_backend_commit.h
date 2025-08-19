@@ -81,7 +81,8 @@ int load_failsafe(clixon_handle h, char *phase);
 int system_only_data_add(clixon_handle h, char *db);
 
 db_elmnt *xmldb_candidate_find(clixon_handle h, const char *name, client_entry *ce);
-int       xmldb_client_find(clixon_handle h, cxobj *xn, const char *name, struct client_entry *ce, db_elmnt **de, cbuf *cbret);
+int       xmldb_netconf_name_find(clixon_handle h, cxobj *xn, const char *name, struct client_entry *ce, db_elmnt **de, cbuf *cbret);
+int       xmldb_netconf_db_find(clixon_handle h, const char *db, struct client_entry *ce, db_elmnt **de);
 db_elmnt *xmldb_candidate_new(clixon_handle h, const char *name, struct client_entry *ce);
 
 #endif  /* _CLIXON_BACKEND_COMMIT_H_ */

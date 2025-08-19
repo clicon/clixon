@@ -324,9 +324,9 @@ ctx2number(xp_ctx *xc,
  * @param[in] veclen
  */
 int
-ctx_nodeset_replace(xp_ctx   *xc,
-                    cxobj   **vec,
-                    size_t    veclen)
+ctx_nodeset_replace(xp_ctx *xc,
+                    cxobj **vec,
+                    size_t  veclen)
 {
     if (xc->xc_nodeset)
         free(xc->xc_nodeset);

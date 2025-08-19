@@ -60,12 +60,12 @@ typedef struct {
     cxobj     *td_src;      /* Source database xml tree */
     cxobj     *td_target;   /* Target database xml tree */
     cxobj    **td_dvec;     /* Delete xml vector */
-    int        td_dlen;     /* Delete xml vector length */
+    size_t     td_dlen;     /* Delete xml vector length */
     cxobj    **td_avec;     /* Add xml vector */
-    int        td_alen;     /* Add xml vector length */
+    size_t     td_alen;     /* Add xml vector length */
     cxobj    **td_scvec;    /* Source changed xml vector */
     cxobj    **td_tcvec;    /* Target changed xml vector */
-    int        td_clen;     /* Changed xml vector length */
+    size_t     td_clen;     /* Changed xml vector length */
 } transaction_data_t;
 
 /*! Pagination userdata 

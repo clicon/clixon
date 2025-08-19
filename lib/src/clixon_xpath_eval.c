@@ -326,12 +326,12 @@ nodetest_recursive(cxobj      *xn,
                    cvec       *nsc,
                    int         localonly,
                    cxobj    ***vec0,
-                   int        *vec0len)
+                   size_t     *vec0len)
 {
     int     retval = -1;
     cxobj  *xsub;
     cxobj **vec = *vec0;
-    int     veclen = *vec0len;
+    size_t  veclen = *vec0len;
 
     xsub = NULL;
     while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
@@ -381,7 +381,7 @@ xp_eval_step(xp_ctx     *xc0,
     cxobj      *xv;
     cxobj      *xp;
     cxobj     **vec = NULL;
-    int         veclen = 0;
+    size_t      veclen = 0;
     xpath_tree *nodetest = xs->xs_c0;
     xp_ctx     *xc = NULL;
     int         ret;
