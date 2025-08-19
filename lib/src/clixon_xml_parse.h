@@ -53,7 +53,7 @@ struct clixon_xml_parse_yacc {
     cxobj      *xy_xparent;      /* cxobj parent element (changes with parse context) */
     int         xy_lex_state;    /* lex return state */
     cxobj     **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    int         xy_xlen;         /* Length of xy_xvec */
+    size_t      xy_xlen;         /* Length of xy_xvec */
 };
 typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
 

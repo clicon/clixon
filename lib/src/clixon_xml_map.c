@@ -94,9 +94,9 @@ typedef struct  {
 } merge_twophase;
 
 /* Forward declaration */
-static int xml_diff1(cxobj *x0, cxobj *x1, cxobj ***x0vec, int *x0veclen,
-                     cxobj ***x1vec, int *x1veclen,
-                     cxobj ***changed_x0, cxobj ***changed_x1, int *changedlen);
+static int xml_diff1(cxobj *x0, cxobj *x1, cxobj ***x0vec, size_t *x0veclen,
+                     cxobj ***x1vec, size_t *x1veclen,
+                     cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
 
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int
@@ -357,12 +357,12 @@ static int
 xml_diff1(cxobj     *x0,
           cxobj     *x1,
           cxobj   ***x0vec,
-          int       *x0veclen,
+          size_t    *x0veclen,
           cxobj   ***x1vec,
-          int       *x1veclen,
+          size_t    *x1veclen,
           cxobj   ***changed_x0,
           cxobj   ***changed_x1,
-          int       *changedlen)
+          size_t    *changedlen)
 {
     int        retval = -1;
     cxobj     *x0c = NULL; /* x0 child */
@@ -534,12 +534,12 @@ int
 xml_diff(cxobj     *x0,
          cxobj     *x1,
          cxobj   ***first,
-         int       *firstlen,
+         size_t    *firstlen,
          cxobj   ***second,
-         int       *secondlen,
+         size_t    *secondlen,
          cxobj   ***changed_x0,
          cxobj   ***changed_x1,
-         int       *changedlen)
+         size_t    *changedlen)
 {
     int retval = -1;
 

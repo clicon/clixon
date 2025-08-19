@@ -954,9 +954,9 @@ xml_vector_decrement(cxobj *x,
  * @see xml_child_each_attr  hardcoded for sorted list and attributes
  */
 cxobj *
-xml_child_each(cxobj           *xparent,
-               cxobj           *xprev,
-               enum cxobj_type  type)
+xml_child_each(cxobj          *xparent,
+               cxobj          *xprev,
+               enum cxobj_type type)
 {
     int    i;
     cxobj *xn = NULL;
@@ -2048,7 +2048,6 @@ xml_copy_one(cxobj *x0,
         if ((s = xml_value(x0))){ /* malloced string */
             if (xml_value_set(x1, s) < 0)
                 goto done;
-
         }
         break;
     default:
@@ -2131,7 +2130,7 @@ xml_dup(cxobj *x0)
  * @retval        -1      Error
  * @code
  *  cxobj  **xvec = NULL;
- *  int      xlen = 0;
+ *  size_t   xlen = 0;
  *  cxobj   *x; 
  *
  *  if (cxvec_append(x, &xvec, &xlen) < 0) 
@@ -2145,7 +2144,7 @@ xml_dup(cxobj *x0)
 int
 cxvec_append(cxobj   *x,
              cxobj ***vec,
-             int     *len)
+             size_t  *len)
 {
     int retval = -1;
 

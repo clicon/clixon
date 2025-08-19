@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2025 Olof Hagsand
 
   This file is part of CLIXON.
@@ -23,7 +23,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -80,6 +80,152 @@
 #include "clixon_xml_map.h"
 #include "clixon_xml_diff.h"
 
+/*! Create diff_rebase struct
+ *
+ * @retval  dr   New diff_rebase struct
+ * @retval  NULL Error
+ */
+diff_rebase_t *
+diff_rebase_new(void)
+{
+    diff_rebase_t *dr = NULL;
+
+    if ((dr = malloc(sizeof(*dr))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(dr, 0, sizeof(*dr));
+ done:
+    return dr;
+}
+
+/*! Free diff_rebase struct
+ *
+ * @param[in]  dr   New diff_rebase struct
+ * @retval     0    OK
+ */
+int
+diff_rebase_free(diff_rebase_t *dr)
+{
+    if (dr->dr_addparent)
+        free(dr->dr_addparent);
+    if (dr->dr_addchild)
+        free(dr->dr_addchild);
+    if (dr->dr_remove)
+        free(dr->dr_remove);
+    if (dr->dr_changefrom)
+        free(dr->dr_changefrom);
+    if (dr->dr_changeto)
+        free(dr->dr_changeto);
+    free(dr);
+    return 0;
+}
+
+/*! Add node
+ *
+ * @param[in]  dr   New diff_rebase struct
+ * @param[in]  xp   Parent node
+ * @param[in]  xc   Child to copy
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+diff_rebase_add(diff_rebase_t *dr,
+                cxobj         *xp,
+                cxobj         *xc)
+{
+    int retval = -1;
+
+    if (cxvec_append(xp, &dr->dr_addparent, &dr->dr_addlen) < 0)
+        goto done;
+    (dr->dr_addlen)--; /* append two vectors */
+    if (cxvec_append(xc, &dr->dr_addchild, &dr->dr_addlen) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Remove object
+ *
+ * @param[in]  dr   New diff_rebase struct
+ * @param[in]  x    Remove object
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+diff_rebase_rm(diff_rebase_t *dr,
+               cxobj         *x)
+{
+    int retval = -1;
+
+    if (cxvec_append(x, &dr->dr_remove, &dr->dr_removelen) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Change node
+ *
+ * @param[in]  dr    New diff_rebase struct
+ * @param[in]  xfrom From node
+ * @param[in]  xto   To node
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+static int
+diff_rebase_change(diff_rebase_t *dr,
+                   cxobj         *xfrom,
+                   cxobj         *xto)
+{
+    int retval = -1;
+
+    if (cxvec_append(xfrom, &dr->dr_changefrom, &dr->dr_changelen) < 0)
+        goto done;
+    (dr->dr_changelen)--; /* append two vectors */
+    if (cxvec_append(xto, &dr->dr_changeto, &dr->dr_changelen) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Execute add, remove and change ops
+ *
+ * @param[in]  dr    New diff_rebase struct
+ * @param[in]  xfrom From node
+ * @param[in]  xto   To node
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @note  need sort after
+ */
+int
+diff_rebase_exec(diff_rebase_t *dr)
+{
+    int    retval = -1;
+    cxobj *x;
+    char  *val;
+    int    i;
+
+    for (i=0; i<dr->dr_addlen; i++){
+        if ((x = xml_dup(dr->dr_addchild[i])) == NULL)
+            goto done;
+        if (xml_addsub(dr->dr_addparent[i], x) < 0)
+            goto done;
+    }
+    for (i=0; i<dr->dr_removelen; i++){
+        xml_purge(dr->dr_remove[i]);
+    }
+    for (i=0; i<dr->dr_changelen; i++){
+        val = xml_value(dr->dr_changefrom[i]);
+        xml_value_set(dr->dr_changeto[i], val);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Check single node equivalence
  *
  * @param[in]  x0   XML object 0
@@ -88,6 +234,7 @@
  * @retval     0    OK
  * @retval    -1    Error
  */
+
 static int
 xml_node_same(cxobj *x0,
               cxobj *x1,
@@ -191,6 +338,8 @@ xml_node_eq(cxobj *x0,
  * against it.
  * Number of conflicts are returned, and the nature of each conflict is logged with
  * debug flag xml (start with -D xml)
+ * One could skip default values
+ *
                            update commit
           +--------------------+---+------> private candidate 1
          /                  x1 ^    \
@@ -206,17 +355,19 @@ xml_node_eq(cxobj *x0,
  * @param[in]  x1       Candidate
  * @param[in]  x2       Running
  * @param[out] conflict Set to number of conflicts, if any
+ * @param[out] dr       Diff rebase struct
  * @retval     0        OK
  * @retval    -1        Error
  * @see xml_tree_equal
  * @see xml_diff
  */
 int
-xml_rebase_check(clixon_handle h,
-                 cxobj        *x0,
-                 cxobj        *x1,
-                 cxobj        *x2,
-                 int          *conflict)
+xml_rebase(clixon_handle  h,
+           cxobj         *x0,
+           cxobj         *x1,
+           cxobj         *x2,
+           int           *conflictp,
+           diff_rebase_t *dr)
 {
     int    retval = -1;
     cxobj *x0c;
@@ -232,12 +383,13 @@ xml_rebase_check(clixon_handle h,
     int    eq2;
     char  *value0;
     char  *value1;
+    int    conflict = 0;
 
     x0c = x1c = x2c = NULL;
     x0c = xml_child_each(x0, x0c, CX_ELMNT);
     x1c = xml_child_each(x1, x1c, CX_ELMNT);
     x2c = xml_child_each(x2, x2c, CX_ELMNT);
-    while (x0c != NULL && x1c != NULL && x2c != NULL){
+    while (x0c != NULL || x1c != NULL || x2c != NULL){
         if (x0c && xml2xpath(x0c, NULL, 0, 0, &xpath0) < 0)
             goto done;
         if (x1c && xml2xpath(x1c, NULL, 0, 0, &xpath1) < 0)
@@ -257,8 +409,8 @@ xml_rebase_check(clixon_handle h,
                 if (same12 == 0){
                     if (xml_tree_equal(x1c, x2c) != 0){
                         clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both added unequal object",
-                                (*conflict+1), xpath0, xpath1, xpath2);
-                        (*conflict)++;
+                                     conflict+1, xpath0, xpath1, xpath2);
+                        conflict++;
                     }
                 }
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
@@ -267,8 +419,12 @@ xml_rebase_check(clixon_handle h,
             goto next;
         }
         else if (same10 == 0){
-            if (same20 < 0){
-                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            if (same20 < 0){ /* New in x2c */
+                if (dr != NULL){ /* Add node in x1 */
+                    if (diff_rebase_add(dr, x1, x2c) < 0)
+                        goto done;
+                }
+                x2c = xml_child_each(x2, x2c, CX_ELMNT);
                 goto next;
             }
             else if (same20 == 0){
@@ -281,18 +437,31 @@ xml_rebase_check(clixon_handle h,
                         goto done;
                     if (eq2 == 0){
                         clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s x1 and x2 both changed value\n",
-                                (*conflict+1), xpath0, xpath1, xpath2);
-                        (*conflict)++;
+                                conflict+1, xpath0, xpath1, xpath2);
+                        conflict++;
                     }
                 }
-
+                else if (dr != NULL){
+                    if (xml_node_eq(x2c, x0c, &eq1, &value1, &value0) < 0)
+                        goto done;
+                    if (eq1 == 0){
+                        if (diff_rebase_change(dr, xml_body_get(x2c), xml_body_get(x1c)) < 0)
+                            goto done;
+                    }
+                }
             }
-            else if (same20 > 0){
-                /* x2c deleted -> Conflict if to x1-x0 */
-                if (xml_tree_equal(x0c, x1c) != 0){
+            else if (same20 > 0){ /* x2c deleted */
+                if (xml_tree_equal(x0c, x1c) == 0){ /* No change in x1 */
+                    if (dr != NULL){ /* Delete it in x1 */
+                        if (diff_rebase_rm(dr, x1c) < 0)
+                            goto done;
+                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                    }
+                }
+                else{ /* x2c deleted -> Conflict if to x1-x0 */
                     clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s x2c removed",
-                            (*conflict+1), xpath0, xpath1, xpath2);
-                    (*conflict)++;
+                            conflict+1, xpath0, xpath1, xpath2);
+                    conflict++;
                 }
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
                 x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -307,8 +476,8 @@ xml_rebase_check(clixon_handle h,
             else if (same20 == 0){
                 if (xml_tree_equal(x0c, x2c) != 0){
                     clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s x1c removed",
-                            (*conflict+1), xpath0, xpath1, xpath2);
-                    (*conflict)++;
+                            conflict+1, xpath0, xpath1, xpath2);
+                    conflict++;
                 }
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
@@ -316,12 +485,12 @@ xml_rebase_check(clixon_handle h,
             }
             else if (same20 > 0){ /* Deleted both in x1c and x2c */
                 clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both removed object",
-                             (*conflict+1), xpath0, xpath1, xpath2);
-                (*conflict)++;
+                             conflict+1, xpath0, xpath1, xpath2);
+                conflict++;
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
             }
         }
-        if (xml_rebase_check(h, x0c, x1c, x2c, conflict) < 0)
+        if (xml_rebase(h, x0c, x1c, x2c, &conflict, dr) < 0)
             goto done;
         x0c = xml_child_each(x0, x0c, CX_ELMNT);
         x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -340,6 +509,8 @@ xml_rebase_check(clixon_handle h,
             xpath2 = NULL;
         }
     }
+    if (conflictp)
+        *conflictp += conflict;
     retval = 0;
  done:
     if (xpath0)

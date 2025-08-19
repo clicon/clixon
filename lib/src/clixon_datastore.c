@@ -490,7 +490,7 @@ xmldb_disconnect(clixon_handle h)
         goto done;
     for (i = 0; i < klen; i++)
         if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL)
-            xmldb_free(de, 0);
+            xmldb_free(de, 1);
     retval = 0;
  done:
     if (keys)

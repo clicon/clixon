@@ -287,17 +287,6 @@ backend_accept_client(int   fd,
         break;
     }
     ce->ce_s = s;
-    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-        if (xmldb_candidate_find(h, "candidate", ce) != NULL){
-            clixon_err(OE_DB, 0, "db already exists");
-            goto done;
-        }
-        if (xmldb_candidate_new(h, "candidate", ce) == NULL)
-            goto done;
-        /* Save original candidate for rebasing match, see from_client_update */
-        if (xmldb_candidate_new(h, "candidate-orig", ce) == NULL)
-            goto done;
-    }
     /*
      * Register callback for actual data socket
      */

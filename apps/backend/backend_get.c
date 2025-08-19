@@ -1210,30 +1210,21 @@ from_client_get_config(clixon_handle h,
                        void         *regarg)
 {
     int                  retval = -1;
-    char                *db0;
-    char                *db = NULL;;
     struct client_entry *ce = (struct client_entry *)arg;
     db_elmnt            *de;
+    int                  ret;
+    char                *db;
 
-    if ((db0 = netconf_db_find(xe, "source")) == NULL){
-        clixon_err(OE_XML, 0, "db not found");
+    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &de, cbret)) < 0)
         goto done;
-    }
-    if (strcmp(db0, "candidate") == 0){
-        if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
-            clixon_err(OE_XML, 0, "datastore not found");
-            goto done;
-        }
-        db0 = xmldb_name_get(de);
-    }
-    if ((db = strdup(db0)) == NULL){
-        clixon_err(OE_UNIX, errno, "strdup");
+    if (ret == 0)
+        goto ok;
+    db = xmldb_name_get(de);
+    if (get_common(h, ce, xe, CONTENT_CONFIG, db, cbret) < 0)
         goto done;
-    }
-    retval = get_common(h, ce, xe, CONTENT_CONFIG, db, cbret);
+ ok:
+    retval = 0;
  done:
-    if (db)
-        free(db);
     return retval;
 }
 

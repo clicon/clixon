@@ -189,13 +189,22 @@ release_all_dbs(clixon_handle        h,
     size_t    klen;
     int       i;
     db_elmnt *de;
+    db_elmnt *de1;
 
-    /* RFC 6241, Sec 7.5 <lock>:
-     * The target configuration is <candidate>, it has already been
-     * modified, and these changes have not been committed or rolled back.
-     */
     if ((de = xmldb_candidate_find(h, "candidate", ce)) != NULL){
-        if (xmldb_islocked(h, xmldb_name_get(de)) == id &&
+        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+            if (xmldb_delete(h, xmldb_name_get(de)) < 0)
+                goto done;
+            if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
+                if (xmldb_delete(h, xmldb_name_get(de1)) < 0)
+                    goto done;
+            }
+        }
+        /* RFC 6241, Sec 7.5 <lock>:
+         * The target configuration is <candidate>, it has already been
+         * modified, and these changes have not been committed or rolled back.
+         */
+        else if (xmldb_islocked(h, xmldb_name_get(de)) == id &&
             clicon_option_bool(h, "CLICON_AUTOLOCK")){
             if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)
                 goto done;
@@ -574,7 +583,7 @@ from_client_edit_config(clixon_handle h,
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
-    if ((ret = xmldb_client_find(h, xn, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xn, "target", ce, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -831,12 +840,12 @@ from_client_copy_config(clixon_handle h,
     db_elmnt            *desrc = NULL;
     int                  ret;
 
-    if ((ret = xmldb_client_find(h, xe, "target", ce, &detgt, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &detgt, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
     target = xmldb_name_get(detgt);
-    if ((ret = xmldb_client_find(h, xe, "source", ce, &desrc, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &desrc, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -920,14 +929,15 @@ from_client_delete_config(clixon_handle h,
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
     db_elmnt            *de;
+    db_elmnt            *de1;
     int                  ret;
 
-    if ((ret = xmldb_client_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
     target = xmldb_name_get(de);
-    if (strcmp(target, "running")==0){
+    if (strcmp(target, "running") == 0){
         if (netconf_missing_element(cbret, "protocol", "target", "Target cannot be running in delete-config") < 0)
             goto done;
         goto ok;
@@ -954,17 +964,30 @@ from_client_delete_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (xmldb_create(h, target) < 0){
-        if ((cbmsg = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
+    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate") &&
+        xmldb_candidate_get(de)){
+        /* deleting the private candidate will destroy the private candidate for
+           that session */
+        if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+            clixon_err(OE_DB, 0, "candidate-orig not found");
             goto done;
         }
-        cprintf(cbmsg, "Create %s datastore: %s", target, clixon_err_reason());
-        if (netconf_operation_failed(cbret, "protocol", cbuf_get(cbmsg))< 0)
+        if (xmldb_delete(h, xmldb_name_get(de1)) < 0)
             goto done;
-        goto ok;
     }
-    xmldb_modified_set(de, 1); /* mark as dirty */
+    else {
+        if (xmldb_create(h, target) < 0){
+            if ((cbmsg = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cbmsg, "Create %s datastore: %s", target, clixon_err_reason());
+            if (netconf_operation_failed(cbret, "protocol", cbuf_get(cbmsg))< 0)
+                goto done;
+            goto ok;
+        }
+        xmldb_modified_set(de, 1); /* mark as dirty */
+    }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
@@ -1002,7 +1025,7 @@ from_client_lock(clixon_handle h,
     uint32_t             iddb;
     int                  ret;
 
-    if ((ret = xmldb_client_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1068,7 +1091,7 @@ from_client_unlock(clixon_handle h,
     db_elmnt            *de;
     int                  ret;
 
-    if ((ret = xmldb_client_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
