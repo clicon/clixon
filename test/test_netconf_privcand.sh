@@ -47,8 +47,8 @@
 # 4.8.2.5 <get-data> operates on private candidate
 # 4.8.2.6 <edit-data> creates private candidate
 # 4.8.2.6 <edit-data> operates on private candidate
+# 4.8.2.10 <delete-config> operates on private candidate (NOTE. candidate as target is not defined in RFC)
 # 4.8.2.7 <compare> not supported !
-# 4.8.2.10 <delete-config> operates on private candidate
 # 4.8.2.11 <discard-changes> operates on private candidate
 # 4.8.2.12 <get> no private candidate
 # 4.8.2.13 <cancel-commit>
@@ -57,7 +57,7 @@
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
-
+echo $dir
 cfg=$dir/conf_yang.xml
 dbdir=$dir/db
 fyang=$dir/clixon-example.yang
@@ -346,8 +346,8 @@ proc rpc {session operation reply} {
 	expect {
 	    -i $session
 	    -re "$reply.*</rpc-reply>.*]]>]]>" {}
-	    timeout { puts "timeout: $operation $reply"; dump; exit 2 }
-	    eof { puts "eof: $operation $reply"; exit 3 }
+	    timeout { puts "\n\nERROR: Expected reply: \"$reply\" on operation: \"$operation\""; exit 2 }
+	    eof { puts "\n\neof: $operation $reply"; exit 3 }
 	}
 }
 
@@ -364,55 +364,48 @@ proc dump {} {
     rpc $session_1 "<get-config><source><running/></source></get-config>" "data"
 }
 
-puts "4.8.2.8 <lock> operates on private candidate"
-rpc $session_1 "<lock><target><candidate/></target></lock>" "<ok/>"
-rpc $session_2 "<lock><target><candidate/></target></lock>" "<ok/>"
-rpc $session_1 "<lock><target><candidate/></target></lock>" "error"
-
-puts "4.8.2.9 <unlock> operates on private candidate"
-rpc $session_1 "<unlock><target><candidate/></target></unlock>" "<ok/>"
-rpc $session_2 "<unlock><target><candidate/></target></unlock>" "<ok/>"
-rpc $session_2 "<unlock><target><candidate/></target></unlock>" "error"
-
 ## Start of 4.7.3.3  Revert-on-conflict example
 
-# Verify test data
-rpc $session_1 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
-rpc $session_2 "<get-config><source><candidate/></source></get-config>" "London.*Tokyo"
-
-# Session 1 edits the configuration
+puts "4.7.3.3 Session 1 edits the configuration"
 rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces></config></edit-config>" "ok/"
 
-# Session 2 edits the configuration
+puts "4.7.3.3 Session 2 edits the configuration"
 rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name >intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>" "ok/"
 
 puts "4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris"
 
-# Session 2 commits the change
+puts "4.7.3.3 Session 2 commits the change"
 rpc $session_2 "<commit/>" "ok/"
 
-rpc $session_2 "<get-config><source><running/></source></get-config>" "Paris"
-puts "4.7.3.3  Revert-on-conflict example"
+puts "4.7.3.3 Session 1 updates its configuration and fails"
 # A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
 rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
-rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
-# Reset private database
 
-# TODO enable tests when server implementation is ready
-exit 0
+puts "4.7.3.3 Session 1 discards its changes"
+rpc $session_1 "<discard-changes/>" "ok/"
+
+puts "4.7.3.3 Session 1 updates its configuraion successfully"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+
 
 # Conflict est sequence: reset session 1, edit and commit session 2, edit and update session 1
 proc conflict { content_1 content_2 update_reply} {
 	global session_1
 	global session_2
 	#puts "conflict $content_1  $content_2 $update_reply"
-	rpc $session_1 "<delete-config><target><candidate/></target></delete-config>" "<ok/>"
-	rpc $session_2 "<delete-config><target><candidate/></target></delete-config>" "<ok/>"
+	# Reset private candidates
+	rpc $session_1 "<discard-changes/>" "ok/"
+    rpc $session_2 "<discard-changes/>" "ok/"
+    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+    rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+    # Session 1 edits configuration
+	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/" 
+	# Session 2 edits and commits configuration
 	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>" "<ok/>"
 	rpc $session_2 "<commit/>" "<ok/>"
-	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/"
+    # Session 1 updates its configuration
     rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
 }
 
@@ -440,6 +433,25 @@ puts "4.8.1.1 <update> operation by client without conflict: There is a change t
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">a</llu><llu xmlns=\"urn:example:clixon\">b</llu>"
 conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
+
+# Reset private candidates
+rpc $session_1 "<discard-changes/>" "ok/"
+rpc $session_2 "<discard-changes/>" "ok/"
+
+puts "4.8.2.8 <lock> operates on private candidate"
+rpc $session_1 "<lock><target><candidate/></target></lock>" "<ok/>"
+rpc $session_2 "<lock><target><candidate/></target></lock>" "<ok/>"
+rpc $session_1 "<lock><target><candidate/></target></lock>" "error"
+
+puts "4.8.2.9 <unlock> operates on private candidate"
+rpc $session_1 "<unlock><target><candidate/></target></unlock>" "<ok/>"
+rpc $session_2 "<unlock><target><candidate/></target></unlock>" "<ok/>"
+rpc $session_2 "<unlock><target><candidate/></target></unlock>" "error"
+
+# Smoke test of lock handling for running
+rpc $session_1 "<lock><target><running/></target></lock>" "<ok/>"
+rpc $session_2 "<lock><target><running/></target></lock>" "error"
+rpc $session_1 "<unlock><target><running/></target></unlock>" "<ok/>"
 
 close $session_1
 close $session_2
