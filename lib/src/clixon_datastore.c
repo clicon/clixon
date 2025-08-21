@@ -308,9 +308,13 @@ xmldb_new(clixon_handle h,
     return de;
 }
 
+/*! Free datastore element
+ *
+ * @param[in]  de  Database element
+ * @retval     0   OK
+ */
 static int
-xmldb_free(db_elmnt *de,
-           int       self)
+xmldb_free(db_elmnt *de)
 {
     if (de->de_name){
         free(de->de_name);
@@ -320,8 +324,7 @@ xmldb_free(db_elmnt *de,
         xml_free(de->de_xml);
         de->de_xml = NULL;
     }
-    if (self)
-        free(de);
+    free(de);
     return 0;
 }
 
@@ -490,7 +493,7 @@ xmldb_disconnect(clixon_handle h)
         goto done;
     for (i = 0; i < klen; i++)
         if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL)
-            xmldb_free(de, 1);
+            xmldb_free(de);
     retval = 0;
  done:
     if (keys)

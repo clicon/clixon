@@ -1025,7 +1025,7 @@ from_client_discard_changes(clixon_handle h,
          * state it was when it was initially created, or to the state following
          * the latest <update> operation, whichever is most recent.
          */
-        if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+        if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
             if (xmldb_copy(h, xmldb_name_get(de0), db) < 0){
                 if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                     goto done;
