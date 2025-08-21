@@ -105,6 +105,9 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include "cli_autocli.h"
 #include "cli_generate.h"
 
+/* Forward declaration */
+static int yang2cli_leaf_var(clixon_handle h, yang_stmt *ys, yang_stmt *yreferred, char *helptext, cbuf *cb, int callback, int key_leaf);
+
 /*! mount helper
  *
  * @param[in] yspec
@@ -376,7 +379,7 @@ yang2cli_cmd_decode(const char *cmd,
  * @param[out] cb        Buffer where cligen code is written
  * @retval     0         OK
  * @retval    -1         Error
- * @see yang2cli_var_sub  Its sub-function
+ * @see yang2cli_leaf_var_sub  Its sub-function
  */
 static int
 yang2cli_var_identityref(yang_stmt *ys,
@@ -450,7 +453,7 @@ yang2cli_var_identityref(yang_stmt *ys,
  * @param[out] cb      Buffer where cligen code is written
  * @retval     0       OK
  * @retval    -1       Error
- * @see yang2cli_var_sub   which is the main function
+ * @see yang2cli_leaf_var_sub   which is the main function
  * In yang ranges are given as range 1 or range 1 .. 16, encoded in a cvv
  * 0 : range_min = x
  * and
@@ -590,17 +593,17 @@ static int yang2cli_var_union(clixon_handle h, yang_stmt *ys, char *origtype,
  * @see yang_type_resolve for options and other arguments
  */
 static int
-yang2cli_var_sub(clixon_handle h,
-                 yang_stmt    *ys,
-                 yang_stmt    *ytype,  /* resolved type */
-                 char         *helptext,
-                 enum cv_type  cvtype,
-                 int           options,
-                 cvec         *cvv,
-                 cvec         *patterns,
-                 uint8_t       fraction_digits,
-                 cbuf         *cb
-                 )
+yang2cli_leaf_var_sub(clixon_handle h,
+                      yang_stmt    *ys,
+                      yang_stmt    *ytype,  /* resolved type */
+                      char         *helptext,
+                      enum cv_type  cvtype,
+                      int           options,
+                      cvec         *cvv,
+                      cvec         *patterns,
+                      uint8_t       fraction_digits,
+                      cbuf         *cb
+                      )
 {
     int           retval = -1;
     char         *type;
@@ -720,8 +723,8 @@ yang2cli_var_union_one(clixon_handle h,
     else {
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;
-        if ((retval = yang2cli_var_sub(h, ys, ytype, helptext, cvtype,
-                                       options, cvv, patterns, fraction_digits, cb)) < 0)
+        if ((retval = yang2cli_leaf_var_sub(h, ys, ytype, helptext, cvtype,
+                                            options, cvv, patterns, fraction_digits, cb)) < 0)
             goto done;
     }
     retval = 0;
@@ -775,60 +778,113 @@ yang2cli_var_union(clixon_handle h,
     return retval;
 }
 
+/*! Generate callback, labels and terminate clispec string
+ */
 static int
-yang2cli_var_leafref(clixon_handle h,
-                     yang_stmt    *ys,
-                     yang_stmt    *yrestype,
-                     char         *helptext,
-                     enum cv_type  cvtype,
-                     int           options,
-                     cvec         *cvv,
-                     cvec         *patterns,
-                     uint8_t      fraction_digits,
-                     cbuf         *cb)
+gen_callback(clixon_handle h,
+             yang_stmt    *ys,
+             int           key_leaf,
+             cbuf         *cb)
 {
-    int   retval = -1;
-    char *type;
-    int   completionp;
-    const char *cvtypestr;
-    int   ret;
-    int   flag;
-    int   regular_value = 1; /* if strict-expand==0 then regular-value is false */
+    int retval = -1;
 
-    /* Give up: use yreferred
-     * XXX: inline of else clause below
-     */
-    type = yrestype?yang_argument_get(yrestype):NULL;
-    cvtypestr = cv_type2str(cvtype);
-    if (autocli_completion(h, &completionp) < 0)
+    if (cli_callback_generate(h, ys, cb) < 0)
         goto done;
-    if (type && completionp){
-        completionp = strcmp(type, "enumeration") != 0 &&
-            strcmp(type, "identityref") != 0 &&
-            strcmp(type, "bits") != 0;
+    switch (key_leaf){
+    case 0:
+        cprintf(cb, ", ac-leaf");
+        cprintf(cb, ", act-leafvar");
+        break;
+    case 1:
+        cprintf(cb, ", ac-leaf");
+        cprintf(cb, ", act-prekey");
+        break;
+    case 2:
+        /* Dont mark as leaf since it represents a (single) list entry */
+        cprintf(cb, ", act-lastkey");
+        break;
     }
-    if (yang_extension_value(ys, "strict-expand", CLIXON_AUTOCLI_NS, &flag, NULL) < 0)
-        goto done;
-    regular_value = !flag;
-    if (completionp && regular_value)
-        cprintf(cb, "(");
-    if (regular_value)
-        if (yang2cli_var_sub(h, ys, yrestype, helptext, cvtype,
-                             options, cvv, patterns, fraction_digits, cb) < 0)
-            goto done;
-    if (completionp){
-        if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
-                                           options, fraction_digits, regular_value,
-                                           cb)) < 0)
-            goto done;
-        if (ret == 1)
-            yang2cli_helptext(cb, helptext);
-    }
-    if (completionp && regular_value)
-        cprintf(cb, ")");
+    cprintf(cb, ";\n");
     retval = 0;
  done:
     return retval;
+}
+
+/*! Generate CLI code for Yang leafref statement
+ *
+ * @param[in]  h         Clixon handle
+ * @param[in]  ys        Yang statement of original leaf
+ * @param[in]  yreferred Yang statement of referred node for type (leafref)
+ * @param[in]  helptext  CLI help text
+ * @param[in]  options Flags field of optional values, eg YANG_OPTIONS_RANGE
+ * @param[in]  cvv     Cvec with array of range_min/range_max cv:s (if YANG_OPTIONS_RANGE is set in options)
+ * @param[in]  patterns Cvec of regexp patterns
+ * @param[in]  fraction_digits for decimal64, how many digits after period
+ * @param[out] cb        Buffer where cligen code is written
+ * @retval     1         OK
+ * @retval     0         Skip
+ * @retval    -1         Error
+ */
+static int
+yang2cli_leafref_var(clixon_handle h,
+                     yang_stmt    *ys,
+                     yang_stmt    *yreferred,
+                     char         *helptext,
+                     int           options,
+                     cvec         *cvv,
+                     cvec         *patterns,
+                     uint8_t       fraction_digits,
+                     enum cv_type  cvtype,
+                     yang_stmt    *yrestype,
+                     const char   *cvtypestr,
+                     int           regular_value,
+                     int           callback,
+                     int           key_leaf,
+                     cbuf         *cb
+                     )
+
+{
+    int        retval = -1;
+    yang_stmt *ypath;
+    char      *path_arg;
+    yang_stmt *yref = NULL;
+
+    if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
+        clixon_err(OE_YANG, 0, "No Y_PATH for leafref");
+        goto done;
+    }
+    if ((path_arg = yang_argument_get(ypath)) == NULL){
+        clixon_err(OE_YANG, 0, "No argument for Y_PATH");
+        goto done;
+    }
+    if (yang_path_arg(yreferred, path_arg, &yref) < 0)
+        goto done;
+    if (yref == NULL){
+        /* Give up: use yreferred
+         */
+        cprintf(cb, "(");
+        if (regular_value){
+            if (yang2cli_leaf_var_sub(h, ys, yrestype, helptext, cvtype,
+                                      options, cvv, patterns, fraction_digits, cb) < 0)
+                goto done;
+        }
+    }
+    else {
+        if (yreferred == yref){
+            clixon_err(OE_YANG, 0, "Referred YANG node for leafref path %s points to self", path_arg);
+            goto done;
+        }
+        /* recursive call with new referred node */
+        if (yang2cli_leaf_var(h, ys, yref, helptext, cb, callback, key_leaf) < 0)
+            goto done;
+        goto skip;
+    }
+    retval = 1;
+ done:
+    return retval;
+ skip:
+    retval = 0;
+    goto done;
 }
 
 /*! Generate CLI code for Yang leaf statement to CLIgen variable
@@ -852,11 +908,13 @@ yang2cli_var_leafref(clixon_handle h,
  * and thus its type.
  */
 static int
-yang2cli_var(clixon_handle h,
-             yang_stmt    *ys,
-             yang_stmt    *yreferred,
-             char         *helptext,
-             cbuf         *cb)
+yang2cli_leaf_var(clixon_handle h,
+                  yang_stmt    *ys,
+                  yang_stmt    *yreferred,
+                  char         *helptext,
+                  cbuf         *cb,
+                  int           callback,
+                  int           key_leaf)
 {
     int           retval = -1;
     char         *origtype = NULL;
@@ -866,9 +924,12 @@ yang2cli_var(clixon_handle h,
     cvec         *patterns = NULL;
     uint8_t       fraction_digits = 0;
     enum cv_type  cvtype;
-    const char   *cvtypestr;
     int           options = 0;
+    const char   *cvtypestr;
     int           completionp;
+    char         *type;
+    int           flag;
+    int           regular_value;
     int           ret;
 
     if ((patterns = cvec_new(0)) == NULL){
@@ -879,67 +940,67 @@ yang2cli_var(clixon_handle h,
                       &options, &cvv, patterns, NULL, &fraction_digits) < 0)
         goto done;
     restype = yang_argument_get(yrestype);
-    if (strcmp(restype, "empty") == 0)
-        goto ok;
+    type = yrestype?yang_argument_get(yrestype):NULL;
+    if (strcmp(restype, "empty") == 0){
+        if (callback){
+            if (gen_callback(h, ys, key_leaf, cb) < 0)
+                goto done;
+        }
+        goto skip;
+    }
     if (clicon_type2cv(origtype, restype, yreferred, &cvtype) < 0)
         goto done;
     cvtypestr = cv_type2str(cvtype);
+    if (autocli_completion(h, &completionp) < 0)
+        goto done;
+    if (type && completionp){
+        completionp = strcmp(type, "enumeration") != 0 &&
+            strcmp(type, "identityref") != 0 &&
+            strcmp(type, "bits") != 0;
+    }
+    if (yang_extension_value(ys, "strict-expand", CLIXON_AUTOCLI_NS, &flag, NULL) < 0)
+        goto done;
+    regular_value = !flag;
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
-
     if (strcmp(restype, "union") == 0){
         /* Union: loop over resolved type's sub-types (can also be recursive unions) */
         cprintf(cb, "(");
         if (yang2cli_var_union(h, ys, origtype, yrestype, helptext, cb) < 0)
             goto done;
-        if (autocli_completion(h, &completionp) < 0)
-            goto done;
-        if (completionp){
-            if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
-                                               options, fraction_digits, 1, cb)) < 0)
-                goto done;
-            if (ret == 1)
-                yang2cli_helptext(cb, helptext);
-        }
-        cprintf(cb, ")");
     }
-    else if (strcmp(restype, "leafref")==0){
-        yang_stmt *ypath;
-        char      *path_arg;
-        yang_stmt *yref = NULL;
-
-        if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
-            clixon_err(OE_YANG, 0, "No Y_PATH for leafref");
+    else if (strcmp(restype, "leafref") == 0){
+        if ((ret = yang2cli_leafref_var(h, ys, yreferred, helptext,
+                                        options, cvv, patterns, fraction_digits,
+                                        cvtype,
+                                        yrestype, cvtypestr, regular_value,
+                                        callback, key_leaf,
+                                        cb)) < 0)
             goto done;
-        }
-        if ((path_arg = yang_argument_get(ypath)) == NULL){
-            clixon_err(OE_YANG, 0, "No argument for Y_PATH");
-            goto done;
-        }
-        if (yang_path_arg(yreferred, path_arg, &yref) < 0)
-            goto done;
-        if (yref == NULL){
-            /* Give up: use yreferred
-             */
-            if (yang2cli_var_leafref(h, ys, yrestype, helptext, cvtype, options,
-                                     cvv, patterns, fraction_digits, cb) < 0)
-                goto done;
-        }
-        else {
-            if (yreferred == yref){
-                clixon_err(OE_YANG, 0, "Referred YANG node for leafref path %s points to self", path_arg);
-                goto done;
-            }
-            /* recurse call with new referred node */
-            if (yang2cli_var(h, ys, yref, helptext, cb) < 0)
-                goto done;
-        }
+        if (ret == 0)
+            goto skip;
     }
     else{
-        if (yang2cli_var_leafref(h, ys, yrestype, helptext, cvtype, options,
-                                 cvv, patterns, fraction_digits, cb) < 0)
+        cprintf(cb, "(");
+        if (regular_value){
+            if (yang2cli_leaf_var_sub(h, ys, yrestype, helptext, cvtype,
+                                      options, cvv, patterns, fraction_digits, cb) < 0)
+                goto done;
+        }
+    }
+    if (completionp){
+        if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
+                                           options, fraction_digits, regular_value,
+                                           cb)) < 0)
+            goto done;
+        if (ret == 1)
+            yang2cli_helptext(cb, helptext);
+    }
+    cprintf(cb, ")");
+    if (callback){
+        if (gen_callback(h, ys, key_leaf, cb) < 0)
             goto done;
     }
- ok:
+ skip:
     retval = 0;
  done:
     if (origtype)
@@ -990,7 +1051,7 @@ yang2cli_leaf(clixon_handle h,
             *s = '\0';
     }
     cprintf(cb, "%*s", level*3, "");
-    /* Called a second time in yang2cli_var, room for optimization */
+    /* Called a second time in yang2cli_leaf_var, room for optimization */
     if (yang_type_get(ys, NULL, &yrestype,
                       NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
@@ -1019,32 +1080,9 @@ yang2cli_leaf(clixon_handle h,
             }
             cprintf(cb, "{"); /* termleaf label + extra level around leaf */
         }
-        if (yang2cli_var(h, ys, ys, helptext, cb) < 0)
-            goto done;
     }
-    else{
-        if (yang2cli_var(h, ys, ys, helptext, cb) < 0)
-            goto done;
-    }
-    if (callback){
-        if (cli_callback_generate(h, ys, cb) < 0)
-            goto done;
-        switch (key_leaf){
-        case 0:
-            cprintf(cb, ", ac-leaf");
-            cprintf(cb, ", act-leafvar");
-            break;
-        case 1:
-            cprintf(cb, ", ac-leaf");
-            cprintf(cb, ", act-prekey");
-            break;
-        case 2:
-            /* Dont mark as leaf since it represents a (single) list entry */
-            cprintf(cb, ", act-lastkey");
-            break;
-        }
-        cprintf(cb, ";\n");
-    }
+    if (yang2cli_leaf_var(h, ys, ys, helptext, cb, callback, key_leaf) < 0)
+        goto done;
     if (extralevel)
         cprintf(cb, "}\n");
     retval = 0;
@@ -2001,7 +2039,7 @@ yang2cli_yspec(clixon_handle h,
         if (!enable)
             continue;
         cbuf_reset(cb);
-        /* See if they are in cache dir */
+        /* See if they are in cache, otherwise generate it */
         if (cli_autocli_gen_cache(h, ymod, ymod, yang_argument_get(ydomain), 0, cb) < 0)
             goto done;
         if (cbuf_len(cb) == 0)
