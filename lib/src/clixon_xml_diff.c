@@ -455,7 +455,6 @@ xml_rebase(clixon_handle  h,
                     if (dr != NULL){ /* Delete it in x1 */
                         if (diff_rebase_rm(dr, x1c) < 0)
                             goto done;
-                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
                     }
                 }
                 else{ /* x2c deleted -> Conflict if to x1-x0 */
