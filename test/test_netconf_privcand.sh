@@ -8,12 +8,19 @@
 # 4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate.
 # 4.7.5 Support revert-on-conflict resolution mode capability.
 # 4.8.1.1 <update> operation by client without conflict: There is a change of any value
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is a change of any value
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of any list entry
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a presence container
 # 4.8.1.1 <update> operation by client without conflict: here is a change of any component member of a leaf-list
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of any component member of a leaf-list
 # 4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a leaf
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
 # 4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
+# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
 # (4.8.1.1 <update> operation by client without conflict: There is a change to any YANG metadata associated with the node Note. metadata cannot be changed in Clixon.)
 # 4.8.1.1.1 <resolution-mode> parameter> revert-on-conflict accepted
 # 4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional
@@ -24,13 +31,6 @@
 
 ## TODO Test cases to be implemented
 # 4.5.3 RESTCONF client always operates on private candidate
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is a change of any value
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of any list entry
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any list items in a list configured as "ordered-by user"
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a presence container
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of any component member of a leaf-list
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as "ordered-by user"
-# 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a leaf
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to any YANG metadata associated with the node
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution
@@ -156,6 +156,7 @@ cat <<EOF > $dbdir/startup_db
     <lu  xmlns="urn:example:clixon"><k>b</k></lu>
     <llu  xmlns="urn:example:clixon">a</llu>
     <llu  xmlns="urn:example:clixon">b</llu>
+    <ll  xmlns="urn:example:clixon">a</ll>
     <l xmlns="urn:example:clixon">0</l>
 </${DATASTORE_TOP}>"
 EOF
@@ -338,14 +339,15 @@ expect {
 
 puts "Send hello message"
 send -i session_2 $hello_msg
-sleep 1
 
 # NETCONF rpc operation
 proc rpc {session operation reply} {
-	send -i $session "<rpc message-id=\"42\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">$operation</rpc>]]>]]>\r"
+    set id [info cmdcount]
+    #puts "$session <rpc message-id=\"$id\" $operation"
+	send -i $session "<rpc message-id=\"$id\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">$operation</rpc>]]>]]>\r"
 	expect {
 	    -i $session
-	    -re "$reply.*</rpc-reply>.*]]>]]>" {}
+	    -re ".*message-id=\"$id\".*$reply.*</rpc-reply>.*]]>]]>" {}
 	    timeout { puts "\n\nERROR: Expected reply: \"$reply\" on operation: \"$operation\""; exit 2 }
 	    eof { puts "\n\neof: $operation $reply"; exit 3 }
 	}
@@ -362,6 +364,7 @@ proc dump {} {
     rpc $session_2 "<get-config><source><candidate/></source></get-config>" "data"
     puts "\n\nrunning:"
     rpc $session_1 "<get-config><source><running/></source></get-config>" "data"
+    log_user 0
 }
 
 ## Start of 4.7.3.3  Revert-on-conflict example
@@ -389,50 +392,104 @@ rpc $session_1 "<discard-changes/>" "ok/"
 puts "4.7.3.3 Session 1 updates its configuraion successfully"
 rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
 
-
 # Conflict est sequence: reset session 1, edit and commit session 2, edit and update session 1
 proc conflict { content_1 content_2 update_reply} {
 	global session_1
 	global session_2
-	#puts "conflict $content_1  $content_2 $update_reply"
-	# Reset private candidates
-	rpc $session_1 "<discard-changes/>" "ok/"
-    rpc $session_2 "<discard-changes/>" "ok/"
-    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
-    rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+	#puts "\nconflict $update_reply\n content 1: $content_1  \n content 2: $content_2 \n"
     # Session 1 edits configuration
 	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/" 
 	# Session 2 edits and commits configuration
 	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>" "<ok/>"
-	rpc $session_2 "<commit/>" "<ok/>"
+    rpc $session_2 "<commit/>" "<ok/>"
     # Session 1 updates its configuration
     rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
+    # Reset session 1 after conflict
+    rpc $session_1 "<discard-changes/>" "ok/"
+    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
 }
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of any value"
-conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_two</name><description>Link to San Francisco</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>"  "ok/"
+conflict \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_two</name><description>Link to San Francisco</description></interface></interfaces>" \
+"<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>"  \
+"ok/"
+
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is a change of any value"
+conflict \
+"<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>" \
+"<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>"  \
+"rpc-error"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry"
-conflict "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_three</name><description>New interface</description></interface></interfaces>" "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value >[info cmdcount]</value></parameter></table>" "ok/"
+conflict \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_three</name><description>New interface</description><type>ex:eth</type></interface></interfaces>" \
+"<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value >[info cmdcount]</value></parameter></table>" \
+"ok/"
+
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of any list entry"
+conflict \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_three</name><description>New interface 1</description><type>ex:eth</type></interface></interfaces>" \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_three</name><description>New interface 2</description><type>ex:eth</type></interface></interfaces>" \
+"rpc-error"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container"
-conflict "<table xmlns=\"urn:example:clixon\" operation=\"delete\"></table>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Gothenburg</description></interface></interfaces>" "ok/"
+conflict \
+"<table xmlns=\"urn:example:clixon\"  xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>" \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_two</name><description>Link to Gothenburg</description></interface></interfaces>" \
+"ok/"
 
-puts "4.8.1.1 <update> operation by client without conflict: There is a change of any component member of a leaf-list"
-conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Stockholm</description></interface></interfaces>" "ok/"
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a presence container"
+conflict \
+"<table xmlns=\"urn:example:clixon\"  xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>" \
+"<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value >[info cmdcount]</value></parameter></table>" \
+"rpc-error"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf"
-conflict "<l xmlns=\"urn:example:clixon\">foo</l>" "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to Visby</description></interface></interfaces>" "ok/"
+conflict "<l xmlns=\"urn:example:clixon\">foo</l>" \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_two</name><description>Link to Visby</description></interface></interfaces>" \
+"ok/"
+
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a leaf"
+conflict "<l xmlns=\"urn:example:clixon\">a</l>" \
+"<l xmlns=\"urn:example:clixon\">b</l>" \
+"rpc-error"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as ordered-by user"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>a</k></lu><lu xmlns=\"urn:example:clixon\"><k>b</k></lu>"
-conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>b</k></lu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
+conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>b</k></lu>" \
+"<l xmlns=\"urn:example:clixon\">bar</l>" \
+"ok/"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
+
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any list items in a list configured as ordered-by user"
+conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>a</k></lu>" \
+"<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\"><k>b</k></lu>" \
+"rpc-error"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">a</llu><llu xmlns=\"urn:example:clixon\">b</llu>"
-conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" "<l xmlns=\"urn:example:clixon\">bar</l>" "ok/"
+conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" \
+"<l xmlns=\"urn:example:clixon\">bar</l>" \
+"ok/"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
+
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
+conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">a</llu>" \
+"<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\">b</llu>" \
+"rpc-error"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
+
+puts "4.8.1.1 <update> operation by client without conflict: There is a change of any component member of a leaf-list"
+conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" \
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_two</name><description>Link to Stockholm</description></interface></interfaces>" \
+"ok/"
+
+puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of any component member of a leaf-list"
+conflict "<ll xmlns=\"urn:example:clixon\">b</ll>" \
+"<ll xmlns=\"urn:example:clixon\">c</ll>" \
+"rpc-error"
 
 # Reset private candidates
 rpc $session_1 "<discard-changes/>" "ok/"
@@ -448,10 +505,20 @@ rpc $session_1 "<unlock><target><candidate/></target></unlock>" "<ok/>"
 rpc $session_2 "<unlock><target><candidate/></target></unlock>" "<ok/>"
 rpc $session_2 "<unlock><target><candidate/></target></unlock>" "error"
 
-# Smoke test of lock handling for running
+puts "Smoke test of lock handling for running"
 rpc $session_1 "<lock><target><running/></target></lock>" "<ok/>"
 rpc $session_2 "<lock><target><running/></target></lock>" "error"
 rpc $session_1 "<unlock><target><running/></target></unlock>" "<ok/>"
+
+if 0 { findings to be tested further
+puts "Adhoc test 1: should fail, interface intf_one does not exist"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>" "ok/"
+rpc $session_2 "<commit/>" "ok/"
+
+puts "Adhoc test 2: second edit of interface intf_one fails"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc 2</description></interface></interfaces></config></edit-config>" "ok/"
+rpc $session_2 "<commit/>" "ok/"
+}
 
 close $session_1
 close $session_2
