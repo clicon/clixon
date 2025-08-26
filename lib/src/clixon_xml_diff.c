@@ -369,33 +369,45 @@ xml_rebase(clixon_handle  h,
            int           *conflictp,
            diff_rebase_t *dr)
 {
-    int    retval = -1;
-    cxobj *x0c;
-    cxobj *x1c;
-    cxobj *x2c;
-    int    same10;
-    int    same20;
-    int    same12;
-    char  *xpath0 = NULL;
-    char  *xpath1 = NULL;
-    char  *xpath2 = NULL;
-    int    eq1;
-    int    eq2;
-    char  *value0;
-    char  *value1;
-    int    conflict = 0;
+    int        retval = -1;
+    cxobj     *x0c;
+    cxobj     *x1c;
+    cxobj     *x2c;
+    //    yang_stmt *y0c = NULL;
+    yang_stmt *y1c = NULL;
+    //    yang_stmt *y2c = NULL;
+    int        same10;
+    int        same20;
+    int        same12;
+    char      *xpath0 = NULL;
+    char      *xpath1 = NULL;
+    char      *xpath2 = NULL;
+    int        eq1;
+    int        eq2;
+    char      *value0;
+    char      *value1;
+    int        conflict = 0;
 
     x0c = x1c = x2c = NULL;
     x0c = xml_child_each(x0, x0c, CX_ELMNT);
     x1c = xml_child_each(x1, x1c, CX_ELMNT);
     x2c = xml_child_each(x2, x2c, CX_ELMNT);
     while (x0c != NULL || x1c != NULL || x2c != NULL){
-        if (x0c && xml2xpath(x0c, NULL, 0, 0, &xpath0) < 0)
-            goto done;
-        if (x1c && xml2xpath(x1c, NULL, 0, 0, &xpath1) < 0)
-            goto done;
-        if (x2c && xml2xpath(x2c, NULL, 0, 0, &xpath2) < 0)
-            goto done;
+        if (x0c){
+            if (xml2xpath(x0c, NULL, 0, 0, &xpath0) < 0)
+                goto done;
+            //            y0c = xml_spec(x0c);
+        }
+        if (x1c){
+            if (xml2xpath(x1c, NULL, 0, 0, &xpath1) < 0)
+                goto done;
+            y1c = xml_spec(x1c);
+        }
+        if (x2c){
+            if (xml2xpath(x2c, NULL, 0, 0, &xpath2) < 0)
+                goto done;
+            //            y2c = xml_spec(x2c);
+        }
         if (xml_node_same(x1c, x0c, &same10) < 0)
             goto done;
         if (xml_node_same(x2c, x0c, &same20) < 0)
@@ -404,20 +416,6 @@ xml_rebase(clixon_handle  h,
             goto done;
         clixon_debug(CLIXON_DBG_XML, "%d %d %d\n", same10, same20, same12);
         eq1 = 0;
-#if 1
-        if (same10 < 0){ /* New in x1c */
-            if (same20 < 0){ /* New also in x2c */
-                if (same12 != 0 || xml_tree_equal(x1c, x2c) != 0){
-                    clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both added unequal object",
-                                 conflict+1, xpath0, xpath1, xpath2);
-                    conflict++;
-                }
-                x2c = xml_child_each(x2, x2c, CX_ELMNT);
-            }
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
-            goto next;
-        }
-#else
         if (same10 < 0){ /* New in x1c */
             if (same20 < 0){
                 if (same12 == 0){
@@ -427,12 +425,16 @@ xml_rebase(clixon_handle  h,
                         conflict++;
                     }
                 }
+                else if (y1c && yang_keyword_get(y1c) == Y_LEAF_LIST){
+                    clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both added unequal object",
+                                 conflict+1, xpath0, xpath1, xpath2);
+                    conflict++;
+                }
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
             }
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             goto next;
         }
-#endif
         else if (same10 == 0){
             if (same20 < 0){ /* New in x2c */
                 if (dr != NULL){ /* Add node in x1 */
@@ -522,6 +524,9 @@ xml_rebase(clixon_handle  h,
             free(xpath2);
             xpath2 = NULL;
         }
+        //        y0c = NULL;
+        y1c = NULL;
+        // y2c = NULL;
     }
     if (conflictp)
         *conflictp += conflict;

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # XML rebase and conflict tests
 # Check conflict detection as defined in draft-ietf-netconf-privcand
+# Tests use clixon_util_xml_diff with three trees:
+# x0 - Orig
+# x1 - Candidate
+# x2 - Running
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -201,7 +205,6 @@ testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
 # Session 1 edits the config by changing the descr of intf_one to San Fransisco
 cat <<EOF > $dir/x1
 <a xmlns="urn:example:example">
-
    <b>
       <x>intf_one</x>
       <c>Link to London</c>
@@ -348,6 +351,10 @@ new "Add two different elements"
 testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
 
 # leaf-list
+#   *  There is a change of any component member of a leaf-list
+#   *  There is a change to the order of any items in a leaf-list
+#      configured as "ordered-by user"
+
 cat <<EOF > $dir/x0
 <a xmlns="urn:example:example">
    <b>
@@ -364,6 +371,7 @@ cat <<EOF > $dir/x1
    </b>
 </a>
 EOF
+
 cat <<EOF > $dir/x2
 <a xmlns="urn:example:example">
    <b>
@@ -385,7 +393,7 @@ cat <<EOF > $dir/x2
 EOF
 
 new "Add different leaf-list"
-testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
+testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" conflict
 
 cat <<EOF > $dir/x0
 <a xmlns="urn:example:example">
@@ -403,6 +411,7 @@ cat <<EOF > $dir/x1
    </b>
 </a>
 EOF
+
 cat <<EOF > $dir/x2
 <a xmlns="urn:example:example">
    <b>
@@ -415,10 +424,45 @@ EOF
 new "Remove leaf-list"
 testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
 
-rm -rf $dir
+if false; then # notyet
+cat <<EOF > $dir/x0
+<a xmlns="urn:example:example">
+   <b>
+      <x>1</x>
+      <e>2</e>
+      <e>4</e>
+   </b>
+</a>
+EOF
 
-# unset conditional parameters
-unset retx
+cat <<EOF > $dir/x1
+<a xmlns="urn:example:example">
+   <b>
+      <x>1</x>
+      <e>2</e>
+      <e>3</e>
+      <e>4</e>
+   </b>
+</a>
+EOF
+
+cat <<EOF > $dir/x2
+<a xmlns="urn:example:example">
+   <b>
+      <x>1</x>
+      <e>2</e>
+      <e>4</e>
+      <e>5</e>
+   </b>
+</a>
+EOF
+
+new "Add separate leaf-list elements"
+testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" conflict
+
+fi # notyet
+
+rm -rf $dir
 
 new "endtest"
 endtest
