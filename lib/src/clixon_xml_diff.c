@@ -404,6 +404,20 @@ xml_rebase(clixon_handle  h,
             goto done;
         clixon_debug(CLIXON_DBG_XML, "%d %d %d\n", same10, same20, same12);
         eq1 = 0;
+#if 1
+        if (same10 < 0){ /* New in x1c */
+            if (same20 < 0){ /* New also in x2c */
+                if (same12 != 0 || xml_tree_equal(x1c, x2c) != 0){
+                    clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both added unequal object",
+                                 conflict+1, xpath0, xpath1, xpath2);
+                    conflict++;
+                }
+                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            }
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            goto next;
+        }
+#else
         if (same10 < 0){ /* New in x1c */
             if (same20 < 0){
                 if (same12 == 0){
@@ -418,6 +432,7 @@ xml_rebase(clixon_handle  h,
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             goto next;
         }
+#endif
         else if (same10 == 0){
             if (same20 < 0){ /* New in x2c */
                 if (dr != NULL){ /* Add node in x1 */
