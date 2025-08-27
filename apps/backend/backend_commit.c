@@ -964,6 +964,17 @@ from_client_commit(clixon_handle h,
                 goto done;
         goto ok;
     }
+#if 0 // XXX Breaks test_netconf_privcand.sh 4.8.1.1
+    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        db_elmnt            *de_orig;
+
+        /* Remove candidate-orig*/
+        if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
+            if (xmldb_delete(h, xmldb_name_get(de_orig)) < 0)
+                goto done;
+        }
+    }
+#endif
     if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
         xmldb_unlock(h, db);
     if (ret == 0)
