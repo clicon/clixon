@@ -855,7 +855,6 @@ backend_update(clixon_handle        h,
                 goto done;
             goto fail;
         }
-        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     }
     else{
         if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
@@ -1159,6 +1158,7 @@ from_client_update(clixon_handle h,
         goto done;
     if (ret == 0)
         goto ok;
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;
  done:
