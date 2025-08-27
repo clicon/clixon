@@ -963,11 +963,13 @@ from_client_commit(clixon_handle h,
                 goto done;
         goto ok;
     }
-#if 0 // XXX Breaks test_netconf_privcand.sh 4.8.1.1
+#ifdef PRIVCAND_DELETE_ON_COMMIT
     if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
         db_elmnt            *de_orig;
 
-        /* Remove candidate-orig*/
+        /* Remove candidate and candidate-orig*/
+        if (xmldb_delete(h, xmldb_name_get(de)) < 0)
+            goto done;
         if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
             if (xmldb_delete(h, xmldb_name_get(de_orig)) < 0)
                 goto done;
@@ -1433,16 +1435,19 @@ xmldb_netconf_db_find(clixon_handle        h,
 {
     int       retval = -1;
     db_elmnt *de = NULL;
+    db_elmnt *de_orig;
 
     if (strcmp(db, "candidate") == 0){
         if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-            if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
+            if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL ||
+                xmldb_cache_get(de) == NULL){
                 /* Create candidates, copies from running when created */
                 if ((de = xmldb_candidate_new(h, "candidate", ce)) == NULL)
                     goto done;
             }
             /* Save original candidate for rebasing match, see from_client_update */
-            if (xmldb_candidate_find(h, "candidate-orig", ce) == NULL){
+            if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL ||
+                xmldb_cache_get(de_orig) == NULL){
                 if (xmldb_candidate_new(h, "candidate-orig", ce) == NULL)
                     goto done;
             }
