@@ -26,6 +26,8 @@
 # 4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional
 # 4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution.
 # 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
+# 4.8.2.1 <commit> implicit update ok
+# 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
 # 4.8.2.8 <lock> operates on private candidate
 # 4.8.2.9 <unlock> operates on private candidate
 
@@ -34,8 +36,6 @@
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to any YANG metadata associated with the node
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution
-# 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
-# 4.8.2.1 <commit> implicit update ok
 # 4.8.2.1.1 <confirned/> commit ok/canceled/timeout
 # 4.8.2.2 <get-config> creates private candidate
 # 4.8.2.2 <get-config> operates on private candidate
@@ -491,6 +491,13 @@ conflict "<ll xmlns=\"urn:example:clixon\">b</ll>" \
 "<ll xmlns=\"urn:example:clixon\">c</ll>" \
 "rpc-error"
 
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">foo</l></config></edit-config>" "ok/"
+rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">bar</l></config></edit-config>" "ok/"
+puts "4.8.2.1 <commit> implicit update ok"
+rpc $session_1 "<commit/>" "ok/"
+puts "4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution"
+rpc $session_2 "<commit/>" "rpc-error"
+
 # Reset private candidates
 rpc $session_1 "<discard-changes/>" "ok/"
 rpc $session_2 "<discard-changes/>" "ok/"
@@ -510,15 +517,14 @@ rpc $session_1 "<lock><target><running/></target></lock>" "<ok/>"
 rpc $session_2 "<lock><target><running/></target></lock>" "error"
 rpc $session_1 "<unlock><target><running/></target></unlock>" "<ok/>"
 
-if 0 { findings to be tested further
-puts "Adhoc test 1: should fail, interface intf_one does not exist"
+
+puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
 rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>" "ok/"
 rpc $session_2 "<commit/>" "ok/"
 
 puts "Adhoc test 2: second edit of interface intf_one fails"
 rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc 2</description></interface></interfaces></config></edit-config>" "ok/"
 rpc $session_2 "<commit/>" "ok/"
-}
 
 close $session_1
 close $session_2
