@@ -491,8 +491,8 @@ conflict "<ll xmlns=\"urn:example:clixon\">b</ll>" \
 "<ll xmlns=\"urn:example:clixon\">c</ll>" \
 "rpc-error"
 
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">foo</l></config></edit-config>" "ok/"
-rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">bar</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">one</l></config></edit-config>" "ok/"
+rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">two</l></config></edit-config>" "ok/"
 puts "4.8.2.1 <commit> implicit update ok"
 rpc $session_1 "<commit/>" "ok/"
 puts "4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution"
@@ -520,11 +520,7 @@ rpc $session_1 "<unlock><target><running/></target></unlock>" "<ok/>"
 
 puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
 rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>" "ok/"
-rpc $session_2 "<commit/>" "ok/"
-
-puts "Adhoc test 2: second edit of interface intf_one fails"
-rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc 2</description></interface></interfaces></config></edit-config>" "ok/"
-rpc $session_2 "<commit/>" "ok/"
+rpc $session_2 "<commit/>" "rpc-error"
 
 close $session_1
 close $session_2
