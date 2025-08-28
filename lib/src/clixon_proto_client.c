@@ -1053,6 +1053,7 @@ clicon_rpc_get2(clixon_handle   h,
     uint32_t   session_id;
     yang_stmt *yspec;
     cvec      *nscd = NULL;
+    int        xdnew = 0;
     int        ret;
 
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
@@ -1106,6 +1107,7 @@ clicon_rpc_get2(clixon_handle   h,
     if ((xd = xpath_first(xret, NULL, "/rpc-reply/rpc-error")) != NULL)
         xd = xml_parent(xd); /* point to rpc-reply */
     else if ((xd = xpath_first(xret, NULL, "/rpc-reply/data")) == NULL){
+        xdnew++;
         if ((xd = xml_new(NETCONF_OUTPUT_DATA, NULL, CX_ELMNT)) == NULL)
             goto done;
         if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
@@ -1150,7 +1152,7 @@ clicon_rpc_get2(clixon_handle   h,
         xml_free(xerr);
     if (xret)
         xml_free(xret);
-    if (xd)
+    if (xdnew && xd)
         xml_free(xd);
     return retval;
 }
