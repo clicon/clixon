@@ -28,8 +28,19 @@
 # 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
 # 4.8.2.1 <commit> implicit update ok
 # 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
+# 4.8.2.2 <get-config> creates private candidate
+# 4.8.2.2 <get-config> operates on private candidate
+# 4.8.2.3 <edit-config> creates private candidate
+# 4.8.2.3 <edit-config> operates on private candidate
+# 4.8.2.4 <copy-config> creates private candidate
+# 4.8.2.4 <copy-config> operates on private candidate
+# 4.8.2.5 <get-data> creates private candidate (Operation <get-data> not supported by clixon)
+# 4.8.2.5 <get-data> operates on private candidate (Operation <get-data> not supported by clixon)
+# 4.8.2.6 <edit-data> creates private candidate (Operation <edit-data> not supported by clixon)
+# 4.8.2.6 <edit-data> operates on private candidate (Operation <edit-data> not supported by clixon)
 # 4.8.2.8 <lock> operates on private candidate
 # 4.8.2.9 <unlock> operates on private candidate
+# 4.8.2.7 <compare> not supported !
 
 ## TODO Test cases to be implemented
 # 4.5.3 RESTCONF client always operates on private candidate
@@ -37,18 +48,7 @@
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution
 # 4.8.2.1.1 <confirned/> commit ok/canceled/timeout
-# 4.8.2.2 <get-config> creates private candidate
-# 4.8.2.2 <get-config> operates on private candidate
-# 4.8.2.3 <edit-config> creates private candidate
-# 4.8.2.3 <edit-config> operates on private candidate
-# 4.8.2.4 <copy-config> creates private candidate
-# 4.8.2.4 <copy-config> operates on private candidate
-# 4.8.2.5 <get-data> creates private candidate
-# 4.8.2.5 <get-data> operates on private candidate
-# 4.8.2.6 <edit-data> creates private candidate
-# 4.8.2.6 <edit-data> operates on private candidate
 # 4.8.2.10 <delete-config> operates on private candidate (NOTE. candidate as target is not defined in RFC)
-# 4.8.2.7 <compare> not supported !
 # 4.8.2.11 <discard-changes> operates on private candidate
 # 4.8.2.12 <get> no private candidate
 # 4.8.2.13 <cancel-commit>
@@ -497,6 +497,57 @@ puts "4.8.2.1 <commit> implicit update ok"
 rpc $session_1 "<commit/>" "ok/"
 puts "4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution"
 rpc $session_2 "<commit/>" "rpc-error"
+
+puts "4.8.2.2 <get-config> creates private candidate"
+# session_1 has no private candidate after previous commit, running holds l="one", session_2 private candidate holds l="two"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">three</l></config></edit-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">three</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<discard-changes/>" "ok/"
+
+puts "4.8.2.2 <get-config> operates on private candidate"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">four</l></config></edit-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">four</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<commit/>" "ok/"
+
+puts "4.8.2.3 <edit-config> creates private candidate"
+# session_1 has no private candidate after previous commit, running holds l="four", session_2 private candidate holds l="two"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">five</l></config></edit-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">four</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">five</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<discard-changes/>" "ok/"
+
+puts "4.8.2.3 <edit-config> operates on private candidate"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">six</l></config></edit-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">four</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<commit/>" "ok/"
+
+puts "4.8.2.4 <copy-config> creates private candidate"
+rpc $session_1 "<copy-config><target><candidate/></target><source><startup/></source></copy-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">0</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<discard-changes/>" "ok/"
+rpc $session_1 "<copy-config><target><candidate/></target><source><running/></source></copy-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<commit/>" "ok/"
+
+puts "4.8.2.4 <copy-config> operates on private candidate"
+rpc $session_1 "<copy-config><target><candidate/></target><source><running/></source></copy-config>" "ok/"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
+rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
+rpc $session_1 "<commit/>" "ok/"
 
 # Reset private candidates
 rpc $session_1 "<discard-changes/>" "ok/"
