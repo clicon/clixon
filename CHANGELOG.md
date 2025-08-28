@@ -49,6 +49,7 @@ Expected: October 2025
 
 ### Corrected Bugs
 
+* Fixed: Fixed: memory error in rpc_get2 when error handling
 * Fixed: [RESTCONF crashes after sending request that ends with &](https://github.com/clicon/clixon/issues/618)
 * Fixed: Do not use d_type from readdir()
 
