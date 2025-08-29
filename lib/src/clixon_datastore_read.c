@@ -289,6 +289,7 @@ xml_copy_from_bottom(cxobj  *x0t,
  *    3a) There is no such module in the system -> add to list mark as DEL
  *    3b) File module-state matches system
  *    3c) File module-state does not match system -> add to list mark as CHANGE
+ *    3d) File module-state changes its namespace -> add to list mark as CHANGE
  * 4) For each module state s in the system
  *    4a) If there is no such module in the file -> add to list mark as ADD
  */
@@ -310,6 +311,8 @@ text_read_modstate(clixon_handle       h,
     char  *name;              /* module name */
     char  *frev;              /* file revision */
     char  *srev;              /* system revision */
+    char  *fns;               /* file namespace */
+    char  *sns;               /* system namespace */
     int    rfc7895=0;         /* backward-compatible: old version */
 
     /* Read module-state as computed at startup, see startup_module_state() */
@@ -370,6 +373,25 @@ text_read_modstate(clixon_handle       h,
                 continue;
             if ((srev = xml_find_body(xs, "revision")) == NULL)
                 continue;
+
+            fns = xml_find_body(xf, "namespace");
+            sns = xml_find_body(xs, "namespace");
+            if (fns && sns && strcmp(fns, sns) != 0){
+		/* 3d) Namespace change:
+		 *     take namespace from the system side
+		 *     take revision from the file side
+		 */
+		cxobj* cx_ns;
+		if ((xf2 = xml_dup(xf)) == NULL)
+		    goto done;
+		cx_ns = xml_find(xf2, "namespace");
+		xml_purge(cx_ns);
+		xml_new_body("namespace", xf2, sns);
+		if (xml_addsub(msdiff->md_diff, xf2) < 0)
+		    goto done;
+		xml_flag_set(xf2, XML_FLAG_CHANGE);
+		continue;
+            }
             if (strcmp(frev, srev) != 0){
                 /* 3c) File module-state does not match system */
                 if ((xf2 = xml_dup(xf)) == NULL)
