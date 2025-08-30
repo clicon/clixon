@@ -61,8 +61,9 @@ diff_rebase_t *diff_rebase_new(void);
 int            diff_rebase_free(diff_rebase_t *dr);
 int            diff_rebase_exec(diff_rebase_t *dr);
 int            xml_rebase(clixon_handle h, cxobj *x0, cxobj *x1, cxobj *x2,
-                          int *conflict, diff_rebase_t *dr);
+                          const char *db0, const char *db1, const char *db2,
+                          int *conflict, cbuf *cbret, diff_rebase_t *dr);
 // XXX Backward compatible for branch privcand
-#define xml_rebase_check(h, x0, x1, x2, c) xml_rebase((h), (x0), (x1), (x2), (c), NULL)
+#define xml_rebase_check(h, x0, x1, x2, c) xml_rebase((h), (x0), (x1), (x2), NULL, NULL, NULL, (c), NULL, NULL)
 
 #endif  /* _CLIXON_XML_DIFF_H_ */

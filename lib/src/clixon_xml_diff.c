@@ -328,6 +328,66 @@ xml_node_eq(cxobj *x0,
     return retval;
 }
 
+/*! Rebase conflict, add netconf errmsg if first and print debug
+ *
+ * The values of the xpaths are context-dependent and dependent on the algorithm
+ * The Error message gives some interpretation of the xpaths
+ * @param[in]  h       Clixon handle
+ * @param[in]  xpath0  XPath of origin
+ * @param[in]  xpath1  XPath of candidate
+ * @param[in]  xpath2  XPath of running
+ * @param[in]  value0  Value0
+ * @param[in]  value1  Value1
+ * @param[in]  msg     Error message
+ * @param[out] cbmsg   Write NETCONF error message if empty on input
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+xml_rebase_conflict(clixon_handle h,
+                    const char   *db0,
+                    const char   *db1,
+                    const char   *db2,
+                    const char   *xpath0,
+                    const char   *xpath1,
+                    const char   *xpath2,
+                    const char   *value0,
+                    const char   *value1,
+                    const char   *msg,
+                    cbuf         *cbret)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    clixon_debug(CLIXON_DBG_XML, "%s x0:%s x1:%s x2:%s",
+                 msg, xpath0, xpath1, xpath2);
+    if (cbret && cbuf_len(cbret) == 0){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "Conflict occured: %s: ", msg);
+        if (xpath0)
+            cprintf(cb, "xpath0: %s ", xpath0);
+        if (xpath1)
+            cprintf(cb, "xpath1: %s ", xpath1);
+        if (xpath2)
+            cprintf(cb, "xpath2: %s ", xpath2);
+        if (value0)
+            cprintf(cb, "value0: %s ", value0);
+        if (value1)
+            cprintf(cb, "value1: %s ", value1);
+        cprintf(cb, "[db0:%s db1:%s db2:%s]", db0, db1, db2);
+        if (netconf_operation_failed(cbret, "application", cbuf_get(cb)) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
 /*! Check if conflict when rebasing tree x0 to x2 for x1
  *
  * x0 is original base candidate datastore
@@ -351,10 +411,14 @@ xml_node_eq(cxobj *x0,
                     commit
 
  * @param[in]  h        Clixon handle
- * @param[in]  x0       Original
- * @param[in]  x1       Candidate
- * @param[in]  x2       Running
+ * @param[in]  x0       XML node of db0
+ * @param[in]  x1       XML node of db1
+ * @param[in]  x2       XML node of db2
+ * @param[in]  db0      Name of original db (for errmsg)
+ * @param[in]  db1      Name of candidate db
+ * @param[in]  db2      Name of running db
  * @param[out] conflict Set to number of conflicts, if any
+ * @param[out] cbret    If given, set to rpc-error if conflict>0 of first error
  * @param[out] dr       Diff rebase struct
  * @retval     0        OK
  * @retval    -1        Error
@@ -366,7 +430,11 @@ xml_rebase(clixon_handle  h,
            cxobj         *x0,
            cxobj         *x1,
            cxobj         *x2,
+           const char    *db0,
+           const char    *db1,
+           const char    *db2,
            int           *conflictp,
+           cbuf          *cbret,
            diff_rebase_t *dr)
 {
     int        retval = -1;
@@ -396,7 +464,7 @@ xml_rebase(clixon_handle  h,
         if (x0c){
             if (xml2xpath(x0c, NULL, 0, 0, &xpath0) < 0)
                 goto done;
-            //            y0c = xml_spec(x0c);
+            // y0c = xml_spec(x0c);
         }
         if (x1c){
             if (xml2xpath(x1c, NULL, 0, 0, &xpath1) < 0)
@@ -406,7 +474,7 @@ xml_rebase(clixon_handle  h,
         if (x2c){
             if (xml2xpath(x2c, NULL, 0, 0, &xpath2) < 0)
                 goto done;
-            //            y2c = xml_spec(x2c);
+            // y2c = xml_spec(x2c);
         }
         if (xml_node_same(x1c, x0c, &same10) < 0)
             goto done;
@@ -414,20 +482,24 @@ xml_rebase(clixon_handle  h,
             goto done;
         if (xml_node_same(x1c, x2c, &same12) < 0)
             goto done;
-        clixon_debug(CLIXON_DBG_XML, "%d %d %d\n", same10, same20, same12);
+        clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "%d %d %d\n", same10, same20, same12);
         eq1 = 0;
         if (same10 < 0){ /* New in x1c */
             if (same20 < 0){
                 if (same12 == 0){
                     if (xml_tree_equal(x1c, x2c) != 0){
-                        clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both added unequal object",
-                                     conflict+1, xpath0, xpath1, xpath2);
+                        if (xml_rebase_conflict(h, db0, db1, db2,
+                                                xpath0, xpath1, xpath2, NULL, NULL,
+                                                "db1 and db2 both added unequal object", cbret) < 0)
+                            goto done;
                         conflict++;
                     }
                 }
                 else if (y1c && yang_keyword_get(y1c) == Y_LEAF_LIST){
-                    clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both added unequal object",
-                                 conflict+1, xpath0, xpath1, xpath2);
+                    if (xml_rebase_conflict(h, db0, db1, db2,
+                                            xpath0, xpath1, xpath2, NULL, NULL,
+                                            "db1 and db2 added in leaf-list", cbret) < 0)
+                        goto done;
                     conflict++;
                 }
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
@@ -453,8 +525,10 @@ xml_rebase(clixon_handle  h,
                     if (xml_node_eq(x2c, x0c, &eq2, NULL, NULL) < 0)
                         goto done;
                     if (eq2 == 0){
-                        clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s x1 and x2 both changed value\n",
-                                conflict+1, xpath0, xpath1, xpath2);
+                        if (xml_rebase_conflict(h, db0, db1, db2,
+                                                xpath0, NULL, NULL, value0, value1,
+                                                "db1 and db2 both changed value", cbret) < 0)
+                            goto done;
                         conflict++;
                     }
                 }
@@ -475,8 +549,10 @@ xml_rebase(clixon_handle  h,
                     }
                 }
                 else{ /* x2c deleted -> Conflict if to x1-x0 */
-                    clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s x2c removed",
-                            conflict+1, xpath0, xpath1, xpath2);
+                    if (xml_rebase_conflict(h, db0, db1, db2,
+                                            xpath0, xpath1, xpath2, NULL, NULL,
+                                            "Object in db1 changed and removed in db2", cbret) < 0)
+                        goto done;
                     conflict++;
                 }
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
@@ -491,8 +567,10 @@ xml_rebase(clixon_handle  h,
             }
             else if (same20 == 0){
                 if (xml_tree_equal(x0c, x2c) != 0){
-                    clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s x1c removed",
-                            conflict+1, xpath0, xpath1, xpath2);
+                    if (xml_rebase_conflict(h, db0, db1, db2,
+                                            xpath0, xpath1, xpath2, NULL, NULL,
+                                            "Object in db1 removed and changed in db2", cbret) < 0)
+                        goto done;
                     conflict++;
                 }
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
@@ -500,13 +578,15 @@ xml_rebase(clixon_handle  h,
                 goto next;
             }
             else if (same20 > 0){ /* Deleted both in x1c and x2c */
-                clixon_debug(CLIXON_DBG_XML, "Conflict %d: x0:%s x1:%s x2:%s Both removed object",
-                             conflict+1, xpath0, xpath1, xpath2);
+                if (xml_rebase_conflict(h, db0, db1, db2,
+                                        xpath0, NULL, NULL, NULL, NULL,
+                                        "d1 and db2 both removed object", cbret) < 0)
+                    goto done;
                 conflict++;
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
             }
         }
-        if (xml_rebase(h, x0c, x1c, x2c, &conflict, dr) < 0)
+        if (xml_rebase(h, x0c, x1c, x2c, db0, db1, db2, &conflict, cbret, dr) < 0)
             goto done;
         x0c = xml_child_each(x0, x0c, CX_ELMNT);
         x1c = xml_child_each(x1, x1c, CX_ELMNT);
@@ -524,7 +604,7 @@ xml_rebase(clixon_handle  h,
             free(xpath2);
             xpath2 = NULL;
         }
-        //        y0c = NULL;
+        // y0c = NULL;
         y1c = NULL;
         // y2c = NULL;
     }
