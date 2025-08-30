@@ -831,7 +831,7 @@ backend_update(clixon_handle        h,
         goto done;
     if ((dr = diff_rebase_new()) == NULL)
         goto done;
-    if (xml_rebase(h, xorig, xcand, xrun, &conflict, dr) < 0)
+    if (xml_rebase(h, xorig, xcand, xrun, &conflict, cbret, dr) < 0)
         goto done;
     if (conflict == 0){
         /* Rebase candidate, step 1 of 4.8.2.1.  <commit>
@@ -857,8 +857,10 @@ backend_update(clixon_handle        h,
         }
     }
     else{
-        if (netconf_operation_failed(cbret, "application", "Conflicting node found") < 0)
+        if (cbuf_len(cbret) == 0){
+            clixon_err(OE_NETCONF, 0, "NETCONF error message missing: Internal error");
             goto done;
+        }
         goto fail;
     }
     retval = 1;
