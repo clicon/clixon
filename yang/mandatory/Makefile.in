@@ -68,8 +68,8 @@ YANGSPECS += ietf-netconf-with-defaults@2011-06-01.yang
 YANGSPECS += ietf-netconf-monitoring@2010-10-04.yang
 
 # IETF list-pagination drafts
-YANGSPECS += ietf-list-pagination@2024-10-21.yang
-YANGSPECS += ietf-list-pagination-nc@2024-10-21.yang
+YANGSPECS += ietf-list-pagination@2025-04-03.yang
+YANGSPECS += ietf-list-pagination-nc@2025-04-03.yang
 
 # Compare and private candidate
 YANGSPECS += ietf-nmda-compare@2024-04-16.yang
