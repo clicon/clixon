@@ -871,7 +871,7 @@ xmldb_get_cache(clixon_handle     h,
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+    if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
             goto done;
     }
@@ -1031,7 +1031,7 @@ xmldb_get_copy(clixon_handle     h,
             goto done;
     }
     /* Unless a modified/locked candidate, add system-only-config data */
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+    if ((de = xmldb_find(h, db)) != NULL){
         if (xmldb_candidate_get(de) == 0 ||
             (xmldb_modified_get(de) == 0 &&
              xmldb_islocked(h, db) == 0)){

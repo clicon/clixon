@@ -492,7 +492,7 @@ xmldb_disconnect(clixon_handle h)
     if (clicon_hash_keys(cdat, &keys, &klen) < 0)
         goto done;
     for (i = 0; i < klen; i++)
-        if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL)
+        if ((de = xmldb_find(h, keys[i])) != NULL)
             xmldb_free(de);
     retval = 0;
  done:
@@ -699,9 +699,9 @@ xmldb_copy(clixon_handle h,
     db_elmnt   *de2;
 
     clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
-    if ((de1 = clicon_db_elmnt_get(h, from)) == NULL)
+    if ((de1 = xmldb_find(h, from)) == NULL)
         de1 = xmldb_new(h, from);
-    if ((de2 = clicon_db_elmnt_get(h, to)) == NULL)
+    if ((de2 = xmldb_find(h, to)) == NULL)
         de2 = xmldb_new(h, to);
     return xmldb_copy_de(h, de1, de2);
 }
@@ -721,7 +721,7 @@ xmldb_lock(clixon_handle h,
 {
     db_elmnt *de = NULL;
 
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+    if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
             return -1;
     }
@@ -745,7 +745,7 @@ xmldb_unlock(clixon_handle h,
 {
     db_elmnt *de = NULL;
 
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+    if ((de = xmldb_find(h, db)) != NULL){
         de->de_id = 0;
         memset(&de->de_tv, 0, sizeof(struct timeval));
     }
@@ -774,7 +774,7 @@ xmldb_unlock_all(clixon_handle h,
         goto done;
     /* Identify the ones locked by client id */
     for (i = 0; i < klen; i++) {
-        if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
+        if ((de = xmldb_find(h, keys[i])) != NULL &&
             de->de_id == id){
             de->de_id = 0;
             memset(&de->de_tv, 0, sizeof(struct timeval));
@@ -801,7 +801,7 @@ xmldb_islocked(clixon_handle h,
 {
     db_elmnt  *de;
 
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
+    if ((de = xmldb_find(h, db)) == NULL)
         return 0;
     return xmldb_id_get(de);
 }
@@ -821,7 +821,7 @@ xmldb_lock_timestamp(clixon_handle   h,
 {
     db_elmnt  *de;
 
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL)
+    if ((de = xmldb_find(h, db)) == NULL)
         return -1;
     memcpy(tv, &de->de_tv, sizeof(*tv));
     return 0;
@@ -876,7 +876,7 @@ xmldb_clear(clixon_handle h,
     cxobj    *xt = NULL;
     db_elmnt *de = NULL;
 
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+    if ((de = xmldb_find(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);
             de->de_xml = NULL;
@@ -973,7 +973,7 @@ xmldb_create(clixon_handle h,
     cxobj      *xt = NULL;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL){
+    if ((de = xmldb_find(h, db)) != NULL){
         if ((xt = de->de_xml) != NULL){
             xml_free(xt);
             de->de_xml = NULL;
@@ -1036,7 +1036,7 @@ xmldb_print(clixon_handle h,
         goto done;
     for (i = 0; i < klen; i++){
         /* XXX name */
-        if ((de = clicon_db_elmnt_get(h, keys[i])) == NULL)
+        if ((de = xmldb_find(h, keys[i])) == NULL)
             continue;
         fprintf(f, "Datastore:  %s\n", keys[i]);
         fprintf(f, "  Session:  %u\n", de->de_id);
@@ -1116,7 +1116,7 @@ xmldb_populate(clixon_handle h,
     db_elmnt  *de;
     int        ret;
 
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL ||
+    if ((de = xmldb_find(h, db)) == NULL ||
         (x = xmldb_cache_get(de)) == NULL){
         clixon_err(OE_XML, 0, "XML cache not found");
         goto done;

@@ -1425,7 +1425,7 @@ xmldb_put(clixon_handle       h,
                    xml_name(x1), NETCONF_INPUT_CONFIG);
         goto done;
     }
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+    if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
             goto done;
     }
@@ -1726,7 +1726,7 @@ xmldb_write_cache2file(clixon_handle h,
     db_elmnt         *de;
     int               ret;
 
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL ||
+    if ((de = xmldb_find(h, db)) == NULL ||
         (xt = xmldb_cache_get(de)) == NULL){
         clixon_err(OE_XML, 0, "XML cache not found");
         goto done;

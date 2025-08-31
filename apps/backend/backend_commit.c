@@ -549,7 +549,7 @@ validate_common(clixon_handle       h,
         goto done;
     }
     /* This is mysterious: If cache, then populate it,.. */
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL &&
+    if ((de = xmldb_find(h, db)) != NULL &&
         xmldb_cache_get(de) != NULL){
         if (xmldb_populate(h, db) < 0)
             goto done;
@@ -751,7 +751,7 @@ candidate_commit(clixon_handle  h,
         xmldb_clear(h, db);
 #endif
     }
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+    if ((de = xmldb_find(h, db)) == NULL){
         clixon_err(OE_DB, 0, "DB not found %s", db);
         goto done;
     }
@@ -1360,7 +1360,7 @@ system_only_data_add(clixon_handle h,
     db_elmnt *de;
     cxobj    *x;
 
-    if ((de = clicon_db_elmnt_get(h, db)) != NULL &&
+    if ((de = xmldb_find(h, db)) != NULL &&
         (x = xmldb_cache_get(de)) != NULL){
         if (xmldb_system_only_config(h, "/", NULL, &x) < 0)
             goto done;
@@ -1373,7 +1373,7 @@ system_only_data_add(clixon_handle h,
             goto done;
         if (xml_child_nr(x)){
             db_elmnt *de;
-            if ((de = clicon_db_elmnt_get(h, db)) != NULL)
+            if ((de = xmldb_find(h, db)) != NULL)
                 xmldb_cache_set(de, x);
         }
         else

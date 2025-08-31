@@ -533,7 +533,7 @@ xml_global_defaults(clixon_handle h,
     /* Use different keys for config and state */
     key = state ? "global-defaults-state" : "global-defaults-config";
     /* First get or compute global xml tree cache */
-    if ((de = clicon_db_elmnt_get(h, key)) == NULL){
+    if ((de = xmldb_find(h, key)) == NULL){
         if ((de = xmldb_new(h, key)) == NULL)
             goto done;
         if ((xcache = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)

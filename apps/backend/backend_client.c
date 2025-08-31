@@ -216,7 +216,7 @@ release_all_dbs(clixon_handle        h,
         goto done;
     /* Identify the ones locked by client id */
     for (i = 0; i < klen; i++) {
-        if ((de = clicon_db_elmnt_get(h, keys[i])) != NULL &&
+        if ((de = xmldb_find(h, keys[i])) != NULL &&
             xmldb_id_get(de) == id){
             xmldb_id_set(de, 0); /* unlock */
             if (clixon_plugin_lockdb_all(h, keys[i], 0, id) < 0)
@@ -398,7 +398,7 @@ clixon_stats_datastore_get(clixon_handle h,
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
     /* This is the db cache */
-    if ((de = clicon_db_elmnt_get(h, dbname)) != NULL &&
+    if ((de = xmldb_find(h, dbname)) != NULL &&
         (xt = xmldb_cache_get(de)) == NULL){
         /* Trigger cache if no exist (trick to ensure cache is present) */
         if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
@@ -600,7 +600,7 @@ from_client_edit_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if ((de = clicon_db_elmnt_get(h, target)) == NULL){
+    if ((de = xmldb_find(h, target)) == NULL){
         clixon_err(OE_DB, 0, "DB not found %s", target);
         goto done;
     }
@@ -1044,7 +1044,7 @@ from_client_lock(clixon_handle h,
             goto done;
         goto ok;
     }
-    if ((de = clicon_db_elmnt_get(h, db)) == NULL){
+    if ((de = xmldb_find(h, db)) == NULL){
         clixon_err(OE_DB, 0, "DB not found %s", db);
         goto done;
     }

@@ -315,7 +315,7 @@ startup_extraxml(clixon_handle h,
         clixon_err(OE_DB, 0, "Error when reading from %s, unknown error", tmp_db);
         goto done;
     }
-    if ((de = clicon_db_elmnt_get(h, tmp_db)) == NULL)
+    if ((de = xmldb_find(h, tmp_db)) == NULL)
         goto done;
     if ((ret = xmldb_empty_get(de)) < 0)
         goto done;
