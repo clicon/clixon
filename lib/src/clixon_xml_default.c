@@ -71,6 +71,7 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_diff.h"
 #include "clixon_xml_default.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"

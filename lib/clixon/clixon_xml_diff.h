@@ -57,6 +57,12 @@ typedef struct diff_rebase diff_rebase_t;
 /*
  * Prototypes
  */
+int xml_tree_equal(cxobj *x0, cxobj *x1);
+int xml_diff(cxobj *x0, cxobj *x1,
+             cxobj ***first, size_t *firstlen,
+             cxobj ***second, size_t *secondlen,
+             cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
+int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 diff_rebase_t *diff_rebase_new(void);
 int            diff_rebase_free(diff_rebase_t *dr);
 int            diff_rebase_exec(diff_rebase_t *dr);

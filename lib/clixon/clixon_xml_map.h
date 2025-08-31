@@ -62,11 +62,6 @@ int isxmlns(cxobj *x);
 int xmlns_assign(cxobj *x);
 int xml2cvec(cxobj *xt, yang_stmt *ys, cvec **cvv0);
 int cvec2xml_1(cvec *cvv, char *toptag, cxobj *xp, cxobj **xt0);
-int xml_diff(cxobj *x0, cxobj *x1,
-             cxobj ***first, size_t *firstlen,
-             cxobj ***second, size_t *secondlen,
-             cxobj ***changed_x0, cxobj ***changed_x1, size_t *changedlen);
-int xml_tree_equal(cxobj *x0, cxobj *x1);
 int xml_tree_prune_flagged_sub(cxobj *xt, int flag, int test, int *upmark);
 int xml_tree_mark_flagged_sub(cxobj *xt, int flag, int test, int delmark, int *upmark);
 int xml_tree_prune_flags(cxobj *xt, int flags, int mask);
@@ -76,7 +71,6 @@ int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, cxobj **xerr);
 int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
 int assign_namespace_body(cxobj *x0, cxobj *x1);
-int xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
 int yang_valstr2enum(yang_stmt *ytype, char *valstr, char **enumstr);
 int yang_bitsstr2val(clixon_handle h, yang_stmt *ytype, char *bitsstr, unsigned char **outval, size_t *outlen);
 int yang_bitsstr2flags(yang_stmt *ytype, char *bitsstr, uint32_t *flags);
