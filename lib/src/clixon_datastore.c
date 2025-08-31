@@ -273,7 +273,7 @@ xmldb_volatile_get(db_elmnt *de)
  * Whether to sync cache to disk on every update (ie xmldb_put)
  * @param[in]  h     Clixon handle
  * @param[in]  db    Database name
- * @param[in]  value 0 or 1
+ * @param[in]  value 0 to dump to file, 1 to keep in-mem
  * @retval     0     OK
  * @retval    -1     Error (datastore does not exist)
  */
@@ -609,12 +609,12 @@ xmldb_copy_de(clixon_handle h,
               db_elmnt     *de1,
               db_elmnt     *de2)
 {
-    int              retval = -1;
-    cxobj           *x1 = NULL;  /* from */
-    cxobj           *x2 = NULL;  /* to */
-    char            *from;
-    char            *to;
-    int              ret;
+    int    retval = -1;
+    cxobj *x1 = NULL;  /* from */
+    cxobj *x2 = NULL;  /* to */
+    char  *from;
+    char  *to;
+    int    ret;
 
     /* Copy in-memory cache */
     /* 1. "to" xml tree in x1 */
@@ -661,12 +661,18 @@ xmldb_copy_de(clixon_handle h,
         if (xml_copy(x1, x2) < 0)
             goto done;
     }
-    /* Always set cache although not strictly necessary in case 1
-     * above, but logic gets complicated due to differences with
-     * de and de->de_xml */
     de2->de_xml = x2;
-    if (de2->de_volatile == 0){
-        if (xmldb_copy_file(h, from, to) < 0)
+    /* If destination is not volatile, then copy file, or dump from cache if
+     * src is volatile
+     */
+    if (!de2->de_volatile){
+        if (de1->de_volatile){
+            if (xmldb_populate(h, to) < 0)
+                goto done;
+            if (xmldb_write_cache2file(h, to) < 0)
+                goto done;
+        }
+        else if (xmldb_copy_file(h, from, to) < 0)
             goto done;
     }
     retval = 0;
