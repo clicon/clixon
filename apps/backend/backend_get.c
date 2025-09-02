@@ -987,9 +987,8 @@ get_common(clixon_handle        h,
          *  The set of namespace declarations are those in scope on the
          * <filter> element.
          */
-        else
-            if (xml_nsctx_node(xfilter, &nsc0) < 0)
-                goto done;
+        if (xml_nsctx_node(xfilter, &nsc0) < 0)
+            goto done;
         if ((ret = xpath2canonical(xpath01, nsc0, yspec, &xpath, &nsc, &cbreason)) < 0)
             goto done;
         if (ret == 0){

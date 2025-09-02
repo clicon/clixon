@@ -1079,7 +1079,7 @@ clixon_xml_parse_file(FILE      *fp,
  * @code
  *  cxobj *xt = NULL;
  *  cxobj *xerr = NULL;
- *  if ((ret = clixon_xml_parse_string(str, YB_MODULE, yspec, &xt, &xerr)) < 0)
+ *  if ((ret = clixon_xml_parse_string1(h, str, YB_MODULE, yspec, &xt, &xerr)) < 0)
  *    err;
  *  if (ret == 0)
  *    // use xerr

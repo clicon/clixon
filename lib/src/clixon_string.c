@@ -990,8 +990,11 @@ nodeid_split(const char *nodeid,
 
 /*! Trim blanks from front and end of a string, return new string
  *
+ * The function modifies the input string
+ * The return value is a pointer into the existing string
  * @param[in]  str 
  * @retval     s   Pointer into existing str after trimming blanks
+ * @see clixon_trim2  generic trim characters
  */
 char *
 clixon_trim(char *str)
@@ -1010,8 +1013,10 @@ clixon_trim(char *str)
     return s;
 }
 
-/*! Trim blanks from front and end of a string, return new string 
+/*! Generic trim chars from front and end of a string destructively, return
  *
+ * The function modifies the input string
+ * The return value is a pointer into the existing string
  * @param[in]  str 
  * @param[in]  trims  Characters to trim: a vector of characters
  * @retval     s      Pointer into existing str after trimming blanks

@@ -188,7 +188,7 @@ XML), but the xpath nsc must then be explicitly given in the xpath
 call.  Example:
 ```
 XML: <if:a xmlns:if="urn:example:if" xmlns:ip="urn:example:ip"><ip:b/></if>
-NETCONF:<get-config><filter select="/x:a/y:b" xmlns:x="urn:example:if" xmlns:y="urn:example:ip/>
+NETCONF:<get-config><filter select="/x:a/y:b" xmlns:x="urn:example:if" xmlns:y="urn:example:ip"/>
 ```
 Here, x,y are prefixes used for two namespaces that are given by `if,ip`
 in the xml. In this case, the namespaces (eg `urn:example:if`) must be

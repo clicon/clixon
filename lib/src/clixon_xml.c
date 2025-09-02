@@ -1601,7 +1601,7 @@ xml_rm_children(cxobj          *xp,
 /*! Remove top XML object and all children except a single child
  *
  * Given a root xml node, and the i:th child, remove the child from its parent
- * and return it, remove the parent and all other children. (unwrap)
+ * and return it, free the parent and all other children. (unwrap)
  * Before: xp-->[..xc..]
  * After: xc
  * @param[in]  xp   xml parent node. Will be deleted

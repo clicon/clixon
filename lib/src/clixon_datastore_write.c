@@ -1405,11 +1405,11 @@ xmldb_put(clixon_handle       h,
     yang_stmt  *yspec;
     cxobj      *x0 = NULL;
     db_elmnt   *de = NULL;
-    int         ret;
     cxobj      *xnacm = NULL;
     int         permit = 0; /* nacm permit all */
     cvec       *nsc = NULL; /* nacm namespace context */
     cxobj      *xerr = NULL;
+    int         ret;
 
     clixon_debug(CLIXON_DBG_DATASTORE|CLIXON_DBG_DETAIL, "db %s", db);
     if (cbret == NULL){

@@ -765,11 +765,11 @@ xml_yang_validate_rpc(clixon_handle h,
                       int           expanddefault,
                       cxobj       **xret)
 {
-    int        retval = -1;
-    cxobj     *xn;       /* rpc name */
-    char      *rpcprefix;
-    char      *namespace = NULL;
-    int        ret;
+    int    retval = -1;
+    cxobj *xn;       /* rpc name */
+    char  *rpcprefix;
+    char  *namespace = NULL;
+    int    ret;
 
     if (strcmp(xml_name(xrpc), "rpc")){
         clixon_err(OE_XML, EINVAL, "Expected RPC");
@@ -960,11 +960,6 @@ check_choice_child(cxobj     *xt,
     yang_stmt *ytchoice = NULL;
     int        ret;
     cxobj     *xp;
-#if 0
-    cxobj     *x;
-    yang_stmt *yp;
-    yang_stmt *y;
-#endif
 
     if ((ytp = yang_parent_get(yt)) == NULL)
         goto ok;
@@ -983,40 +978,10 @@ check_choice_child(cxobj     *xt,
     }
     if ((xp = xml_parent(xt)) == NULL)
         goto ok;
-#if 1
     if ((ret = check_choice(xp, ytchoice, ytcase, xt, yt, xret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
-#else
-    x = NULL; /* Find a child with same yang spec */
-    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
-        if (x == xt)
-            continue;
-        y = xml_spec(x);
-        if (y == yt) /* eg same list */
-            continue;
-        yp = yang_parent_get(y);
-        switch (yang_keyword_get(yp)){
-        case Y_CASE:
-            if (yang_parent_get(yp) != ytchoice) /* Not same choice (not relevant)  */
-                continue;
-            if (yp == ytcase) /* same choice but different case */
-                continue;
-            break;
-        case Y_CHOICE:
-            if (yp != ytchoice) /* Not same choice (not relevant) */
-                continue;
-            break;
-        default:
-            continue; /* not choice */
-            break;
-        }
-        if (xret && netconf_bad_element_xml(xret, "application", xml_name(x), "Element in choice statement already exists") < 0)
-            goto done;
-        goto fail;
-    } /* while */
-#endif
  ok:
     retval = 1;
  done:
@@ -1213,7 +1178,7 @@ check_mandatory_case(cxobj     *xt,
                      yang_stmt *yc,
                      cxobj    **xret)
 {
-    int retval = 0;
+    int        retval = 0;
     cxobj     *x;
     yang_stmt *y;
     yang_stmt *ym;
@@ -1403,16 +1368,16 @@ xml_yang_validate_add(clixon_handle h,
                       cxobj        *xt,
                       cxobj       **xret)
 {
-    int          retval = -1;
-    cg_var      *cv = NULL;
-    char        *reason = NULL;
-    yang_stmt   *yt;   /* yang spec of xt going in */
-    char        *body;
-    int          ret;
-    cxobj       *x;
-    cg_var      *cv0;
-    enum cv_type cvtype;
+    int            retval = -1;
+    cg_var        *cv = NULL;
+    char          *reason = NULL;
+    yang_stmt     *yt;   /* yang spec of xt going in */
+    char          *body;
+    cxobj         *x;
+    cg_var        *cv0;
+    enum cv_type   cvtype;
     validate_level vl = VL_NONE;
+    int            ret;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
         if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
@@ -1508,13 +1473,13 @@ xml_yang_validate_add(clixon_handle h,
  * @retval    -1      Error
  */
 int
-xml_yang_validate_list_key_only(cxobj        *xt,
-                                cxobj       **xret)
+xml_yang_validate_list_key_only(cxobj  *xt,
+                                cxobj **xret)
 {
     int        retval = -1;
     yang_stmt *yt;   /* yang spec of xt going in */
-    int        ret;
     cxobj     *x;
+    int        ret;
 
     /* if not given by argument (override) use default link
        and !Node has a config sub-statement and it is false */
@@ -1549,12 +1514,12 @@ xml_yang_validate_leaf_union(clixon_handle h,
                              cxobj       **xret)
 {
     int        retval = -1;
-    int        ret;
     yang_stmt *ytsub;
     cxobj     *xret1 = NULL;
     yang_stmt *ytype; /* resolved type */
     char      *restype;
     int        inext;
+    int        ret;
 
     /* Enough that one is valid, eg returns 1,otherwise fail */
     inext = 0;
@@ -1636,7 +1601,6 @@ xml_yang_validate_all1(clixon_handle h,
     char      *xpath;
     char      *xpath1 = NULL;
     int        nr;
-    int        ret;
     cxobj     *x;
     cxobj     *xp;
     char      *ns = NULL;
@@ -1646,6 +1610,7 @@ xml_yang_validate_all1(clixon_handle h,
     validate_level vl = VL_NONE;
     int        saw_node = 0;
     int        inext;
+    int        ret;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
         if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
@@ -1841,8 +1806,8 @@ xml_yang_validate_all_top(clixon_handle h,
                           cxobj        *xt,
                           cxobj       **xret)
 {
-    int    ret;
     cxobj *x;
+    int    ret;
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
@@ -1884,8 +1849,8 @@ rpc_reply_check(clixon_handle h,
     int        retval = -1;
     cxobj     *x = NULL;
     cxobj     *xret = NULL;
-    int        ret;
     yang_stmt *yspec;
+    int        ret;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");

@@ -199,12 +199,12 @@ example_client_rpc(clixon_handle h,
                    cvec         *cvv,
                    cvec         *argv)
 {
-    int        retval = -1;
-    cg_var    *cva;
-    cxobj     *xtop = NULL;
-    cxobj     *xrpc;
-    cxobj     *xret = NULL;
-    cxobj     *xerr;
+    int     retval = -1;
+    cg_var *cva;
+    cxobj  *xtop = NULL;
+    cxobj  *xrpc;
+    cxobj  *xret = NULL;
+    cxobj  *xerr;
 
     /* User supplied variable in CLI command */
     cva = cvec_find(cvv, "a"); /* get a cligen variable from vector */
@@ -255,7 +255,7 @@ cli_incstr(cligen_handle h,
            cg_var       *cv)
 {
     char *str;
-    int i;
+    int   i;
 
     /* Filter out other than strings
      * this is specific to this example, one can do translation */
@@ -354,8 +354,8 @@ myerrmsg(clixon_handle        h,
          va_list              ap,
          cbuf               **cbmsg)
 {
-    int    retval = -1;
-    cbuf  *cb = NULL;
+    int   retval = -1;
+    cbuf *cb = NULL;
 
     if ((cb = cbuf_new()) == NULL){
         fprintf(stderr, "cbuf_new: %s\n", strerror(errno)); /* dont use clixon_err here due to recursion */
