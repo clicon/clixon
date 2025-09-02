@@ -78,7 +78,6 @@
  <!- - tag elements in a request from a client application - ->
  </rpc>
 */
-
 static int
 netconf_get_config_subtree(clixon_handle h,
                            cxobj        *xfilter,

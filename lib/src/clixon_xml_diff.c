@@ -72,12 +72,15 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_path.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
 #include "clixon_yang_type.h"
 #include "clixon_text_syntax.h"
+#include "clixon_nacm.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_map.h"
+#include "clixon_xml_bind.h"
 #include "clixon_xml_diff.h"
 
 /* Local types
@@ -91,6 +94,9 @@ typedef struct  {
     cxobj     *mt_x1c;
     yang_stmt *mt_yc;
 } merge_twophase;
+
+/* Forward declaration */
+static int xml_diff2patch(cxobj *x1, cxobj *x2, uint16_t flags, cxobj *xpatch, int *nr);
 
 /*! Compute if two XML trees are equal or not
  *
@@ -1291,5 +1297,452 @@ xml_rebase(clixon_handle  h,
         free(xpath1);
     if (xpath2)
         free(xpath2);
+    return retval;
+}
+
+/*! xml_diff2patch helper function to create or delete node
+ *
+ * @param[in]  xn      XML tree
+ * @param[in]  create  0: delete, 1: create
+ * @param[out] xdiff   Diff in patch form
+ * @param[out] nr      Patch event sequence number
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+xml_diff2patch_create_delete(cxobj *xn,
+                             int    create,
+                             cxobj *xpatch,
+                             int   *nr)
+{
+    int    retval = -1;
+    cxobj *xedit = NULL;
+    cxobj *xv;
+    cxobj *xcp;
+    char  *api_path;
+    cbuf  *cb = NULL;
+    cvec  *nsc = NULL;
+    int    ret;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (xml2api_path(xn, XML_FLAG_TOP, cb) < 0)
+        goto done;
+    api_path = cbuf_get(cb);
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xedit, NULL, "<edit><edit-id>%d</edit-id>"
+                            "<operation>%s</operation><target>%s</target><value></value></edit>",
+                            (*nr)++, create?"create":"delete", api_path)  < 0)
+        goto done;
+    if (xml_rootchild(xedit, 0, &xedit) < 0)
+        goto done;
+    xv = xml_find_type(xedit, NULL, "value", CX_ELMNT);
+    if (xml_nsctx_node(xn, &nsc) < 0)
+        goto done;
+    if ((xcp = xml_dup(xn)) == NULL)
+        goto done;
+    if (xml_addsub(xv, xcp) < 0)
+        goto done;
+    if (xmlns_set_all(xcp, nsc) < 0)
+        goto done;
+    if (xml_addsub(xpatch, xedit) < 0)
+        goto done;
+    if ((ret = xml_bind_yang0(NULL, xpatch, YB_PARENT, NULL, 0, NULL)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_err(OE_YANG, 0, "patch YANG Bind failed");
+        goto done;
+    }
+    retval = 0;
+ done:
+    if (nsc)
+        cvec_free(nsc);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! xml_diff2patch helper function to compute leaf difference
+ *
+ * @param[in]  x1     Source XML tree
+ * @param[in]  x2     Target XML tree
+ * @param[out] xdiff  Diff in patch form
+ * @param[out] nr     Patch event sequence number
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+static int
+xml_diff2patch_change_leaf(cxobj *x1,
+                           cxobj *x2,
+                           cxobj *xpatch,
+                           int   *nr)
+{
+    int    retval = -1;
+    cxobj *xedit = NULL;
+    cxobj *xv;
+    cxobj *xcp;
+    char  *api_path;
+    cbuf  *cb = NULL;
+    cvec  *nsc1 = NULL;
+    cvec  *nsc2 = NULL;
+    int    ret;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (xml2api_path(x2, XML_FLAG_TOP, cb) < 0)
+        goto done;
+    api_path = cbuf_get(cb);
+    if (clixon_xml_parse_va(YB_NONE, NULL, &xedit, NULL,
+                            "<edit><edit-id>%d</edit-id>"
+                            "<operation>replace</operation>"
+                            "<target>%s</target>"
+                            "<value></value>"
+                            "<source-value></source-value>"
+                            "</edit>",
+                            (*nr)++, api_path)  < 0)
+        goto done;
+    if (xml_rootchild(xedit, 0, &xedit) < 0)
+        goto done;
+    xv = xml_find_type(xedit, NULL, "value", CX_ELMNT);
+    if (xml_nsctx_node(x2, &nsc2) < 0)
+        goto done;
+    if ((xcp = xml_dup(x2)) == NULL)
+        goto done;
+    if (xml_addsub(xv, xcp) < 0)
+        goto done;
+    if (xmlns_set_all(xcp, nsc2) < 0)
+        goto done;
+    xv = xml_find_type(xedit, NULL, "source-value", CX_ELMNT);
+    if (xml_nsctx_node(x1, &nsc1) < 0)
+        goto done;
+    if ((xcp = xml_dup(x1)) == NULL)
+        goto done;
+    if (xml_addsub(xv, xcp) < 0)
+        goto done;
+    if (xmlns_set_all(xcp, nsc1) < 0)
+        goto done;
+    if (xml_addsub(xpatch, xedit) < 0)
+        goto done;
+    if ((ret = xml_bind_yang0(NULL, xpatch, YB_PARENT, NULL, 0, NULL)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_err(OE_YANG, 0, "patch YANG Bind failed");
+        goto done;
+    }
+    retval = 0;
+ done:
+    if (nsc1)
+        cvec_free(nsc1);
+    if (nsc2)
+        cvec_free(nsc2);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! Handle order-by user(leaf)list for xml_diff2cbuf
+ *
+ * @param[out] cb      CLIgen buffer
+ * @param[in]  x1      Source XML tree
+ * @param[in]  x2      Target XML tree
+ * @param[in]  flags   Comparison flags, see DIFF_FLAG_ORDER_IGNORE et al
+ * @param[in]  x1c     Start of sublist in first XML tree
+ * @param[in]  x2c     Start of sublist in second XML tree
+ * @param[in]  yc      Yang of x1c/x2c. If NULL special case of anydata
+ * @param[in]  level   How many spaces to insert before each line
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @see xml_diff_ordered_by_user
+ * @see text_diff2cbuf_ordered_by_user
+ */
+static int
+xml_diff2patch_ordered_by_user(cxobj     *x1,
+                               cxobj     *x2,
+                               uint16_t   flags,
+                               cxobj     *x1c,
+                               cxobj     *x2c,
+                               yang_stmt *yc,
+                               cxobj     *xpatch,
+                               int       *nr)
+{
+    int    retval = 1;
+    cxobj *xi;
+    cxobj *xj;
+
+    xj = x2c;
+    do { /* Mark all  x2 as ADD */
+        xml_flag_set(xj, XML_FLAG_ADD);
+    } while ((xj = xml_child_each(x2, xj, CX_ELMNT)) != NULL &&
+             xml_spec(xj) == yc);
+    /* If in both sets, unmark add/del */
+    xi = x1c;
+    do {
+        xml_flag_set(xi, XML_FLAG_DEL);
+        xj = x2c;
+        do {
+            if (xml_flag(xj, XML_FLAG_ADD) &&
+                xml_cmp(xi, xj, 0, 0, NULL) == 0){
+                /* Unmark node in x1 and x2 */
+                xml_flag_reset(xi, XML_FLAG_DEL);
+                xml_flag_reset(xj, XML_FLAG_ADD);
+                if (xml_diff2patch(xi, xj, flags, xpatch, nr) < 0)
+                    goto done;
+                break;
+            }
+        }
+        while ((xj = xml_child_each(x2, xj, CX_ELMNT)) != NULL &&
+               xml_spec(xj) == yc);
+    }
+    while ((xi = xml_child_each(x1, xi, CX_ELMNT)) != NULL &&
+           xml_spec(xi) == yc);
+
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Recursive helper function of clixon_xml_diff2patch
+ *
+ * Some notes: ordered-by user elements are either:
+ * (1) treated as other elements, which can lead to confusing create/delete rules,
+ * under-specified, eg: a,b vs b,a can propose delete a; add a
+ * @param[in]  x1      Source XML tree
+ * @param[in]  x2      Target XML tree
+ * @param[in]  flags   Comparison flags, see DIFF_FLAG_ORDER_IGNORE et al
+ * @param[out] xpatch  Diff in patch form on level <yang-patch>
+ * @param[out] nr      Patch (sequence) number
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @note  ordered-by user should use LCS (Longest common subsequence) but does not
+ */
+static int
+xml_diff2patch(cxobj   *x1,
+               cxobj   *x2,
+               uint16_t flags,
+               cxobj   *xpatch,
+               int     *nr)
+{
+    int        retval = -1;
+    cxobj     *x1c = NULL; /* x1 child */
+    cxobj     *x2c = NULL; /* x2 child */
+    cxobj     *xi;
+    cxobj     *xj;
+    yang_stmt *y0c;
+    yang_stmt *y1c;
+    int        extflag;
+    char      *b0;
+    char      *b1;
+    int        eq;
+
+    /* Traverse x1 and x2 in lock-step */
+    x1c = x2c = NULL;
+    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    x2c = xml_child_each(x2, x2c, CX_ELMNT);
+    for (;;){
+        if (x1c == NULL && x2c == NULL)
+            goto ok;
+        /* Skip if marked as DENY by NACM */
+        if (x1c && xml_flag(x1c, XML_FLAG_DENY) != 0){
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else if (x2c && xml_flag(x2c, XML_FLAG_DENY) != 0){
+            x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            continue;
+        }
+        y0c = NULL;
+        y1c = NULL;
+        /* If cl:ignore-compare extension, skip */
+        if (x1c && (y0c = xml_spec(x1c)) != NULL){
+            if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                continue;
+            }
+        }
+        if (x2c && (y1c = xml_spec(x2c)) != NULL){
+            if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
+                goto done;
+            if (extflag){ /* skip */
+                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+                continue;
+            }
+        }
+        if (x1c == NULL){
+            if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
+                goto done;
+            x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            continue;
+        }
+        else if (x2c == NULL){
+            if (xml_diff2patch_create_delete(x1c, 0, xpatch, nr) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        /* Both x1c and x2c exists, check if yang equal */
+        eq = xml_cmp(x1c, x2c, 0, 0, NULL);
+        b0 = xml_body(x1c);
+        b1 = xml_body(x2c);
+        if ((flags & DIFF_FLAG_ORDER_IGNORE) != 0 &&
+            eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            if (xml_diff2patch_ordered_by_user(x1, x2, flags, x1c, x2c, y0c, xpatch, nr) < 0)
+                goto done;
+            /* Show all marked as DELETE as - entries
+             */
+            xi = x1c;
+            do {
+                if (xml_flag(xi, XML_FLAG_DEL)){
+                    xml_flag_reset(xi, XML_FLAG_DEL);
+                    if (xml_diff2patch_create_delete(xi, 0, xpatch, nr) < 0)
+                        goto done;
+                }
+            }
+            while ((xi = xml_child_each(x1, xi, CX_ELMNT)) != NULL &&
+                   xml_spec(xi) == y0c);
+            x1c = xi; /* skip entries in this yang class */
+            /* Show all marked as ADD as + entries
+             */
+            xj = x2c;
+            do {
+                if (xml_flag(xj, XML_FLAG_ADD)){
+                    xml_flag_reset(xj, XML_FLAG_ADD);
+                    if (xml_diff2patch_create_delete(xj, 1, xpatch, nr) < 0)
+                        goto done;
+                }
+            }
+            while ((xj = xml_child_each(x2, xj, CX_ELMNT)) != NULL &&
+                   xml_spec(xj) == y1c);
+            x2c = xj;
+            continue;
+        } /* ordered-by user */
+        else if (eq < 0){
+            if (xml_diff2patch_create_delete(x1c, 0, xpatch, nr) < 0)
+                goto done;
+            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            continue;
+        }
+        else if (eq > 0){
+            if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
+                goto done;
+            x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            continue;
+        }
+        else{ /* equal */
+            if (y0c && y1c && y0c != y1c){ /* equal + choice */
+                if (xml_diff2patch_create_delete(x1c, 0, xpatch, nr) < 0)
+                    goto done;
+                if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
+                    goto done;
+            }
+            else if (y0c && yang_keyword_get(y0c) == Y_LEAF){
+                /* if x1c and x2c are leafs w bodies, then they may be changed */
+                if (b0 == NULL && b1 == NULL)
+                    ;
+                else if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
+                    if (xml_diff2patch_change_leaf(x1c, x2c, xpatch, nr) < 0)
+                        goto done;
+                }
+            }
+            else if (y0c == NULL && y1c == NULL && (b0 || b1)) { /* Anydata terminals */
+                if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
+                    if (xml_diff2patch_change_leaf(x1c, x2c, xpatch, nr) < 0)
+                        goto done;
+                }
+            }
+            else if (xml_diff2patch(x1c, x2c, flags, xpatch, nr) < 0)
+                goto done;
+        }
+        /* Get next */
+        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+        x2c = xml_child_each(x2, x2c, CX_ELMNT);
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Print XML diff of two cxobj trees into YANG patch format according to RFC9144
+ *
+ * YANG dependent
+ * Mark x1 and x2 as TOP for api-path matching to work
+ * @param[in]  x1      Source XML tree
+ * @param[in]  x2      Target XML tree
+ * @param[in]  flags   Comparison flags, see DIFF_FLAG_ORDER_IGNORE et al
+ * @param[out] xpatch  Diff in patch form on level <yang-patch>
+ * @retval     0       Ok
+ * @retval    -1       Error
+ * @code
+ *    cxobj *xpatch;
+ *    if ((xpatch = xml_new("yang-patch", NULL, CX_ELMNT)) == NULL)
+ *       err();
+ *    if (clixon_xml_diff2patch(x1, x2, xpatch) < 0)
+ *       err();
+ *    cligen_output(stdout, "%s", cbuf_get(cb));
+ * @endcode
+ * @see xml_diff which returns diff sets
+ * @see clixon_compare_xmls which uses files and is independent of YANG
+ * @see xml_diff2cbuf
+ * @see clixon_xml_diff_nacm_read  Call before to mark NACM non-readable nodes
+ * @note  ordered-by user should use LCS (Longest common subsequence) but does not
+ */
+int
+clixon_xml_diff2patch(cxobj   *x1,
+                      cxobj   *x2,
+                      uint16_t flags,
+                      cxobj   *xpatch)
+{
+    int retval = -1;
+    int nr = 1;
+
+    if (x1)
+        xml_flag_set(x1, XML_FLAG_TOP);
+    if (x2)
+        xml_flag_set(x2, XML_FLAG_TOP);
+    if (xml_diff2patch(x1, x2, flags, xpatch, &nr) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (x1)
+        xml_flag_reset(x1, XML_FLAG_TOP);
+    if (x2)
+        xml_flag_reset(x2, XML_FLAG_TOP);
+    return retval;
+}
+
+/*! Do NACM read data check, mark non-readable nodes with DENY flag
+ *
+ * Dont actually remove them
+ * @param[in]  h     Clixon handle
+ * @param[in]  xt    XML top
+ * @param[in]  xpath XPath
+ * @retval      0    OK
+ * @retval     -1    Error
+ * see code in backend_get.c
+ * get_common(), get_nacm_and_reply()
+ */
+int
+clixon_xml_diff_nacm_read(clixon_handle h,
+                          cxobj        *xt,
+                          char         *xpath)
+{
+    int     retval = -1;
+    cxobj  *xnacm;
+    char   *username;
+
+    xnacm = clicon_nacm_cache(h);
+    username = clicon_username_get(h);
+    if (xnacm != NULL){ /* Do NACM validation */
+        /* NACM datanode/module purge read access violation */
+        if (nacm_datanode_read1(h, xt, username, xnacm) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
     return retval;
 }

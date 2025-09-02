@@ -93,7 +93,7 @@ http_location_header(clixon_handle h,
             clixon_err(OE_UNIX, 0, "cbuf_new");
             goto done;
         }
-        if (xml2api_path_1(xobj, cb) < 0)
+        if (xml2api_path_one(xobj, cb) < 0)
             goto done;
         if (restconf_reply_header(req, "Location", "http%s://%s%s%s",
                                   https?"s":"",

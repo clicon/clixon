@@ -978,6 +978,8 @@ get_common(clixon_handle        h,
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
+    /* filter assumes xpath, if type=subtree is requested, all i retrieved
+     * and then the netconf client filters it in netconf_get_config_subtree */
     if ((xfilter = xml_find(xe, "filter")) != NULL){
         if ((xpath0 = xml_find_value(xfilter, "select"))==NULL)
             xpath0 = "/";

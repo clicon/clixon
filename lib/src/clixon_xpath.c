@@ -1413,14 +1413,16 @@ xml2xpath1(cxobj *x,
 /*! Given an XML node, build an XPath to root
  *
  * Creates an XPath from an XML node with some limitations, see notes below.
- * The prefixes used are from the given namespace context if any, otherwise the native prefixes are used, if any.
- * Note that this means that prefixes may be translated such as if the XML namespace mapping is different than the once used
- * in the XML.
- * Therefore, if nsc is "canonical", the returned XPath is also "canonical", even though the XML is not.
+ * The prefixes used are from the given namespace context if any, otherwise the
+ * native prefixes are used, if any.
+ * Note that this means that prefixes may be translated such as if the XML namespace
+ * mapping is different than the once used in the XML.
+ * Therefore, if nsc is "canonical", the returned XPath is also "canonical", even though
+ * the XML is not.
  * @param[in]  x      XML object
  * @param[in]  nsc    Namespace context
- * @param[in]  spec   If set, recursively continue only to root without spec (added in 6.1 for yang mount)
- * @param[in]  apostrophe   If set, use apostrophe in XPath literals, eg a/[x='foo'], not double-quotes(")
+ * @param[in]  spec   If set, recursively continue only to root without spec
+ * @param[in]  apostrophe If set, use apostrophe in XPath literals, eg a/[x='foo'], not double-quotes(")
  * @param[out] xpath  Malloced XPath string. Need to free() after use
  * @retval     0      OK
  * @retval    -1      Error. (eg XML malformed)
@@ -1434,6 +1436,7 @@ xml2xpath1(cxobj *x,
  * @endcode
  * @note x needs to be bound to YANG, see eg xml_bind_yang()
  * @note namespaces of XPath is not well-defined, follows xml, should be canonical?
+ * @see xml2api_path  xml to api-path
  */
 int
 xml2xpath(cxobj *x,

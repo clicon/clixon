@@ -76,6 +76,10 @@
  */
 #define NETCONF_MONITORING_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring"
 
+/* RFC 9144 Comparison of Network Management Datastore Architecture (NMDA) Datastores
+ */
+#define NETCONF_COMPARE_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-nmda-compare"
+
 /*! draft-ietf-netconf-privcand  NETCONF and RESTCONF Private Candidate Datastores
  */
 #define NETCONF_PRIVCAND_NAMESPACE "urn:ietf:params:xml:ns:netconf:private-candidate:1.0"

@@ -552,38 +552,38 @@ do_lock(clixon_handle h,
  */
 static int
 from_client_edit_config(clixon_handle h,
-                        cxobj        *xn,
+                        cxobj        *xe,
                         cbuf         *cbret,
                         void         *arg,
                         void         *regarg)
 {
-    int                 retval = -1;
+    int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t            myid = ce->ce_id;
-    uint32_t            iddb;
-    char               *target = NULL;
-    cxobj              *xc;
-    cxobj              *x;
-    enum operation_type operation = OP_MERGE;
-    int                 non_config = 0;
-    yang_stmt          *yspec;
-    cbuf               *cbx = NULL; /* Assist cbuf */
-    int                 ret;
-    char               *username;
-    cxobj              *xret = NULL;
-    char               *attr;
-    int                 autocommit = 0;
-    char               *val = NULL;
-    cvec               *nsc = NULL;
-    char               *prefix = NULL;
-    db_elmnt           *de = NULL;
+    uint32_t             myid = ce->ce_id;
+    uint32_t             iddb;
+    char                *target = NULL;
+    cxobj               *xc;
+    cxobj               *x;
+    enum operation_type  operation = OP_MERGE;
+    int                  non_config = 0;
+    yang_stmt           *yspec;
+    cbuf                *cbx = NULL; /* Assist cbuf */
+    char                *username;
+    cxobj               *xret = NULL;
+    char                *attr;
+    int                  autocommit = 0;
+    char                *val = NULL;
+    cvec                *nsc = NULL;
+    char                *prefix = NULL;
+    db_elmnt            *de = NULL;
+    int                  ret;
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec9");
         goto done;
     }
-    if ((ret = xmldb_netconf_name_find(h, xn, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -618,17 +618,17 @@ from_client_edit_config(clixon_handle h,
                 goto done;
         }
     }
-    if (xml_nsctx_node(xn, &nsc) < 0)
+    if (xml_nsctx_node(xe, &nsc) < 0)
         goto done;
     /* Get prefix of netconf base namespace in the incoming message */
     if (xml_nsctx_get_prefix(nsc, NETCONF_BASE_NAMESPACE, &prefix) == 0){
         cprintf(cbx, "No appropriate prefix exists for: %s", NETCONF_BASE_NAMESPACE);
-        if (netconf_unknown_namespace(cbret, "protocol", xml_name(xn), cbuf_get(cbx)) < 0)
+        if (netconf_unknown_namespace(cbret, "protocol", xml_name(xe), cbuf_get(cbx)) < 0)
             goto done;
         goto ok;
     }
     /* Get default-operation element */
-    if ((x = xpath_first(xn, nsc, "%s%sdefault-operation", prefix?prefix:"", prefix?":":"")) != NULL){
+    if ((x = xpath_first(xe, nsc, "%s%sdefault-operation", prefix?prefix:"", prefix?":":"")) != NULL){
         if (xml_operation(xml_body(x), &operation) < 0){
             if (netconf_invalid_value(cbret, "protocol", "Wrong operation")< 0)
                 goto done;
@@ -636,7 +636,7 @@ from_client_edit_config(clixon_handle h,
         }
     }
     /* Get config element */
-    if ((xc = xpath_first(xn, nsc, "%s%s%s",
+    if ((xc = xpath_first(xe, nsc, "%s%s%s",
                           prefix?prefix:"",
                           prefix?":":"",
                           NETCONF_INPUT_CONFIG)) == NULL){
@@ -716,7 +716,7 @@ from_client_edit_config(clixon_handle h,
         goto ok;
     xmldb_modified_set(de, 1); /* mark as dirty */
     /* Clixon extension: autocommit */
-    if ((attr = xml_find_value(xn, "autocommit")) != NULL &&
+    if ((attr = xml_find_value(xe, "autocommit")) != NULL &&
         strcmp(attr,"true") == 0)
         autocommit = 1;
     /* If autocommit option is set or requested by client */
@@ -765,7 +765,7 @@ from_client_edit_config(clixon_handle h,
         }
     }
     /* Clixon extension: copy */
-    if ((attr = xml_find_value(xn, "copystartup")) != NULL &&
+    if ((attr = xml_find_value(xe, "copystartup")) != NULL &&
         strcmp(attr, "true") == 0){
         if (xmldb_copy(h, "running", "startup") < 0){
             if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
@@ -830,21 +830,21 @@ from_client_copy_config(clixon_handle h,
 {
     int                  retval = -1;
     struct client_entry *ce = (struct client_entry *)arg;
-    char                *source = NULL;
-    char                *target = NULL;
+    char                *source;
+    char                *target;
     uint32_t             iddb;
     uint32_t             myid = ce->ce_id;
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
-    db_elmnt            *detgt = NULL;
+    db_elmnt            *detarget = NULL;
     db_elmnt            *desrc = NULL;
     int                  ret;
 
-    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &detgt, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &detarget, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
-    target = xmldb_name_get(detgt);
+    target = xmldb_name_get(detarget);
     if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &desrc, cbret)) < 0)
         goto done;
     if (ret == 0)
@@ -864,7 +864,7 @@ from_client_copy_config(clixon_handle h,
     }
     /* Here iddb is =0 (not locked) or locked by this process =myid */
     if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
-        if ((ret = do_lock(h, cbret, myid, detgt)) < 0)
+        if ((ret = do_lock(h, cbret, myid, detarget)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
@@ -879,8 +879,8 @@ from_client_copy_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (xmldb_candidate_get(detgt)){
-        xmldb_modified_set(detgt, 1); /* mark as dirty */
+    if (xmldb_candidate_get(detarget)){
+        xmldb_modified_set(detarget, 1); /* mark as dirty */
         /* Add system-only config to candidate */
         if (clicon_option_bool(h, "CLICON_XMLDB_SYSTEM_ONLY_CONFIG")){
             if (system_only_data_add(h, target) < 0)
@@ -1445,13 +1445,226 @@ from_client_get_schema(clixon_handle h,
     return retval;
 }
 
+/*! Given two datastores and xpath, return diff in textual form
+ *
+ * @param[in]   h      Clixon handle
+ * @param[in]   xpath  XPath note
+ * @param[in]   db1    First datastore
+ * @param[in]   db2    Second datastore
+ * @param[out]  cbret  CLIgen buff with NETCONF reply
+ * @retval      0      OK
+ * @retval     -1      Error
+ */
+static int
+datastore_compare(clixon_handle h,
+                  char         *xpath,
+                  cvec         *nsc,
+                  db_elmnt     *de1,
+                  db_elmnt     *de2,
+                  cbuf         *cbret)
+{
+    int        retval = -1;
+    char      *db1;
+    char      *db2;
+    cxobj     *xt1 = NULL;
+    cxobj     *xt2 = NULL;
+    cxobj     *x1;
+    cxobj     *x2;
+    cxobj     *xerr = NULL;
+    cxobj     *xdiff = NULL;
+    cxobj     *xpatch;
+    yang_stmt *yspec;
+    yang_stmt *ymod;
+    yang_stmt *yo = NULL;
+    int        ret;
+
+    db1 = xmldb_name_get(de1);
+    db2 = xmldb_name_get(de2);
+    clixon_debug(CLIXON_DBG_XML, "%s %s %s", xpath, db1, db2);
+    yspec = clicon_dbspec_yang(h);
+    if ((ret = xmldb_get_cache(h, db1, &xt1, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    if (clixon_xml_diff_nacm_read(h, xt1, xpath) < 0)
+        goto done;
+    if (xpath)
+        x1 = xpath_first(xt1, nsc, "%s", xpath);
+    else
+        x1 = xt1;
+    if ((ret = xmldb_get_cache(h, db2, &xt2, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    if (clixon_xml_diff_nacm_read(h, xt2, xpath) < 0)
+        goto done;
+    if (xpath){
+        x2 = xpath_first(xt2, nsc, "%s", xpath);
+    }
+    else
+        x2 = xt2;
+    if ((ret = clixon_xml_parse_va(YB_NONE, NULL, &xdiff, &xerr, "<differences xmlns=\"%s\"><yang-patch><patch-id>patch</patch-id><comment>diff between %s (source) and %s (target)</comment></yang-patch></differences>",
+            NETCONF_COMPARE_NAMESPACE, db1, db2)) < 0)
+        goto done;
+    if (ret == 0){
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    /* Special trick to bind yang rpc, see xml_bind_yang_rpc_reply */
+    if ((ymod = yang_find_module_by_namespace(yspec, NETCONF_COMPARE_NAMESPACE)) == NULL){
+        clixon_err(OE_YANG, 0, "compare yang not found");
+        goto done;
+    }
+    if (yang_abs_schema_nodeid(ymod, "/compare/output", &yo) < 0)
+        goto done;
+    xml_spec_set(xdiff, yo);
+    if ((ret = xml_bind_yang(h, xdiff, YB_PARENT, NULL, 0, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if (clixon_xml2cbuf(cbret, xerr, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        goto ok;
+    }
+    if (xml_rootchild(xdiff, 0, &xdiff) < 0)
+        goto done;
+    xpatch = xml_find_type(xdiff, NULL, "yang-patch", CX_ELMNT);
+    if (clixon_xml_diff2patch(x1, x2, 0x0, xpatch) < 0)
+        goto done;
+    if (xpath_first(xpatch, NULL, "edit") == NULL){
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><no-matches xmlns=\"%s\"/></rpc-reply>",
+                NETCONF_BASE_NAMESPACE, NETCONF_COMPARE_NAMESPACE);
+    }
+    else {
+        cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+        if (clixon_xml2cbuf(cbret, xdiff, 0, 0, NULL, -1, 0) < 0)
+            goto done;
+        cprintf(cbret, "</rpc-reply>");
+    }
+ ok:
+    retval = 0;
+ done:
+    if (xerr)
+        xml_free(xerr);
+    if (xdiff)
+        xml_free(xdiff);
+    return retval;
+}
+
+/*! NMDA datastore compare operation
+ *
+ * Source is first db, Target is second.
+ * Changes are from source to target, so that if a node is in target but not in source,
+ * it is "created", and "removed" if it is in source but not in target.
+ * Typical use-case: source is running (old db) and target is candidate(new db),
+ * then add/remove makes sense as part of a commit operation.
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register()
+ * @retval     0       OK
+ * @retval    -1       Error
+ * @see RFC 9144, ietf-nmda-compare.yang
+ */
+static int
+from_client_compare(clixon_handle h,
+                    cxobj        *xe,
+                    cbuf         *cbret,
+                    void         *arg,
+                    void         *regarg)
+{
+    int                  retval = -1;
+    struct client_entry *ce = (struct client_entry *)arg;
+    char                *db1;
+    char                *db2;
+    char                *id1 = NULL;
+    char                *id2 = NULL;
+    db_elmnt            *de1 = NULL;
+    db_elmnt            *de2 = NULL;
+    int                  all = 0;
+    int                  report_origin = 0;
+    cxobj               *xpath_filter = NULL;
+    cxobj               *xsubtree_filter;
+    char                *xpath0;
+    char                *xpath1 = NULL;
+    char                *xpath = NULL;
+    cvec                *nsc = NULL;
+
+    /* Alt: see dsref handling in rpc_datastore_diff */
+    if ((db1 = xml_find_body(xe, "source")) == NULL){
+        if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
+            goto done;
+    }
+    if (nodeid_split(db1, NULL, &id1) < 0)
+        goto done;
+    if (id1 == NULL){
+        if (netconf_invalid_value(cbret, "protocol", "missing source identifier") < 0)
+            goto done;
+    }
+    if (xmldb_netconf_db_find(h, id1, ce, &de1) < 0)
+        goto done;
+    if ((db2 = xml_find_body(xe, "target")) == NULL){
+        if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
+            goto done;
+    }
+    if (nodeid_split(db2, NULL, &id2) < 0)
+        goto done;
+    if (id2 == NULL){
+        if (netconf_invalid_value(cbret, "protocol", "missing target identifier") < 0)
+            goto done;
+    }
+    if (xmldb_netconf_db_find(h, id2, ce, &de2) < 0)
+        goto done;
+    if (xml_find(xe, "all") != NULL)
+        all++;
+    if (xml_find(xe, "report-origin") != NULL)
+        report_origin++;
+
+    /* filter: subtree-filter or xpath-filter */
+    if ((xpath_filter = xml_find(xe, "xpath-filter")) != NULL){
+        if ((xpath0 = xml_body(xpath_filter)) != NULL){
+            if (xml_chardata_decode(&xpath1, "%s", xpath0) < 0)
+                goto done;
+            xpath = clixon_trim2(xpath1, " \n\t");
+        }
+        if (xml_nsctx_node(xpath_filter, &nsc) < 0)
+            goto done;
+    }
+    if ((xsubtree_filter = xml_find(xe, "subtree-filter")) != NULL){
+        if (netconf_operation_not_supported(cbret, "application", "subtree-filter not supported") < 0)
+            goto done;
+        goto ok;
+    }
+    if (datastore_compare(h, xpath, nsc, de1, de2, cbret) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (id1)
+        free(id1);
+    if (id2)
+        free(id2);
+    if (xpath1)
+        free(xpath1);
+    if (nsc)
+        cvec_free(nsc);
+    return retval;
+}
+
 /*! Set debug level.
  *
  * @param[in]  h       Clixon handle
  * @param[in]  xe      Request: <rpc><xn></rpc>
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register() 
+ * @param[in]  regarg  User argument given at rpc_callback_register()
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -1697,7 +1910,7 @@ from_client_process_control(clixon_handle h,
  */
 static int
 from_client_hello(clixon_handle  h,
-                  cxobj         *xn,
+                  cxobj         *xe,
                   cbuf          *cbret,
                   void          *arg,
                   void          *regarg)
@@ -1706,13 +1919,13 @@ from_client_hello(clixon_handle  h,
     char                *val;
     struct client_entry *ce = (struct client_entry *)arg;
 
-    if ((val = xml_find_type_value(xn, "cl", "transport", CX_ATTR)) != NULL){
+    if ((val = xml_find_type_value(xe, "cl", "transport", CX_ATTR)) != NULL){
         if ((ce->ce_transport = strdup(val)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     }
-    if ((val = xml_find_type_value(xn, "cl", "source-host", CX_ATTR)) != NULL){
+    if ((val = xml_find_type_value(xe, "cl", "source-host", CX_ATTR)) != NULL){
         if ((ce->ce_source_host = strdup(val)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
@@ -1762,7 +1975,7 @@ from_client_msg(clixon_handle        h,
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     yspec = clicon_dbspec_yang(h);
-    /* Return netconf message. Should be filled in by the dispatch(sub) functions 
+    /* Return netconf message. Should be filled in by the dispatch(sub) functions
      * as wither rpc-error or by positive response.
      */
     if ((cbret = cbuf_new()) == NULL){
@@ -2143,9 +2356,13 @@ backend_rpc_init(clixon_handle h)
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
                       EVENT_RFC5277_NAMESPACE, "create-subscription") < 0)
         goto done;
-    /* RFC 6022 */
+    /* RFC 6022: Netconf monitoring */
     if (rpc_callback_register(h, from_client_get_schema, NULL,
                       NETCONF_MONITORING_NAMESPACE, "get-schema") < 0)
+        goto done;
+    /* RFC 9144: ietf-nmda-compare */
+    if (rpc_callback_register(h, from_client_compare, NULL,
+                      NETCONF_COMPARE_NAMESPACE, "compare") < 0)
         goto done;
     /* draft-ietf-netconf-privcand */
     if (rpc_callback_register(h, from_client_update, NULL,

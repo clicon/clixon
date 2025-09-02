@@ -1524,7 +1524,6 @@ xml_child_rm(cxobj *xp,
     if (xml_type(xc) == CX_ELMNT){
         if (xml_search_index_p(xc))
             xml_search_child_rm(xp, xc);
-
     }
 #endif
     retval = 0;

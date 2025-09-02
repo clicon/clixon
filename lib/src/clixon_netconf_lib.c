@@ -1822,8 +1822,8 @@ netconf_module_features(clixon_handle h)
 int
 netconf_module_load(clixon_handle h)
 {
-    int              retval = -1;
-    yang_stmt       *yspec;
+    int        retval = -1;
+    yang_stmt *yspec;
 
     yspec = clicon_dbspec_yang(h);
     /* Load yang spec */
@@ -1866,6 +1866,9 @@ netconf_module_load(clixon_handle h)
         goto done;
     /* RFC6022 YANG Module for NETCONF Monitoring */
     if (yang_spec_parse_module(h, "ietf-netconf-monitoring", NULL, yspec)< 0)
+        goto done;
+    /* RFC 9144 Comparison of Network Management Datastore Architecture (NMDA) Datastores */
+    if (yang_spec_parse_module(h, "ietf-nmda-compare", NULL, yspec)< 0)
         goto done;
     /* draft-ietf-netconf-privcand.txt */
     if (yang_spec_parse_module(h, "ietf-netconf-private-candidate", NULL, yspec)< 0)

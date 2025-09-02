@@ -91,7 +91,8 @@ int api_path2xml_mnt(char *api_path, yang_stmt *yspec, cxobj *xtop,
                      yang_class nodeclass, int strict,
                      api_path_mnt_cb_t mnt_cb, void *arg,
                      cxobj **xpathp, yang_stmt **ypathp, cxobj **xerr);
-int xml2api_path_1(cxobj *x, cbuf *cb);
+int xml2api_path_one(cxobj *x, cbuf *cb);
+int xml2api_path(cxobj *x, uint16_t flag, cbuf *cb);
 int clixon_xml_find_api_path(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
                      ...) __attribute__ ((format (printf, 5, 6)));
 int clixon_xml_find_instance_id(cxobj *xt, yang_stmt *yt, cxobj ***xvec, int *xlen, const char *format,
