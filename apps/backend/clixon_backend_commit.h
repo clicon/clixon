@@ -75,6 +75,7 @@ int candidate_commit(clixon_handle h, cxobj *xe, char *db, uint32_t myid,
 int from_client_commit(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_discard_changes(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_validate(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
+int backend_update(clixon_handle h, struct client_entry *ce, db_elmnt *de1, cbuf *cbret);
 int from_client_update(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_restart_one(clixon_handle h, clixon_plugin_t *cp, cbuf *cbret);
 int load_failsafe(clixon_handle h, char *phase);
