@@ -280,3 +280,11 @@
  * Disable to just update candidate to running
  */
 #define PRIVCAND_DELETE_ON_COMMIT
+
+/*! Enable anydata as child in augments
+ *
+ * RFC 7950 Sec 7.17 does not include anydata in nodes that can be used within
+ * an augment statement. But eg RFC9144 yang-patch/edit augment relies on that.
+ * Enable to allow anydata in augments
+ */
+#define AUGMENT_ALLOW_ANYDATA

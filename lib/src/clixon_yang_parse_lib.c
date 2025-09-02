@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -38,14 +38,14 @@
  *
  * CALLING ORDER OF YANG PARSE FILES
  *                                      yang_spec_parse_module
- *                                     |                       | 
+ *                                     |                       |
  *                                     v                       v   v
  * yang_spec_parse_file-> yang_parse_post->yang_parse_recurse->yang_parse_module
  *                    \   /                                         v
  * yang_spec_load_dir ------------------------------------> yang_parse_filename
- *                                                                 v  
+ *                                                                 v
  *                                                          yang_parse_file
- *                                                                 v  
+ *                                                                 v
  *                                                          yang_parse_str
  */
 
@@ -150,7 +150,7 @@ ys_grouping_module_resolve(yang_stmt  *ymod,
     return ygrouping;
 }
 
-/*! Resolve a grouping name from a point in the yang tree 
+/*! Resolve a grouping name from a point in the yang tree
  *
  * @param[in]  ys         Yang statement of "uses" statement doing the lookup
  * @param[in]  prefix     Prefix of grouping to look for
@@ -235,7 +235,7 @@ ys_add_orig_ptr(yang_stmt *yp0,
     return retval;
 }
 
-/*! This is an augment node, augment the original datamodel. 
+/*! This is an augment node, augment the original datamodel.
  *
  * @param[in]  h    Clicon handle
  * @param[in]  ys   The augment statement
@@ -244,14 +244,14 @@ ys_add_orig_ptr(yang_stmt *yp0,
  * @see RFC7950 Sec 7.17
  * The target node MUST be either a container, list, choice, case, input,
  * output, or notification node.
- * If the "augment" statement is on the top level the absolute form MUST be 
+ * If the "augment" statement is on the top level the absolute form MUST be
  * used.
  * All data nodes defined in the "augment" statement are defined as XML
  * elements in the XML namespace of the module where the "augment" is
  * specified.
- * 
- * @note If the augment has a when statement, which is commonplace, the when statement is not 
- * copied as datanodes are, since it should not apply to the target node. Instead it is added as 
+ *
+ * @note If the augment has a when statement, which is commonplace, the when statement is not
+ * copied as datanodes are, since it should not apply to the target node. Instead it is added as
  * a special "when" struct to the yang statements being inserted.
  * @see yang_expand_uses_node  similar but for uses/grouping
  */
@@ -267,6 +267,7 @@ yang_augment_node(clixon_handle h,
     yang_stmt    *ymod;
     yang_stmt    *ywhen = NULL;
     yang_stmt    *ywhen0;
+    yang_stmt    *yp;
     enum rfc_6020 targetkey;
     enum rfc_6020 childkey;
     int           inext;
@@ -277,10 +278,19 @@ yang_augment_node(clixon_handle h,
     }
     schema_nodeid = yang_argument_get(ys);
     clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "%s", schema_nodeid);
-    /* Find the target */
-    if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
+    /* Find the target  RFC7950 Sec 7.17
+     * If the "augment" statement is on the top level in a module or
+     * submodule, the absolute form of a schema node identifier
+     * MUST be used.  If the "augment" statement is a substatement to the
+     * "uses" statement, the descendant form MUST be used.
+     */
+    yp = yang_parent_get(ys);
+    if (yang_keyword_get(yp) == Y_USES){
+        if (yang_desc_schema_nodeid(yang_parent_get(yp), schema_nodeid, &ytarget) < 0)
+            goto done;
+    }
+    else if (yang_abs_schema_nodeid(ys, schema_nodeid, &ytarget) < 0)
         goto done;
-
     if (ytarget == NULL){
         if (clicon_option_bool(h, "CLICON_YANG_AUGMENT_ACCEPT_BROKEN")){
             /* Log a warning and proceed if augment target not found
@@ -292,7 +302,7 @@ yang_augment_node(clixon_handle h,
             goto ok;
         }
         else{
-            /* Fail with fatal error if augment target not found 
+            /* Fail with fatal error if augment target not found
              * This is "correct"
              */
             clixon_err(OE_YANG, 0, "Augment failed in module %s: target node %s not found",
@@ -330,7 +340,11 @@ yang_augment_node(clixon_handle h,
             */
             if (childkey != Y_ACTION && childkey != Y_NOTIFICATION && childkey != Y_UNKNOWN &&
                 childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
-                childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE){
+                childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE
+#ifdef AUGMENT_ALLOW_ANYDATA
+                && childkey != Y_ANYDATA
+#endif
+                ){
                 /* Special case if yc0 is disabled by if-feature=false, then it is transformed to ANYDATA
                  */
                 if (yang_flag_get(yc0, YANG_FLAG_DISABLED) == 0)
@@ -353,7 +367,11 @@ yang_augment_node(clixon_handle h,
                statement. */
             if (childkey != Y_CONTAINER && childkey != Y_LEAF && childkey != Y_LIST &&
                 childkey != Y_LEAF_LIST && childkey != Y_USES && childkey != Y_CHOICE &&
-                childkey != Y_UNKNOWN){
+                childkey != Y_UNKNOWN
+#ifdef AUGMENT_ALLOW_ANYDATA
+                && childkey != Y_ANYDATA
+#endif
+                ){
                 clixon_log(h, LOG_WARNING, "Warning: Augment failed in module %s: node %s of type %s cannot be added to target node %s of type %s (see RFC 7950 Sec 7.17)",
                            yang_argument_get(ys_module(ys)),
                            yang_argument_get(yc0),
@@ -370,11 +388,15 @@ yang_augment_node(clixon_handle h,
                XXX could be more or less anything?
                As a shorthand, the "case" statement can be omitted if the branch
                contains a single "anydata", "anyxml", "choice", "container", "leaf",
-               "list", or "leaf-list" statement. 
+               "list", or "leaf-list" statement.
             */
             if (childkey != Y_CASE && childkey != Y_ANYDATA && childkey != Y_ANYXML &&
                 childkey != Y_CHOICE && childkey != Y_CONTAINER && childkey != Y_LEAF &&
-                childkey != Y_LIST && childkey != Y_LEAF_LIST){
+                childkey != Y_LIST && childkey != Y_LEAF_LIST
+#ifdef AUGMENT_ALLOW_ANYDATA
+                && childkey != Y_ANYDATA
+#endif
+                ){
                 clixon_log(h, LOG_WARNING, "Warning: Augment failed in module %s: node %s of type %s cannot be added to target node %s of type %s (see RFC 7950 Sec 7.17)",
                            yang_argument_get(ys_module(ys)),
                            yang_argument_get(yc0),
@@ -401,7 +423,7 @@ yang_augment_node(clixon_handle h,
             goto done;
         if (yn_insert(ytarget, yc) < 0)
             goto done;
-        /* If there is an associated when statement, add a special when struct to the yang 
+        /* If there is an associated when statement, add a special when struct to the yang
          * see xml_yang_validate_all
          */
         /* ywhen of uses node (already present) */
@@ -433,40 +455,6 @@ yang_augment_node(clixon_handle h,
     return retval;
 }
 
-/*! Find all top-level augments in a module and change original datamodels. 
- *
- * @param[in]  h     Clicon handle
- * @param[in]  ymod  Yang statement of type module/sub-module
- * @retval     0     OK
- * @retval    -1     Error
- * Note there is an ordering problem, where an augment in one module depends on an augment in
- * another module not yet augmented.
- */
-static int
-yang_augment_module(clixon_handle h,
-                    yang_stmt    *ymod)
-
-{
-    int        retval = -1;
-    yang_stmt *ys;
-    int        inext;
-
-    inext = 0;
-    while ((ys = yn_iter(ymod, &inext)) != NULL){
-        switch (yang_keyword_get(ys)){
-        case Y_AUGMENT: /* top-level */
-            if (yang_augment_node(h, ys) < 0)
-                goto done;
-            break;
-        default:
-            break;
-        }
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Given a refine node, perform the refinement action on the target refine node
  *
  * The RFC is somewhat complicate in the rules for refine.
@@ -490,7 +478,7 @@ ys_do_refine(yang_stmt *yr,
     int           i;
     int           inext;
 
-    /* Loop through refine node children. First if remove do that first 
+    /* Loop through refine node children. First if remove do that first
      * In some cases remove a set of nodes.
      */
     inext = 0;
@@ -543,7 +531,7 @@ ys_do_refine(yang_stmt *yr,
  *
  * Could be made to a generic function used elsewhere as well
  * @param[in]  y    Yang leaf
- * @param[in]  yp   Yang list parent 
+ * @param[in]  yp   Yang list parent
  * @retval     1    Yes, y is a key leaf in list yp
  * @retval     0    No, y is not a key leaf in list yp
  */
@@ -639,8 +627,8 @@ yang_expand_uses_node(clixon_handle h,
         }
     } while((yp = yang_parent_get(yp)) != NULL);
     if (yang_flag_get(ygrouping, YANG_FLAG_GROUPING) == 0){
-        /* Check mark flag to see if this grouping has been expanded before, 
-         * here below in the traverse section 
+        /* Check mark flag to see if this grouping has been expanded before,
+         * here below in the traverse section
          * A mark could be completely normal (several uses) or it could be a recursion.
          */
         yang_flag_set(ygrouping, YANG_FLAG_GROUPING); /* Mark as (being)  expanded */
@@ -682,7 +670,7 @@ yang_expand_uses_node(clixon_handle h,
             glen++;
     }
     ygp = yang_parent_get(ygrouping);
-    /* 
+    /*
      * yn is parent: the children of ygrouping replaces ys.
      * Is there a case when glen == 0?  YES AND THIS BREAKS
      */
@@ -695,7 +683,7 @@ yang_expand_uses_node(clixon_handle h,
             clixon_err(OE_YANG, errno, "realloc");
             goto done;
         }
-        /* Here, glen last elements are not initialized. 
+        /* Here, glen last elements are not initialized.
          * Zeroed here but will be assigned later in the "j" loop below
          */
         memset(&yn->ys_stmt[oldbuflen], 0, glen*sizeof(yang_stmt *));
@@ -709,7 +697,7 @@ yang_expand_uses_node(clixon_handle h,
      */
     if (yn_insert(ygp, ygrouping2) < 0)
         goto done;
-    /* Iterate through refinements and modify grouping copy 
+    /* Iterate through refinements and modify grouping copy
      * See RFC 7950 7.13.2 yrt is the refine target node
      */
     inext = 0;
@@ -747,7 +735,7 @@ yang_expand_uses_node(clixon_handle h,
             ys_free(yg);
             continue;
         }
-        /* If there is an associated when statement, add a special when struct to the yang 
+        /* If there is an associated when statement, add a special when struct to the yang
          * see xml_yang_validate_all
          */
         if (ywhen){
@@ -785,12 +773,46 @@ yang_expand_uses_node(clixon_handle h,
     return retval;
 }
 
-/*! Macro expansion of grouping/uses done in step 2 of yang parsing 
+/*! Find all top-level augments in a module and change original datamodels.
+ *
+ * @param[in]  h     Clicon handle
+ * @param[in]  ymod  Yang statement of type module/sub-module
+ * @retval     0     OK
+ * @retval    -1     Error
+ * Note there is an ordering problem, where an augment in one module depends on an augment in
+ * another module not yet augmented.
+ */
+static int
+yang_augment_module(clixon_handle h,
+                    yang_stmt    *ymod)
+
+{
+    int        retval = -1;
+    yang_stmt *ys;
+    int        inext;
+
+    inext = 0;
+    while ((ys = yn_iter(ymod, &inext)) != NULL){
+        switch (yang_keyword_get(ys)){
+        case Y_AUGMENT: /* top-level */
+            if (yang_augment_node(h, ys) < 0)
+                goto done;
+            break;
+        default:
+            break;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Macro expansion of grouping/uses done in step 2 of yang parsing
  *
  * RFC7950: Identifiers appearing inside the grouping are resolved
  * relative to the scope in which the  grouping is defined, not where it is
  * used.  Prefix mappings, type names, grouping  names, and extension usage are
- * evaluated in the hierarchy where the "grouping" statement appears. 
+ * evaluated in the hierarchy where the "grouping" statement appears.
  *   The identifiers defined in the grouping are not bound to a namespace
  * until the contents of the grouping are added to the schema tree via a
  * "uses" statement that does not appear inside a "grouping" statement,
@@ -818,6 +840,8 @@ yang_expand_grouping(clixon_handle h,
                 if (yang_expand_uses_node(h, yn, ys, i) < 0)
                     goto done;
                 yang_flag_set(ys, YANG_FLAG_GROUPING);
+                if (yang_augment_module(h, ys) < 0)
+                    goto done;
             }
             break;
         default:
@@ -851,13 +875,13 @@ yang_expand_grouping(clixon_handle h,
 }
 
 /*! Parse a string containing a YANG spec into a parse-tree
- * 
- * Syntax parsing. A string is input and a YANG syntax-tree is returned (or error). 
- * As a side-effect, Yang modules present in the text will be inserted under the global Yang 
+ *
+ * Syntax parsing. A string is input and a YANG syntax-tree is returned (or error).
+ * As a side-effect, Yang modules present in the text will be inserted under the global Yang
  * specification
  * @param[in] str    String of yang statements
  * @param[in] name   Log string, typically filename
- * @param[in] yspec  Yang specification. 
+ * @param[in] yspec  Yang specification.
  * @retval    ymod   Top-level yang (sub)module
  * @retval    NULL   Error encountered
  * See top of file for diagram of calling order
@@ -927,7 +951,7 @@ yang_parse_str(const char *str,
  * @param[in] name   For debug, eg filename
  * @param[in] yspec  Yang specification. Should have been created by caller using yspec_new
  * @retval ymod      Top-level yang (sub)module
- * @retval NULL      Error 
+ * @retval NULL      Error
  * @note this function simply parse a yang spec, no dependencies or checks
  */
 yang_stmt *
@@ -980,7 +1004,7 @@ yang_parse_file(FILE       *fp,
 
 /*! Given a yang filename, extract the revision as an integer as YYYYMMDD
  *
- * @param[in]  filename  Filename on the form: name [+ @rev ] + .yang  
+ * @param[in]  filename  Filename on the form: name [+ @rev ] + .yang
  * @param[out] basep     "Base" filename, stripped: [+ @rev ] + .yang (malloced)
  * @param[out] revp      Revision as YYYYMMDD (0 if not found)
  * @retval     0         OK
@@ -1024,13 +1048,13 @@ filename2revision(const char *filename,
  * Look first in CLICON_YANG_MAIN_DIR for top-level, or CLICON_YANG_DOMAIN_DIR for specific domains.
  * Then look in recursive CLICON_YANG_DIRs
  * @param[in]  h        CLICON handle
- * @param[in]  module   Name of main YANG module. 
+ * @param[in]  module   Name of main YANG module.
  * @param[in]  revision Revision or NULL
  * @param[in]  domain   YANG isolation device-domain or NULL for yang main
  * @param[out] fbuf     Buffer containing filename or NULL (if retval=1)
  * @retval     1        Match found, Entry returned in fbuf if given
  * @retval     0        No matching entry found
- * @retval    -1        Error 
+ * @retval    -1        Error
  * Returned entry in fbuf according to the following algorithm:
  * 1) Exact or most recent revision match in CLICON_YANG_MAIN_DIR or CLICON_YANG_DOMAIN_DIR
  * 2) Exact or most recent revision match in first CLICON_YANG_DIR recursively
@@ -1263,7 +1287,7 @@ yang_parse_module(clixon_handle h,
     }
     /* Sanity check that requested module name matches loaded module
      * If this does not match, the filename and containing module do not match
-     * RFC 7950 Sec 5.2 
+     * RFC 7950 Sec 5.2
      */
     if ((yrev = yang_find(ymod, Y_REVISION, NULL)) != NULL)
         revm = cv_uint32_get(yang_cv_get(yrev));
@@ -1287,7 +1311,7 @@ yang_parse_module(clixon_handle h,
  *
  * Find a yang module file, and then recursively parse all its imported modules.
  * @param[in] h        CLICON handle
- * @param[in] ymod     Yang module. 
+ * @param[in] ymod     Yang module.
  * @param[in] yspec    Yang specification.
  * @retval    0        OK
  * @retval   -1        Error
@@ -1491,8 +1515,8 @@ ys_visit(struct yang_stmt   *yn,
 /*! Sort module/submodules according to import/include order and cycle detect
  *
  * Topological sort of a DAG
- * @param[in]  yspec   Yang specification. 
- * @param[in]  modmin  Start of interval of yspec:s module children 
+ * @param[in]  yspec   Yang specification.
+ * @param[in]  modmin  Start of interval of yspec:s module children
  * @param[in]  modmax  End of interval
  * @param[out] ylist   Result list of sorted nodes with "least significant" first
  * @param[out] ylen    Length of ylist
@@ -1540,12 +1564,12 @@ yang_sort_modules(yang_stmt          *yspec,
  * - Augments
  * - Defaults
  * There is some complexity in how modules are loaded vs how they need to be augmented
- * Therefore, after full loading, a topological sort is made to ensure the modules are 
+ * Therefore, after full loading, a topological sort is made to ensure the modules are
  * non-circular (a DAG) and that the rest of the operations are made in the topology order.
  * The loading order of the yang models (under yang spec) is kept.
- * 
+ *
  * @param[in] h      CLICON handle
- * @param[in] yspec  Yang specification. 
+ * @param[in] yspec  Yang specification.
  * @param[in] modmin Perform checks after this number, prior are already complete
  * @retval    0      Everything OK
  * @retval   -1      Error encountered
@@ -1565,7 +1589,7 @@ yang_parse_post(clixon_handle h,
         clixon_err(OE_YANG, EINVAL, "modmin negative");
         goto done;
     }
-    /* 1: Parse from text to yang parse-tree. 
+    /* 1: Parse from text to yang parse-tree.
      * Iterate through modules and detect module/submodules to parse
      * NOTE: the list may grow on each iteration */
     for (i=modmin; i<yang_len_get(yspec); i++)
@@ -1602,38 +1626,38 @@ yang_parse_post(clixon_handle h,
     for (i=modmin; i<modmax; i++)
         if (yang_apply(yang_child_i(yspec, i), Y_TYPE, ys_resolve_type, 1, h) < 0)
             goto done;
-    /* Up to here resolving is made in the context they are defined, rather 
-     * than the context they are used (except for submodules being merged w 
-     * modules). Like static scoping. 
+    /* Up to here resolving is made in the context they are defined, rather
+     * than the context they are used (except for submodules being merged w
+     * modules). Like static scoping.
      * After this we expand all grouping/uses and unfold all macros into a
      * single tree as they are used.
      */
 
-    /* 6: Macro expansion of all uses/grouping pairs. 
+    /* 6: Macro expansion of all uses/grouping pairs.
      *    All uses expansion is made "in-place", ie not after expansion.
      *    Exanded nodes are marked with "GROUPING" flag
      *    This alters the original YANG: after this all YANG uses have been expanded
+     *    augments as sub-statements of uses are also done here
      */
     for (i=0; i<ylen; i++){
         if (yang_expand_grouping(h, ylist[i]) < 0)
             goto done;
     }
-    /* 7: Top-level augmentation of all modules. 
-     * Note: Clixon does not implement augment in USES 
+    /* 7: Top-level augmentation of all modules.
      * Note: There is an ordering problem, where an augment in one module depends on an augment in
      * another module not yet augmented.
      */
     for (i=0; i<ylen; i++)
         if (yang_augment_module(h, ylist[i]) < 0)
             goto done;
-    /* 8: Check deviations: not-supported add/delete/replace statements 
+    /* 8: Check deviations: not-supported add/delete/replace statements
      *    done late since eg groups must be expanded
      */
     for (i=modmin; i<modmax; i++) /* Really only under (sub)modules no need to traverse whole tree */
         if (yang_apply(yang_child_i(yspec, i), -1, yang_deviation, 1, (void*)h) < 0)
             goto done;
 
-    /* 9: Go through parse tree and do 2nd step populate (eg default) 
+    /* 9: Go through parse tree and do 2nd step populate (eg default)
      *    Note that augments in step 7 are not covered here since they apply to
      *    modules already loaded. Therefore the call to ys_populate2 is made inline in
      *    yang_augment_node()
@@ -1712,7 +1736,7 @@ yang_spec_parse_module(clixon_handle h,
  * @param[in]  yspec     Modules parse are added to this yangspec
  * @retval     0         OK
  * @retval    -1         Error
- * @see yang_spec_parse_module for yang dir,module,revision instead of 
+ * @see yang_spec_parse_module for yang dir,module,revision instead of
  *       actual filename
  * @see yang_spec_load_dir For loading all files in a directory
  */
@@ -1800,8 +1824,8 @@ yang_spec_load_dir(clixon_handle h,
 
     /* Get yang files names from yang module directory. Note that these
      * are sorted alphatetically:
-     * a.yang, 
-     * a@2000-01-01.yang, 
+     * a.yang,
+     * a@2000-01-01.yang,
      * a@2111-11-11.yang
      */
     if((ndp = clicon_file_dirent(dir, &dp, "\\.yang$", S_IFREG)) < 0)
@@ -1863,7 +1887,7 @@ yang_spec_load_dir(clixon_handle h,
             clixon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm);
             goto done;
         }
-        /* If ym0 and ym exists, delete the yang with oldest revision 
+        /* If ym0 and ym exists, delete the yang with oldest revision
          * This is a failsafe in case anything else fails
          */
         if (revm && rev0){
@@ -1932,8 +1956,8 @@ ys_parse_date_arg(const char *datearg,
 
 /*! Parse argument as CV and save result in yang cv variable
  *
- * Note that some CV:s are parsed directly (eg fraction-digits) while others are parsed 
- * in third pass (ys_populate). The reason being that all information is not 
+ * Note that some CV:s are parsed directly (eg fraction-digits) while others are parsed
+ * in third pass (ys_populate). The reason being that all information is not
  * available in the first pass. Prefer to do stuff in ys_populate
  */
 cg_var *
@@ -2083,7 +2107,7 @@ ys_parse_sub(yang_stmt  *ys,
         }
         break;
     case Y_IF_FEATURE:
-        /* Invoke next level parser on if-feature-expr string. Note do not send ys since 
+        /* Invoke next level parser on if-feature-expr string. Note do not send ys since
          * pass 1 is not yet resolved, only check syntax, actual feature check made in next pass
          * @see yang_features
          */

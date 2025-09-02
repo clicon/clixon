@@ -1167,8 +1167,9 @@ module clixon-config {
                 "Set if all edit-config implicitly locks without the need of an explicit lock-db
                  In short, the lock is obtained by edit-config and copy-config and released by
                  discard and commit.
+                 Primarliy applies to the candidate datastore.
                  Also, any edits in candidate are discarded if the client closes the connection.
-                 This effectively disables shared candidate";
+                 This effectively enables exclusive locking and disables shared candidate";
         }
         /* Datastore XMLDB */
         leaf CLICON_DATASTORE_CACHE {
@@ -1256,8 +1257,7 @@ module clixon-config {
         leaf CLICON_XMLDB_CANDIDATE_INMEM {
             description
                 "If false, Sync candidate datastore to disk
-                 If true run candidate datastore in-mem, do not sync candidate to disk.
-                 XXX: New revision required";
+                 If true run candidate datastore in-mem, do not sync candidate to disk.";
             type boolean;
             default false;
         }
@@ -1330,7 +1330,8 @@ module clixon-config {
         }
         leaf CLICON_STARTUP_MODE {
             type startup_mode;
-            description "Which method to boot/start clicon backend";
+            description
+                "Which method to boot/start clicon backend";
         }
         leaf CLICON_ANONYMOUS_USER {
             type string;

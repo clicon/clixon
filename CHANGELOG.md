@@ -20,6 +20,7 @@ Expected: October 2025
 
 ### Features
 
+* New: Implement YANG "augment" as sub-statement of a "uses" statement
 * New: [NETCONF and RESTCONF Private candidate datastores](https://github.com/clicon/clixon/issues/615)
 * All internal session clients start with NETCONF hello
 * New `clixon-config@2025-08-01.yang` revision
