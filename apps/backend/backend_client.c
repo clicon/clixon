@@ -750,6 +750,13 @@ from_client_edit_config(clixon_handle h,
                 break;
             }
         }
+        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+            /* First step, rebase private candidate with running */
+            if ((ret = backend_update(h, ce, de, cbret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto ok;
+        }
         if ((ret = candidate_commit(h, NULL, target, myid, 0, cbret)) < 0){ /* Assume validation fail, nofatal */
             if (clixon_plugin_report_err(h, cbret) < 0)
                 goto done;
@@ -764,6 +771,19 @@ from_client_edit_config(clixon_handle h,
             }
             goto ok;
         }
+#ifdef PRIVCAND_DELETE_ON_COMMIT
+        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+            db_elmnt            *de_orig;
+
+            /* Remove candidate and candidate-orig*/
+            if (xmldb_delete(h, xmldb_name_get(de)) < 0)
+                goto done;
+            if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
+                if (xmldb_delete(h, xmldb_name_get(de_orig)) < 0)
+                    goto done;
+            }
+        }
+#endif
     }
     /* Clixon extension: copy */
     if ((attr = xml_find_value(xe, "copystartup")) != NULL &&

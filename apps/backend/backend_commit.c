@@ -788,13 +788,13 @@ candidate_commit(clixon_handle  h,
  *
  * @param[in]   h     Clixon handle
  * @param[in]   ce    Client entry
- * @param[in]   de0   Datastore entry of
+ * @param[in]   de1   Datastore entry of candidate
  * @param[out]  cbret Reply msg if retval=0
  * @retval      1     OK
  * @retval      0     Validation failed (with cbret set)
  * @retval     -1     Error
  */
-static int
+int
 backend_update(clixon_handle        h,
                struct client_entry *ce,
                db_elmnt            *de1,
