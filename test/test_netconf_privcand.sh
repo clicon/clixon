@@ -6,6 +6,7 @@
 # 4.5.1 NETCONF server advertise private candidate capability according to runtime (startup) configuration
 # 4.5.2 NETCONF client does not support private candidate. Verify that connection not possible.
 # 4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate.
+# 4.5.3 RESTCONF client always operates on private candidate
 # 4.7.5 Support revert-on-conflict resolution mode capability.
 # 4.8.1.1 <update> operation by client without conflict: There is a change of any value
 # 4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is a change of any value
@@ -49,7 +50,6 @@
 # 4.8.2.12 <get> no private candidate
 
 ## TODO Test cases to be implemented
-# 4.5.3 RESTCONF client always operates on private candidate
 # 4.8.2.1.1 <confirned/> commit ok/canceled/timeout
 # 4.8.2.13 <cancel-commit>
 
@@ -63,6 +63,12 @@ dbdir=$dir/db
 fyang=$dir/clixon-example.yang
 test -d $dbdir || mkdir -p $dbdir
 
+# Define default restconfig config: RESTCONFIG
+RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
+
 # Use yang in example
 
 cat <<EOF > $cfg
@@ -71,6 +77,7 @@ cat <<EOF > $cfg
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-netconf:confirmed-commit</CLICON_FEATURE>
   <CLICON_FEATURE>ietf-netconf-private-candidate:private-candidate</CLICON_FEATURE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_MODULE_SET_ID>42</CLICON_MODULE_SET_ID>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
@@ -90,6 +97,7 @@ cat <<EOF > $cfg
   <CLICON_XMLDB_CANDIDATE_INMEM>false</CLICON_XMLDB_CANDIDATE_INMEM>
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_CLI_OUTPUT_FORMAT>xml</CLICON_CLI_OUTPUT_FORMAT>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -275,6 +283,17 @@ fi
 new "wait backend"
 wait_backend
 
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+
+    new "start restconf daemon"
+    start_restconf -f $cfg
+fi
+
+new "wait restconf"
+wait_restconf
+
 ## Test client and server capabilities
 
 new "4.5.2 NETCONF client does not support private candidate. Verify that connection not possible."
@@ -297,6 +316,17 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS
 
 new "4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
+
+new "4.5.3 RESTCONF  Retrieve the Server Capability Information json"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-netconf-monitoring:netconf-state/capabilities/capability)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+json" \
+'Cache-Control: no-cache' \
+'"urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict"'
+
+new "4.5.3 RESTCONF Retrieve the Server Capability Information xml"
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-netconf-monitoring:netconf-state/capabilities/capability)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml" \
+'Cache-Control: no-cache' \
+'<capability xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring">urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>'
+
 
 new "Spawn expect script to simulate two NETCONF sessions"
 # -d to debug matching info
@@ -573,6 +603,37 @@ puts "4.8.2.12 <get> no private candidate"
 # the rpc-reply of the get operation will be very long
 match_max 100000 
 rpc $session_2 "<get/>" "<l xmlns=\"urn:example:clixon\">six</l>"
+
+puts "4.5.3 RESTCONF request updates object"
+set json "{\"clixon-example:l\":\"restconf 1\"}"
+set rsp [exec curl -Ssik -X PUT -H "Accept:application/yang-data+json" -H "Content-Type:application/yang-data+json" -d $json https://localhost/restconf/data/clixon-example:l ]
+if {[string match {*204*} $rsp] == 0} {
+    puts "Restconf response: $rsp"
+    exit 4
+}
+
+puts "4.5.3 NETCONF verifies RESTCONF update in running"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">restconf 1</l>"
+
+puts "4.5.3 NETCONF update operation ok"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+ 
+puts "4.5.3 NETCONF updates object in private candidate"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf</l></config></edit-config>" "ok/"
+ 
+ puts "4.5.3 RESTCONF request updates object"
+ set json "{\"clixon-example:l\":\"restconf 2\"}"
+set rsp [exec curl -Ssik -X PUT -H "Accept:application/yang-data+json" -H "Content-Type:application/yang-data+json" -d $json https://localhost/restconf/data/clixon-example:l ]
+if {[string match {*204*} $rsp] == 0} {
+    puts "Restconf response: $rsp"
+    exit 4
+}
+
+puts "4.5.3 NETCONF verifies RESTCONF update in running"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">restconf 2</l>"
+
+puts "4.5.3 NETCONF update operation fails"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "rpc-error"
 
 puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
 rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>" "ok/"
