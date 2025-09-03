@@ -1051,8 +1051,6 @@ xml_rebase_conflict(clixon_handle h,
 
     clixon_debug(CLIXON_DBG_XML, "Conflict occured: %s: xpath0:%s xpath1:%s xpath2:%s",
                  msg, xpath0?xpath0:"", xpath1?xpath1:"", xpath2?xpath2:"");
-    clixon_debug(CLIXON_DBG_XML, "%s x0:%s x1:%s x2:%s",
-                 msg, xpath0, xpath1, xpath2);
     if (cbret && cbuf_len(cbret) == 0){
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -1173,15 +1171,15 @@ xml_rebase(clixon_handle  h,
             if (same20 < 0){
                 if (same12 == 0){
                     if (xml_tree_equal(x1c, x2c) != 0){
-                        if (xml_rebase_conflict(h, xpath0, xpath1, xpath2, NULL, NULL,
-                                                "candidate and running both added unequal object", cbret) < 0)
+                        if (xml_rebase_conflict(h, NULL, xpath1, NULL, NULL, NULL,
+                                                "Cannot add node, it is already added", cbret) < 0)
                             goto done;
                         conflict++;
                     }
                 }
                 else if (y1c && yang_keyword_get(y1c) == Y_LEAF_LIST){
-                    if (xml_rebase_conflict(h, xpath0, xpath1, xpath2, NULL, NULL,
-                                            "candidate and running added in leaf-list", cbret) < 0)
+                    if (xml_rebase_conflict(h, NULL, xpath1, NULL, NULL, NULL,
+                                            "Cannot add leaf-list node, another leaf-list node is added", cbret) < 0)
                         goto done;
                     conflict++;
                 }
@@ -1209,7 +1207,7 @@ xml_rebase(clixon_handle  h,
                         goto done;
                     if (eq2 == 0){
                         if (xml_rebase_conflict(h, xpath0, NULL, NULL, value0, value1,
-                                                "candidate and running both changed value", cbret) < 0)
+                                                "Cannot change node value, it is already changed", cbret) < 0)
                             goto done;
                         conflict++;
                     }
@@ -1231,8 +1229,8 @@ xml_rebase(clixon_handle  h,
                     }
                 }
                 else{ /* x2c deleted -> Conflict if to x1-x0 */
-                    if (xml_rebase_conflict(h, xpath0, xpath1, xpath2, NULL, NULL,
-                                            "Changed object in candidate removed in running", cbret) < 0)
+                    if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL,
+                                            "Cannot change node value, node is removed", cbret) < 0)
                         goto done;
                     conflict++;
                 }
@@ -1248,8 +1246,8 @@ xml_rebase(clixon_handle  h,
             }
             else if (same20 == 0){
                 if (xml_tree_equal(x0c, x2c) != 0){
-                    if (xml_rebase_conflict(h, xpath0, xpath1, xpath2, NULL, NULL,
-                                            "Removed object in candidate changed in running", cbret) < 0)
+                    if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL,
+                                            "Cannot remove node, node value has changed ", cbret) < 0)
                         goto done;
                     conflict++;
                 }
@@ -1259,7 +1257,7 @@ xml_rebase(clixon_handle  h,
             }
             else if (same20 > 0){ /* Deleted both in x1c and x2c */
                 if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL,
-                                        "candidate and running both removed object", cbret) < 0)
+                                        "Cannot remove node, it is already removed", cbret) < 0)
                     goto done;
                 conflict++;
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
