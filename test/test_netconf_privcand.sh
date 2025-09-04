@@ -414,7 +414,7 @@ rpc $session_2 "<commit/>" "ok/"
 
 puts "4.7.3.3 Session 1 updates its configuration and fails"
 # A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "rpc-error"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "Conflict occured: Cannot change node value, node is removed"
 
 puts "4.7.3.3 Session 1 discards its changes"
 puts "4.8.2.11 <discard-changes> operates on private candidate"
@@ -450,7 +450,7 @@ puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict. There is 
 conflict \
 "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>" \
 "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value>[info cmdcount]</value></parameter></table>"  \
-"rpc-error"
+"Conflict occured: Cannot change node value, it is already changed"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of any list entry"
 conflict \
@@ -462,7 +462,7 @@ puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is 
 conflict \
 "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_three</name><description>New interface 1</description><type>ex:eth</type></interface></interfaces>" \
 "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface xmlns:ex=\"urn:example:clixon\"><name>intf_three</name><description>New interface 2</description><type>ex:eth</type></interface></interfaces>" \
-"rpc-error"
+"Conflict occured: Cannot add node, it is already added"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a presence container"
 conflict \
@@ -474,7 +474,7 @@ puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is 
 conflict \
 "<table xmlns=\"urn:example:clixon\"  xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>" \
 "<table xmlns=\"urn:example:clixon\"><parameter><name>foo</name><value >[info cmdcount]</value></parameter></table>" \
-"rpc-error"
+"Cannot remove node, node value has changed"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of existence (or otherwise) of a leaf"
 conflict "<l xmlns=\"urn:example:clixon\">foo</l>" \
@@ -484,7 +484,7 @@ conflict "<l xmlns=\"urn:example:clixon\">foo</l>" \
 puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of existence (or otherwise) of a leaf"
 conflict "<l xmlns=\"urn:example:clixon\">a</l>" \
 "<l xmlns=\"urn:example:clixon\">b</l>" \
-"rpc-error"
+"Cannot change node value, it is already changed"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any list items in a list configured as ordered-by user"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>a</k></lu><lu xmlns=\"urn:example:clixon\"><k>b</k></lu>"
@@ -496,7 +496,7 @@ rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xml
 puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any list items in a list configured as ordered-by user"
 conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>a</k></lu>" \
 "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\"><k>b</k></lu>" \
-"rpc-error"
+"Conflict occured: Cannot remove node, it is already removed"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
@@ -509,7 +509,7 @@ rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xm
 puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
 conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">a</llu>" \
 "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\">b</llu>" \
-"rpc-error"
+"Cannot remove node, it is already removed"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of any component member of a leaf-list"
@@ -520,7 +520,7 @@ conflict "<ll xmlns=\"urn:example:clixon\">foo</ll>" \
 puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change of any component member of a leaf-list"
 conflict "<ll xmlns=\"urn:example:clixon\">b</ll>" \
 "<ll xmlns=\"urn:example:clixon\">c</ll>" \
-"rpc-error"
+"Conflict occured: Cannot add leaf-list node, another leaf-list node is added"
 
 rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">one</l></config></edit-config>" "ok/"
 rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">two</l></config></edit-config>" "ok/"
