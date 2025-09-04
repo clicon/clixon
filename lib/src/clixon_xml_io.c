@@ -258,8 +258,6 @@ xml2file_recurse(FILE                *f,
         }
     }
     level1 = level*PRETTYPRINT_INDENT;
-    if (prefix)
-        level1 -= strlen(prefix);
     if (y != NULL){
         if (autocliext){
             exist = 0;
@@ -601,8 +599,6 @@ xml2cbuf_recurse(cbuf             *cb,
             goto ok;
     }
     level1 = level*PRETTYPRINT_INDENT;
-    if (prefix)
-        level1 -= strlen(prefix);
     name = xml_name(x);
     namespace = xml_prefix(x);
     switch(xml_type(x)){

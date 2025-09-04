@@ -174,9 +174,12 @@ stream_native_backend_cb(int   s,
     }
     if ((xn = xpath_first(xtop, NULL, "notification")) == NULL)
         goto ok;
-    cprintf(cb, "data: ");
-    if (clixon_xml2cbuf(cb, xn, 0, pretty, NULL, -1, 0) < 0)
+    if (!pretty)
+        cprintf(cb, "data: ");
+    if (clixon_xml2cbuf(cb, xn, 0, pretty, "data: ", -1, 0) < 0)
         goto done;
+    clixon_debug(CLIXON_DBG_STREAM, "pretty:%d", pretty);
+    clixon_debug(CLIXON_DBG_STREAM, "%s", cbuf_get(cb));
     cprintf(cb, "\r\n");
     cprintf(cb, "\r\n");
 #ifdef HAVE_LIBNGHTTP2

@@ -49,7 +49,7 @@ EOF
 # For nchan testing add this line to above config
 #   <CLICON_STREAM_PUB>http://localhost/pub</CLICON_STREAM_PUB>
 
-# RFC5277 NETCONF Event Notifications 
+# RFC5277 NETCONF Event Notifications
 # using reportingEntity (rfc5277) not reporting-entity (rfc8040)
 cat <<EOF > $fyang
      module example {
@@ -113,7 +113,7 @@ new "netconf event stream discovery RFC5277 Sec 3.2.5"
 expecteof_netconf "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"n:netconf/n:streams\" xmlns:n=\"urn:ietf:params:xml:ns:netmod:notification\"/></get></rpc>" "" "<rpc-reply $DEFAULTNS><data><netconf xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><streams><stream><name>EXAMPLE</name><description>Example event stream</description><replay-support>true</replay-support></stream></streams></netconf></data></rpc-reply>"
 
 new "netconf EXAMPLE subscription"
-expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>20" 
+expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>20"
 
 new "netconf subscription with empty startTime"
 expecteof_netconf "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><startTime/></create-subscription></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>startTime</bad-element></error-info><error-severity>error</error-severity><error-message>regexp match fail:" ""
@@ -122,10 +122,10 @@ new "out-notification statistics expect 1-3"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><statistics><out-notifications/></statistics></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><statistics><out-notifications>[1-3]</out-notifications></statistics></netconf-state></data></rpc-reply>"
 
 new "netconf EXAMPLE subscription with simple filter"
-expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>20" 
+expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event\"/></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>20"
 
 new "netconf EXAMPLE subscription with filter classifier"
-expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>20" 
+expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><filter type=\"xpath\" select=\"event[event-class='fault']\"/></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><ok/></rpc-reply>" "<notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>20"
 
 new "netconf NONEXIST subscription"
 expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>NONEXIST</stream></create-subscription></rpc>" $NCWAIT "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></rpc-error></rpc-reply>"
@@ -136,7 +136,7 @@ expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTN
 #new "netconf EXAMPLE subscription with replay"
 #NOW=$(date +"%Y-%m-%dT%H:%M:%S")
 #sleep 10
-#expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><startTime>$NOW</startTime></create-subscription></rpc>" 10 "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>20"
+#expectwait "$clixon_netconf -D $DBG -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><create-subscription xmlns=\"urn:ietf:params:xml:ns:netmod:notification\"><stream>EXAMPLE</stream><startTime>$NOW</startTime></create-subscription></rpc>" 10 "^<rpc-reply $DEFAULTNS><ok/></rpc-reply>]]>]]><notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>20"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

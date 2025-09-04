@@ -462,10 +462,10 @@ new "check ordered-by-user: a b c d"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">b</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0></data></rpc-reply>"
 
 new "show compare xml"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-  <y0 xmlns=\"urn:example:order\">e</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">b</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+  <y0 xmlns=\"urn:example:order\">e</y0>"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-\ *<y0 xmlns=\"urn:example:order\">e</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">b</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+  <y0 xmlns=\"urn:example:order\">e</y0>"
 
 new "show compare curly"
-expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "\-  order-example:y0" "\-     e" --not-- "+  order-example:y0" "\-     a" "+     e"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "\-\ *order-example:y0" "\-     e" --not-- "+  order-example:y0" "\-     a" "+     e"
 
 new "validate"
 expectpart "$($clixon_cli -1 -f $cfg validate)" 0 "^$"
@@ -482,7 +482,7 @@ new "check ordered-by-user: a e c d"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><y0 xmlns=\"urn:example:order\">a</y0><y0 xmlns=\"urn:example:order\">e</y0><y0 xmlns=\"urn:example:order\">c</y0><y0 xmlns=\"urn:example:order\">d</y0></data></rpc-reply>"
 
 new "show compare 2"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-  <y0 xmlns=\"urn:example:order\">b</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+  <y0 xmlns=\"urn:example:order\">b</y0>"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-\ *<y0 xmlns=\"urn:example:order\">b</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+\ *<y0 xmlns=\"urn:example:order\">b</y0>"
 
 new "netconf discard"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

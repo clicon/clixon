@@ -38,6 +38,7 @@ APPNAME=example
 
 : ${TIMEOUT:=10}
 : ${PERIOD:=2}
+: ${clixon_util_stream:=clixon_util_stream}
 
 # Lower and upper bound on number of intervals
 LBOUND=$((${TIMEOUT}/${PERIOD} - 1))
@@ -47,6 +48,10 @@ UBOUND=$((${TIMEOUT}/${PERIOD} + 1))
 DATE=$(date -u +"%Y-%m-%d")
 
 cfg=$dir/conf.xml
+cfd=$dir/conf.d
+if [ ! -d $cfd ]; then
+    mkdir $cfd
+fi
 fyang=$dir/stream.yang
 xml=$dir/xml.xml
 
@@ -60,6 +65,7 @@ fi
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_CONFIGDIR>$cfd</CLICON_CONFIGDIR>
   <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
@@ -75,6 +81,11 @@ cat <<EOF > $cfg
   <CLICON_STREAM_DISCOVERY_RFC8040>true</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_STREAM_PATH>streams</CLICON_STREAM_PATH>
   <CLICON_STREAM_RETENTION>60</CLICON_STREAM_RETENTION>
+</clixon-config>
+EOF
+
+cat <<EOF > $cfd/restconf.xml
+<clixon-config xmlns="http://clicon.org/config">
   $RESTCONFIG
 </clixon-config>
 EOF
@@ -126,19 +137,39 @@ EOF
 # Run stream test
 # Args:
 # 1: extra curlopt
+# 2: pretty (ie multi-line)
 function runtest()
 {
     extra=$1
+    pretty=$2
 
-    expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+    if $pretty; then
+        expect=$(cat <<EOF
+data: <notification xmlns="${NOTIFICATION_NS}">
+data:   <eventTime>2025-09-04T09:50:08.986985Z</eventTime>
+data:   <event xmlns="urn:example:clixon">
+data:      <event-class>fault</event-class>
+data:      <reportingEntity>
+data:         <card>Ethernet0</card>
+data:      </reportingEntity>
+data:      <severity>major</severity>
+data:   </event>
+data: </notification>
+EOF
+)
+    else
+        expect="data: <notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+    fi
 
     new "2a) start $extra timeout:${TIMEOUT}s - expect ${LBOUND}-${UBOUND} notifications"
     ret=$(curl $CURLOPTS $extra -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/EXAMPLE)
     match=$(echo "$ret" | grep -Eo "$expect")
+#    echo "ret:$ret"
     if [ -z "$match" ]; then
         err "$expect" "$ret"
     fi
-    nr=$(echo "$ret" | grep -c "data:")
+
+    nr=$(echo "$ret" | grep -c "<notification xmlns=\"${NOTIFICATION_NS}\">")
     if [ $nr -lt ${LBOUND} -o $nr -gt ${UBOUND} ]; then
         err "[${LBOUND},$[UBOUND]]" "$nr"
     fi
@@ -159,7 +190,8 @@ function runtest()
     if [ -z "$match" ]; then
         err "$expect" "$ret"
     fi
-    nr=$(echo "$ret" | grep -c "data:")
+
+    nr=$(echo "$ret" | grep -c "<notification xmlns=\"${NOTIFICATION_NS}\">")
     if [ $nr -lt ${LB} -o $nr -gt ${UB} ]; then
         err "[${LB},$[UB]]" "$nr"
     fi
@@ -210,8 +242,9 @@ if [ $RC -ne 0 ]; then
     start_restconf -f $cfg -t ${TIMEOUT}
 fi
 
-new "wait restconf"
+new "wait restconf 1"
 wait_restconf
+
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
     location="https://localhost/streams/EXAMPLE"
 else
@@ -238,29 +271,33 @@ new "Try nonexist stream"
 expectpart "$(curl $CURLOPTS -X GET -H "Accept: text/event-stream" -H "Cache-Control: no-cache" -H "Connection: keep-alive" $RCPROTO://localhost/streams/NOTEXIST)" 0 "HTTP/$HVER 400" "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>No such stream</error-message></error></errors>"
 
 if ${HAVE_HTTP1}; then
-    runtest --http1.1
+    new "HTTP-1.1 streams"
+    runtest --http1.1 false
 fi
 if [ "${WITH_RESTCONF}" = "fcgi" ]; then
-    runtest ""
+    new "Fcgi streams"
+    runtest "" false
 fi
 if [ "${WITH_RESTCONF}" = "native" ]; then
     if ${HAVE_LIBNGHTTP2}; then
-        runtest --http2
+        new "HTTP-2 streams"
+        runtest --http2 false
     fi
 fi
 
 if false; then # NYI
-: ${clixon_util_stream:=clixon_util_stream}
 
 # 2c
 new "2c) start sub 8s - replay from start -8s - expect 3-4 notifications"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -8)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
-nr=$(echo "$ret" | grep -c "data:")
+
+nr=$(echo "$ret" | grep -c "<notification xmlns=\"${NOTIFICATION_NS}\">")
+
 #if [ $nr -lt 3 -o $nr -gt 4 ]; then
 if [ $nr -lt 3 ]; then
     err 4 "$nr"
@@ -271,12 +308,14 @@ test-pause
 # 2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications
 new "2d) start sub 8s - replay from start -8s to stop +4s - expect 3 notifications"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -30 -e +4)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
-nr=$(echo "$ret" | grep -c "data:")
+
+nr=$(echo "$ret" | grep -c "<notification xmlns=\"${NOTIFICATION_NS}\">")
+
 #if [ $nr -lt 4 -o $nr -gt 10 ]; then
 if [ $nr -lt 4 ]; then
     err 6 "$nr"
@@ -288,13 +327,13 @@ if false; then # XXX Should work but function detoriated
 # 2e) start sub 8s - replay from -90s w retention 60s - expect 9-14 notifications
 new "2e) start sub 8s - replay from -90s w retention 60s - expect 10 notifications"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 10 -s -90 -e +0)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
-nr=$(echo "$ret" | grep -c "data:")
+nr=$(echo "$ret" | grep -c "<notification xmlns=\"${NOTIFICATION_NS}\">")
 
 if [ $nr -lt 8 -o $nr -gt 14 ]; then
     err "8-14" "$nr"
@@ -309,13 +348,13 @@ PID=$!
 
 new "Start subscription"
 ret=$($clixon_util_stream -u $RCPROTO://localhost/streams/EXAMPLE -t 8)
-expect="data: <notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
+expect="data: <notification xmlns=\"${NOTIFICATION_NS}\"><eventTime>${DATE}T[0-9:.]*Z</eventTime><event xmlns=\"urn:example:clixon\"><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>"
 
 match=$(echo "$ret" | grep -Eo "$expect")
 if [ -z "$match" ]; then
     err "$expect" "$ret"
 fi
-nr=$(echo "$ret" | grep -c "data:")
+nr=$(echo "$ret" | grep -c "<notification xmlns=\"${NOTIFICATION_NS}\">")
 if [ $nr -lt 1 -o $nr -gt 2 ]; then
     err 2 "$nr"
 fi
@@ -328,6 +367,45 @@ kill $PID
 sleep $SLEEP5
 
 fi # XXX
+
+# Multi-line notification
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
+
+# Set pretty-print
+RESTCONFIG=$(restconf_config none true)
+
+cat <<EOF > $cfd/restconf.xml
+<clixon-config xmlns="http://clicon.org/config">
+  $RESTCONFIG
+</clixon-config>
+EOF
+
+if [ $RC -ne 0 ]; then
+    sleep 1
+    new "start restconf daemon -f $cfg -t ${TIMEOUT}"
+    start_restconf -f $cfg -t ${TIMEOUT}
+fi
+
+new "wait restconf 2"
+wait_restconf
+
+#if ${HAVE_HTTP1}; then
+#    new "HTTP-1.1 streams pretty-print"
+#    runtest --http1.1 true
+#fi
+if [ "${WITH_RESTCONF}" = "fcgi" ]; then
+    new "Fcgi streams pretty-print"
+    runtest "" true
+fi
+if [ "${WITH_RESTCONF}" = "native" ]; then
+    if ${HAVE_LIBNGHTTP2}; then
+        new "HTTP-2 streams pretty-print"
+        runtest --http2 true
+    fi
+fi
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

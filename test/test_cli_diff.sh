@@ -142,10 +142,10 @@ new "add d"
 expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter d value 98)" 0 "^$"
 
 new "check compare xml"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^+  <top xmlns=\"urn:example:clixon\">" --not-- "\-" "<data>"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^+\ *<top xmlns=\"urn:example:clixon\">" --not-- "\-" "<data>"
 
 new "check compare text"
-expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+  clixon-example:top {" --not-- "^\-" data
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\-" data
 
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"

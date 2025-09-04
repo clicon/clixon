@@ -83,6 +83,9 @@ testname=
 # Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
 
+# Namespace: netconf notification
+NOTIFICATION_NS="urn:ietf:params:xml:ns:netconf:notification:1.0"
+
 # Namespace: Clixon config
 CONFNS='xmlns="http://clicon.org/config"'
 
@@ -380,6 +383,7 @@ function restconf_config()
         if ${myhttpdata}; then
             echo -n "<enable-http-data>true</enable-http-data>"
         fi
+        echo -n "<timeout>20</timeout>"
         echo "<auth-type>$AUTH</auth-type><pretty>$PRETTY</pretty><server-cert-path>${certdir}/clixon-server-crt.pem</server-cert-path><server-key-path>${certdir}/clixon-server-key.pem</server-key-path><server-ca-cert-path>${certdir}/clixon-ca-crt.pem</server-ca-cert-path><debug>$DBG</debug><socket><namespace>default</namespace><address>0.0.0.0</address><port>443</port><ssl>true</ssl></socket></restconf>"
     fi
 }
