@@ -84,6 +84,7 @@
  * @param[in]  name Data name
  * @param[out] val  Data value as string
  * @retval     0    OK
+ * @retval    -1    Error
  */
 int
 clicon_data_get(clixon_handle h,

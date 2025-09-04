@@ -292,7 +292,7 @@ expand_dbvar_insert(clixon_handle h,
 
 /*! Completion callback of variable for configured data and automatically generated data model
  *
- * Returns an expand-type list of commands as used by cligen 'expand' 
+ * Returns an expand-type list of commands as used by cligen 'expand'
  * functionality.
  *
  * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
@@ -316,11 +316,11 @@ expand_dbvar_insert(clixon_handle h,
  */
 int
 expand_dbvar(clixon_handle h,
-             char   *name,
-             cvec   *cvv,
-             cvec   *argv,
-             cvec   *commands,
-             cvec   *helptexts)
+             char         *name,
+             cvec         *cvv,
+             cvec         *argv,
+             cvec         *commands,
+             cvec         *helptexts)
 {
     int              retval = -1;
     cbuf            *api_path_fmt_cb = NULL;
@@ -340,7 +340,6 @@ expand_dbvar(clixon_handle h,
     cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     yang_stmt       *y = NULL; /* yang spec of xpath */
     cvec            *nsc = NULL;
-    int              ret;
     int              cvvi = 0;
     cbuf            *cbxpath = NULL;
     yang_stmt       *ypath;
@@ -351,7 +350,9 @@ expand_dbvar(clixon_handle h,
     char            *str;
     int              grouping_treeref;
     cvec            *callback_cvv;
-    //    cvec            *labels_cvv;
+    int              argc = 0;
+    cvec            *cvv2 = NULL;
+    int              ret;
 
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
@@ -362,7 +363,7 @@ expand_dbvar(clixon_handle h,
         goto done;
     }
     co = cligen_co_match(cli_cligen(h));
-    if ((cv = cvec_i(argv, 0)) == NULL){
+    if ((cv = cvec_i(argv, argc++)) == NULL){
         clixon_err(OE_PLUGIN, 0, "Error when accessing argument <db>");
         goto done;
     }
@@ -373,16 +374,16 @@ expand_dbvar(clixon_handle h,
         clixon_err(OE_PLUGIN, 0, "No such db name: %s", dbstr);
         goto done;
     }
-    if ((cv = cvec_i(argv, 1)) == NULL){
+    if ((cv = cvec_i(argv, argc++)) == NULL){
         clixon_err(OE_PLUGIN, 0, "Error when accessing argument <api_path>");
         goto done;
     }
-    if (autocli_grouping_treeref(h, &grouping_treeref) < 0)
-        goto done;
     if ((api_path_fmt_cb = cbuf_new()) == NULL){
         clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
+    if (autocli_grouping_treeref(h, &grouping_treeref) < 0)
+        goto done;
     if (grouping_treeref &&
         (callback_cvv = cligen_callback_arguments_get(cli_cligen(h))) != NULL){
         /* Concatenate callback arguments to a single prepend string */
@@ -391,23 +392,21 @@ expand_dbvar(clixon_handle h,
     }
     cprintf(api_path_fmt_cb, "%s", cv_string_get(cv));
     api_path_fmt = cbuf_get(api_path_fmt_cb);
-    if (cvec_len(argv) > 2){ /* mountpoint */
-        /* api_path_fmt is without top-level */
-        cv = cvec_i(argv, 2);
-        str = cv_string_get(cv);
-        if (strncmp(str, "mtpoint:", strlen("mtpoint:")) != 0){
-            clixon_err(OE_PLUGIN, 0, "mtpoint does not begin with 'mtpoint:'");
-            goto done;
-        }
+    if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
+        goto done;
+    str = NULL;
+    cv = cvec_i(argv, argc++);
+    str = cv_string_get(cvec_i(argv, argc++));
+    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
         mtpoint = str + strlen("mtpoint:");
         /* Get and combined api-path01 */
         if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
-        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     else{
-        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, &api_path, &cvvi) < 0)
+        if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
     if (api_path == NULL)
@@ -416,7 +415,7 @@ expand_dbvar(clixon_handle h,
     if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
     xbot = xtop;
-    /* This is primarily to get "y", 
+    /* This is primarily to get "y",
      * xpath2xml would have worked!!
      * XXX: but y is just the first in this list, there could be other y:s?
      */
@@ -453,16 +452,16 @@ expand_dbvar(clixon_handle h,
         strcmp(yang_argument_get(ytype), "leafref") == 0 &&
         cvec_find(co->co_cvec, "leafref-no-refer") == NULL){
 
-        /* Special case for leafref. Detect leafref via Yang-type, 
+        /* Special case for leafref. Detect leafref via Yang-type,
          * Get Yang path element, tentatively add the new syntax to the whole
          * tree and apply the path to that.
-         * Last, the reference point for the xpath code below is changed to 
+         * Last, the reference point for the xpath code below is changed to
          * the point of the tentative new xml.
          * Here the whole syntax tree is loaded, and it would be better to offload
          * such operations to the datastore by a generic xpath function.
          */
 
-        /* 
+        /*
          * The syntax for a path argument is a subset of the XPath abbreviated
          * syntax.  Predicates are used only for constraining the values for the
          * key nodes for list entries.  Each predicate consists of exactly one
@@ -502,6 +501,8 @@ expand_dbvar(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (cvv2)
+        cvec_free(cvv2);
     if (nsc0)
         cvec_free(nsc0);
     if (api_path_fmt_cb)
@@ -529,7 +530,7 @@ expand_dbvar(clixon_handle h,
 
 /*! Completion callback of variable for yang schema list nodes
  *
- * Typical yang: 
+ * Typical yang:
  *     container foo { list bar; }
  *   modA:
  *     augment foo bar;
@@ -682,11 +683,11 @@ expand_dir(clixon_handle h,
     return retval;
 }
 
-/*! CLI callback show yang spec. If arg given matches yang argument string 
+/*! CLI callback show yang spec. If arg given matches yang argument string
  *
  * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of command variables
- * @param[in]  argv  
+ * @param[in]  argv
  * @retval     0     OK
  * @retval    -1     Error
  */
@@ -725,7 +726,7 @@ show_yang(clixon_handle h,
  * @param[in] h            Clixon handle
  * @param[in] db           Datastore
  * @param[in] format       Output format
- * @param[in] pretty        
+ * @param[in] pretty
  * @param[in] state
  * @param[in] withdefault  RFC 6243 with-default modes
  * @param[in] extdefault   with-defaults with propriatary extensions
@@ -996,7 +997,7 @@ cli_show_option_withdefault(cvec  *argv,
  *   <namespace>     xpath default namespace (or NULL) not needed for xpath=NULL
  *   <pretty>        true|false: pretty-print or not
  *   <state>         true|false: also print state
- *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
+ *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged,
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
  *   <prepend>       CLI prefix: prepend before cli syntax output
  * @retval      0    OK
@@ -1165,14 +1166,14 @@ cli_show_version(clixon_handle h,
  *   <format>        text|xml|json|cli|netconf|default (see format_enum), default: xml
  *   <pretty>        true|false: pretty-print or not
  *   <state>         true|false: also print state
- *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
+ *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged,
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
  *   <prepend>       CLI prefix: prepend before cli syntax output
  *   <fromroot>      true|false: Show from root
  * @retval     0     OK
  * @retval    -1     Error
  * @code
- *   clispec: 
+ *   clispec:
  *      show config @datamodelshow, cli_show_auto("candidate", "xml");
  *   cli run:
  *      > set table parameter a value x
@@ -1208,17 +1209,32 @@ cli_show_auto(clixon_handle h,
     char            *api_path = NULL;
     int              cvvi = 0;
     cvec            *cvv2 = NULL; /* cvv2 = cvv0 + cvv1 */
+    cg_var          *cv;
     char            *api_path_fmt;  /* xml key format */
     char            *api_path_fmt01 = NULL;
     char            *str;
     char            *mtpoint = NULL;
     int              fromroot = 0;
+    cbuf            *api_path_fmt_cb = NULL;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 9){
         clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <api-path-fmt>* <database> [<format> <pretty> <state> <default> <prepend> <fromroot>]", cvec_len(argv));
         goto done;
     }
-    api_path_fmt = cv_string_get(cvec_i(argv, argc++));
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
+    }
+    if ((cv = cvec_i(argv, argc++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <api-path>");
+        goto done;
+    }
+    if ((api_path_fmt_cb = cbuf_new()) == NULL){
+        clixon_err(OE_PLUGIN, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(api_path_fmt_cb, "%s", cv_string_get(cv));
+    api_path_fmt = cbuf_get(api_path_fmt_cb);
     str = cv_string_get(cvec_i(argv, argc++));
     if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
         mtpoint = str + strlen("mtpoint:");
@@ -1250,10 +1266,6 @@ cli_show_auto(clixon_handle h,
         if (cli_show_option_bool(argv, argc++, &fromroot) < 0)
             goto done;
     }
-    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_FATAL, 0, "No DB_SPEC");
-        goto done;
-    }
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
         goto done;
     if (mtpoint){
@@ -1279,6 +1291,8 @@ cli_show_auto(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    if (api_path_fmt_cb)
+        cbuf_free(api_path_fmt_cb);
     if (cvv2)
         cvec_free(cvv2);
     if (api_path_fmt01)
@@ -1295,7 +1309,7 @@ cli_show_auto(clixon_handle h,
 /*! Show configuration callback for autocli edit modes using tree working point
  *
  * Can be used together with "edit modes". The xpath is derived from
- * the current "cli-edit-mode" as described here: 
+ * the current "cli-edit-mode" as described here:
  *     https://clixon-docs.readthedocs.io/en/latest/cli.html#edit-modes
  * @param[in]  h     Clixon handle
  * @param[in]  cvv   Vector of variables from CLIgen command-line
@@ -1305,7 +1319,7 @@ cli_show_auto(clixon_handle h,
  *   <format>        "text"|"xml"|"json"|"cli"|"netconf" (see format_enum), default: xml
  *   <pretty>        true|false: pretty-print or not
  *   <state>         true|false: also print state
- *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged, 
+ *   <default>       Retrieval mode: report-all, trim, explicit, report-all-tagged,
  *                   NULL, report-all-tagged-default, report-all-tagged-strip (extended)
  *   <prepend>       CLI prefix: prepend before cli syntax output
  * @retval     0     OK
@@ -1323,7 +1337,7 @@ code
  *           <value>x</value>
  *        </parameter>
  * @endcode
- * @see cli_show_auto    autocli with expansion 
+ * @see cli_show_auto    autocli with expansion
  * @see cli_show_config  with no autocli coupling
  */
 int
@@ -1441,7 +1455,7 @@ cli_show_auto_mode(clixon_handle h,
  *
  * @param[in]  h    Clixon handle
  * @param[in]  cvv  Vector of command variables
- * @param[in]  argv  
+ * @param[in]  argv
  * @retval     0    OK
  * @retval    -1    Error
 '* @see clicon_option_dump clicon_option_dump1
@@ -1504,7 +1518,7 @@ cli_show_options(clixon_handle h,
 /*! Show pagination
  *
  * @param[in]  h    Clixon handle
- * @param[in]  cvv  Vector of cli string and instantiated variables 
+ * @param[in]  cvv  Vector of cli string and instantiated variables
  * @param[in]  argv Vector. Format: <xpath> <prefix> <namespace> <format> <limit>
  * @retval     0    OK
  * @retval    -1    Error
@@ -1637,7 +1651,7 @@ cli_pagination(clixon_handle h,
 
 /*! Translate to CLI commands in cbuf
  *
- * Howto: join strings and pass them down. 
+ * Howto: join strings and pass them down.
  * Identify unique/index keywords for correct set syntax.
  * @param[in]     h       Clixon handle
  * @param[in,out] cb      Cligen buffer to write to
@@ -1703,7 +1717,7 @@ cli2cbuf(clixon_handle     h,
     if (prepend)
         cprintf(cbpre, "%s", prepend);
 
-    /* If non-presence container && HIDE mode && only child is 
+    /* If non-presence container && HIDE mode && only child is
      * a list, then skip container keyword
      * See also yang2cli_container */
     if (autocli_compress(h, ys, &compress) < 0)
@@ -1765,7 +1779,7 @@ cli2cbuf(clixon_handle     h,
 
 /*! Translate from XML to CLI commands, internal
  *
- * Howto: join strings and pass them down. 
+ * Howto: join strings and pass them down.
  * Identify unique/index keywords for correct set syntax.
  * @param[in] h        Clixon handle
  * @param[in] f        Output FILE (eg stdout)
@@ -1832,7 +1846,7 @@ cli2file(clixon_handle     h,
     if (prepend)
         cprintf(cbpre, "%s", prepend);
 
-    /* If non-presence container && HIDE mode && only child is 
+    /* If non-presence container && HIDE mode && only child is
      * a list, then skip container keyword
      * See also yang2cli_container */
     if (autocli_compress(h, ys, &compress) < 0)
@@ -1894,14 +1908,14 @@ cli2file(clixon_handle     h,
 
 /*! Translate from XML to CLI commands
  *
- * Howto: join strings and pass them down. 
+ * Howto: join strings and pass them down.
  * Identify unique/index keywords for correct set syntax.
  * @param[in] h        Clixon handle
  * @param[in] f        Output FILE (eg stdout)
  * @param[in] xn       XML Parse-tree (to translate)
  * @param[in] prepend  Print this text in front of all commands.
  * @param[in] fn       File print function (if NULL, use fprintf)
- * @param[in] skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in] skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval    0        OK
  * @retval   -1        Error
  * @see clixon_cli2cbuf
@@ -1936,14 +1950,14 @@ clixon_cli2file(clixon_handle     h,
 
 /*! Translate from XML to CLI commands
  *
- * Howto: join strings and pass them down. 
+ * Howto: join strings and pass them down.
  * Identify unique/index keywords for correct set syntax.
  * @param[in] h        Clixon handle
  * @param[in] f        Output FILE (eg stdout)
  * @param[in] xn       XML Parse-tree (to translate)
  * @param[in] prepend  Print this text in front of all commands.
  * @param[in] fn       File print function (if NULL, use fprintf)
- * @param[in] skiptop  0: Include top object 1: Skip top-object, only children, 
+ * @param[in] skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval    0        OK
  * @retval   -1        Error
  * @see clixon_cli2file

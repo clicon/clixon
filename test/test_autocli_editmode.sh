@@ -75,7 +75,7 @@ top, cli_auto_top("basemodel");
 set @datamodel, cli_auto_set();
 merge @datamodel, cli_auto_merge();
 create @datamodel, cli_auto_create();
-delete("Delete a configuration item") @datamodel, @add:leafref-no-refer, cli_auto_del();
+delete("Delete a configuration item") @datamodel, @add:leafref-no-refer, @add:ac-strict-expand, cli_auto_del();
 validate("Validate changes"), cli_validate();
 commit("Commit the changes"), cli_commit();
 quit("Quit"), cli_quit();
@@ -337,6 +337,20 @@ show config netconf
 EOF
 new "show config netconf"
 expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><parameter><name>a</name><value>42</value></parameter>" "</config></edit-config></rpc>]]>]]>"
+
+cat <<EOF > $fin
+edit table parameter a
+set value	 	
+EOF
+new "Completion edit set"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 42 '<value>' --not-- 71
+
+cat <<EOF > $fin
+edit table parameter a
+del value 	
+EOF
+new "Completion edit delete"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 42 --not-- '<value>' 71
 
 # Negative test
 new "config parameter only expect fail"
