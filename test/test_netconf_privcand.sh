@@ -30,6 +30,7 @@
 # 4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution
 # 4.8.2.1 <commit> implicit update ok
 # 4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution
+# 4.8.2.1.1 <confirned/> commit ok/canceled/timeout
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-candidate conflict resolution (NOTE resolution mode not supported)
 # 4.8.1.1 <update> operation implicit by server not ok, prefer-running conflict resolution (NOTE resolution mode not supported)
 # 4.8.2.2 <get-config> creates private candidate
@@ -48,9 +49,6 @@
 # 4.8.2.10 <delete-config> operates on private candidate (NOTE. candidate as target is not defined in RFC)
 # 4.8.2.11 <discard-changes> operates on private candidate
 # 4.8.2.12 <get> no private candidate
-
-## TODO Test cases to be implemented
-# 4.8.2.1.1 <confirned/> commit ok/canceled/timeout
 # 4.8.2.13 <cancel-commit>
 
 # Magic line must be first in script (see README.md)
@@ -638,6 +636,44 @@ rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate
 puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
 rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>" "ok/"
 rpc $session_2 "<commit/>" "rpc-error"
+
+
+# reset session
+rpc $session_1 "<discard-changes/>" "ok/"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+rpc $session_2 "<discard-changes/>" "ok/"
+rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+
+puts "4.8.2.1.1 <confirmed/> commit ok"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit</l></config></edit-config>" "ok/"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>" "ok/"
+rpc $session_1 "<commit/>" "ok/"
+sleep 2
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit</l>"
+
+puts "4.8.2.1.1 <confirmed/> commit cancel"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-cancel</l></config></edit-config>" "ok/"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>" "ok/"
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-cancel</l>"
+puts "4.8.2.13 <cancel-commit>"
+rpc $session_1 "<cancel-commit/>" "ok/"
+sleep 2
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit</l>"
+
+puts "4.8.2.1.1 <confirmed/> commit timeout"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-timeout</l></config></edit-config>" "ok/"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>" "ok/"
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-timeout</l>"
+sleep 2
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit</l>"
+
+puts "4.8.2.1.1 <confirmed/> commit persist"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-persist</l></config></edit-config>" "ok/"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout><persist>id</persist></commit>" "ok/"
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-persist</l>"
+rpc $session_2 "<commit><confirmed/><persist-id>id</persist-id></commit>" "ok/"
+sleep 2
+rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-persist</l>"
 
 close $session_1
 close $session_2
