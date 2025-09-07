@@ -396,7 +396,7 @@ expand_dbvar(clixon_handle h,
         goto done;
     str = NULL;
     cv = cvec_i(argv, argc++);
-    str = cv_string_get(cvec_i(argv, argc++));
+    str = cv_string_get(cv);
     if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
         mtpoint = str + strlen("mtpoint:");
         /* Get and combined api-path01 */
