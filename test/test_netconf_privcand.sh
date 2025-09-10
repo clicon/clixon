@@ -186,7 +186,7 @@ EOF
 
 cat <<EOF > $dir/privcand.cli
 CLICON_MODE="example";
-CLICON_PROMPT="%U@%H %W> ";
+CLICON_PROMPT="prompt> ";
 CLICON_PLUGIN="example_cli";
 
 # Autocli syntax tree operations
@@ -369,7 +369,7 @@ puts "Send hello message"
 send -i session_2 $hello_msg
 
 # NETCONF rpc operation
-proc rpc {session operation reply} {
+proc rpc {session operation { reply "<ok/>"}} {
     set id [info cmdcount]
     #puts "$session <rpc message-id=\"$id\" $operation"
 	send -i $session "<rpc message-id=\"$id\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">$operation</rpc>]]>]]>\r"
@@ -398,17 +398,17 @@ proc dump {} {
 ## Start of 4.7.3.3  Revert-on-conflict example
 
 puts "4.7.3.3 Session 1 edits the configuration"
-rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces></config></edit-config>" "ok/"
+rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Link to San Francisco</description></interface></interfaces></config></edit-config>"
 
 puts "4.7.3.3 Session 2 edits the configuration"
-rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name >intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>" "ok/"
+rpc $session_2 "<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"delete\"><name >intf_one</name></interface><interface><name>intf_two</name><description>Link to Paris</description></interface></interfaces></config></edit-config>"
 
 puts "4.5.2 NETCONF client supports private candidate. Verify that each client uses its own private candidate"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "Francisco.*Tokyo"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "Paris"
 
 puts "4.7.3.3 Session 2 commits the change"
-rpc $session_2 "<commit/>" "ok/"
+rpc $session_2 "<commit/>"
 
 puts "4.7.3.3 Session 1 updates its configuration and fails"
 # A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
@@ -416,10 +416,10 @@ rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate
 
 puts "4.7.3.3 Session 1 discards its changes"
 puts "4.8.2.11 <discard-changes> operates on private candidate"
-rpc $session_1 "<discard-changes/>" "ok/"
+rpc $session_1 "<discard-changes/>"
 
 puts "4.7.3.3 Session 1 updates its configuraion successfully"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
 
 # Conflict est sequence: reset session 1, edit and commit session 2, edit and update session 1
 proc conflict { content_1 content_2 update_reply} {
@@ -427,15 +427,15 @@ proc conflict { content_1 content_2 update_reply} {
 	global session_2
 	#puts "\nconflict $update_reply\n content 1: $content_1  \n content 2: $content_2 \n"
     # Session 1 edits configuration
-	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" "ok/" 
+	rpc $session_1 "<edit-config><target><candidate/></target><config>$content_1</config></edit-config>" 
 	# Session 2 edits and commits configuration
-	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>" "<ok/>"
-    rpc $session_2 "<commit/>" "<ok/>"
+	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>"
+    rpc $session_2 "<commit/>"
     # Session 1 updates its configuration
     rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
     # Reset session 1 after conflict
-    rpc $session_1 "<discard-changes/>" "ok/"
-    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+    rpc $session_1 "<discard-changes/>"
+    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
 }
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of any value"
@@ -520,82 +520,83 @@ conflict "<ll xmlns=\"urn:example:clixon\">b</ll>" \
 "<ll xmlns=\"urn:example:clixon\">c</ll>" \
 "Conflict occured: Cannot add leaf-list node, another leaf-list node is added"
 
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">one</l></config></edit-config>" "ok/"
-rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">two</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">one</l></config></edit-config>"
+rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">two</l></config></edit-config>"
 puts "4.8.2.1 <commit> implicit update ok"
-rpc $session_1 "<commit/>" "ok/"
+rpc $session_1 "<commit/>"
 puts "4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution"
+rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "rpc-error"
 rpc $session_2 "<commit/>" "rpc-error"
 
 puts "4.8.2.2 <get-config> creates private candidate"
 # session_1 has no private candidate after previous commit, running holds l="one", session_2 private candidate holds l="two"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">three</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">three</l></config></edit-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">three</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<discard-changes/>" "ok/"
+rpc $session_1 "<discard-changes/>"
 
 puts "4.8.2.2 <get-config> operates on private candidate"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">four</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">four</l></config></edit-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">one</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">four</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<commit/>" "ok/"
+rpc $session_1 "<commit/>"
 
 puts "4.8.2.3 <edit-config> creates private candidate"
 # session_1 has no private candidate after previous commit, running holds l="four", session_2 private candidate holds l="two"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">five</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">five</l></config></edit-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">four</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">five</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<discard-changes/>" "ok/"
+rpc $session_1 "<discard-changes/>"
 
 puts "4.8.2.3 <edit-config> operates on private candidate"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">six</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">six</l></config></edit-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">four</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<commit/>" "ok/"
+rpc $session_1 "<commit/>"
 
 puts "4.8.2.4 <copy-config> creates private candidate"
-rpc $session_1 "<copy-config><target><candidate/></target><source><startup/></source></copy-config>" "ok/"
+rpc $session_1 "<copy-config><target><candidate/></target><source><startup/></source></copy-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">0</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<discard-changes/>" "ok/"
-rpc $session_1 "<copy-config><target><candidate/></target><source><running/></source></copy-config>" "ok/"
+rpc $session_1 "<discard-changes/>"
+rpc $session_1 "<copy-config><target><candidate/></target><source><running/></source></copy-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<commit/>" "ok/"
+rpc $session_1 "<commit/>"
 
 puts "4.8.2.4 <copy-config> operates on private candidate"
-rpc $session_1 "<copy-config><target><candidate/></target><source><running/></source></copy-config>" "ok/"
+rpc $session_1 "<copy-config><target><candidate/></target><source><running/></source></copy-config>"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">six</l>"
 rpc $session_2 "<get-config><source><candidate/></source></get-config>" "<l xmlns=\"urn:example:clixon\">two</l>"
-rpc $session_1 "<commit/>" "ok/"
+rpc $session_1 "<commit/>"
 
 # Reset private candidates
-rpc $session_1 "<discard-changes/>" "ok/"
-rpc $session_2 "<discard-changes/>" "ok/"
+rpc $session_1 "<discard-changes/>"
+rpc $session_2 "<discard-changes/>"
 
 puts "4.8.2.8 <lock> operates on private candidate"
-rpc $session_1 "<lock><target><candidate/></target></lock>" "<ok/>"
-rpc $session_2 "<lock><target><candidate/></target></lock>" "<ok/>"
+rpc $session_1 "<lock><target><candidate/></target></lock>"
+rpc $session_2 "<lock><target><candidate/></target></lock>"
 rpc $session_1 "<lock><target><candidate/></target></lock>" "error"
 
 puts "4.8.2.9 <unlock> operates on private candidate"
-rpc $session_1 "<unlock><target><candidate/></target></unlock>" "<ok/>"
-rpc $session_2 "<unlock><target><candidate/></target></unlock>" "<ok/>"
+rpc $session_1 "<unlock><target><candidate/></target></unlock>"
+rpc $session_2 "<unlock><target><candidate/></target></unlock>"
 rpc $session_2 "<unlock><target><candidate/></target></unlock>" "error"
 
 puts "Smoke test of lock handling for running"
-rpc $session_1 "<lock><target><running/></target></lock>" "<ok/>"
+rpc $session_1 "<lock><target><running/></target></lock>"
 rpc $session_2 "<lock><target><running/></target></lock>" "error"
-rpc $session_1 "<unlock><target><running/></target></unlock>" "<ok/>"
+rpc $session_1 "<unlock><target><running/></target></unlock>"
 
 puts "4.8.2.12 <get> no private candidate"
 # the rpc-reply of the get operation will be very long
@@ -614,10 +615,10 @@ puts "4.5.3 NETCONF verifies RESTCONF update in running"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">restconf 1</l>"
 
 puts "4.5.3 NETCONF update operation ok"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
  
 puts "4.5.3 NETCONF updates object in private candidate"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf</l></config></edit-config>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf</l></config></edit-config>"
  
  puts "4.5.3 RESTCONF request updates object"
  set json "{\"clixon-example:l\":\"restconf 2\"}"
@@ -634,47 +635,92 @@ puts "4.5.3 NETCONF update operation fails"
 rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "rpc-error"
 
 puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
-rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>" "ok/"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>"
 rpc $session_2 "<commit/>" "rpc-error"
 
-
 # reset session
-rpc $session_1 "<discard-changes/>" "ok/"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
-rpc $session_2 "<discard-changes/>" "ok/"
-rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "ok/"
+rpc $session_1 "<discard-changes/>"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+rpc $session_2 "<discard-changes/>"
+rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
 
 puts "4.8.2.1.1 <confirmed/> commit ok"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit</l></config></edit-config>" "ok/"
-rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>" "ok/"
-rpc $session_1 "<commit/>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit</l></config></edit-config>"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>"
+rpc $session_1 "<commit/>"
 sleep 2
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit</l>"
 
 puts "4.8.2.1.1 <confirmed/> commit cancel"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-cancel</l></config></edit-config>" "ok/"
-rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-cancel</l></config></edit-config>"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>"
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-cancel</l>"
 puts "4.8.2.13 <cancel-commit>"
-rpc $session_1 "<cancel-commit/>" "ok/"
+rpc $session_1 "<cancel-commit/>"
 sleep 2
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit</l>"
 
 puts "4.8.2.1.1 <confirmed/> commit timeout"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-timeout</l></config></edit-config>" "ok/"
-rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-timeout</l></config></edit-config>"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout></commit>"
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-timeout</l>"
 sleep 2
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit</l>"
 
 puts "4.8.2.1.1 <confirmed/> commit persist"
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-persist</l></config></edit-config>" "ok/"
-rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout><persist>id</persist></commit>" "ok/"
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit-persist</l></config></edit-config>"
+rpc $session_1 "<commit><confirmed/><confirm-timeout>1</confirm-timeout><persist>id</persist></commit>"
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-persist</l>"
-rpc $session_2 "<commit><confirmed/><persist-id>id</persist-id></commit>" "ok/"
+rpc $session_2 "<commit><confirmed/><persist-id>id</persist-id></commit>"
 sleep 2
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-persist</l>"
 
+
+puts "Spawn CLI session"
+global session_cli
+spawn {*}sudo -u $USER clixon_cli -f $CFG
+set session_cli $spawn_id
+
+proc cli { command { reply "" }} {
+    global session_cli
+    send -i $session_cli "$command\n"
+    expect {
+        -i $session_cli
+        -re ".*$reply.*prompt> " {}
+	    timeout { puts "\n\ntimeout"; exit 2 }
+	    eof { puts "\n\neof"; exit 3 }
+    }
+}
+
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
+puts "CLI update ok"
+cli "set l \"cli-ok\""
+cli "show config" "\"cli-ok\""
+cli "update"
+
+puts "CLI commit ok"
+cli "commit"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">cli-ok</l>"
+rpc $session_1 "<commit/>" "Conflict occured"
+rpc $session_1 "<discard-changes/>"
+rpc $session_1 "<commit/>"
+
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
+puts "CLI update conflict"
+cli "set l \"cli-conflict\""
+rpc $session_1 "<commit/>"
+cli "update" "Conflict occured"
+
+puts "CLI commit conflict"
+cli "commit" "Conflict occured"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">netconf-ok</l>"
+
+puts "CLI discard"
+cli "discard"
+cli "commit"
+rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">netconf-ok</l>"
+
+close $session_cli
 close $session_1
 close $session_2
 EOF
