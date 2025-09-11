@@ -401,6 +401,76 @@ api_data_post(clixon_handle h,
    return retval;
 } /* api_data_post */
 
+/*! Transform input JSON RPC data to proper XML form
+ *
+ * JSON data is on the form:
+ *   {"clixon-example:input":...}
+ * For parsing and binding to work, it is transformed to:
+ *   {"clixon-example:myrpc":...}
+ * @param[in]  h      Clixon handle
+ * @param[in]  data   Stream input data
+ * @param[in]  yspec  Yang top-level specification
+ * @param[in]  yrpc   Yang rpc spec
+ * @param[in]  pretty Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_out Output media
+ * @param[out] xdata
+ * @retval     1      OK
+ * @retval     0      Fail, Error message sent
+ * @retval    -1      Fatal error
+ */
+static int
+json_rpc_transform(clixon_handle  h,
+                   void          *req,
+                   const char    *data,
+                   yang_stmt     *yspec,
+                   yang_stmt     *yrpc,
+                   int            pretty,
+                   restconf_media media_out,
+                   cxobj        **xdata)
+{
+    int        retval = -1;
+    cbuf      *cb = NULL;
+    yang_stmt *ymod = NULL;
+    char      *ptr;
+    cxobj     *xerr = NULL; /* malloced must be freed */
+    int        ret;
+
+    if (ys_real_module(yrpc, &ymod) < 0)
+        goto done;
+    if (ymod != NULL &&
+        (ptr = strstr(data, ":input")) != NULL){
+        ptr += strlen(":input");
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, 0, "cbuf_new");
+            goto done;
+        }
+        cprintf(cb, "{\"%s:%s", yang_argument_get(ymod), yang_argument_get(yrpc));
+        cprintf(cb, "%s", ptr);
+        if ((ret = clixon_json_parse_string(h, cbuf_get(cb), 1, YB_RPC, yspec, xdata, &xerr)) < 0){
+            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
+                goto done;
+            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                goto done;
+            goto fail;
+        }
+    }
+    else{
+        if (netconf_malformed_message_xml(&xerr, "Input not well-formed, expected namespace:input") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+            goto done;
+        goto fail;
+    }
+    retval = 1;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Handle input data to api_operations_post
  *
  * @param[in]  h      Clixon handle
@@ -424,35 +494,33 @@ api_data_post(clixon_handle h,
  * (Any other input is assumed as error.)
  */
 static int
-api_operations_post_input(clixon_handle h,
-                          void         *req,
-                          char         *data,
-                          yang_stmt    *yspec,
-                          yang_stmt    *yrpc,
-                          cxobj        *xrpc,
-                          int           pretty,
+api_operations_post_input(clixon_handle  h,
+                          void          *req,
+                          char          *data,
+                          yang_stmt     *yspec,
+                          yang_stmt     *yrpc,
+                          cxobj         *xrpc,
+                          int            pretty,
                           restconf_media media_out)
 {
-    int        retval = -1;
-    cxobj     *xdata = NULL;
-    cxobj     *xerr = NULL; /* malloced must be freed */
-    cxobj     *xinput;
-    cxobj     *x;
-    cbuf      *cbret = NULL;
-    int        ret;
+    int            retval = -1;
+    cxobj         *xdata = NULL;
+    cxobj         *xerr = NULL; /* malloced must be freed */
+    cxobj         *xinput;
+    cxobj         *x;
     restconf_media media_in;
+    char          *input = "input"; // Can be overwritten
+    int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%s", data);
-    if ((cbret = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, 0, "cbuf_new");
-        goto done;
-    }
     /* Parse input data as json or xml into xml */
     media_in = restconf_content_type(h);
     switch (media_in){
     case YANG_DATA_XML:
-        /* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has no proper yang binding
-         * support */
+        /* XXX: Here data is on the form: <input xmlns="urn:example:clixon"/> and has
+         * no proper yang binding support
+         * -> identityref not transformed to XML correctly
+         */
         if ((ret = clixon_xml_parse_string1(h, data, YB_NONE, yspec, &xdata, &xerr)) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
@@ -467,15 +535,16 @@ api_operations_post_input(clixon_handle h,
         }
         break;
     case YANG_DATA_JSON:
-        /* XXX: Here data is on the form: {"clixon-example:input":null} and has no proper yang binding
-         * support */
-        if ((ret = clixon_json_parse_string(h, data, 1, YB_NONE, yspec, &xdata, &xerr)) < 0){
-            if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
-                goto done;
-            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-                goto done;
+        /* XXX: Here data is on the form: {"clixon-example:input":...} and has no proper
+         * yang binding support
+         * For parsing and binding to work, it should be transformed to:
+         * {"clixon-example:myrpc":...}
+         */
+        if ((ret = json_rpc_transform(h, req, data, yspec, yrpc, pretty, media_out, &xdata)) < 0)
+            goto done;
+        if (ret == 0)
             goto fail;
-        }
+        input = yang_argument_get(yrpc);
         if (ret == 0){
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
                 goto done;
@@ -496,7 +565,7 @@ api_operations_post_input(clixon_handle h,
 #endif
     /* Validate that exactly only <input> tag */
     if ((xinput = xml_child_i_type(xdata, 0, CX_ELMNT)) == NULL ||
-        strcmp(xml_name(xinput),"input") != 0 ||
+        strcmp(xml_name(xinput), input) != 0 ||
         xml_child_nr_type(xdata, CX_ELMNT) != 1){
 
         if (xml_child_nr_type(xdata, CX_ELMNT) == 0){
@@ -522,8 +591,6 @@ api_operations_post_input(clixon_handle h,
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval: %d", retval);
-    if (cbret)
-        cbuf_free(cbret);
     if (xerr)
         xml_free(xerr);
     if (xdata)
@@ -692,13 +759,13 @@ api_operations_post_output(clixon_handle h,
  * 10. Validate and send reply to originator
  */
 int
-api_operations_post(clixon_handle h,
-                    void         *req,
-                    char         *api_path,
-                    int           pi,
-                    cvec         *qvec,
-                    char         *data,
-                    int           pretty,
+api_operations_post(clixon_handle  h,
+                    void          *req,
+                    char          *api_path,
+                    int            pi,
+                    cvec          *qvec,
+                    char          *data,
+                    int            pretty,
                     restconf_media media_out)
 {
     int        retval = -1;
@@ -716,12 +783,12 @@ api_operations_post(clixon_handle h,
     cxobj     *xe;
     char      *username;
     cbuf      *cbret = NULL;
-    int        ret = 0;
     char      *prefix = NULL;
     char      *id = NULL;
     yang_stmt *ys = NULL;
     char      *namespace = NULL;
     int        nr = 0;
+    int        ret = 0;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "json:\"%s\" path:\"%s\"", data, api_path);
     /* 1. Initialize */

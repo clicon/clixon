@@ -11,9 +11,15 @@ APPNAME=example
 cfg=$dir/conf_yang.xml
 fyang=$dir/ietf-interfaces.yang
 
+RESTCONFIG=$(restconf_config none false)
+if [ $? -ne 0 ]; then
+    err1 "Error when generating certs"
+fi
+
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>clixon-restconf:allow-auth-none</CLICON_FEATURE> <!-- Use auth-type=none -->
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
@@ -23,6 +29,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  $RESTCONFIG
 </clixon-config>
 EOF
 
@@ -119,6 +126,17 @@ fi
 new "wait backend"
 wait_backend
 
+if [ $RC -ne 0 ]; then
+    new "kill old restconf daemon"
+    stop_restconf_pre
+
+    new "start restconf daemon"
+    start_restconf -f $cfg
+fi
+
+new "wait restconf"
+wait_restconf
+
 # Modify example in RFC 9144 to uses:
 # INTENDED->running (source)
 # OPERATIONAL->candidate (target)
@@ -163,6 +181,10 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
        </xpath-filter>
      </compare>
 </rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><differences xmlns=\"urn:ietf:params:xml:ns:yang:ietf-nmda-compare\"><yang-patch><patch-id>patch</patch-id><comment>diff between running (source) and candidate (target)</comment>${EDIT1}${EDIT2}</yang-patch></differences></rpc-reply>"
+
+# RFC have prefixes that should or not be there
+new "RESTCONF compare rfc example"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{"ietf-nmda-compare:input":{"source":"ietf-datastores:running","target":"ietf-datastores:candidate","xpath-filter":"/ietf-interfaces:interfaces"}}' $RCPROTO://localhost/restconf/operations/ietf-nmda-compare:compare)" 0 "HTTP/$HVER 200" 'Content-Type: application/yang-data+json' '{"ietf-nmda-compare:output":{"differences":{"yang-patch":{"patch-id":"patch","comment":"diff between running (source) and candidate (target)","edit":\[{"edit-id":"1","operation":"create","target":"/ietf-interfaces:interface=eth0/description","value":{"description":"ip interface"}},{"edit-id":"2","operation":"replace","target":"/ietf-interfaces:interface=eth0/enabled","value":{"enabled":"false"},"source-value":{"enabled":"true"}}\]}}}}'
 
 # Switch example
 # 1) delete description
@@ -276,6 +298,11 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
        </xpath-filter>
      </compare>
 </rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><differences xmlns=\"urn:ietf:params:xml:ns:yang:ietf-nmda-compare\"><yang-patch><patch-id>patch</patch-id><comment>diff between running (source) and candidate (target)</comment>${EDIT1}${EDIT2}</yang-patch></differences></rpc-reply>"
+
+if [ $RC -ne 0 ]; then
+    new "Kill restconf daemon"
+    stop_restconf
+fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

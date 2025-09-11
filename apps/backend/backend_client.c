@@ -1591,11 +1591,26 @@ from_client_compare(clixon_handle h,
     int                  all = 0;
     int                  report_origin = 0;
     cxobj               *xpath_filter = NULL;
-    cxobj               *xsubtree_filter;
     char                *xpath0;
     char                *xpath1 = NULL;
     char                *xpath = NULL;
     cvec                *nsc = NULL;
+
+    if (xml_find(xe, "all") != NULL){
+        if (netconf_operation_not_supported(cbret, "application", "all not supported") < 0)
+            goto done;
+        goto ok;
+    }
+    if (xml_find(xe, "report-origin") != NULL){
+        if (netconf_operation_not_supported(cbret, "application", "report-origin not supported") < 0)
+            goto done;
+        goto ok;
+    }
+    if (xml_find(xe, "subtree-filter") != NULL){
+        if (netconf_operation_not_supported(cbret, "application", "subtree-filter not supported") < 0)
+            goto done;
+        goto ok;
+    }
 
     /* Alt: see dsref handling in rpc_datastore_diff */
     if ((db1 = xml_find_body(xe, "source")) == NULL){
@@ -1636,11 +1651,6 @@ from_client_compare(clixon_handle h,
         }
         if (xml_nsctx_node(xpath_filter, &nsc) < 0)
             goto done;
-    }
-    if ((xsubtree_filter = xml_find(xe, "subtree-filter")) != NULL){
-        if (netconf_operation_not_supported(cbret, "application", "subtree-filter not supported") < 0)
-            goto done;
-        goto ok;
     }
     if (datastore_compare(h, xpath, nsc, de1, de2, cbret) < 0)
         goto done;

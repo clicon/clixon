@@ -693,8 +693,8 @@ xml_bind_yang0(clixon_handle h,
 /*! RPC-specific
  *
  * @param[in]   h      Clixon handle
- * @param[in]   xn     XML action node
- * @param[in]   yspec  Yang spec
+ * @param[in]   x      XML rpc node on the form <myrpc><myarg1>
+ * @param[in]   yrpc   Yang spec of rpc, eg myrpc
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
@@ -793,11 +793,75 @@ xml_bind_yang_rpc_action(clixon_handle h,
     goto done;
 }
 
+/*! Find yang spec association of XML node for incoming RPC starting with method
+ *
+ * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
+ * @param[in]   xrpc   XML rpc node on the form: <myrpc><myarg1>
+ * @param[in]   yspec  Yang spec
+ * @param[out]  xerr   Reason for failure, or NULL
+ * @retval      1      OK yang assignment made
+ * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
+ * @retval     -1      Error
+ * @code
+ *   if ((ret = xml_bind_yang_rpc(h, x, NULL, &xerr)) < 0)
+ *      err;
+ * @endcode
+ * @see xml_bind_yang  For other generic cases
+ * @see xml_bind_yang_rpc_reply
+ */
+int
+xml_bind_yang_rpc_method(clixon_handle h,
+                         cxobj        *x,
+                         yang_stmt    *yspec,
+                         cxobj       **xerr)
+{
+    int        retval = -1;
+    yang_stmt *yrpc;    /* yang node */
+    yang_stmt *ymod=NULL; /* yang module */
+    char      *rpcname; /* RPC name */
+    int        ret;
+
+    rpcname = xml_name(x);
+    if ((ret = xml_rpc_isaction(x)) < 0)
+        goto done;
+    if (ret == 1){
+        if ((ret = xml_bind_yang_rpc_action(h, x, yspec, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        goto ok;
+    } /* if not action fall through */
+    if (ys_module_by_xml(yspec, x, &ymod) < 0)
+        goto done;
+    if (ymod == NULL){
+        if (xerr &&
+            netconf_unknown_element_xml(xerr, "application", rpcname, "Unrecognized RPC (wrong namespace?)") < 0)
+            goto done;
+        goto fail;
+    }
+    if ((yrpc = yang_find(ymod, Y_RPC, rpcname)) == NULL){
+        if (xerr &&
+            netconf_unknown_element_xml(xerr, "application", rpcname, "Unrecognized RPC") < 0)
+            goto done;
+        goto fail;
+    }
+    if ((ret = xml_bind_yang_rpc_rpc(h, x, yrpc, rpcname, xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+ ok:
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Find yang spec association of XML node for incoming RPC starting with <rpc>
  *
  * Incoming RPC has an "input" structure that is not taken care of by xml_bind_yang
-
- * @param[in]   xrpc   XML rpc node
+ * @param[in]   xrpc   XML rpc node on the form: <rpc><myrpc><myarg1>
  * @param[in]   yspec  Yang spec
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
@@ -817,14 +881,11 @@ xml_bind_yang_rpc(clixon_handle h,
                   cxobj       **xerr)
 {
     int        retval = -1;
-    yang_stmt *yrpc = NULL;    /* yang node */
-    yang_stmt *ymod=NULL; /* yang module */
     cxobj     *x;
-    int        ret;
     char      *opname;  /* top-level netconf operation */
-    char      *rpcname; /* RPC name */
     char      *name;
     cxobj     *xc;
+    int        ret;
 
     opname = xml_name(xrpc);
     if ((strcmp(opname, "hello")) == 0){
@@ -884,31 +945,7 @@ xml_bind_yang_rpc(clixon_handle h,
     }
     x = NULL;
     while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
-        rpcname = xml_name(x);
-        if ((ret = xml_rpc_isaction(x)) < 0)
-            goto done;
-        if (ret == 1){
-            if ((ret = xml_bind_yang_rpc_action(h, x, yspec, xerr)) < 0)
-                goto done;
-            if (ret == 0)
-                goto fail;
-            goto ok;
-        } /* if not action fall through */
-        if (ys_module_by_xml(yspec, x, &ymod) < 0)
-            goto done;
-        if (ymod == NULL){
-            if (xerr &&
-                netconf_unknown_element_xml(xerr, "application", rpcname, "Unrecognized RPC (wrong namespace?)") < 0)
-                goto done;
-            goto fail;
-        }
-        if ((yrpc = yang_find(ymod, Y_RPC, rpcname)) == NULL){
-            if (xerr &&
-                netconf_unknown_element_xml(xerr, "application", rpcname, "Unrecognized RPC") < 0)
-                goto done;
-            goto fail;
-        }
-        if ((ret = xml_bind_yang_rpc_rpc(h, x, yrpc, rpcname, xerr)) < 0)
+        if ((ret = xml_bind_yang_rpc_method(h, x, yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

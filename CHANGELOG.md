@@ -63,6 +63,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: Restconf: Identity-refs in JSON RPC:s input statements did not work
 * Fixed: Autocli: Completion in edit mode included other values
 * Fixed: Restconf notification: Add "data:" as prefix to every line., not just first
 * Fixed: memory error in rpc_get2 when error handling

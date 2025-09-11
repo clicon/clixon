@@ -343,7 +343,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 # 2. set identity in other module with restconf , read it with restconf and netconf
 # 3. set identity in other module with netconf, read it with restconf and netconf
 new "restconf add own identity"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-my-crypto:crypto  -d '{"example-my-crypto:crypto":"example-my-crypto:aes"}')" 0 "HTTP/$HVER 201"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/example-my-crypto:crypto -d '{"example-my-crypto:crypto":"example-my-crypto:aes"}')" 0 "HTTP/$HVER 201"
 
 new "restconf get own identity"
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-my-crypto:crypto)" 0 "HTTP/$HVER 200" '{"example-my-crypto:crypto":"aes"}'

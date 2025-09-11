@@ -613,7 +613,7 @@ function testrun()
     expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations)" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"Operation name expected"}}}'
 
     new "restconf rpc missing input"
-    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/clixon-example:example)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"restconf RPC does not have input statement"}}}'
+    expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -d '{}' $proto://$addr/restconf/operations/clixon-example:example)" 0 "HTTP/$HVER 400" '{"ietf-restconf:errors":{"error":{"error-type":"rpc","error-tag":"malformed-message","error-severity":"error","error-message":"Input not well-formed, expected namespace:input"}}}'
 
     new "restconf rpc using POST xml"
     ret=$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+json" -H "Accept: application/yang-data+xml" -d '{"clixon-example:input":{"x":42}}' $proto://$addr/restconf/operations/clixon-example:example)

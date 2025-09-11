@@ -407,8 +407,8 @@ json2xml_decode_identityref(cxobj     *x,
  * @see RFC7951 Sec 4 and 6.8
  */
 int
-json2xml_decode(cxobj     *x,
-                cxobj    **xerr)
+json2xml_decode(cxobj *x,
+                cxobj **xerr)
 {
     int           retval = -1;
     yang_stmt    *y;
@@ -1547,7 +1547,11 @@ _json_parse(clixon_handle h,
                 failed++;
             break;
         case YB_RPC:
-            if ((ret = xml_bind_yang_rpc(h, x, yspec, xerr)) < 0)
+            if ((ret = json_xmlns_translate(yspec, x, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            if ((ret = xml_bind_yang_rpc_method(h, x, yspec, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
