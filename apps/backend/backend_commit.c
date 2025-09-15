@@ -1441,16 +1441,21 @@ xmldb_netconf_db_find(clixon_handle        h,
 
     if (strcmp(db, "candidate") == 0){
         if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-            if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL ||
-                xmldb_cache_get(de) == NULL){
-                /* Create candidates, copies from running when created */
+            if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
                 if ((de = xmldb_candidate_new(h, "candidate", ce)) == NULL)
                     goto done;
             }
+            if (xmldb_cache_get(de) == NULL){
+                if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)
+                    goto done;
+            }
             /* Save original candidate for rebasing match, see from_client_update */
-            if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL ||
-                xmldb_cache_get(de_orig) == NULL){
-                if (xmldb_candidate_new(h, "candidate-orig", ce) == NULL)
+            if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+                if ((de_orig = xmldb_candidate_new(h, "candidate-orig", ce)) == NULL)
+                    goto done;
+            }
+            if (xmldb_cache_get(de_orig) == NULL){
+                if (xmldb_copy(h, "running", xmldb_name_get(de_orig)) < 0)
                     goto done;
             }
         }
@@ -1511,8 +1516,8 @@ xmldb_netconf_name_find(clixon_handle        h,
  */
 db_elmnt*
 xmldb_candidate_new(clixon_handle        h,
-                 const char          *name,
-                 struct client_entry *ce)
+                    const char          *name,
+                    struct client_entry *ce)
 {
     cbuf      *cb = NULL;
     char      *db;

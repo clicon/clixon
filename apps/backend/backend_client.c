@@ -581,7 +581,7 @@ from_client_edit_config(clixon_handle h,
 
     username = clicon_username_get(h);
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec9");
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
     if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
@@ -600,10 +600,6 @@ from_client_edit_config(clixon_handle h,
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
             goto done;
         goto ok;
-    }
-    if ((de = xmldb_find(h, target)) == NULL){
-        clixon_err(OE_DB, 0, "DB not found %s", target);
-        goto done;
     }
     /* Here iddb is =0 (not locked) or locked by this process =myid */
     if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
@@ -1373,7 +1369,7 @@ from_client_get_schema(clixon_handle h,
     cbuf       *cbyang = NULL;
     cbuf       *cbmsg = NULL;
     const char *filename;
-    int        inext;
+    int         inext;
 
     if ((yspec =  clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
