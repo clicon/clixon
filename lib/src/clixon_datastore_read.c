@@ -952,6 +952,8 @@ xmldb_get_cache(clixon_handle     h,
     *xtp = xt;
     retval = 1;
  done:
+    if (msdiff)
+        modstate_diff_free(msdiff);
     return retval;
  fail:
     retval = 0;

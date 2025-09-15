@@ -175,8 +175,9 @@ ce_event_cb(clixon_handle h,
 
 /*! Unlock all db:s of a client and call user unlock callback
  *
- * @param[in]  h       Clixon handle
- * @param[in]  id      Session id
+ * @param[in]  h   Clixon handle
+ * @param[in]  ce  Client entry
+ * @param[in]  id  Session id
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
  */
 static int
@@ -190,8 +191,10 @@ release_all_dbs(clixon_handle        h,
     int       i;
     db_elmnt *de;
     db_elmnt *de1;
+    char     *name;
 
     if ((de = xmldb_candidate_find(h, "candidate", ce)) != NULL){
+        name = xmldb_name_get(de);
         if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
             if (xmldb_delete(h, xmldb_name_get(de)) < 0)
                 goto done;
@@ -204,7 +207,7 @@ release_all_dbs(clixon_handle        h,
          * The target configuration is <candidate>, it has already been
          * modified, and these changes have not been committed or rolled back.
          */
-        else if (xmldb_islocked(h, xmldb_name_get(de)) == id &&
+        else if (xmldb_islocked(h, name) == id &&
             clicon_option_bool(h, "CLICON_AUTOLOCK")){
             if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)
                 goto done;
@@ -365,8 +368,6 @@ backend_client_rm(clixon_handle        h,
                 clixon_event_unreg_fd(ce->ce_s, from_client);
                 close(ce->ce_s);
                 ce->ce_s = 0;
-                if (release_all_dbs(h, ce, ce->ce_id) < 0)
-                    return -1;
             }
             break;
         }
@@ -1930,12 +1931,16 @@ from_client_hello(clixon_handle  h,
     struct client_entry *ce = (struct client_entry *)arg;
 
     if ((val = xml_find_type_value(xe, "cl", "transport", CX_ATTR)) != NULL){
+        if (ce->ce_transport)
+            free(ce->ce_transport);
         if ((ce->ce_transport = strdup(val)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
     }
     if ((val = xml_find_type_value(xe, "cl", "source-host", CX_ATTR)) != NULL){
+        if (ce->ce_source_host)
+            free(ce->ce_source_host);
         if ((ce->ce_source_host = strdup(val)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;

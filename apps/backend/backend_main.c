@@ -102,8 +102,6 @@ backend_terminate(clixon_handle h)
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((ss = clicon_socket_get(h)) != -1)
         close(ss);
-    /* Disconnect datastore */
-    xmldb_disconnect(h);
     /* Clear module state caches */
     if ((x = clicon_modst_cache_get(h, 0)) != NULL)
         xml_free(x);
@@ -137,7 +135,10 @@ backend_terminate(clixon_handle h)
     clixon_debug(CLIXON_DBG_BACKEND, "done");
     clixon_err_exit();
     clixon_log_exit();
-    backend_handle_exit(h); /* Also deletes streams. Cannot use h after this. */
+    stream_delete_all(h, 1);
+    xmldb_disconnect(h);
+    backend_handle_exit(h); /* Cannot use h after this. */
+
     return 0;
 }
 
