@@ -1029,6 +1029,7 @@ from_client_discard_changes(clixon_handle h,
             goto done;
         }
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
+        cprintf(cbx, "<db>%s</db>", db);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
             goto done;
         goto ok;

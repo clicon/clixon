@@ -1164,12 +1164,15 @@ module clixon-config {
             type boolean;
             default false;
             description
-                "Set if all edit-config implicitly locks without the need of an explicit lock-db
+                "Automatically obtain exclusive lock on editing.
+                 Set if all edit-config implicitly locks without the need of an explicit lock-db
                  In short, the lock is obtained by edit-config and copy-config and released by
                  discard and commit.
-                 Primarliy applies to the candidate datastore.
+                 Only applies to the candidate datastores.
                  Also, any edits in candidate are discarded if the client closes the connection.
-                 This effectively enables exclusive locking and disables shared candidate";
+                 This effectively enables exclusive locking and disables shared candidate,
+                 This is an automatic invocation of locks as described in RFC 6241 7.5.
+                 Note that you can still handle manual locks using NETCONF lock/unlock";
         }
         /* Datastore XMLDB */
         leaf CLICON_DATASTORE_CACHE {

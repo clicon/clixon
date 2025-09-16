@@ -327,13 +327,13 @@ new "netconf lock"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf unlock" 
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id><db>candidate</db></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>"
 
 new "netconf lock using prefix xx" 
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"${BASENS}\" xx:message-id=\"42\"><xx:lock><xx:target><xx:candidate/></xx:target></xx:lock></xx:rpc>" "" "<rpc-reply xmlns=\"${BASENS}\" xmlns:xx=\"${BASENS}\" xx:message-id=\"42\"><ok/></rpc-reply>"
 
 new "netconf unlock using prefix xx" 
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"${BASENS}\" xx:message-id=\"42\"><xx:unlock><xx:target><xx:candidate/></xx:target></xx:unlock></xx:rpc>" "" "<rpc-reply xmlns=\"${BASENS}\" xmlns:xx=\"${BASENS}\" xx:message-id=\"42\"><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<xx:rpc xmlns:xx=\"${BASENS}\" xx:message-id=\"42\"><xx:unlock><xx:target><xx:candidate/></xx:target></xx:unlock></xx:rpc>" "" "<rpc-reply xmlns=\"${BASENS}\" xmlns:xx=\"${BASENS}\" xx:message-id=\"42\"><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id><db>candidate</db></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>"
 
 # send multiple frames
 rpc=$(chunked_framing "<rpc $DEFAULTNS><lock><target><candidate/></target></lock></rpc>")
@@ -360,7 +360,7 @@ rpc=$(chunked_framing "<rpc $DEFAULTNS><unlock><target><candidate/></target></un
 rpc="${rpc}
 $(chunked_framing "<rpc $DEFAULTNS><unlock><target><candidate/></target></unlock></rpc>")"
 new "netconf unlock/unlock"
-expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO$rpc" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>"
+expecteof "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO$rpc" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>0</session-id><db>candidate</db></error-info><error-severity>error</error-severity><error-message>Unlock failed, lock is not currently active</error-message></rpc-error></rpc-reply>"
 
 new "close-session"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><close-session/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -392,7 +392,7 @@ PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 sleep 1
 new "try lock should fail"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>[0-9]*</session-id></error-info><error-severity>error</error-severity><error-message>Operation failed, "
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><lock><target><running/></target></lock></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>lock-denied</error-tag><error-info><session-id>[0-9]*</session-id><db>running</db></error-info><error-severity>error</error-severity><error-message>Operation failed, "
 
 new "soft kill ${PIDS[0]}"
 kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st

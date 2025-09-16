@@ -505,6 +505,7 @@ do_lock(clixon_handle h,
         confirmed_commit_state_get(h) != INACTIVE){
         if ((otherid = confirmed_commit_session_id_get(h)) != 0){
             cprintf(cbx, "<session-id>%u</session-id>", otherid);
+            cprintf(cbx, "<db>running</db>");
             if (netconf_lock_denied(cbret, cbuf_get(cbx),
                                     "Operation failed, another session has an ongoing confirmed commit") < 0)
                 goto done;
@@ -597,12 +598,14 @@ from_client_edit_config(clixon_handle h,
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
+        cprintf(cbx, "<db>%s</db>", target);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
             goto done;
         goto ok;
     }
     /* Here iddb is =0 (not locked) or locked by this process =myid */
-    if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
+    if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK") &&
+        xmldb_candidate_get(de)){
         if ((ret = do_lock(h, cbret, myid, de)) < 0)
             goto done;
         if (ret == 0)
@@ -875,12 +878,14 @@ from_client_copy_config(clixon_handle h,
             goto done;
         }
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
+        cprintf(cbx, "<db>%s</db>", target);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Copy failed, lock is already held") < 0)
             goto done;
         goto ok;
     }
     /* Here iddb is =0 (not locked) or locked by this process =myid */
-    if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK")){
+    if (iddb == 0 && clicon_option_bool(h, "CLICON_AUTOLOCK") &&
+        xmldb_candidate_get(detarget)){
         if ((ret = do_lock(h, cbret, myid, detarget)) < 0)
             goto done;
         if (ret == 0)
@@ -967,6 +972,7 @@ from_client_delete_config(clixon_handle h,
     iddb = xmldb_islocked(h, target);
     if (iddb && myid != iddb){
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
+        cprintf(cbx, "<db>%s</db>", target);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
             goto done;
         goto ok;
@@ -1057,6 +1063,7 @@ from_client_lock(clixon_handle h,
      */
     if ((iddb = xmldb_islocked(h, db)) != 0){
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
+        cprintf(cbx, "<db>%s</db>", db);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
             goto done;
         goto ok;
@@ -1125,6 +1132,7 @@ from_client_unlock(clixon_handle h,
      */
     if (iddb == 0){
         cprintf(cbx, "<session-id>0</session-id>");
+        cprintf(cbx, "<db>%s</db>", db);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock is not currently active") < 0)
             goto done;
         goto ok;
@@ -1134,6 +1142,7 @@ from_client_unlock(clixon_handle h,
      */
     else if (iddb != id){
         cprintf(cbx, "<session-id>%u</session-id>", iddb);
+        cprintf(cbx, "<db>%s</db>", db);
         if (netconf_lock_denied(cbret, cbuf_get(cbx), "Unlock failed, lock held by other session") < 0)
             goto done;
         goto ok;
