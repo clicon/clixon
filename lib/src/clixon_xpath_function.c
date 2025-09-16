@@ -1270,7 +1270,7 @@ xp_function_boolean(xp_ctx            *xc,
     int         retval = -1;
     xp_ctx     *xr = NULL;
     xp_ctx     *xr0 = NULL;
-    int         bool;
+    int         flag;
 
     if (xs == NULL || xs->xs_c0 == NULL){
         clixon_err(OE_XML, EINVAL, "not expects but did not get one argument");
@@ -1278,14 +1278,14 @@ xp_function_boolean(xp_ctx            *xc,
     }
     if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
         goto done;
-    bool = ctx2boolean(xr0);
+    flag = ctx2boolean(xr0);
     if ((xr = malloc(sizeof(*xr))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_BOOL;
-    xr->xc_bool = bool;
+    xr->xc_bool = flag;
     *xrp = xr;
     retval = 0;
  done:
