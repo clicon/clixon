@@ -675,6 +675,8 @@ rpc $session_2 "<commit><confirmed/><persist-id>id</persist-id></commit>"
 sleep 2
 rpc $session_2 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">commit-persist</l>"
 
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
+rpc $session_1 "<commit/>"
 
 puts "Spawn CLI session"
 global session_cli
@@ -686,39 +688,43 @@ proc cli { command { reply "" }} {
     send -i $session_cli "$command\n"
     expect {
         -i $session_cli
-        -re ".*$reply.*prompt> " {}
+        -re "$command.*$reply.*prompt> " {}
 	    timeout { puts "\n\ntimeout"; exit 2 }
 	    eof { puts "\n\neof"; exit 3 }
     }
 }
+# wait for prompt
+cli ""
 
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
-puts "CLI update ok"
-cli "set l \"cli-ok\""
-cli "show config" "\"cli-ok\""
-cli "update"
+# create private netconf candidate
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-conflict</l></config></edit-config>"
 
 puts "CLI commit ok"
+cli "set l \"cli-ok\""
 cli "commit"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">cli-ok</l>"
+
+puts "NETCONF conflict"
 rpc $session_1 "<commit/>" "Conflict occured"
 rpc $session_1 "<discard-changes/>"
-rpc $session_1 "<commit/>"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
 
-rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
-puts "CLI update conflict"
+puts "CLI commit Conflict"
 cli "set l \"cli-conflict\""
+rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
 rpc $session_1 "<commit/>"
-cli "update" "Conflict occured"
-
-puts "CLI commit conflict"
 cli "commit" "Conflict occured"
-rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">netconf-ok</l>"
 
 puts "CLI discard"
 cli "discard"
+
+puts "CLI update"
+cli "update"
+
+puts "CLI commit ok"
+cli "set l \"cli-retry\""
 cli "commit"
-rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">netconf-ok</l>"
+
 
 close $session_cli
 close $session_1
