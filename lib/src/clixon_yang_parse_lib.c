@@ -1328,14 +1328,18 @@ yang_parse_recurse(clixon_handle h,
     yang_stmt    *yrev;
     yang_stmt    *ybelongto;
     yang_stmt    *yrealmod;
+    yang_stmt    *ydomain;
     char         *submodule;
     char         *subrevision;
+    char         *domain = NULL;
     yang_stmt    *subymod;
     enum rfc_6020 keyw;
     int           inext;
 
     if (ys_real_module(ymod, &yrealmod) < 0)
         goto done;
+    if ((ydomain = ys_domain(ymod)) != NULL)
+        domain = yang_argument_get(ydomain);
     /* go through all import (modules) and include(submodules) of ysp */
     inext = 0;
     while ((yi = yn_iter(ymod, &inext)) != NULL){
@@ -1354,7 +1358,7 @@ yang_parse_recurse(clixon_handle h,
                       keyw==Y_IMPORT?Y_MODULE:Y_SUBMODULE,
                       submodule) == NULL){
             /* recursive call */
-            if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, NULL, yang_argument_get(ymod))) == NULL)
+            if ((subymod = yang_parse_module(h, submodule, subrevision, ysp, domain, yang_argument_get(ymod))) == NULL)
                 goto done;
             /* Sanity check: if submodule, its belongs-to statement shall point to the module */
             if (keyw == Y_INCLUDE){

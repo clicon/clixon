@@ -63,6 +63,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: YANG domain lost when parsing import/include YANGs
 * Fixed: Restconf: Identity-refs in JSON RPC:s input statements did not work
 * Fixed: Autocli: Completion in edit mode included other values
 * Fixed: Restconf notification: Add "data:" as prefix to every line., not just first
