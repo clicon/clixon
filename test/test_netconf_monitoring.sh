@@ -29,6 +29,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
   <CLICON_NETCONF_MONITORING>true</CLICON_NETCONF_MONITORING>
+  <CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA>false</CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA>
 </clixon-config>
 EOF
 
@@ -64,7 +65,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "wait backend"
+new "wait backend 1"
 wait_backend
 
 new "Retrieving all state via <get> operation"
@@ -154,7 +155,8 @@ if [ $BE -ne 0 ]; then
     new "start backend -s init -f $cfg -o CLICON_YANG_MAIN_DIR=$YANGDIR -o CLICON_YANG_MAIN_FILE=$fyang"
     start_backend -s init -f $cfg  -o CLICON_YANG_MAIN_DIR=$YANGDIR
 fi
-new "wait backend"
+
+new "wait backend 2"
 wait_backend
 
 new "Loop over all yangs in $YANGDIR"
@@ -191,6 +193,54 @@ EOF
     fi
 done
 fi # valgrind
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
+
+# Use CDATA encoding
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg -o CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA=true"
+    start_backend -s init -f $cfg -o CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA=true
+fi
+
+new "wait backend 3"
+wait_backend
+
+# 4.2.  Retrieving Schema Instances using CDATA
+# From 2b. bar, version 2008-06-1 in YANG format, via get-schema
+new "Retrieving clixon-example schema instance using id, version, format and CDATA"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-schema xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><identifier>clixon-example</identifier><version>2022-01-01</version><format>yang</format></get-schema></rpc>" "<rpc-reply $DEFAULTNS><data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><!\[CDATA\[module clixon-example{ kalle
+  yang-version 1.1;
+  namespace \"urn:example:clixon\";
+  prefix ex;
+  include clixon-sub;
+  revision 2022-01-01;
+}
+]]></data></rpc-reply>"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
+fi
 
 rm -rf $dir
 

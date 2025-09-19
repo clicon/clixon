@@ -26,6 +26,7 @@ Expected: October 2025
 * All internal session clients start with NETCONF hello
 * New `clixon-config@2025-08-01.yang` revision
    * Added option: `CLICON_XMLDB_CANDIDATE_INMEM` to run candidate datastore in-mem
+   * Added option: `CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA` to encode schema content with CDATA
 
 ### C/CLI-API changes on existing features
 

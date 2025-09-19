@@ -1454,8 +1454,12 @@ from_client_get_schema(clixon_handle h,
         goto done;
     }
     if ((filename = yang_filename_get(ymatch)) != NULL){
+        if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA"))
+            cprintf(cbyang, "<![CDATA[");
         if (clicon_file_cbuf(filename, cbyang) < 0)
             goto done;
+        if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA"))
+            cprintf(cbyang, "]]>");
     }
     xml_chardata_cbuf_append(cbret, 0, cbuf_get(cbyang));
     cprintf(cbret, "</data></rpc-reply>");

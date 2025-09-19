@@ -53,6 +53,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_XMLDB_CANDIDATE_INMEM
+                CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA
              Released in Clixon 7.6";
     }
     revision 2025-05-01 {
@@ -808,6 +809,14 @@ module clixon-config {
                 "Extra Netconf monitoring location directory where schemas can be retrieved
                  apart from NETCONF.
                  Only if CLICON_NETCONF_MONITORING";
+        }
+        leaf CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA {
+            type boolean;
+            description
+                "Encode YANG modules schema content with XML CDATA encoding
+                 Several devices use CDATA around YANG, this is to mimic that behaviour
+                 Only if CLICON_NETCONF_MONITORING";
+            default false;
         }
         leaf CLICON_NETCONF_DUPLICATE_ALLOW {
             type boolean;
