@@ -60,6 +60,12 @@
 /*! Delimiter when creating yang2cli grouping cmd label */
 #define AUTOCLI_CMD_DELIM "--"
 
+/*! Backward-compatible 7.5 CLIgen preferences for strings
+ */
+#ifndef COV_PREF_STRING_REGEXP
+#define COV_PREF_STRING_REGEXP 7
+#endif
+
 /*
  * Prototypes
  */

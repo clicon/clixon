@@ -45,6 +45,7 @@
 #define YANG_OPTIONS_LENGTH           0x01
 #define YANG_OPTIONS_RANGE            0x02
 #define YANG_OPTIONS_FRACTION_DIGITS  0x04
+#define YANG_OPTIONS_PATTERN          0x08
 
 /*
  * Types

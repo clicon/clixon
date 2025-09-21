@@ -587,10 +587,13 @@ static int yang2cli_var_union(clixon_handle h, yang_stmt *ys, char *origtype,
  * @param[in]  cvv      Cvec with array of range_min/range_max cv:s
  * @param[in]  patterns Cvec of regexp patterns
  * @param[in]  fraction for decimal64, how many digits after period
+ * @param[out] flags    Keep track of previous settings, using YANG_OPTIONS_ flags
  * @param[out] cb       Buffer where cligen code is written
  * @retval     0        OK
  * @retval    -1        Error
  * @see yang_type_resolve for options and other arguments
+ * @note flags used for setting increased preference in unions of a single string pattern
+ *       to avoid ambiguity
  */
 static int
 yang2cli_leaf_var_sub(clixon_handle h,
@@ -602,18 +605,19 @@ yang2cli_leaf_var_sub(clixon_handle h,
                       cvec         *cvv,
                       cvec         *patterns,
                       uint8_t       fraction_digits,
+                      uint32_t     *flags,
                       cbuf         *cb
                       )
 {
-    int           retval = -1;
-    char         *type;
-    yang_stmt    *yi = NULL;
-    int           i;
-    int           inext;
-    int           j;
-    const char   *cvtypestr;
-    char         *arg;
-    size_t       len;
+    int         retval = -1;
+    char       *type;
+    yang_stmt  *yi = NULL;
+    int         i;
+    int         j;
+    int         inext;
+    const char *cvtypestr;
+    char       *arg;
+    size_t      len;
 
     if (cvtype == CGV_VOID){
         retval = 0;
@@ -654,13 +658,21 @@ yang2cli_leaf_var_sub(clixon_handle h,
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
         cprintf(cb, " fraction-digits:%u", fraction_digits);
 
-    if (options & (YANG_OPTIONS_RANGE|YANG_OPTIONS_LENGTH)){
+    if (options & (YANG_OPTIONS_RANGE)){
+        if (yang2cli_var_range(ys, options, cvv, cb) < 0)
+            goto done;
+    }
+    else if (options & (YANG_OPTIONS_LENGTH)){
         if (yang2cli_var_range(ys, options, cvv, cb) < 0)
             goto done;
     }
     if (patterns && cvec_len(patterns)){
         if (yang2cli_var_pattern(h, patterns, cb) < 0)
             goto done;
+        if (flags && (*flags & YANG_OPTIONS_PATTERN) == 0x0){
+            cprintf(cb, " preference:%u", COV_PREF_STRING_REGEXP+1);
+            *flags |= YANG_OPTIONS_PATTERN;
+        }
     }
     cprintf(cb, ">");
     yang2cli_helptext(cb, helptext);
@@ -678,8 +690,8 @@ yang2cli_leaf_var_sub(clixon_handle h,
  * @param[in]  ys        Yang statement (caller of type)
  * @param[in]  origtype  Name of original type in the call
  * @param[in]  ytsub     Yang type invocation, a sub-type of a resolved union type
- * @param[in]  cb        Buffer where cligen code is written
- * @param[in]  helptext  CLI help text
+ * @param[out] flags    Keep track of previous settings
+ * @param[out] cb        Buffer where cligen code is written
  * @retval     0         OK
  * @retval    -1         Error
  */
@@ -689,6 +701,7 @@ yang2cli_var_union_one(clixon_handle h,
                        char         *origtype,
                        yang_stmt    *ytsub,
                        char         *helptext,
+                       uint32_t     *flags,
                        cbuf         *cb)
 {
     int          retval = -1;
@@ -724,7 +737,7 @@ yang2cli_var_union_one(clixon_handle h,
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;
         if ((retval = yang2cli_leaf_var_sub(h, ys, ytype, helptext, cvtype,
-                                            options, cvv, patterns, fraction_digits, cb)) < 0)
+                                            options, cvv, patterns, fraction_digits, flags, cb)) < 0)
             goto done;
     }
     retval = 0;
@@ -758,6 +771,7 @@ yang2cli_var_union(clixon_handle h,
     yang_stmt *ytsub;
     int        i;
     int        inext;
+    uint32_t   flags = 0x0;
 
     i = 0;
     inext = 0;
@@ -770,7 +784,7 @@ yang2cli_var_union(clixon_handle h,
             continue;
         if (i++)
             cprintf(cb, "|");
-        if (yang2cli_var_union_one(h, ys, origtype, ytsub, helptext, cb) < 0)
+        if (yang2cli_var_union_one(h, ys, origtype, ytsub, helptext, &flags, cb) < 0)
             goto done;
     }
     retval = 0;
@@ -865,7 +879,7 @@ yang2cli_leafref_var(clixon_handle h,
         cprintf(cb, "(");
         if (regular_value){
             if (yang2cli_leaf_var_sub(h, ys, yrestype, helptext, cvtype,
-                                      options, cvv, patterns, fraction_digits, cb) < 0)
+                                      options, cvv, patterns, fraction_digits, NULL, cb) < 0)
                 goto done;
         }
     }
@@ -983,7 +997,7 @@ yang2cli_leaf_var(clixon_handle h,
         cprintf(cb, "(");
         if (regular_value){
             if (yang2cli_leaf_var_sub(h, ys, yrestype, helptext, cvtype,
-                                      options, cvv, patterns, fraction_digits, cb) < 0)
+                                      options, cvv, patterns, fraction_digits, NULL, cb) < 0)
                 goto done;
         }
     }

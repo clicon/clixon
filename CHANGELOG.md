@@ -64,6 +64,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Autocli of yang union if several elements are pattern strings may return ambiguos](https://github.com/clicon/clixon/issues/623)
 * Fixed: YANG domain lost when parsing import/include YANGs
 * Fixed: Restconf: Identity-refs in JSON RPC:s input statements did not work
 * Fixed: Autocli: Completion in edit mode included other values
