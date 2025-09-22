@@ -1536,6 +1536,7 @@ yn_iter(yang_stmt *yparent,
  * @param[in]  argument   String compare w argument. if NULL, match any.
  * @retval     ys         Yang statement, if any
  * @see yang_find_datanode
+ * @note  There is a special case for submodules that need a recursion flag YANG_FLAG_FIND
  */
 yang_stmt *
 yang_find(yang_stmt  *yn,
@@ -1551,10 +1552,16 @@ yang_find(yang_stmt  *yn,
     yang_stmt *ym;
     yang_stmt *yorig;
 
+    /* Recursion check */
+    if (yang_flag_get(yn, YANG_FLAG_FIND) != 0x0)
+        return NULL;
+    yang_flag_set(yn, YANG_FLAG_FIND);
     if (_yang_use_orig &&
         (yorig = yang_orig_get(yn)) != NULL &&
         uses_orig_ptr(keyword)){
-        return yang_find(yorig, keyword, argument);
+        yret = yang_find(yorig, keyword, argument);
+        yang_flag_reset(yn, YANG_FLAG_FIND);
+        return yret;
     }
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
@@ -1565,8 +1572,11 @@ yang_find(yang_stmt  *yn,
                 break;
             }
         }
+#if 1
         /* Special case: if not match and yang node is module or submodule, extend
          * search to include submodules 
+         * It would be nice to get rid of this special case, and then also remove
+         * the YANG_FLAG_FIND mechanism
          */
         if (yretsub == NULL &&
             yang_keyword_get(ys) == Y_INCLUDE &&
@@ -1579,7 +1589,9 @@ yang_find(yang_stmt  *yn,
                 yretsub = yang_find(ym, keyword, argument);
             }
         }
+#endif
     }
+    yang_flag_reset(yn, YANG_FLAG_FIND);
     return yret?yret:yretsub;
 }
 

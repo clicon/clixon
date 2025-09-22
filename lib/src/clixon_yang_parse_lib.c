@@ -39,7 +39,7 @@
  * CALLING ORDER OF YANG PARSE FILES
  *                                      yang_spec_parse_module
  *                                     |                       |
- *                                     v                       v   v
+ *                                     v        |v             v
  * yang_spec_parse_file-> yang_parse_post->yang_parse_recurse->yang_parse_module
  *                    \   /                                         v
  * yang_spec_load_dir ------------------------------------> yang_parse_filename
@@ -894,10 +894,7 @@ yang_parse_str(const char *str,
     clixon_yang_yacc yy = {0,};
     yang_stmt       *ymod = NULL;
 
-    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
-        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
-    else
-        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_TRUNC, "%s", str);
+    clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
     if (yspec == NULL){
         clixon_err(OE_YANG, 0, "Yang parse need top level yang spec");
         goto done;
@@ -1475,10 +1472,13 @@ ys_visit(struct yang_stmt   *yn,
     yspec = ys_spec(yn);
     /* if n has a permanent mark then return */
     if (yang_flag_get(yn, YANG_FLAG_MARK))
-        return 0;
+        goto ok;
     /* if n has a temporary mark then stop (not a DAG) */
     if (yang_flag_get(yn, YANG_FLAG_TMP)){
-        clixon_err(OE_YANG, EFAULT, "Yang module %s import/include is circular", yang_argument_get(yn));
+        /* RFC 7950 does not explicitly forbid circular includes */
+        if (yang_keyword_get(yn) == Y_SUBMODULE)
+            goto ok;
+        clixon_err(OE_YANG, EFAULT, "Yang module %s import is circular", yang_argument_get(yn));
         goto done;
     }
     /* mark n with a temporary mark */
@@ -1511,6 +1511,7 @@ ys_visit(struct yang_stmt   *yn,
         goto done;
     }
     (*ylist)[*ylen - 1] = yn;
+ ok:
     retval = 0;
  done:
     return retval;

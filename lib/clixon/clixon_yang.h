@@ -100,6 +100,8 @@
                                       * may be different from orig, therefore do not use link to
                                       * original. May also be due to deviations of derived trees
                                       */
+#define YANG_FLAG_FIND        0x4000 /* Dynamic flag in yang_find for recursive sub-modules */
+
 /*! Names of top-level data YANGs
  */
 #define YANG_DOMAIN_TOP "top"

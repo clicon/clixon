@@ -512,7 +512,9 @@ yang_cardinality(clixon_handle h,
         ck = yang_keyword_get(ys);
         if (pk == Y_UNKNOWN || ck == Y_UNKNOWN) /* special case */
             continue;
-        /* Find entry in yang cardinality table from parent/child keyword pair */
+        /* Find entry in yang cardinality table from parent/child keyword pair
+         * This actually should never happen, since part of yang parsing rules
+         */
         if ((yc = _yc_search[pk][ck]) == NULL){
             clixon_err(OE_YANG, 0, "%s: \"%s\"(%s) is child of \"%s\"(%s), but should not be",
                        modname,

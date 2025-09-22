@@ -129,10 +129,7 @@ yang_schema_nodeid_subparse(char                      *str,
     int                         retval = -1;
     clixon_yang_schemanode_yacc ife = {0,};
 
-    if (clixon_debug_get() & CLIXON_DBG_DETAIL)
-        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
-    else
-        clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_TRUNC, "%s", str);
+    clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
     ife.if_parse_string = str;
     ife.if_linenum = linenum;
     ife.if_mainfile = mainfile;
