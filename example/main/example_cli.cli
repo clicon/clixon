@@ -176,3 +176,6 @@ session("Client sessions") {
    kill("Kill client session")
       <session:uint32>("Client session number"), cli_kill_session("session");
 }
+
+update("Update private candidate from running configuration"), cli_update();
+

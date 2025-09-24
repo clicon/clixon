@@ -28,7 +28,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
-  <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
@@ -147,39 +147,6 @@ EOF
 EOF
 } # generate
 
-cat <<EOF > $dir/example_pipe.cli
-CLICON_MODE="|example_pipe"; # Must start with |
-\| {
-   grep("Search for pattern") <arg:string>, pipe_grep_fn("-e", "arg");
-   except("Inverted search") <arg:string>, pipe_grep_fn("-v", "arg");
-   tail("Output last part") <arg:string>, pipe_tail_fn("-n", "arg");
-   count("Line count"), pipe_wc_fn("-l");
-   show("Show other format") {
-     cli("set Input cli syntax"), pipe_showas_fn("cli", true, "set ");
-     xml("XML"), pipe_showas_fn("xml", true);
-     json("JSON"), pipe_showas_fn("json");
-     text("Text curly braces"), pipe_showas_fn("text");
-   }
-   save("Save to file") <filename:string>("Local filename"), pipe_save_file("filename");
-}
-EOF
-
-cat <<EOF > $dir/privcand.cli
-CLICON_MODE="example";
-CLICON_PROMPT="prompt> ";
-CLICON_PLUGIN="example_cli";
-
-# Autocli syntax tree operations
-show ("Show private candidate"), cli_show_auto_mode("candidate", "default", true, false);
-compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "default");
-load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "replace");
-set @datamodel, cli_auto_set();
-validate("Validate changes"), cli_validate();
-commit("Commit the changes"), cli_commit();
-discard("Discard edits (rollback 0)"), discard_changes();
-update("Send private candidate update"), cli_update();
-EOF
-
 new "Generate file"
 generate "$dbdir/startup_db" $perfnr true true
 
@@ -209,11 +176,10 @@ set CFG [lindex $argv 0]
 set USER [lindex $argv 1]
 
 proc cli { session command { reply "" }} {
-    global USER
     send -i $session "$command\n"
     expect {
         -i $session
-        -re "$command.*$reply.*prompt>" {puts "cli-$session: $expect_out(buffer)"}
+        -re "$command.*$reply.*\@.*\/> " {puts -nonewline " $expect_out(buffer)"}
 	    timeout { puts "\n\ntimeout"; exit 2 }
 	    eof { puts "\n\neof"; exit 3 }
     }
@@ -231,18 +197,19 @@ puts "cli-$session_2 spawned"
 # wait for prompt
 cli $session_2 ""
 
-puts "No conflict"
+# No conflict
 cli $session_1 "set a b \"cli1\""
 cli $session_2 "set a b \"cli2\""
 cli $session_2 "commit"
 
-puts "Conflict"
+# Conflict
 cli $session_1 "commit" "Conflict occured"
 cli $session_1 "discard"
 cli $session_1 "update"
 cli $session_1 "set a b \"cli1\""
 cli $session_1 "commit"
 
+puts "\nClose sessions"
 close $session_1
 close $session_2
 
