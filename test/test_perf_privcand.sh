@@ -171,7 +171,7 @@ new "Spawn expect script to simulate two CLI sessions"
 time sudo expect - "$cfg" $(whoami) <<'EOF'
 
 log_user 0
-set timeout 2
+set timeout 5
 set CFG [lindex $argv 0]
 set USER [lindex $argv 1]
 

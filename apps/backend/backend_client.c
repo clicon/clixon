@@ -189,17 +189,23 @@ release_all_dbs(clixon_handle        h,
     char    **keys = NULL;
     size_t    klen;
     int       i;
+    db_elmnt *de0 = NULL;
     db_elmnt *de;
-    db_elmnt *de1;
-    char     *name;
+    char     *db1 = NULL;
+    char     *db0 = NULL;
+    uint32_t  ceid;
 
-    if ((de = xmldb_candidate_find(h, "candidate", ce)) != NULL){
-        name = xmldb_name_get(de);
+    ceid = ce->ce_id;
+    if (xmldb_candidate_find(h, "candidate", ceid, &de0, &db0) < 0)
+        goto done;
+    if (de0 != NULL){
         if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-            if (xmldb_delete(h, xmldb_name_get(de)) < 0)
+            if (xmldb_delete(h, db0) < 0)
                 goto done;
-            if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
-                if (xmldb_delete(h, xmldb_name_get(de1)) < 0)
+            if (xmldb_candidate_find(h, "candidate-orig", ceid, NULL, &db1) < 0)
+                goto done;
+            if (db1 != NULL){
+                if (xmldb_delete(h, db1) < 0)
                     goto done;
             }
         }
@@ -207,11 +213,11 @@ release_all_dbs(clixon_handle        h,
          * The target configuration is <candidate>, it has already been
          * modified, and these changes have not been committed or rolled back.
          */
-        else if (xmldb_islocked(h, name) == id &&
+        else if (xmldb_islocked(h, db0) == id &&
             clicon_option_bool(h, "CLICON_AUTOLOCK")){
-            if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)
+            if (xmldb_copy(h, "running", db0) < 0)
                 goto done;
-            xmldb_modified_set(de, 0); /* reset dirty bit */
+            xmldb_modified_set(de0, 0); /* reset dirty bit */
         }
     }
     /* get all db:s */
@@ -772,13 +778,15 @@ from_client_edit_config(clixon_handle h,
         }
 #ifdef PRIVCAND_DELETE_ON_COMMIT
         if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-            db_elmnt            *de_orig;
+            char *db1 = NULL;
 
             /* Remove candidate and candidate-orig*/
             if (xmldb_delete(h, xmldb_name_get(de)) < 0)
                 goto done;
-            if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
-                if (xmldb_delete(h, xmldb_name_get(de_orig)) < 0)
+            if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
+                goto done;
+            if (db1 != NULL){
+                if (xmldb_delete(h, db1) < 0)
                     goto done;
             }
         }
@@ -951,7 +959,7 @@ from_client_delete_config(clixon_handle h,
     cbuf                *cbx = NULL; /* Assist cbuf */
     cbuf                *cbmsg = NULL;
     db_elmnt            *de;
-    db_elmnt            *de1;
+    char                *db1 = NULL;
     int                  ret;
 
     if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
@@ -991,11 +999,13 @@ from_client_delete_config(clixon_handle h,
         xmldb_candidate_get(de)){
         /* deleting the private candidate will destroy the private candidate for
            that session */
-        if ((de1 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
+        if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
+            goto done;
+        if (db1 == NULL){
             clixon_err(OE_DB, 0, "candidate-orig not found");
             goto done;
         }
-        if (xmldb_delete(h, xmldb_name_get(de1)) < 0)
+        if (xmldb_delete(h, db1) < 0)
             goto done;
     }
     else {
@@ -1653,7 +1663,7 @@ from_client_compare(clixon_handle h,
         if (netconf_invalid_value(cbret, "protocol", "missing source identifier") < 0)
             goto done;
     }
-    if (xmldb_netconf_db_find(h, id1, ce, &de1) < 0)
+    if (xmldb_find_create(h, id1, ce->ce_id, &de1) < 0)
         goto done;
     if ((db2 = xml_find_body(xe, "target")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
@@ -1665,7 +1675,7 @@ from_client_compare(clixon_handle h,
         if (netconf_invalid_value(cbret, "protocol", "missing target identifier") < 0)
             goto done;
     }
-    if (xmldb_netconf_db_find(h, id2, ce, &de2) < 0)
+    if (xmldb_find_create(h, id2, ce->ce_id, &de2) < 0)
         goto done;
     if (xml_find(xe, "all") != NULL)
         all++;

@@ -801,9 +801,9 @@ backend_update(clixon_handle        h,
                cbuf                *cbret)
 {
     int            retval = -1;
-    db_elmnt      *de0;
+    db_elmnt      *de0 = NULL;
     cxobj         *xorig = NULL;
-    char          *db0;
+    char          *db0 = NULL;
     cxobj         *xcand = NULL;
     char          *db1;
     cxobj         *xrun = NULL;
@@ -811,15 +811,16 @@ backend_update(clixon_handle        h,
     diff_rebase_t *dr = NULL;
 
     /* Original candidate */
-    if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
-        clixon_err(OE_DB, 0, "candidate-orig not found");
+    if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, &de0, &db0) < 0)
+        goto done;
+    if (de0 == NULL){
+        clixon_err(OE_DB, 0, "candidate-orig de not found");
         goto done;
     }
     if ((xorig = xmldb_cache_get(de0)) == NULL){
         clixon_err(OE_DB, 0, "candidate-orig cache not found");
         goto done;
     }
-    db0 = xmldb_name_get(de0);
     /* Private candidate */
     if ((xcand = xmldb_cache_get(de1)) == NULL){
         clixon_err(OE_DB, 0, "candidate cache not found");
@@ -927,7 +928,7 @@ from_client_commit(clixon_handle h,
         if (ret == 0)
             goto ok;
     }
-    if (xmldb_netconf_db_find(h, "candidate", ce, &de) < 0)
+    if (xmldb_find_create(h, "candidate", ce->ce_id, &de) < 0)
         goto done;
     db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
@@ -967,13 +968,15 @@ from_client_commit(clixon_handle h,
     }
 #ifdef PRIVCAND_DELETE_ON_COMMIT
     if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-        db_elmnt            *de_orig;
+        char *db1 = NULL;
 
         /* Remove candidate and candidate-orig*/
         if (xmldb_delete(h, xmldb_name_get(de)) < 0)
             goto done;
-        if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
-            if (xmldb_delete(h, xmldb_name_get(de_orig)) < 0)
+        if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
+            goto done;
+        if (db1 != NULL){
+            if (xmldb_delete(h, db1) < 0)
                 goto done;
         }
     }
@@ -1017,9 +1020,9 @@ from_client_discard_changes(clixon_handle h,
     cbuf                *cbx = NULL; /* Assist cbuf */
     db_elmnt            *de;
     char                *db;
-    db_elmnt            *de0;
+    char                *db0 = NULL;
 
-    if (xmldb_netconf_db_find(h, "candidate", ce, &de) < 0)
+    if (xmldb_find_create(h, "candidate", ce->ce_id, &de) < 0)
         goto done;
     db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
@@ -1040,8 +1043,10 @@ from_client_discard_changes(clixon_handle h,
          * state it was when it was initially created, or to the state following
          * the latest <update> operation, whichever is most recent.
          */
-        if ((de0 = xmldb_candidate_find(h, "candidate-orig", ce)) != NULL){
-            if (xmldb_copy(h, xmldb_name_get(de0), db) < 0){
+        if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db0) < 0)
+            goto done;
+        if (db0 != NULL){
+            if (xmldb_copy(h, db0, db) < 0){
                 if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
                     goto done;
                 goto ok;
@@ -1073,7 +1078,7 @@ from_client_discard_changes(clixon_handle h,
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
  * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK. This may indicate both ok and err msg back to client 
+ * @retval     0       OK. This may indicate both ok and err msg back to client
  *                     (eg invalid)
  * @retval    -1       Error
  */
@@ -1157,7 +1162,7 @@ from_client_update(clixon_handle h,
     default:
         break;
     }
-    if (xmldb_netconf_db_find(h, "candidate", ce, &de) < 0)
+    if (xmldb_find_create(h, "candidate", ce->ce_id, &de) < 0)
         goto done;
     if ((ret = backend_update(h, ce, de, cbret)) < 0)
         goto done;
@@ -1387,16 +1392,22 @@ system_only_data_add(clixon_handle h,
 
 /*! Get candidate datastore, if privcand return private, otherwise shared
  *
- * @param[in]  h    Clixon handle
- * @param[in]  ce   Client-entry
- * @retval     de   Datastore element
- * @retval     NULL Not found or Error
+ * @param[in]  h     Clixon handle
+ * @param[in]  name  Name, typically "candidate"
+ * @param[in]  ceid  Client/session id
+ * @param[out] dep   Datastore element if given
+ * @param[out] db    Datastore name if given, pointer into de
+ * @retval     0     OK element
+ * @retval    -1     Error
  */
-db_elmnt*
-xmldb_candidate_find(clixon_handle        h,
-                     const char          *name,
-                     struct client_entry *ce)
+int
+xmldb_candidate_find(clixon_handle h,
+                     const char   *name,
+                     uint32_t      ceid,
+                     db_elmnt    **dep,
+                     char        **db)
 {
+    int       retval = -1;
     cbuf     *cb = NULL;
     db_elmnt *de = NULL;
     int       privcand;
@@ -1408,51 +1419,57 @@ xmldb_candidate_find(clixon_handle        h,
     }
     cprintf(cb, "%s", name);
     if (privcand){
-        if (ce == NULL){
-            clixon_err(OE_DB, 0, "When privcand is enabled, ce is mandatory");
-            goto done;
-        }
-        cprintf(cb, ".%u", ce->ce_id);
+        cprintf(cb, ".%u", ceid);
     }
-    de = xmldb_find(h, cbuf_get(cb));
+    if ((de = xmldb_find(h, cbuf_get(cb))) != NULL){
+        if (dep)
+            *dep = de;
+        if (db)
+            *db = xmldb_name_get(de);
+    }
+    retval = 0;
  done:
     if (cb)
         cbuf_free(cb);
-    return de;
+    return retval;
 }
 
-/*! Find datastore given name, create if not exist
+/*! Find datastore given name, create if not exist and copy cache if candidate
  *
- * @param[in]  h       Clixon handle
- * @param[in]  db      Name of datastore (or NULL)
- * @param[in]  ce      Client entry
- * @param[out] dep     Returned datastore-element
- * @retval     0       OK, datastore element returned in dep
- * @retval    -1       Error
+ * @param[in]  h      Clixon handle
+ * @param[in]  db     Name of datastore (or NULL)
+ * @param[in]  ceid   Client/session id
+ * @param[out] dep    Returned datastore-element
+ * @retval     0      OK, datastore element returned in dep
+ * @retval    -1      Error
  */
 int
-xmldb_netconf_db_find(clixon_handle        h,
-                      const char          *db,
-                      struct client_entry *ce,
-                      db_elmnt           **dep)
+xmldb_find_create(clixon_handle h,
+                  const char   *db,
+                  uint32_t      ceid,
+                  db_elmnt    **dep)
 {
     int       retval = -1;
     db_elmnt *de = NULL;
-    db_elmnt *de_orig;
+    db_elmnt *de_orig = NULL;
 
     if (strcmp(db, "candidate") == 0){
         if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-            if ((de = xmldb_candidate_find(h, "candidate", ce)) == NULL){
-                if ((de = xmldb_candidate_new(h, "candidate", ce)) == NULL)
-                    goto done;
+            if (xmldb_candidate_find(h, "candidate", ceid, &de, NULL) < 0)
+                goto done;
+            if (de == NULL){
+                if ((de = xmldb_candidate_new(h, "candidate", ceid)) == NULL)
+                goto done;
             }
             if (xmldb_cache_get(de) == NULL){
                 if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)
                     goto done;
             }
             /* Save original candidate for rebasing match, see from_client_update */
-            if ((de_orig = xmldb_candidate_find(h, "candidate-orig", ce)) == NULL){
-                if ((de_orig = xmldb_candidate_new(h, "candidate-orig", ce)) == NULL)
+            if (xmldb_candidate_find(h, "candidate-orig", ceid, &de_orig, NULL) < 0)
+                goto done;
+            if (de_orig == NULL){
+                if ((de_orig = xmldb_candidate_new(h, "candidate-orig", ceid)) == NULL)
                     goto done;
             }
             if (xmldb_cache_get(de_orig) == NULL){
@@ -1460,8 +1477,8 @@ xmldb_netconf_db_find(clixon_handle        h,
                     goto done;
             }
         }
-        else
-            de = xmldb_candidate_find(h, "candidate", ce);
+        else if (xmldb_candidate_find(h, "candidate", ceid, &de, NULL) < 0)
+            goto done;
     }
     else if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
@@ -1501,7 +1518,7 @@ xmldb_netconf_name_find(clixon_handle        h,
             return -1;
         return 0;
     }
-    if (xmldb_netconf_db_find(h, db, ce, dep) < 0)
+    if (xmldb_find_create(h, db, ce->ce_id, dep) < 0)
         return -1;
     return 1;
 }
@@ -1509,16 +1526,16 @@ xmldb_netconf_name_find(clixon_handle        h,
 /*! Create candidate datastore
  *
  * If ce is given, a private candidate is created, if ce=NULL a shared is created
- * @param[in]  h    Clixon handle
- * @param[in]  name Name prefix, typically "candidate" (but could be eg "failsafe")
- * @param[in]  ce   Client-entry (for private)
- * @retval     de   Datastore element
- * @retval     NULL Error
+ * @param[in]  h     Clixon handle
+ * @param[in]  name  Name prefix, typically "candidate" (but could be eg "failsafe")
+ * @param[in]  ceid  If set, assume private candidate and session-id
+ * @retval     de    Datastore element
+ * @retval     NULL  Error
  */
 db_elmnt*
-xmldb_candidate_new(clixon_handle        h,
-                    const char          *name,
-                    struct client_entry *ce)
+xmldb_candidate_new(clixon_handle h,
+                    const char   *name,
+                    uint32_t      ceid)
 {
     cbuf      *cb = NULL;
     char      *db;
@@ -1533,8 +1550,8 @@ xmldb_candidate_new(clixon_handle        h,
         goto done;
     }
     cprintf(cb, "%s", name);
-    if (ce)
-        cprintf(cb, ".%u", ce->ce_id);
+    if (ceid)
+        cprintf(cb, ".%u", ceid);
     db = cbuf_get(cb);
     if ((de = xmldb_new(h, db)) == NULL)
         goto done;

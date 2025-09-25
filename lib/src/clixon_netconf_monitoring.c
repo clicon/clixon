@@ -118,10 +118,8 @@ netconf_monitoring_datastores(clixon_handle h,
     if (per_datastore(h, cb, "running") < 0)
         goto done;
 #if 0 // XXX For private candidate, but ce is not available here
-    db_elmnt *de;
-    de = xmldb_candidate_find(h, "candidate", ce);
-    xmldb_name_get(de);
-    if (per_datastore(h, cb, xmldb_name_get(de)) < 0) // XXX private candidates?
+    xmldb_candidate_find(h, "candidate", ce->ce_id, NULL, &db);
+    if (per_datastore(h, cb, db) < 0) // XXX private candidates?
         goto done;
 #else
     if (per_datastore(h, cb, "candidate") < 0)

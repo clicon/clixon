@@ -952,7 +952,7 @@ main(int    argc,
         cbuf_reset(cbret); /* cbret contains error info */
     }
     if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
-        if (xmldb_candidate_new(h, "candidate", NULL) == NULL)
+        if (xmldb_candidate_new(h, "candidate", 0) == NULL)
             goto done;
     }
     /* Set startup status */

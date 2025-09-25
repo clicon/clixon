@@ -78,6 +78,38 @@ function testconflict(){
 
 new "test params: -y $fyang $OPTS"
 
+# Both add same leaf in list
+cat <<EOF > $dir/x0
+<a xmlns="urn:example:example">
+   <b>
+      <x>intf_one</x>
+   </b>
+</a>
+EOF
+
+# Session 1 adds description: San Fransisco to interface 1
+cat <<EOF > $dir/x1
+<a xmlns="urn:example:example">
+   <b>
+      <x>intf_one</x>
+      <c>Link to San Fransisco</c>
+   </b>
+</a>
+EOF
+
+# Session 2 adds description: London to interface 1
+cat <<EOF > $dir/x2
+<a xmlns="urn:example:example">
+   <b>
+      <x>intf_one</x>
+      <c>Link to London</c>
+   </b>
+</a>
+EOF
+
+new "Add leaf"
+testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" conflict
+
 # Example if draft-ietf-netconf-privcand
 # Where interfaces/interface/name corresponds to a/b/x and description is c
 
@@ -424,7 +456,7 @@ EOF
 new "Remove leaf-list"
 testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
 
-if false; then # notyet
+# Here we deviate from the draft
 cat <<EOF > $dir/x0
 <a xmlns="urn:example:example">
    <b>
@@ -458,9 +490,9 @@ cat <<EOF > $dir/x2
 EOF
 
 new "Add separate leaf-list elements"
-testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" conflict
+testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
 
-fi # notyet
+
 
 rm -rf $dir
 

@@ -1176,7 +1176,14 @@ xml_rebase(clixon_handle  h,
                             goto done;
                         conflict++;
                     }
+                    else if (y1c && yang_keyword_get(y1c) == Y_LEAF){
+                        if (xml_rebase_conflict(h, NULL, xpath1, NULL, NULL, NULL,
+                                                "Cannot add leaf node, another leaf node is added", cbret) < 0)
+                            goto done;
+                        conflict++;
+                    }
                 }
+
                 else if (y1c && yang_keyword_get(y1c) == Y_LEAF_LIST){
                     if (xml_rebase_conflict(h, NULL, xpath1, NULL, NULL, NULL,
                                             "Cannot add leaf-list node, another leaf-list node is added", cbret) < 0)

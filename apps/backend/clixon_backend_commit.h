@@ -80,10 +80,9 @@ int from_client_update(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void 
 int from_client_restart_one(clixon_handle h, clixon_plugin_t *cp, cbuf *cbret);
 int load_failsafe(clixon_handle h, char *phase);
 int system_only_data_add(clixon_handle h, char *db);
-
-db_elmnt *xmldb_candidate_find(clixon_handle h, const char *name, client_entry *ce);
+int xmldb_candidate_find(clixon_handle h, const char *name, uint32_t ceid, db_elmnt **dep, char **db);
 int       xmldb_netconf_name_find(clixon_handle h, cxobj *xn, const char *name, struct client_entry *ce, db_elmnt **de, cbuf *cbret);
-int       xmldb_netconf_db_find(clixon_handle h, const char *db, struct client_entry *ce, db_elmnt **de);
-db_elmnt *xmldb_candidate_new(clixon_handle h, const char *name, struct client_entry *ce);
+int       xmldb_find_create(clixon_handle h, const char *db, uint32_t ceid, db_elmnt **de);
+db_elmnt *xmldb_candidate_new(clixon_handle h, const char *name, uint32_t ceid);
 
 #endif  /* _CLIXON_BACKEND_COMMIT_H_ */
