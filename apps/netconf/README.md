@@ -10,5 +10,4 @@ and then invoke it from a client using::
 
         ssh -s <host> netconf
 
-
-For more defails see [Clixon docs netconf](https://clixon-docs.readthedocs.io/en/latest/standards.html#netconf)
+For more details see [Clixon docs netconf](https://clixon-docs.readthedocs.io/en/latest/standards.html#netconf)

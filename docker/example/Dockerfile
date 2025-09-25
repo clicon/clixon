@@ -127,6 +127,11 @@ RUN echo "Subsystem netconf /usr/local/bin/clixon_netconf" >> /etc/ssh/sshd_conf
 # Create clicon user and group
 RUN adduser -D -H clicon
 
+# Admin user
+RUN adduser -h /home/admin -s /bin/sh -D admin
+RUN adduser admin clicon
+RUN echo -n 'admin:admin' | chpasswd
+
 COPY --from=0 /clixon/build/ /
 
 # Overwrite config file since install dirs are wrong

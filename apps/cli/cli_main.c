@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * 
+ *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -123,7 +123,7 @@ cli_history_load(clixon_handle h)
     return retval;
 }
 
-/*! Start CLI history and load from file 
+/*! Start CLI history and load from file
  *
  * Just log if file does not exist or is not readable
  * @param[in]  h    Clixon handle
@@ -162,9 +162,9 @@ cli_history_save(clixon_handle h)
     return retval;
 }
 
-/*! Clean and close all state of cli process (but dont exit). 
+/*! Clean and close all state of cli process (but dont exit)
  *
- * Cannot use h after this 
+ * Cannot use h after this
  * @param[in]  h  Clixon handle
  */
 static int
@@ -274,7 +274,7 @@ cli_interactive(clixon_handle h)
 
 /*! Create pre-5.5 tree-refs for backward compatibility
  *
- * should probably be moved to clispec default 
+ * should probably be moved to clispec default
  */
 static int
 autocli_trees_default(clixon_handle h)
@@ -373,8 +373,8 @@ autocli_trees_default(clixon_handle h)
 
 /*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
  *
- * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees 
- * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the 
+ * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the
  * "tree reference" syntax.
  *
  * @param[in]  h        Clixon handle
@@ -390,8 +390,8 @@ autocli_start(clixon_handle h)
 
     clixon_debug(CLIXON_DBG_CLI, "");
     /* There is no single "enable-autocli" flag,
-     * but set 
-     *   <module-default>false</module-default> 
+     * but set
+     *   <module-default>false</module-default>
      * with no rules:
      *   <rule><operation>enable</operation>
      * is disable
@@ -427,7 +427,7 @@ autocli_start(clixon_handle h)
  * @þaram[in]  argc      Input commands after <options>
  * @þaram[in]  argv      Input commands after <options>
  * @þaram[in]  argv0     First command
- * @þaram[out] restcmd   Commands   
+ * @þaram[out] restcmd   Commands
  * @retval     0         OK
  * @retval    -1         Error
  */
@@ -587,7 +587,7 @@ main(int    argc,
     if (clixon_err_init(h) < 0)
         goto done;
 
-    /* Set username to clicon handle. Use in all communication to backend 
+    /* Set username to clicon handle. Use in all communication to backend
      * Note, can be overridden by -U
      */
     if ((pw = getpwuid(getuid())) == NULL){
@@ -601,7 +601,7 @@ main(int    argc,
     cligen_lexicalorder_set(cli_cligen(h), 1);
 
     /*
-     * First-step command-line options for help, debug, config-file and log, 
+     * First-step command-line options for help, debug, config-file and log,
      */
     optind = 1;
     opterr = 0;
@@ -610,7 +610,7 @@ main(int    argc,
         case 'h':
             /* Defer the call to usage() to later. Reason is that for helpful
                text messages, default dirs, etc, are not set until later.
-               But this means that we need to check if 'help' is set before 
+               But this means that we need to check if 'help' is set before
                exiting, and then call usage() before exit.
             */
             help = 1;
@@ -823,7 +823,7 @@ main(int    argc,
 #ifndef CLIXON_STATIC_PLUGINS
     {
         char *dir;
-        /* Load cli .so plugins before yangs are loaded (eg extension callbacks) and 
+        /* Load cli .so plugins before yangs are loaded (eg extension callbacks) and
          * before CLI is loaded by clispec_load below */
         if ((dir = clicon_cli_dir(h)) != NULL &&
             clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
@@ -882,7 +882,7 @@ main(int    argc,
     /* Add netconf yang spec, used as internal protocol */
     if (netconf_module_load(h) < 0)
         goto done;
-    /* Here all modules are loaded 
+    /* Here all modules are loaded
      * Compute and set canonical namespace context
      */
     if (xml_nsctx_yangspec(yspec, &nsctx_global) < 0)
@@ -894,7 +894,7 @@ main(int    argc,
     if (autocli_start(h) < 0)
         goto done;
 
-    /* Initialize cli syntax. 
+    /* Initialize cli syntax.
      * Plugins have already been loaded by clixon_plugins_load above */
     if (clispec_load(h) < 0)
         goto done;
@@ -924,19 +924,19 @@ main(int    argc,
         cli_logsyntax_set(h, logclisyntax);
 
     /* Clixon hardcodes variable tie-breaks to non-terminals (2)
-     * There are cases in the autocli such as: 
+     * There are cases in the autocli such as:
      *    (<string regexp:"r1" | <string regexp:"r2"){ ... }
      *  where r1 and r2 are regexps that overlap.
-     * Alterntaive is to add "preference" keyword in the CLIgen syntax that overrides this.
-     * Note there may be terminal tiebreaks liuke this which would motivate a setting to "3"?
+     * Alternative is to add "preference" keyword in the CLIgen syntax that overrides this.
+     * Note there may be terminal tiebreaks like this which would motivate a setting to "3"?
      */
     cligen_preference_mode_set(cli_cligen(h), 2);
 
-    /* Call start function in all plugins before we go interactive 
+    /* Call start function in all plugins before we go interactive
      */
     if (clixon_plugin_start_all(h) < 0)
         goto done;
-    /* Explicit dump of config 
+    /* Explicit dump of config
      * (there is also debug dump below).
      */
     if (config_dump){
@@ -958,7 +958,7 @@ main(int    argc,
      */
     clicon_data_set(h, "session-transport", "cl:cli");
 
-    /* Launch interfactive event loop, 
+    /* Launch interfactive event loop,
      * unless options, in which case they are catched by clicon_argv_get/set */
     if (restarg != NULL && strlen(restarg) && restarg[0] != '-'){
         if (rest_commands(h, restarg) < 0)

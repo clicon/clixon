@@ -8,8 +8,6 @@ s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
-echo "AUTOCLI:$AUTOCLI"
-
 # include err() and new() functions and creates $dir
 
 cfg=$dir/conf_yang.xml
@@ -153,7 +151,6 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -210,7 +207,6 @@ expectpart "$(echo "set leaf-deprecated ? " | $clixon_cli -f $cfg 2>&1)" 0 "para
 
 new "check leaf deprecated ?"
 expectpart "$(echo "set leaf-deprecated parameter x ? " | $clixon_cli -f $cfg 2>&1)" 0 --not-- value
-
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
