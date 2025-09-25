@@ -471,6 +471,9 @@ expectpart "$($clixon_util_xpath -D $DBG -f $xmlfn -p "root/count/node[99=ancest
 new "xpath functions as ncname: functioname:count"
 expectpart "$($clixon_util_xpath -D $DBG -f $xmlfn -p "root/node/ancestor[73=count]")" 0 "<ancestor><count>73</count></ancestor>"
 
+new "xpath functions: number"
+expectpart "$($clixon_util_xpath -D $DBG -f $xmlfn -p "root/node/ancestor[73=count]")" 0 "<ancestor><count>73</count></ancestor>"
+
 # PART 2
 # Negative tests from fuzz crashes
 cat <<EOF > $dir/1.xml
@@ -579,7 +582,16 @@ cat <<EOF > $dir/1.xml
 EOF
 
 new "xpath issue ok"
-expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "/ex:table/options/*")" 0 "<max-number>50000</max-number>"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "/ex:table/ex:options/*")" 0 "<max-number>50000</max-number>"
+
+new "xpath number"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "number(/ex:table/ex:options/ex:max-number)")" 0 "50000"
+
+new "xpath empty number"
+expectpart "$($clixon_util_xpath -D $DBG -i "/table" -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "number()")" 0 "0.000"
+
+new "xpath concat"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "concat(\"mynumber:\", /ex:table/ex:options/ex:max-number)")" 0 "mynumber:50000"
 
 new "xpath issue fail"
 expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n null:urn:ietf:params:xml:ns:netconf:base:1.0 -n ex:urn:example:clixon -y $fyang -p "/ex:table/ex:options/*")" 0 "<max-number>50000</max-number>"

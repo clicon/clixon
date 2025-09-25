@@ -623,9 +623,9 @@ xp_function_count(xp_ctx            *xc,
                   int                localonly,
                   xp_ctx           **xrp)
 {
-    int         retval = -1;
-    xp_ctx     *xr = NULL;
-    xp_ctx     *xr0 = NULL;
+    int     retval = -1;
+    xp_ctx *xr = NULL;
+    xp_ctx *xr0 = NULL;
 
     if (xs == NULL || xs->xs_c0 == NULL){
         clixon_err(OE_XML, EINVAL, "count expects but did not get one argument");
@@ -712,6 +712,13 @@ xp_function_local_name(xp_ctx            *xc,
  * The name function returns a string containing a QName representing the expanded-name
  * of the node in the argument node-set that is first in document order. 
  * Signature: string name(node-set?)
+ * @param[in]  xc   Incoming context
+ * @param[in]  xs   XPath node tree
+ * @param[in]  nsc  XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
+ * @param[out] xrp  Resulting context
+ * @retval     0    OK
+ * @retval    -1    Error
  * XXX: should return expanded-name, should namespace be included?
  */
 int
@@ -767,6 +774,7 @@ xp_function_name(xp_ctx            *xc,
 
 /*! Eval xpath function converts an object to a string
  *
+ * Signature: string string(object?)
  * @param[in]  xc   Incoming context
  * @param[in]  xs   XPath node tree
  * @param[in]  nsc  XML Namespace context
@@ -820,8 +828,83 @@ xp_function_string(xp_ctx            *xc,
     return retval;
 }
 
+/*! The false function returns false.
+ *
+ * Signature: string concat(string, string, string*)
+ * @param[in]  xc   Incoming context
+ * @param[in]  xs   XPath node tree
+ * @param[in]  nsc  XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
+ * @param[out] xrp  Resulting context
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xp_function_concat(xp_ctx            *xc,
+                   struct xpath_tree *xs,
+                   cvec              *nsc,
+                   int                localonly,
+                   xp_ctx           **xrp)
+{
+    int         retval = -1;
+
+    xp_ctx *xr0 = NULL;
+    xp_ctx *xr1 = NULL;
+    xp_ctx *xr = NULL;
+    char   *s0 = NULL;
+    char   *s1 = NULL;
+    char   *sc = NULL;
+    cbuf   *cb = NULL;
+
+    if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
+        clixon_err(OE_XML, EINVAL, "contain expects but did not get at least two arguments");
+        goto done;
+    }
+    /* contains two arguments in xs: boolean contains(string, string) */
+    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
+        goto done;
+    if (ctx2string(xr0, &s0) < 0)
+        goto done;
+    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0)
+        goto done;
+    if (ctx2string(xr1, &s1) < 0)
+        goto done;
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s%s", s0, s1);
+    if ((sc = strdup(cbuf_get(cb))) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_type = XT_STRING;
+    xr->xc_string = sc;
+    *xrp = xr;
+    xr = NULL;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xr0)
+        ctx_free(xr0);
+    if (xr1)
+        ctx_free(xr1);
+    if (s0)
+        free(s0);
+    if (s1)
+        free(s1);
+    return retval;
+}
+
 /*! Eval xpath function contains sub-string
  *
+ * Signature: boolean contains(string, string)
  * @param[in]  xc   Incoming context
  * @param[in]  xs   XPath node tree
  * @param[in]  nsc  XML Namespace context
@@ -840,7 +923,7 @@ xp_function_contains(xp_ctx            *xc,
                      int                localonly,
                      xp_ctx           **xrp)
 {
-    int    retval = -1;
+    int     retval = -1;
     xp_ctx *xr0 = NULL;
     xp_ctx *xr1 = NULL;
     xp_ctx *xr = NULL;
@@ -1360,5 +1443,52 @@ xp_function_false(xp_ctx            *xc,
     *xrp = xr;
     retval = 0;
  done:
+    return retval;
+}
+
+/*! The number function converts its argument to a number
+ *
+ * Signature: number number(object?)
+ * @param[in]  xc   Incoming context
+ * @param[in]  xs   XPath node tree
+ * @param[in]  nsc  XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
+ * @param[out] xrp  Resulting context
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xp_function_number(xp_ctx            *xc,
+                   struct xpath_tree *xs,
+                   cvec              *nsc,
+                   int                localonly,
+                   xp_ctx           **xrp)
+{
+    int     retval = -1;
+    xp_ctx *xr = NULL;
+    xp_ctx *xr0 = NULL;
+    double  n;
+
+    if (xs != NULL && xs->xs_c0){
+        if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
+            goto done;
+        if (ctx2number(xr0, &n) < 0)
+            goto done;
+    }
+    else {
+        n = 0.0;
+    }
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(xr, 0, sizeof(*xr));
+    xr->xc_type = XT_NUMBER;
+    xr->xc_number = n;
+    *xrp = xr;
+    retval = 0;
+ done:
+    if (xr0)
+        ctx_free(xr0);
     return retval;
 }

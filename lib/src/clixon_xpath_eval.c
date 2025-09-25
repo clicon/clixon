@@ -1313,6 +1313,11 @@ xp_eval(xp_ctx     *xc,
                     goto done;
                 goto ok;
                 break;
+            case XPATHFN_CONCAT:
+                if (xp_function_concat(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
             case XPATHFN_STARTS_WITH:
                 if (xp_function_contains(xc, xs->xs_c0, nsc, 1, localonly, xrp) < 0)
                     goto done;
@@ -1365,6 +1370,11 @@ xp_eval(xp_ctx     *xc,
                 break;
             case XPATHFN_FALSE:
                 if (xp_function_false(xc, xs->xs_c0, nsc, xrp) < 0)
+                    goto done;
+                goto ok;
+                break;
+            case XPATHFN_NUMBER:
+                if (xp_function_number(xc, xs->xs_c0, nsc, localonly, xrp) < 0)
                     goto done;
                 goto ok;
                 break;

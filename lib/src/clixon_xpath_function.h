@@ -62,7 +62,7 @@ enum clixon_xpath_function{
     XPATHFN_NAMESPACE_URI,          /* XPATH 1.0 4.1   NYI */
     XPATHFN_NAME,                   /* XPATH 1.0 4.1 */
     XPATHFN_STRING,                 /* XPATH 1.0 4.2 */
-    XPATHFN_CONCAT,                 /* XPATH 1.0 4.2   NYI */
+    XPATHFN_CONCAT,                 /* XPATH 1.0 4.2 */
     XPATHFN_STARTS_WITH,            /* XPATH 1.0 4.2 */
     XPATHFN_CONTAINS,               /* XPATH 1.0 4.2 */
     XPATHFN_SUBSTRING_BEFORE,       /* XPATH 1.0 4.2 */
@@ -76,7 +76,7 @@ enum clixon_xpath_function{
     XPATHFN_TRUE,                   /* XPATH 1.0 4.3 */
     XPATHFN_FALSE,                  /* XPATH 1.0 4.3 */
     XPATHFN_LANG,                   /* XPATH 1.0 4.3   NYI */
-    XPATHFN_NUMBER,                 /* XPATH 1.0 4.4   NYI */
+    XPATHFN_NUMBER,                 /* XPATH 1.0 4.4 */
     XPATHFN_SUM,                    /* XPATH 1.0 4.4   NYI */
     XPATHFN_FLOOR,                  /* XPATH 1.0 4.4   NYI */
     XPATHFN_CEILING,                /* XPATH 1.0 4.4   NYI */
@@ -103,6 +103,7 @@ int xp_function_count(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonl
 int xp_function_local_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_name(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_string(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
+int xp_function_concat(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_contains(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int starts, int localonly, xp_ctx **xrp);
 int xp_function_substring_str(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int before, int localonly, xp_ctx **xrp);
 int xp_function_substring(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
@@ -112,5 +113,6 @@ int xp_function_boolean(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localo
 int xp_function_not(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 int xp_function_true(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
 int xp_function_false(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, xp_ctx **xrp);
+int xp_function_number(xp_ctx *xc, struct xpath_tree *xs, cvec *nsc, int localonly, xp_ctx **xrp);
 
 #endif /* _CLIXON_XPATH_FUNCTION_H */

@@ -255,10 +255,8 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_LAST:
     case XPATHFN_ID:
     case XPATHFN_NAMESPACE_URI:
-    case XPATHFN_CONCAT:
     case XPATHFN_NORMALIZE_SPACE:
     case XPATHFN_LANG:
-    case XPATHFN_NUMBER:
     case XPATHFN_SUM:
     case XPATHFN_FLOOR:
     case XPATHFN_CEILING:
@@ -286,6 +284,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_LOCAL_NAME:
     case XPATHFN_NAME:
     case XPATHFN_STRING:
+    case XPATHFN_CONCAT:
     case XPATHFN_STARTS_WITH:
     case XPATHFN_CONTAINS:
     case XPATHFN_SUBSTRING_BEFORE:
@@ -297,6 +296,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_NOT:
     case XPATHFN_TRUE:
     case XPATHFN_FALSE:
+    case XPATHFN_NUMBER:
         break;
     default:
         if ((cb = cbuf_new()) == NULL){

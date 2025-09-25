@@ -20,6 +20,9 @@ Expected: October 2025
 
 ### Features
 
+* XPath functions:
+  * Support `concat` and `number` XPath function
+  * `XPATH_FUNCTION_NYI_IGNORE` compile-time constant to ignore unimplemented XPath functions
 * Tolerate "<filename>@latest.yang" as yang filename.
 * New: Implement YANG "augment" as sub-statement of a "uses" statement
 * New: Compare RPC as defined in RFC9144 and yang module ietf-nmda-compare

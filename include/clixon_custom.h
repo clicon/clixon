@@ -295,4 +295,4 @@
  * are replaced with the "true" function.
  * Otherwise they result in YANG parse error.
  */
-#define XPATH_FUNCTION_NYI_IGNORE
+#undef XPATH_FUNCTION_NYI_IGNORE
