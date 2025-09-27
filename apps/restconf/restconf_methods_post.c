@@ -185,9 +185,9 @@ api_data_post(clixon_handle h,
     cxobj         *xe;            /* dont free */
     cxobj         *x;
     char          *username;
-    int            ret;
     int            nrchildren0 = 0;
     yang_bind      yb;
+    int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "api_path:\"%s\"", api_path);
     clixon_debug(CLIXON_DBG_RESTCONF, "data:\"%s\"", data);

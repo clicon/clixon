@@ -453,8 +453,8 @@ clixon_plugins_load(clixon_handle h,
     struct dirent        *dp = NULL;
     int                   i;
     char                  filename[MAXPATHLEN];
-    int                   ret;
     int                   dlflags;
+    int                   ret;
 
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "");
 
@@ -1019,11 +1019,11 @@ clixon_plugin_system_only_all(clixon_handle   h,
                               cxobj         **xret)
 {
     int              retval = -1;
-    int              ret;
     cxobj           *x = NULL;
     clixon_plugin_t *cp = NULL;
     cbuf            *cberr = NULL;
     cxobj           *xerr = NULL;
+    int              ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {
@@ -1775,10 +1775,10 @@ upgrade_callback_call(clixon_handle h,
                       uint32_t      to,
                       cbuf         *cbret)
 {
-    int                 retval = -1;
-    upgrade_callback_t *uc;
-    int                 ret;
+    int                   retval = -1;
+    upgrade_callback_t   *uc;
     plugin_module_struct *ms = plugin_module_struct_get(h);
+    int                   ret;
 
     if (ms == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "plugin module not initialized");

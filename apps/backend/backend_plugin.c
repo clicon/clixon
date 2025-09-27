@@ -340,10 +340,10 @@ clixon_plugin_statedata_all(clixon_handle h,
                             cxobj       **xret)
 {
     int              retval = -1;
-    int              ret;
     cxobj           *x = NULL;
     clixon_plugin_t *cp = NULL;
     cxobj           *xerr = NULL;
+    int              ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     while ((cp = clixon_plugin_each(h, cp)) != NULL) {

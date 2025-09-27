@@ -446,10 +446,10 @@ static int
 find_xml_schema_mounts(cxobj *x,
                        void  *arg)
 {
-    int        ret;
     yang_stmt *y;
     cvec      *cvv = (cvec *)arg;
     cg_var    *cv;
+    int        ret;
 
     if ((y = xml_spec(x)) == NULL)
         return 2;
@@ -508,9 +508,9 @@ static int
 find_yang_schema_mounts(yang_stmt *y,
                         void      *arg)
 {
-    int     ret;
     cvec   *cvv = (cvec *)arg;
     cg_var *cv;
+    int     ret;
 
     if (yang_config(y) == 0)
         return 0;
@@ -594,9 +594,9 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
     cxobj         *yanglib = NULL; /* xml yang-lib */
     cbuf          *cb = NULL;
     yang_stmt     *yspec;
-    int            ret;
     int            config = 1;
     validate_level vl = VL_FULL;
+    int            ret;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, 0, "clicon buffer");
@@ -657,7 +657,6 @@ yang_schema_mount_statedata(clixon_handle h,
 {
     int        retval = -1;
     cbuf      *cb = NULL;
-    int        ret;
     yang_stmt *yext;
     yang_stmt *ymount;
     yang_stmt *ymodext;
@@ -667,6 +666,7 @@ yang_schema_mount_statedata(clixon_handle h,
     char      *label;
     cvec      *cvv;
     cxobj     *x1 = NULL;
+    int        ret;
 
     if ((ymodext = yang_find(yspec, Y_MODULE, "ietf-yang-schema-mount")) == NULL ||
         (yext = yang_find(ymodext, Y_EXTENSION, "mount-point")) == NULL){
@@ -813,8 +813,8 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
     yang_stmt *yspec1 = NULL;
     char      *xpath = NULL;
     cbuf      *cb = NULL;
-    int        ret;
     static unsigned int nr = 0;
+    int        ret;
 
     if ((xb = xpath_first(xyanglib, NULL, "module-set/name")) != NULL)
         domain = xml_body(xb);

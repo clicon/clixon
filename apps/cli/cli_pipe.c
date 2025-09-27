@@ -277,8 +277,8 @@ pipe_showas_fn(clixon_handle h,
     yang_stmt       *yspec;
     int              pretty = 1;
     char            *prepend = NULL;
-    int              ret;
     cxobj           *xerr = NULL;
+    int              ret;
 
     if (cvec_len(argv) < 1 || cvec_len(argv) > 3){
         clixon_err(OE_PLUGIN, EINVAL, "Received %d arguments. Expected:: <format> [<pretty> [<prepend>]]", cvec_len(argv));

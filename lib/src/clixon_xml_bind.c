@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
@@ -25,7 +25,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -164,9 +164,9 @@ populate_self_parent(clixon_handle h,
     char      *ns = NULL;    /* XML namespace of xt */
     char      *nsy = NULL;   /* Yang namespace of xt */
     cbuf      *cb = NULL;
-    int        ret;
     yang_stmt *yspec1;
     yang_stmt *ymod;
+    int        ret;
 
     name = xml_name(xt);
     /* optimization for massive lists - use the first element as role model */
@@ -533,7 +533,6 @@ xml_bind_yang0_opt(clixon_handle h,
 {
     int        retval = -1;
     cxobj     *xc;           /* xml child */
-    int        ret;
     yang_stmt *yc0 = NULL;
     cxobj     *xc0 = NULL;
     cxobj     *xs;
@@ -542,6 +541,7 @@ xml_bind_yang0_opt(clixon_handle h,
     char      *name;
     yang_bind  ybc;
     char      *prefix;
+    int        ret;
 
     if (jsonenc){
         if ((ret = translate_jsonenc_xml(xt, yspec, xerr)) < 0)
@@ -772,9 +772,9 @@ xml_bind_yang_rpc_action(clixon_handle h,
                          cxobj       **xerr)
 {
     int        retval = -1;
-    int        ret;
     cxobj     *xi;
     yang_stmt *yi;;
+    int        ret;
 
     if ((ret = xml_bind_yang(h, xn, YB_MODULE, yspec, 0, xerr)) < 0)
         goto done;

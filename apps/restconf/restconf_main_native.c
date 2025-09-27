@@ -959,8 +959,8 @@ restconf_clixon_init(clixon_handle h,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     cxobj         *xrestconf = NULL;
     cxobj         *xerr = NULL;
-    int            ret;
     size_t         sz;
+    int            ret;
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
@@ -1180,7 +1180,6 @@ main(int    argc,
     int                     dbg = 0;
     int                     logdst = CLIXON_LOG_SYSLOG;
     restconf_native_handle *rn = NULL;
-    int                     ret;
     cxobj                  *xrestconf = NULL;
     char                   *inline_config = NULL;
     int                     config_dump = 0;
@@ -1188,6 +1187,7 @@ main(int    argc,
     int                     print_version = 0;
     int                     stream_timeout = 0;
     int32_t                 d;
+    int                     ret;
 
     /* Create handle */
     if ((h = restconf_handle_init()) == NULL)

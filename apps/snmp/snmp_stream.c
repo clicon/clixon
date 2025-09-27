@@ -156,7 +156,6 @@ add_snmp_var_bindings(netsnmp_variable_list **var_list,
                       yang_stmt              *ys)
 {
     int             retval = -1;
-    int             ret;
     cxobj          *xncont = NULL; /* notification context xml */
     yang_stmt      *ychild;
     char           *xmlstr = NULL;
@@ -167,6 +166,7 @@ add_snmp_var_bindings(netsnmp_variable_list **var_list,
     size_t          snmplen = 0;
     oid             objid[MAX_OID_LEN] = {0,}; /* Leaf */
     size_t          objidlen = MAX_OID_LEN;
+    int             ret;
 
     while ((xncont = xml_child_each(cxparent, xncont, CX_ELMNT)) != NULL){
         char *node_name = xml_name(xncont);

@@ -98,8 +98,8 @@ generic_validate(clixon_handle       h,
     int        retval = -1;
     cxobj     *x2;
     int        i;
-    int        ret;
     cbuf      *cb = NULL;
+    int        ret;
 
     /* All entries */
     if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0)
@@ -222,10 +222,10 @@ startup_common(clixon_handle       h,
 {
     int                 retval = -1;
     yang_stmt          *yspec;
-    int                 ret;
     cxobj              *xt = NULL;
     cxobj              *xret = NULL;
     cxobj              *xerr = NULL;
+    int                 ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "Reading initial config from %s", db);
     /* Add system-only config to running */
@@ -391,8 +391,8 @@ startup_validate(clixon_handle h,
                  cbuf         *cbret)
 {
     int                 retval = -1;
-    int                 ret;
     transaction_data_t *td = NULL;
+    int                 ret;
 
     /* Handcraft a transition with only target and add trees */
     if ((td = transaction_new()) == NULL)
@@ -436,11 +436,11 @@ startup_commit(clixon_handle h,
                cbuf         *cbret)
 {
     int                 retval = -1;
-    int                 ret;
     transaction_data_t *td = NULL;
 #ifdef STARTUP_COMMIT_REORDER
     cxobj              *xt = NULL;
 #endif
+    int                 ret;
 
     if (strcmp(db,"running")==0){
         clixon_err(OE_FATAL, 0, "Invalid startup db: %s", db);
@@ -535,7 +535,7 @@ startup_commit(clixon_handle h,
  */
 static int
 validate_common(clixon_handle       h,
-                char               *db,
+                const char         *db,
                 transaction_data_t *td,
                 cxobj             **xret)
 {
@@ -686,7 +686,7 @@ candidate_validate(clixon_handle h,
 int
 candidate_commit(clixon_handle  h,
                  cxobj         *xe,
-                 char          *db,
+                 const char    *db,
                  uint32_t       myid,
                  validate_level vlev, // obsolete
                  cbuf          *cbret)
@@ -795,10 +795,10 @@ candidate_commit(clixon_handle  h,
  * @retval     -1     Error
  */
 int
-backend_update(clixon_handle        h,
-               struct client_entry *ce,
-               db_elmnt            *de1,
-               cbuf                *cbret)
+backend_update(clixon_handle h,
+               client_entry *ce,
+               db_elmnt     *de1,
+               cbuf         *cbret)
 {
     int            retval = -1;
     db_elmnt      *de0 = NULL;
@@ -908,15 +908,15 @@ from_client_commit(clixon_handle h,
                    void         *arg,
                    void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t             myid = ce->ce_id;
-    uint32_t             iddb;
-    cbuf                *cbx = NULL; /* Assist cbuf */
-    int                  ret;
-    yang_stmt           *yspec;
-    db_elmnt            *de;
-    char                *db = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    uint32_t      myid = ce->ce_id;
+    uint32_t      iddb;
+    cbuf         *cbx = NULL; /* Assist cbuf */
+    yang_stmt    *yspec;
+    db_elmnt     *de;
+    char         *db = NULL;
+    int           ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
         clixon_err(OE_YANG, ENOENT, "No yang spec");
@@ -928,9 +928,8 @@ from_client_commit(clixon_handle h,
         if (ret == 0)
             goto ok;
     }
-    if (xmldb_find_create(h, "candidate", ce->ce_id, &de) < 0)
+    if (xmldb_find_create(h, "candidate", ce->ce_id, &de, &db) < 0)
         goto done;
-    db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
     /* Is candidate locked? */
     if (iddb && myid != iddb){
@@ -1013,18 +1012,17 @@ from_client_discard_changes(clixon_handle h,
                             void         *arg,
                             void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t             myid = ce->ce_id;
-    uint32_t             iddb;
-    cbuf                *cbx = NULL; /* Assist cbuf */
-    db_elmnt            *de;
-    char                *db;
-    char                *db0 = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    uint32_t      myid = ce->ce_id;
+    uint32_t      iddb;
+    cbuf         *cbx = NULL; /* Assist cbuf */
+    db_elmnt     *de;
+    char         *db;
+    char         *db0 = NULL;
 
-    if (xmldb_find_create(h, "candidate", ce->ce_id, &de) < 0)
+    if (xmldb_find_create(h, "candidate", ce->ce_id, &de, &db) < 0)
         goto done;
-    db = xmldb_name_get(de);
     iddb = xmldb_islocked(h, db);
     if (iddb && myid != iddb){
         if ((cbx = cbuf_new()) == NULL){
@@ -1089,11 +1087,11 @@ from_client_validate(clixon_handle h,
                      void         *arg,
                      void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    char                *db;
-    db_elmnt            *de;
-    int                  ret;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    char         *db;
+    db_elmnt     *de;
+    int           ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &de, cbret)) < 0)
@@ -1131,7 +1129,7 @@ from_client_update(clixon_handle h,
                    void         *regarg)
 {
     int                      retval = -1;
-    struct client_entry     *ce = (struct client_entry *)arg;
+    client_entry            *ce = (client_entry *)arg;
     yang_stmt               *yspec;
     enum privcand_resolution resolution = PR_REVERT;
     cxobj                   *xres;
@@ -1162,7 +1160,7 @@ from_client_update(clixon_handle h,
     default:
         break;
     }
-    if (xmldb_find_create(h, "candidate", ce->ce_id, &de) < 0)
+    if (xmldb_find_create(h, "candidate", ce->ce_id, &de, NULL) < 0)
         goto done;
     if ((ret = backend_update(h, ce, de, cbret)) < 0)
         goto done;
@@ -1189,12 +1187,12 @@ from_client_restart_one(clixon_handle    h,
     char               *db = "tmp";
     transaction_data_t *td = NULL;
     plgreset_t         *resetfn;          /* Plugin auth */
-    int                 ret;
     cxobj              *xerr = NULL;
     yang_stmt          *yspec;
     int                 i;
     cxobj              *xn;
     void               *wh = NULL;
+    int                 ret;
 
     yspec = clicon_dbspec_yang(h);
     if (xmldb_db_reset(h, db) < 0)
@@ -1313,9 +1311,9 @@ load_failsafe(clixon_handle h,
               char         *phase)
 {
     int   retval = -1;
-    int   ret;
     char *db = "failsafe";
     cbuf *cbret = NULL;
+    int   ret;
 
     phase = phase == NULL ? "(unknown)" : phase;
     if ((cbret = cbuf_new()) == NULL){
@@ -1440,6 +1438,7 @@ xmldb_candidate_find(clixon_handle h,
  * @param[in]  db     Name of datastore (or NULL)
  * @param[in]  ceid   Client/session id
  * @param[out] dep    Returned datastore-element
+ * @param[out] dbp    Datastore name if given, pointer into dep
  * @retval     0      OK, datastore element returned in dep
  * @retval    -1      Error
  */
@@ -1447,7 +1446,8 @@ int
 xmldb_find_create(clixon_handle h,
                   const char   *db,
                   uint32_t      ceid,
-                  db_elmnt    **dep)
+                  db_elmnt    **dep,
+                  char        **dbp)
 {
     int       retval = -1;
     db_elmnt *de = NULL;
@@ -1484,8 +1484,12 @@ xmldb_find_create(clixon_handle h,
         if ((de = xmldb_new(h, db)) == NULL)
             goto done;
     }
-    if (dep)
-        *dep = de;
+    if (de){
+        if (dep)
+            *dep = de;
+        if (dbp)
+            *dbp = xmldb_name_get(de);
+    }
     retval = 0;
  done:
     return retval;
@@ -1504,21 +1508,21 @@ xmldb_find_create(clixon_handle h,
  * @retval    -1       Error
  */
 int
-xmldb_netconf_name_find(clixon_handle        h,
-                        cxobj               *xn,
-                        const char          *name,
-                        struct client_entry *ce,
-                        db_elmnt           **dep,
-                        cbuf                *cbret)
+xmldb_netconf_name_find(clixon_handle h,
+                        cxobj        *xn,
+                        const char   *name,
+                        client_entry *ce,
+                        db_elmnt    **dep,
+                        cbuf         *cbret)
 {
-    char     *db;
+    char *db;
 
     if ((db = netconf_db_find(xn, name)) == NULL){
         if (netconf_missing_element(cbret, "protocol", name, NULL) < 0)
             return -1;
         return 0;
     }
-    if (xmldb_find_create(h, db, ce->ce_id, dep) < 0)
+    if (xmldb_find_create(h, db, ce->ce_id, dep, NULL) < 0)
         return -1;
     return 1;
 }

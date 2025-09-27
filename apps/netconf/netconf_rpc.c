@@ -454,9 +454,9 @@ netconf_notification_cb(int   s,
     clixon_handle h = (clixon_handle)arg;
     yang_stmt    *yspec = NULL;
     cvec         *nsc = NULL;
-    int           ret;
     cxobj        *xerr = NULL;
     cbuf         *cbmsg = NULL;
+    int           ret;
 
     clixon_debug(CLIXON_DBG_NETCONF, "");
     yspec = clicon_dbspec_yang(h);

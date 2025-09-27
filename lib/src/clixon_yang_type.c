@@ -190,8 +190,8 @@ compile_pattern2regexp(clixon_handle h,
     cg_var *pcv; /* pattern cv */
     cg_var *rcv; /* regexp cv */
     void   *re = NULL;
-    int     ret;
     char   *pattern;
+    int     ret;
 
     pcv = NULL;
     while ((pcv = cvec_each(patterns, pcv)) != NULL){
@@ -593,7 +593,6 @@ cv_validate1(clixon_handle h,
     int             retval = 1; /* OK */
     cg_var         *cv1;
     cg_var         *cv2;
-    int             ret;
     yang_stmt      *yi = NULL;
     char           *str = NULL;
     int             found;
@@ -607,6 +606,7 @@ cv_validate1(clixon_handle h,
     int             retu; /* separated due to different error handling */
     int             rets;
     int             inext;
+    int             ret;
 
     if (reason && *reason){
         free(*reason);

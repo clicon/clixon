@@ -767,9 +767,9 @@ api_path2xpath_cvv(cvec      *api_path,
     cvec      *nsc = NULL;
     char      *val1;
     char      *decval;
-    int        ret;
     int        root;
     int        ymtpoint; /* y is potential mount-point */
+    int        ret;
 
     cprintf(xpath, "/");
     /* Initialize namespace context */
@@ -1929,8 +1929,8 @@ clixon_xml_find_api_path(cxobj        *xt,
     size_t           len;
     char            *api_path = NULL;
     clixon_path     *cplist = NULL;
-    int              ret;
     clixon_xvec     *xv = NULL;
+    int              ret;
 
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
@@ -2023,8 +2023,8 @@ clixon_xml_find_instance_id(cxobj      *xt,
     size_t       len;
     char        *path = NULL;
     clixon_path *cplist = NULL;
-    int          ret;
     clixon_xvec *xv = NULL;
+    int          ret;
 
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);
@@ -2113,8 +2113,8 @@ clixon_instance_id_bind(yang_stmt  *yt,
     char        *path = NULL;
     clixon_path *cplist = NULL;
     clixon_path *cp;
-    int          ret;
     char        *namespace;
+    int          ret;
 
     va_start(ap, format);
     len = vsnprintf(NULL, 0, format, ap);

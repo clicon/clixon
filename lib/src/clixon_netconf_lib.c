@@ -1533,7 +1533,7 @@ netconf_malformed_message_xml(cxobj     **xret,
 
     if (xret == NULL){
         clixon_err(OE_NETCONF, EINVAL, "xret is NULL");
-        goto done;      
+        goto done;
     }
     if (*xret == NULL){
         if ((*xret = xml_new("rpc-reply", NULL, CX_ELMNT)) == NULL)
@@ -2150,8 +2150,8 @@ netconf_parse_uint32(const char *name,
                      uint32_t   *value)
 {
     int    retval = -1;
-    int    ret;
     char  *reason = NULL;
+    int    ret;
 
     if (valstr == NULL){
         clixon_err(OE_NETCONF, EINVAL, "valstr is NULL");
@@ -2194,8 +2194,8 @@ netconf_parse_uint32_xml(const char *name,
                          uint32_t   *value)
 {
     int    retval = -1;
-    int    ret;
     char  *reason = NULL;
+    int    ret;
 
     if (valstr == NULL){
         clixon_err(OE_NETCONF, EINVAL, "valstr is NULL");

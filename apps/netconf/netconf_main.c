@@ -227,10 +227,10 @@ netconf_rpc_message(clixon_handle h,
 {
     int                  retval = -1;
     cxobj               *xret = NULL; /* Return (out) */
-    int                  ret;
     cbuf                *cbret = NULL;
     cxobj               *xc;
     netconf_framing_type framing;
+    int                  ret;
 
     framing = clicon_data_int_get(h, NETCONF_FRAMING_TYPE);
     if (_netconf_hello_nr == 0 &&
@@ -433,12 +433,12 @@ netconf_input_cb(int   s,
     cxobj         *xtop = NULL;
     cxobj         *xreq;
     cxobj         *xerr = NULL;
-    int            ret;
     unsigned char  buf[BUFSIZ]; /* from stdio.h, typically 8K */
     ssize_t        buflen = sizeof(buf);
     unsigned char *p = buf;
     ssize_t        len;
     size_t         plen;
+    int            ret;
 
     yspec = clicon_dbspec_yang(h);
     /* Get unfinished frame */

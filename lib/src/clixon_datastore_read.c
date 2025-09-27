@@ -581,12 +581,12 @@ xmldb_readfile(clixon_handle     h,
     FILE            *fp = NULL;
     char            *formatstr;
     enum format_enum format;
-    int              ret;
     modstate_diff_t *msdiff = NULL;
     cxobj           *xmodfile = NULL;
     cxobj           *x;
     yang_stmt       *yspec1 = NULL;
     struct xmldb_multi_read_arg mr = {0, };
+    int              ret;
 
     if (yb != YB_MODULE && yb != YB_NONE){
         clixon_err(OE_XML, EINVAL, "yb is %d but should be module or none", yb);
@@ -1171,8 +1171,8 @@ xmldb_get0(clixon_handle    h,
            cxobj           **xerr)
 {
     int    retval = -1;
-    int    ret;
     cxobj *x = NULL;
+    int    ret;
 
     if (wdef != WITHDEFAULTS_EXPLICIT)
         return xmldb_get_copy(h, db, nsc, xpath, xret, xerr);

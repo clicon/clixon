@@ -1493,7 +1493,6 @@ xpath2xml_traverse(xpath_tree *xs,
                    cxobj     **xerr)
 {
     int        retval = -1;
-    int        ret;
     char      *name;
     char      *prefix;
     char      *namespace;
@@ -1502,6 +1501,7 @@ xpath2xml_traverse(xpath_tree *xs,
     cxobj     *xc;
     yang_stmt *ymod;
     yang_stmt *yc;
+    int        ret;
 
     *xbotp = x0;
     *ybotp = y0;

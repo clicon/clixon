@@ -85,15 +85,15 @@
  * @see struct clixon_handle, struct cli_handle
  */
 struct backend_handle {
-    int                  bh_magic;     /* magic (HDR)*/
-    clicon_hash_t       *bh_copt;      /* clicon option list (HDR) */
-    clicon_hash_t       *bh_data;      /* internal clicon data (HDR) */
-    clicon_hash_t       *ch_db_elmnt;  /* xml datastore element cache data */
-    event_stream_t      *bh_stream;    /* notification streams, see clixon_stream.[ch] */
+    int             bh_magic;     /* magic (HDR)*/
+    clicon_hash_t  *bh_copt;      /* clicon option list (HDR) */
+    clicon_hash_t  *bh_data;      /* internal clicon data (HDR) */
+    clicon_hash_t  *ch_db_elmnt;  /* xml datastore element cache data */
+    event_stream_t *bh_stream;    /* notification streams, see clixon_stream.[ch] */
 
     /* ------ end of common handle ------ */
-    struct client_entry *bh_ce_list;   /* The client list */
-    int                  bh_ce_nr;     /* Number of clients, just increment */
+    client_entry   *bh_ce_list;   /* The client list */
+    int             bh_ce_nr;     /* Number of clients, just increment */
 };
 
 /*! Creates and returns a clicon config handle for other CLICON API calls
@@ -116,7 +116,7 @@ backend_handle_init(void)
 int
 backend_handle_exit(clixon_handle h)
 {
-    struct client_entry *ce;
+    client_entry *ce;
 
     /* only delete client structs, not close sockets, etc, see backend_client_rm WHY NOT? */
     while ((ce = backend_client_list(h)) != NULL){
@@ -138,14 +138,14 @@ backend_handle_exit(clixon_handle h)
  * @retval     ce       Client entry
  * @retval     NULL     Error
  */
-struct client_entry *
+client_entry *
 backend_client_add(clixon_handle    h,
                    struct sockaddr *addr)
 {
     struct backend_handle *bh = handle(h);
-    struct client_entry   *ce = NULL;
+    client_entry          *ce = NULL;
 
-    if ((ce = (struct client_entry *)malloc(sizeof(*ce))) == NULL){
+    if ((ce = (client_entry *)malloc(sizeof(*ce))) == NULL){
         clixon_err(OE_PLUGIN, errno, "malloc");
         return NULL;
     }
@@ -172,7 +172,7 @@ backend_client_add(clixon_handle    h,
  * @param[in]  h        Clixon handle
  * @retval     ce_list  Client entry list (all sessions)
  */
-struct client_entry *
+client_entry *
 backend_client_list(clixon_handle h)
 {
     struct backend_handle *bh = handle(h);
@@ -187,11 +187,11 @@ backend_client_list(clixon_handle h)
  * @see backend_client_rm which is more high-level
  */
 int
-backend_client_delete(clixon_handle        h,
-                      struct client_entry *ce)
+backend_client_delete(clixon_handle h,
+                      client_entry *ce)
 {
-    struct client_entry   *c;
-    struct client_entry  **ce_prev;
+    client_entry          *c;
+    client_entry         **ce_prev;
     struct backend_handle *bh = handle(h);
 
     ce_prev = &bh->bh_ce_list;
@@ -223,7 +223,7 @@ backend_client_print(clixon_handle h,
                      FILE         *f)
 {
     struct backend_handle *bh = handle(h);
-    struct client_entry   *ce;
+    client_entry          *ce;
 
     for (ce = bh->bh_ce_list; ce; ce = ce->ce_next){
         fprintf(f, "Client:     %d\n", ce->ce_nr);

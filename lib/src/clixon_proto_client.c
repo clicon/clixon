@@ -587,9 +587,9 @@ clicon_rpc_get_config(clixon_handle h,
     cxobj     *xerr = NULL;
     cxobj     *xd = NULL;
     uint32_t   session_id;
-    int        ret;
     yang_stmt *yspec;
     cvec      *nscd = NULL;
+    int        ret;
 
     if (session_id_check(h, &session_id) < 0)
         goto done;

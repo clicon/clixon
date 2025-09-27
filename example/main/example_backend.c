@@ -601,12 +601,12 @@ example_statefile(clixon_handle     h,
     cxobj     *xt = NULL;
     yang_stmt *yspec = NULL;
     FILE      *fp = NULL;
-    int        ret;
 #ifdef _STATEFILTER
     size_t     xlen = 0;
     int        i;
     cxobj     *x1;
 #endif
+    int        ret;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
@@ -1424,10 +1424,10 @@ example_reset(clixon_handle h,
 {
     int        retval = -1;
     cxobj     *xt = NULL;
-    int        ret;
     cbuf      *cbret = NULL;
     yang_stmt *yspec;
     cxobj     *xerr = NULL;
+    int        ret;
 
     if (!_reset)
         goto ok; /* Note not enabled by default */
@@ -1516,10 +1516,10 @@ int
 example_daemon(clixon_handle h)
 {
     int        retval = -1;
-    int        ret;
     FILE      *fp = NULL;
     yang_stmt *yspec;
     cxobj     *xerr = NULL;
+    int        ret;
 
     /* Read state file (or should this be in init/start?) */
     if (_state && _state_file && _state_file_cached){

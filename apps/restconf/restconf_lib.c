@@ -481,12 +481,12 @@ restconf_insert_attributes(cxobj *xdata,
     char      *pstr;
     yang_stmt *y;
     char      *attrname;
-    int        ret;
     char      *xpath = NULL;
     cvec      *nsc = NULL;
     cbuf      *cb = NULL;
     char      *p;
     cg_var    *cv = NULL;
+    int        ret;
 
     y = xml_spec(xdata);
     if ((instr = cvec_find_str(qvec, "insert")) != NULL){
@@ -732,11 +732,11 @@ restconf_authentication_cb(clixon_handle  h,
     int                retval = -1;
     clixon_auth_type_t auth_type;
     int                authenticated;
-    int                ret;
     char              *username = NULL; /* Assume malloced if set */
     cxobj             *xret = NULL;
     cxobj             *xerr;
     char              *anonymous = NULL;
+    int                ret;
 
     auth_type = restconf_auth_type_get(h);
     clixon_debug(CLIXON_DBG_RESTCONF, "auth-type:%s", clixon_auth_type_int2str(auth_type));

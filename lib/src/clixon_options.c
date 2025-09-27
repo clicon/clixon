@@ -360,7 +360,6 @@ merge_control_xml(clixon_handle h,
     cxobj *xec;
     cxobj *xtc;
     cxobj *x;
-    //    int    ret;
 
     /* One could have used xml_merge, but there are several special conditions */
     xec = NULL;
@@ -446,7 +445,6 @@ parse_configfile(clixon_handle  h,
     clicon_hash_t *copt = clicon_options(h);
     cbuf          *cbret = NULL;
     cxobj         *xerr = NULL;
-    int            ret;
     cvec          *nsc = NULL;
     int            i;
     int            ndp;
@@ -455,6 +453,7 @@ parse_configfile(clixon_handle  h,
     char          *extraconfdir = NULL;
     cxobj         *xe = NULL;
     DIR           *dirp;
+    int            ret;
 
     if (filename == NULL || !strlen(filename)){
         clixon_err(OE_UNIX, 0, "Not specified");

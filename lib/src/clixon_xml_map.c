@@ -133,8 +133,8 @@ xml2cvec(cxobj      *xt,
     cg_var           *ycv;
     char             *body;
     char             *reason = NULL;
-    int               ret;
     char             *name;
+    int               ret;
 
     xc = NULL;
     /* Tried to allocate whole cvv here, but some cg_vars may be invalid */
@@ -594,8 +594,8 @@ xml_non_config_data(cxobj  *xt,
     int        retval = -1;
     cxobj     *x;
     yang_stmt *y;
-    int        ret;
     cbuf      *cb = NULL;
+    int        ret;
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
@@ -1545,11 +1545,11 @@ yang_xml_mandatory(cxobj     *xt,
     cg_var       *cv;
     enum rfc_6020 keyw;
     cxobj        *xs = NULL;
-    int           ret;
     yang_stmt    *yc;
     int           hit;
     int           nr;
     int           inext;
+    int           ret;
 
     /* Create dummy xs if not exist */
     if ((xs = xml_new(yang_argument_get(ys), xt, CX_ELMNT)) == NULL)

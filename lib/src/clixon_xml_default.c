@@ -90,8 +90,8 @@ xml_default_create1(yang_stmt *y,
     int    retval = -1;
     char  *namespace;
     char  *prefix;
-    int    ret;
     cxobj *xc = NULL;
+    int    ret;
 
     if ((xc = xml_new(yang_argument_get(y), NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -287,7 +287,7 @@ xml_nopresence_try(yang_stmt *yt,
  * @param[in]   state   Set if global state, otherwise config
  * @retval      0       OK
  * @retval     -1       Error
- * XXX If state, should not add config defaults             
+ * XXX If state, should not add config defaults
  *      if (state && yang_config(yc)) 
  */
 static int
@@ -528,8 +528,8 @@ xml_global_defaults(clixon_handle h,
     size_t     xlen;
     int        i;
     cxobj     *x0;
-    int        ret;
     char      *key;
+    int        ret;
 
     /* Use different keys for config and state */
     key = state ? "global-defaults-state" : "global-defaults-config";
@@ -606,9 +606,9 @@ xml_default_nopresence(cxobj *xn,
     yang_stmt    *yn;
     yang_stmt    *y;
     int           rmx = 0; /* If set, remove this xn */
-    int           ret;
     enum rfc_6020 keyw;
     int           config = 1;
+    int           ret;
 
     if (flag){
         if (xml_flag(xn, XML_FLAG_CHANGE) != 0)

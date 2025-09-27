@@ -77,11 +77,11 @@
  * @param[in] ce_list   List of clients
  * @param[in] id        Session id
  */
-static struct client_entry *
-ce_find_byid(struct client_entry *ce_list,
-             uint32_t             id)
+static client_entry *
+ce_find_byid(client_entry *ce_list,
+             uint32_t      id)
 {
-    struct client_entry *ce;
+    client_entry *ce;
 
     for (ce = ce_list; ce; ce = ce->ce_next)
         if (ce->ce_id == id)
@@ -97,8 +97,8 @@ ce_find_byid(struct client_entry *ce_list,
  * @retval    -1    Error
  */
 static int
-ce_client_descr(struct client_entry *ce,
-                cbuf               **cbp)
+ce_client_descr(client_entry *ce,
+                cbuf        **cbp)
 {
     int   retval = -1;
     cbuf *cb = NULL;
@@ -142,9 +142,9 @@ ce_event_cb(clixon_handle h,
             cxobj        *event,
             void         *arg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    cbuf                *cbce = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    cbuf         *cbce = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND, "op:%d", op);
     switch (op){
@@ -181,9 +181,9 @@ ce_event_cb(clixon_handle h,
  * @see xmldb_unlock_all  unlocks, but does not call user callbacks which is a backend thing
  */
 static int
-release_all_dbs(clixon_handle        h,
-                struct client_entry *ce,
-                uint32_t             id)
+release_all_dbs(clixon_handle h,
+                client_entry *ce,
+                uint32_t      id)
 {
     int       retval = -1;
     char    **keys = NULL;
@@ -262,11 +262,11 @@ backend_monitoring_state_get(clixon_handle h,
                              cxobj       **xret,
                              cxobj       **xerr)
 {
-    int                  retval = -1;
-    cbuf                *cb = NULL;
-    struct client_entry *ce;
-    char                 timestr[28];
-    int                  ret;
+    int           retval = -1;
+    cbuf         *cb = NULL;
+    client_entry *ce;
+    char          timestr[28];
+    int           ret;
 
     if ((cb = cbuf_new()) ==NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -335,14 +335,14 @@ backend_monitoring_state_get(clixon_handle h,
  * @see backend_client_delete for actual deallocation of client entry struct
  */
 int
-backend_client_rm(clixon_handle        h,
-                  struct client_entry *ce)
+backend_client_rm(clixon_handle h,
+                  client_entry *ce)
 {
-    struct client_entry  *c;
-    struct client_entry  *c0;
-    struct client_entry **ce_prev;
-    uint32_t              myid = ce->ce_id;
-    yang_stmt            *yspec;
+    client_entry  *c;
+    client_entry  *c0;
+    client_entry **ce_prev;
+    uint32_t       myid = ce->ce_id;
+    yang_stmt     *yspec;
 
     /* If the confirmed-commit feature is enabled, rollback any ephemeral commit originated by this client */
     if ((yspec = clicon_dbspec_yang(h)) != NULL) {
@@ -566,7 +566,7 @@ from_client_edit_config(clixon_handle h,
                         void         *regarg)
 {
     int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
+    client_entry        *ce = (client_entry *)arg;
     uint32_t             myid = ce->ce_id;
     uint32_t             iddb;
     char                *target = NULL;
@@ -856,17 +856,17 @@ from_client_copy_config(clixon_handle h,
                         void         *arg,
                         void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    char                *source;
-    char                *target;
-    uint32_t             iddb;
-    uint32_t             myid = ce->ce_id;
-    cbuf                *cbx = NULL; /* Assist cbuf */
-    cbuf                *cbmsg = NULL;
-    db_elmnt            *detarget = NULL;
-    db_elmnt            *desrc = NULL;
-    int                  ret;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    char         *source;
+    char         *target;
+    uint32_t      iddb;
+    uint32_t      myid = ce->ce_id;
+    cbuf         *cbx = NULL; /* Assist cbuf */
+    cbuf         *cbmsg = NULL;
+    db_elmnt     *detarget = NULL;
+    db_elmnt     *desrc = NULL;
+    int           ret;
 
     if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &detarget, cbret)) < 0)
         goto done;
@@ -951,16 +951,16 @@ from_client_delete_config(clixon_handle h,
                           void         *arg,
                           void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    char                *target;
-    uint32_t             iddb;
-    uint32_t             myid = ce->ce_id;
-    cbuf                *cbx = NULL; /* Assist cbuf */
-    cbuf                *cbmsg = NULL;
-    db_elmnt            *de;
-    char                *db1 = NULL;
-    int                  ret;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    char         *target;
+    uint32_t      iddb;
+    uint32_t      myid = ce->ce_id;
+    cbuf         *cbx = NULL; /* Assist cbuf */
+    cbuf         *cbmsg = NULL;
+    db_elmnt     *de;
+    char         *db1 = NULL;
+    int           ret;
 
     if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
@@ -1049,14 +1049,14 @@ from_client_lock(clixon_handle h,
                  void         *arg,
                  void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t             id = ce->ce_id;
-    char                *db;
-    cbuf                *cbx = NULL; /* Assist cbuf */
-    db_elmnt            *de;
-    uint32_t             iddb;
-    int                  ret;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    uint32_t      id = ce->ce_id;
+    char         *db;
+    cbuf         *cbx = NULL; /* Assist cbuf */
+    db_elmnt     *de;
+    uint32_t      iddb;
+    int           ret;
 
     if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
@@ -1116,14 +1116,14 @@ from_client_unlock(clixon_handle h,
                    void         *arg,
                    void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t             id = ce->ce_id;
-    uint32_t             iddb; /* DBs lock, if any */
-    char                *db;
-    cbuf                *cbx = NULL; /* Assist cbuf */
-    db_elmnt            *de;
-    int                  ret;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    uint32_t      id = ce->ce_id;
+    uint32_t      iddb; /* DBs lock, if any */
+    char         *db;
+    cbuf         *cbx = NULL; /* Assist cbuf */
+    db_elmnt     *de;
+    int           ret;
 
     if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
         goto done;
@@ -1190,8 +1190,8 @@ from_client_close_session(clixon_handle h,
                           void         *arg,
                           void         *regarg)
 {
-    struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t             id = ce->ce_id;
+    client_entry *ce = (client_entry *)arg;
+    uint32_t      id = ce->ce_id;
 
     if (release_all_dbs(h, ce, id) < 0)
         return -1;
@@ -1217,14 +1217,14 @@ from_client_kill_session(clixon_handle h,
                          void         *arg,
                          void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    uint32_t             id; /* session id */
-    char                *str = NULL;
-    struct client_entry *ce1;
-    cxobj               *x;
-    int                  ret;
-    char                *reason = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    client_entry *ce1;
+    uint32_t      id; /* session id */
+    char         *str = NULL;
+    cxobj        *x;
+    char         *reason = NULL;
+    int           ret;
 
     if ((x = xml_find(xe, "session-id")) == NULL ||
         (str = xml_find_value(x, "body")) == NULL){
@@ -1276,18 +1276,18 @@ from_client_create_subscription(clixon_handle h,
                                 void         *arg,
                                 void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    char                *stream = "NETCONF";
-    cxobj               *x; /* Generic xml tree */
-    cxobj               *xfilter; /* Filter xml tree */
-    char                *ftype;
-    char                *starttime = NULL;
-    char                *stoptime = NULL;
-    char                *selector = NULL;
-    struct timeval       start;
-    struct timeval       stop;
-    cvec                *nsc = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    char          *stream = "NETCONF";
+    cxobj         *x; /* Generic xml tree */
+    cxobj         *xfilter; /* Filter xml tree */
+    char          *ftype;
+    char          *starttime = NULL;
+    char          *stoptime = NULL;
+    char          *selector = NULL;
+    struct timeval start;
+    struct timeval stop;
+    cvec          *nsc = NULL;
 
     clixon_debug(CLIXON_DBG_STREAM, "");
     /* XXX should use prefix cf edit_config */
@@ -1620,21 +1620,21 @@ from_client_compare(clixon_handle h,
                     void         *arg,
                     void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    char                *db1;
-    char                *db2;
-    char                *id1 = NULL;
-    char                *id2 = NULL;
-    db_elmnt            *de1 = NULL;
-    db_elmnt            *de2 = NULL;
-    int                  all = 0;
-    int                  report_origin = 0;
-    cxobj               *xpath_filter = NULL;
-    char                *xpath0;
-    char                *xpath1 = NULL;
-    char                *xpath = NULL;
-    cvec                *nsc = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    char         *db1;
+    char         *db2;
+    char         *id1 = NULL;
+    char         *id2 = NULL;
+    db_elmnt     *de1 = NULL;
+    db_elmnt     *de2 = NULL;
+    int           all = 0;
+    int           report_origin = 0;
+    cxobj        *xpath_filter = NULL;
+    char         *xpath0;
+    char         *xpath1 = NULL;
+    char         *xpath = NULL;
+    cvec         *nsc = NULL;
 
     if (xml_find(xe, "all") != NULL){
         if (netconf_operation_not_supported(cbret, "application", "all not supported") < 0)
@@ -1663,7 +1663,7 @@ from_client_compare(clixon_handle h,
         if (netconf_invalid_value(cbret, "protocol", "missing source identifier") < 0)
             goto done;
     }
-    if (xmldb_find_create(h, id1, ce->ce_id, &de1) < 0)
+    if (xmldb_find_create(h, id1, ce->ce_id, &de1, NULL) < 0)
         goto done;
     if ((db2 = xml_find_body(xe, "target")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "target", NULL) < 0)
@@ -1675,7 +1675,7 @@ from_client_compare(clixon_handle h,
         if (netconf_invalid_value(cbret, "protocol", "missing target identifier") < 0)
             goto done;
     }
-    if (xmldb_find_create(h, id2, ce->ce_id, &de2) < 0)
+    if (xmldb_find_create(h, id2, ce->ce_id, &de2, NULL) < 0)
         goto done;
     if (xml_find(xe, "all") != NULL)
         all++;
@@ -1965,9 +1965,9 @@ from_client_hello(clixon_handle  h,
                   void          *arg,
                   void          *regarg)
 {
-    int                  retval = -1;
-    char                *val;
-    struct client_entry *ce = (struct client_entry *)arg;
+    int           retval = -1;
+    char         *val;
+    client_entry *ce = (client_entry *)arg;
 
     if ((val = xml_find_type_value(xe, "cl", "transport", CX_ATTR)) != NULL){
         if (ce->ce_transport)
@@ -2002,9 +2002,9 @@ from_client_hello(clixon_handle  h,
  *                   propagated back to client.
  */
 static int
-from_client_msg(clixon_handle        h,
-                struct client_entry *ce,
-                char                *msg)
+from_client_msg(clixon_handle h,
+                client_entry *ce,
+                char         *msg)
 {
     int                  retval = -1;
     cxobj               *xt = NULL;
@@ -2013,7 +2013,6 @@ from_client_msg(clixon_handle        h,
     char                *rpc = NULL;
     char                *module = NULL;
     cbuf                *cbret = NULL; /* return message */
-    int                  ret;
     char                *username;
     yang_stmt           *yspec;
     yang_stmt           *ye;
@@ -2026,6 +2025,7 @@ from_client_msg(clixon_handle        h,
     char                *namespace = NULL;
     int                  nr = 0;
     cbuf                *cbce = NULL;
+    int                  ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     yspec = clicon_dbspec_yang(h);
@@ -2312,12 +2312,12 @@ int
 from_client(int   s,
             void* arg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    clixon_handle        h = ce->ce_handle;
-    int                  eof = 0;
-    cbuf                *cbce = NULL;
-    cbuf                *cb = NULL;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    clixon_handle h = ce->ce_handle;
+    int           eof = 0;
+    cbuf         *cbce = NULL;
+    cbuf         *cb = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     if (s != ce->ce_s){

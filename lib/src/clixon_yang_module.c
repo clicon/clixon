@@ -331,10 +331,10 @@ yang_modules_state_get(clixon_handle    h,
     char       *msid; /* modules-set-id */
     cxobj      *xc;   /* original cache */
     cbuf       *cb = NULL;
-    int         ret;
     cxobj     **xvec = NULL;
     size_t      xlen;
     int         i;
+    int         ret;
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID"); /* In RFC 8525 changed to "content-id" */
     if ((xc = clicon_modst_cache_get(h, brief)) != NULL){
@@ -430,8 +430,8 @@ mod_ns_upgrade(clixon_handle h,
     yang_stmt *yrev;
     uint32_t   from = 0;
     uint32_t   to = 0;
-    int        ret;
     yang_stmt *yspec;
+    int        ret;
 
     /* If modified or removed get from revision from file */
     if (xml_flag(xmod, (XML_FLAG_CHANGE|XML_FLAG_DEL)) != 0x0){

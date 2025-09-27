@@ -70,19 +70,19 @@ int from_client_confirmed_commit(clixon_handle h, cxobj *xe, uint32_t myid, cbuf
 int startup_validate(clixon_handle h, char *db, cxobj **xtr, cbuf *cbret);
 int startup_commit(clixon_handle h, char *db, cbuf *cbret);
 int candidate_validate(clixon_handle h, char *db, cbuf *cbret);
-int candidate_commit(clixon_handle h, cxobj *xe, char *db, uint32_t myid,
+int candidate_commit(clixon_handle h, cxobj *xe, const char *db, uint32_t myid,
                      validate_level vlev, cbuf *cbret);
 int from_client_commit(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_discard_changes(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_validate(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
-int backend_update(clixon_handle h, struct client_entry *ce, db_elmnt *de1, cbuf *cbret);
+int backend_update(clixon_handle h, client_entry *ce, db_elmnt *de1, cbuf *cbret);
 int from_client_update(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, void *regarg);
 int from_client_restart_one(clixon_handle h, clixon_plugin_t *cp, cbuf *cbret);
 int load_failsafe(clixon_handle h, char *phase);
 int system_only_data_add(clixon_handle h, char *db);
 int xmldb_candidate_find(clixon_handle h, const char *name, uint32_t ceid, db_elmnt **dep, char **db);
-int       xmldb_netconf_name_find(clixon_handle h, cxobj *xn, const char *name, struct client_entry *ce, db_elmnt **de, cbuf *cbret);
-int       xmldb_find_create(clixon_handle h, const char *db, uint32_t ceid, db_elmnt **de);
+int       xmldb_netconf_name_find(clixon_handle h, cxobj *xn, const char *name, client_entry *ce, db_elmnt **de, cbuf *cbret);
+int       xmldb_find_create(clixon_handle h, const char *db, uint32_t ceid, db_elmnt **dep, char **dbp);
 db_elmnt *xmldb_candidate_new(clixon_handle h, const char *name, uint32_t ceid);
 
 #endif  /* _CLIXON_BACKEND_COMMIT_H_ */

@@ -2027,10 +2027,10 @@ ys_parse_sub(yang_stmt  *ys,
     char      *arg;
     enum rfc_6020 keyword;
     char      *reason = NULL;
-    int        ret;
     uint32_t   minmax;
     cg_var    *cv = NULL;
     yang_stmt *yp;
+    int        ret;
 
     arg = yang_argument_get(ys);
     keyword = yang_keyword_get(ys);

@@ -109,8 +109,8 @@ xpath_append(cbuf      *cb0,
     int    initialups = 1; /* If starts with ../../.. */
     char  *xpath0;
     char  *ns;
-    int    ret;
     int    j;
+    int    ret;
 
     if (cb0 == NULL){
         clixon_err(OE_XML, EINVAL, "cb0 is NULL");

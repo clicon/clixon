@@ -203,9 +203,9 @@ get_state_data(clixon_handle h,
     yang_stmt *yspec;
     yang_stmt *ymod;
     cxobj     *x1 = NULL;
-    int        ret;
     cbuf      *cb = NULL;
     cxobj     *xerr = NULL;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -511,17 +511,17 @@ list_pagination_hdr(clixon_handle h,
  * @retval    -1         Error
  */
 static int
-get_pagination_state_partial(clixon_handle        h,
-                             struct client_entry *ce,
-                             yang_stmt           *yspec,
-                             char                *xpath,
-                             char                *where,
-                             char                *sort_by,
-                             char                *direction,
-                             uint32_t             offset,
-                             uint32_t             limit,
-                             cxobj               *xret,
-                             cbuf                *cbret)
+get_pagination_state_partial(clixon_handle h,
+                             client_entry *ce,
+                             yang_stmt    *yspec,
+                             char         *xpath,
+                             char         *where,
+                             char         *sort_by,
+                             char         *direction,
+                             uint32_t      offset,
+                             uint32_t      limit,
+                             cxobj        *xret,
+                             cbuf         *cbret)
 {
     int                 retval = -1;
     int                 locked;
@@ -618,18 +618,18 @@ get_pagination_state_partial(clixon_handle        h,
    lastly "the "limit" parameter (see Section 3.1.7).
  */
 static int
-get_list_pagination(clixon_handle        h,
-                    struct client_entry *ce,
-                    cxobj               *xe,
-                    netconf_content      content,
-                    char                *db,
-                    int32_t              depth,
-                    yang_stmt           *yspec,
-                    char                *xpath,
-                    cvec                *nsc,
-                    char                *username,
-                    withdefaults_type    wdef,
-                    cbuf                *cbret
+get_list_pagination(clixon_handle     h,
+                    client_entry     *ce,
+                    cxobj            *xe,
+                    netconf_content   content,
+                    char             *db,
+                    int32_t           depth,
+                    yang_stmt        *yspec,
+                    char             *xpath,
+                    cvec             *nsc,
+                    char             *username,
+                    withdefaults_type wdef,
+                    cbuf             *cbret
                     )
 {
     int        retval = -1;
@@ -652,7 +652,6 @@ get_list_pagination(clixon_handle        h,
     char      *where = NULL;
     int        i;
     int        j;
-    int        ret;
     dispatcher_entry_t *htable = NULL;
     cvec      *wherens = NULL;
     //    int        extflag = 0;
@@ -661,6 +660,7 @@ get_list_pagination(clixon_handle        h,
     uint32_t   total;
     uint32_t   remaining = 0;
 #endif
+    int        ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     if (cbret == NULL){
@@ -935,12 +935,12 @@ get_list_pagination(clixon_handle        h,
  * @see from_client_get_config
  */
 static int
-get_common(clixon_handle        h,
-           struct client_entry *ce,
-           cxobj               *xe,
-           netconf_content      content,
-           char                *db,
-           cbuf                *cbret
+get_common(clixon_handle   h,
+           client_entry   *ce,
+           cxobj          *xe,
+           netconf_content content,
+           char           *db,
+           cbuf           *cbret
            )
 {
     int               retval = -1;
@@ -954,7 +954,6 @@ get_common(clixon_handle        h,
     int32_t           depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
     yang_stmt        *yspec;
     cxobj            *xerr = NULL;
-    int               ret;
     char             *reason = NULL;
     cbuf             *cbmsg = NULL; /* For error msg */
     char             *xpath0;
@@ -966,6 +965,7 @@ get_common(clixon_handle        h,
     cxobj            *xlpg2 = NULL;
     withdefaults_type wdef;
     char             *wdefstr;
+    int               ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
     if (db == NULL){
@@ -1210,11 +1210,11 @@ from_client_get_config(clixon_handle h,
                        void         *arg,
                        void         *regarg)
 {
-    int                  retval = -1;
-    struct client_entry *ce = (struct client_entry *)arg;
-    db_elmnt            *de;
-    int                  ret;
-    char                *db;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    db_elmnt     *de;
+    char         *db;
+    int           ret;
 
     if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &de, cbret)) < 0)
         goto done;
@@ -1248,9 +1248,9 @@ from_client_get(clixon_handle h,
                 void         *arg,
                 void         *regarg)
 {
-    netconf_content      content = CONTENT_ALL;
-    char                *attr;
-    struct client_entry *ce = (struct client_entry *)arg;
+    netconf_content content = CONTENT_ALL;
+    client_entry   *ce = (client_entry *)arg;
+    char           *attr;
 
     /* Clixon extensions: content */
     if ((attr = xml_find_value(xe, "content")) != NULL)

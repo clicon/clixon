@@ -569,8 +569,8 @@ clixon_client_get_bool(clixon_client_handle ch,
     struct clixon_client_handle *cch = chandle(ch);
     char                        *val = NULL;
     char                        *reason = NULL;
-    int                          ret;
     uint8_t                      val0=0;
+    int                          ret;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (clixon_client_get_body_val(cch->cch_h, cch->cch_socket, cch->cch_descr,

@@ -615,7 +615,6 @@ yang_patch_do_edit(clixon_handle  h,
     int        retval = -1;
     cxobj    **vec = NULL;
     size_t     veclen = 0;
-    int        ret;
     cxobj     *xerr = NULL;    /* malloced must be freed */
     cxobj     *xtop;
     cxobj     *xbot = NULL;
@@ -632,6 +631,7 @@ yang_patch_do_edit(clixon_handle  h,
     cbuf      *api_path_target = NULL;
     yang_stmt *ybot = NULL;
     yang_stmt *ymod;
+    int        ret;
 
     clixon_debug_xml(CLIXON_DBG_RESTCONF, xn, "%d xn:", __LINE__);
     /* Create cbufs:s */
@@ -771,10 +771,10 @@ api_data_yang_patch(clixon_handle  h,
     yang_stmt     *yspec;
     char          *api_path;
     cxobj         *xerr = NULL;    /* malloced must be freed */
-    int            ret;
     char          *uripath0 = NULL;
     size_t         veclen;
     cxobj        **vec = NULL;
+    int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "api_path:\"%s\"", api_path0);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){

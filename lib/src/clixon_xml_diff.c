@@ -514,7 +514,6 @@ xml_merge1(cxobj              *x0,  /* the target */
     char           *x1bstr; /* mod body string */
     yang_stmt      *yc;  /* yang child */
     cbuf           *cbr = NULL; /* Reason buffer */
-    int             ret;
     int             i;
     merge_twophase *twophase = NULL;
     int             twophase_len;
@@ -523,6 +522,7 @@ xml_merge1(cxobj              *x0,  /* the target */
     char           *ns;
     char           *px;
     char           *pxe;
+    int             ret;
 
     if (x1 == NULL || xml_type(x1) != CX_ELMNT || y0 == NULL){
         clixon_err(OE_XML, EINVAL, "x1 is NULL or not XML element, or lacks yang spec");

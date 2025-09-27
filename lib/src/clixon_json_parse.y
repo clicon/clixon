@@ -146,10 +146,8 @@ object.
 
 extern int clixon_json_parseget_lineno  (void);
 
-/* 
-   also called from yacc generated code *
+/*! Also called from yacc generated code *
 */
-
 void
 clixon_json_parseerror(void *_jy,
                        char *s)

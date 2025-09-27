@@ -47,11 +47,11 @@ clixon_handle backend_handle_init(void);
 
 int backend_handle_exit(clixon_handle h);
 
-struct client_entry *backend_client_add(clixon_handle h, struct sockaddr *addr);
+client_entry *backend_client_add(clixon_handle h, struct sockaddr *addr);
 
-struct client_entry *backend_client_list(clixon_handle h);
+client_entry *backend_client_list(clixon_handle h);
 
-int backend_client_delete(clixon_handle h, struct client_entry *ce);
+int backend_client_delete(clixon_handle h, client_entry *ce);
 
 int backend_client_print(clixon_handle h, FILE *f);
 

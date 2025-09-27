@@ -174,11 +174,11 @@ loop_preds(xpath_tree *xt,
            cvec       *cvk)
 {
     int          retval = -1;
-    int          ret;
     xpath_tree  *xe;
     xpath_tree **vec = NULL;
     size_t       veclen = 0;
     cg_var      *cvi;
+    int          ret;
 
     if (xt->xs_type == XP_PRED && xt->xs_c0){
         if ((ret = loop_preds(xt->xs_c0, xepat, cvk)) < 0)
@@ -242,11 +242,11 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     xpath_tree **vec = NULL;
     size_t       veclen = 0;
     xpath_tree  *xtp;
-    int          ret;
     cvec        *cvk = NULL; /* vector of index keys */
     cg_var      *cvi;
     int          i;
     yang_stmt   *ypp;
+    int          ret;
 
     /* revert to non-optimized if no yang */
     if ((yp = xml_spec(xv)) == NULL)
@@ -333,8 +333,8 @@ xpath_optimize_check(xpath_tree *xs,
 {
 #ifdef XPATH_LIST_OPTIMIZE
     int          retval = -1;
-    int          ret;
     clixon_xvec *xvec = NULL;
+    int          ret;
 
     if (!_optimize_enable)
         goto ok;

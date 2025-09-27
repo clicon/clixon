@@ -120,8 +120,8 @@ xml2output_wdef(cxobj            *x,
     char      *body;
     cxobj     *xc;
     yang_stmt *y;
-    int        ret;
     int        config;
+    int        ret;
 
     if ((y = xml_spec(x)) == NULL)
         goto ok;
@@ -862,9 +862,9 @@ _xml_parse(clixon_handle h,
     int             retval = -1;
     clixon_xml_yacc xy = {0,};
     cxobj          *x;
-    int             ret;
     int             failed = 0; /* yang assignment */
     int             i;
+    int             ret;
 
     if (clixon_debug_get() & CLIXON_DBG_DETAIL)
         clixon_debug(CLIXON_DBG_PARSE | CLIXON_DBG_DETAIL, "%s", str);
@@ -992,7 +992,6 @@ clixon_xml_parse_file(FILE      *fp,
                       cxobj    **xerr)
 {
     int   retval = -1;
-    int   ret;
     int   len = 0;
     char  ch;
     char *xmlbuf = NULL;
@@ -1002,6 +1001,7 @@ clixon_xml_parse_file(FILE      *fp,
     int   failed = 0;
     int   xtempty; /* empty on entry */
     size_t sz;
+    int   ret;
 
     if (xt == NULL || fp == NULL){
         clixon_err(OE_XML, EINVAL, "arg is NULL");

@@ -151,8 +151,8 @@ snmp_scalar_return(cxobj                      *xs,
     size_t                 snmplen = 0;
     char                  *reason = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
-    int                    ret;
     char                  *body = NULL;
+    int                    ret;
 
     /* SMI default value, How is this different from yang defaults?
      */
@@ -245,12 +245,12 @@ snmp_scalar_get(clixon_handle               h,
     char   *xmlstr = NULL;
     u_char *snmpval = NULL;
     size_t  snmplen = 0;
-    int     ret;
     int     asn1type;
     char   *reason = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
     cxobj  *xcache = NULL;
     char   *body = NULL;
+    int     ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     /* Prepare backend call by constructing namespace context */
@@ -346,13 +346,13 @@ snmp_yang2xml(cxobj     *xtop,
               cvec      *cvk,
               cxobj    **xbot)
 {
-    int   retval = -1;
-    cvec *cvk1 = NULL;
-    char *api_path = NULL;
-    char *api_path_fmt = NULL;
-    int   i;
-    int   ret;
+    int        retval = -1;
+    cvec      *cvk1 = NULL;
+    char      *api_path = NULL;
+    char      *api_path_fmt = NULL;
+    int        i;
     yang_stmt *yspec;
+    int        ret;
 
     yspec = ys_spec(ys);
     if (yang2api_path_fmt(ys, 0, &api_path_fmt) < 0)
@@ -407,12 +407,12 @@ snmp_scalar_set(clixon_handle               h,
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
     cxobj     *xb;
-    int        ret;
     char      *valstr = NULL;
     cbuf      *cb = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
     int        asn1_type;
     enum operation_type op = OP_MERGE;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
@@ -555,13 +555,13 @@ snmp_cache_set(clixon_handle               h,
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
     cxobj     *xb;
-    int        ret;
     char      *valstr = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
     int        asn1_type;
     yang_stmt *yspec;
     int        isrowstatus = 0;
     cxobj     *xcache = NULL;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -975,12 +975,12 @@ snmp_table_set(clixon_handle               h,
     cvec      *cvk_val = NULL;
     int        i;
     cg_var    *cv;
-    int        ret;
     int        asn1_type;
     netsnmp_variable_list  *requestvb;
     int        rowstatus = 0;
     char      *origtype;
     int        inext;
+    int        ret;
 
     /* Get OID from table /list  */
     if ((ret = yangext_oid_get(yt, oidt, &oidtlen, NULL)) < 0)
@@ -1257,7 +1257,6 @@ snmp_table_getnext(clixon_handle               h,
     cxobj     *xcol;
     yang_stmt *ycol;
     yang_stmt *ys;
-    int        ret;
     cvec      *cvk_name;
     oid        oidc[MAX_OID_LEN] = {0,}; /* Table / list oid */
     size_t     oidclen = MAX_OID_LEN;
@@ -1269,6 +1268,7 @@ snmp_table_getnext(clixon_handle               h,
     cxobj     *xnext = NULL;
     yang_stmt *ynext = NULL;
     cbuf      *cb = NULL;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     if ((ys = yang_parent_get(ylist)) == NULL ||
@@ -1362,9 +1362,9 @@ clixon_snmp_table_handler1(netsnmp_mib_handler          *handler,
     cvec                   *nsc = NULL;
     cxobj                  *xt = NULL;
     cbuf                   *cb = NULL;
-    int                     ret;
     netsnmp_variable_list  *requestvb;
     int                     err = 0;
+    int                     ret;
 
     clixon_debug(CLIXON_DBG_SNMP | CLIXON_DBG_DETAIL, "");
     if ((ret = snmp_common_handler(handler, nhreg, reqinfo, request, 1, &sh)) < 0)

@@ -117,7 +117,8 @@ changelog_rename(clixon_handle h,
     goto done;
 }
 
-/* replace target XML */
+/*! Replace target XML
+ */
 static int
 changelog_replace(clixon_handle h,
                   cxobj        *xt,
@@ -151,8 +152,8 @@ changelog_replace(clixon_handle h,
     return retval;
 }
 
-/* create a new node by parsing "new" and insert it at 
-   target */
+/*! Create a new node by parsing "new" and insert it at target
+ */
 static int
 changelog_insert(clixon_handle h,
                  cxobj        *xt,
@@ -242,10 +243,10 @@ changelog_op(clixon_handle h,
     cxobj **wvec = NULL; /* Vector of where(target) nodes */
     size_t  wlen;
     cxobj  *xw;
-    int     ret;
     xp_ctx *xctx = NULL;
     int     i;
     cvec   *nsc = NULL;
+    int     ret;
 
     /* Get namespace context from changelog item */
     if (xml_nsctx_node(xi, &nsc) < 0)
@@ -335,8 +336,8 @@ changelog_iterate(clixon_handle h,
     int        retval = -1;
     cxobj    **vec = NULL;
     size_t     veclen;
-    int        ret;
     int        i;
+    int        ret;
 
     if (xpath_vec(xch, NULL, "step", &vec, &veclen) < 0)
         goto done;
@@ -389,10 +390,10 @@ xml_changelog_upgrade(clixon_handle h,
     cxobj     *xch;
     size_t     veclen;
     char      *b;
-    int        ret;
     int        i;
     uint32_t   f;
     uint32_t   t;
+    int        ret;
 
     /* Check if changelog enabled */
     if (!clicon_option_bool(h, "CLICON_XML_CHANGELOG"))
@@ -446,9 +447,9 @@ clixon_xml_changelog_init(clixon_handle h)
     FILE      *fp = NULL;
     cxobj     *xt = NULL;
     yang_stmt *yspec;
-    int        ret;
     cxobj     *xret = NULL;
     cbuf      *cbret = NULL;
+    int        ret;
 
     yspec = clicon_dbspec_yang(h);
     if ((filename = clicon_option_str(h, "CLICON_XML_CHANGELOG_FILE")) != NULL){

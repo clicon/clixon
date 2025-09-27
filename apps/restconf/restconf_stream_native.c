@@ -139,12 +139,12 @@ stream_native_backend_cb(int   s,
     cbuf                 *cb = NULL;
     cbuf                 *cbmsg = NULL;
     int                   pretty = 0;
-    int                   ret;
     restconf_conn        *rc = sd->sd_conn;
     clixon_handle         h = rc->rc_h;
 #ifdef HAVE_LIBNGHTTP2
     nghttp2_error         ngerr;
 #endif
+    int                   ret;
 
     clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
     pretty = restconf_pretty_get(h);

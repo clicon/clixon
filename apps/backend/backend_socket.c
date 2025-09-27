@@ -231,19 +231,19 @@ int
 backend_accept_client(int   fd,
                       void *arg)
 {
-    int                  retval = -1;
-    clixon_handle        h = (clixon_handle)arg;
-    int                  s = -1;
-    struct sockaddr      from = {0,};
-    socklen_t            len;
-    struct client_entry *ce;
-    char                *name = NULL;
+    int             retval = -1;
+    clixon_handle   h = (clixon_handle)arg;
+    int             s = -1;
+    struct sockaddr from = {0,};
+    socklen_t       len;
+    client_entry   *ce;
+    char           *name = NULL;
 #ifdef HAVE_SO_PEERCRED        /* Linux. */
-    socklen_t            clen;
-    struct ucred         cr = {0,};
+    socklen_t       clen;
+    struct ucred    cr = {0,};
 #elif defined(HAVE_GETPEEREID) /* FreeBSD */
-    uid_t                euid;
-    uid_t                guid;
+    uid_t           euid;
+    uid_t           guid;
 #endif
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");

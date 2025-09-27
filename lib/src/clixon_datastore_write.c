@@ -615,7 +615,6 @@ text_modify(clixon_handle       h,
     cxobj    **x0vec = NULL;
     int        i;
     int        j;
-    int        ret;
     char      *instr = NULL;
     char      *keystr = NULL;
     char      *valstr = NULL;
@@ -627,6 +626,7 @@ text_modify(clixon_handle       h,
     char      *restype;
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
+    int        ret;
 
     if (x1 == NULL){
         clixon_err(OE_XML, EINVAL, "x1 is missing");
@@ -1189,8 +1189,8 @@ text_modify_top(clixon_handle       h,
     yang_stmt *yc;  /* yang child */
     yang_stmt *ymod;/* yang module */
     char      *opstr = NULL;
-    int        ret;
     char      *createstr = NULL;
+    int        ret;
 
     /* Check for operations embedded in tree according to netconf */
     if ((ret = attr_ns_value(x1t,

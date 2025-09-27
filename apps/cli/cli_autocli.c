@@ -374,8 +374,8 @@ autocli_completion(clixon_handle h,
     char   *str;
     uint8_t val;
     char   *reason = NULL;
-    int     ret;
     cxobj  *xautocli;
+    int     ret;
 
     if (completion == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -417,8 +417,8 @@ autocli_grouping_treeref(clixon_handle h,
     char   *str;
     uint8_t val;
     char   *reason = NULL;
-    int     ret;
     cxobj  *xautocli;
+    int     ret;
 
     if (treeref == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -493,8 +493,8 @@ autocli_treeref_state(clixon_handle h,
     char   *str;
     uint8_t val;
     char   *reason = NULL;
-    int     ret;
     cxobj  *xautocli;
+    int     ret;
 
     if (treeref_state == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");

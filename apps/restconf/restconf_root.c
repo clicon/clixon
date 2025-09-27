@@ -476,8 +476,8 @@ api_root_restconf(clixon_handle        h,
     restconf_media media_out = YANG_DATA_JSON;
     char          *indata = NULL;
     char          *username = NULL;
-    int            ret;
     cxobj         *xerr = NULL;
+    int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (req == NULL){

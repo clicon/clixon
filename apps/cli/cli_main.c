@@ -242,8 +242,8 @@ cli_interactive(clixon_handle h)
     char         *cmd;
     char         *new_mode;
     cligen_result result;
-    int           ret;
     pt_head      *ph;
+    int           ret;
 
     /* Loop through all commands */
     while(!cligen_exiting(cli_cligen(h))) {

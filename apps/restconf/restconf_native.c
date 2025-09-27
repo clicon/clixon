@@ -674,9 +674,9 @@ restconf_http1_process(restconf_conn *rc,
     int                   retval = -1;
     restconf_stream_data *sd;
     clixon_handle         h;
-    int                   ret;
     int                   status;
     cbuf                 *cberr = NULL;
+    int                   ret;
 
     h = rc->rc_h;
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
@@ -890,8 +890,8 @@ restconf_http2_process(restconf_conn *rc,
                        int           *readmore)
 {
     int           retval = -1;
-    int           ret;
     nghttp2_error ngerr;
+    int           ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if (rc->rc_exit){ /* Server-initiated exit for http/2 */
@@ -1104,9 +1104,9 @@ restconf_close_ssl_socket(restconf_conn *rc,
                           int            dontshutdown)
 {
     int retval = -1;
-    int ret;
     int sslerr;
     int er;
+    int ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%s", callfn);
     if (rc->rc_ssl != NULL){
@@ -1248,13 +1248,13 @@ restconf_ssl_accept_client(clixon_handle    h,
     restconf_native_handle *rn = NULL;
     restconf_conn          *rc = NULL;
     char                   *name = NULL;
-    int                     ret;
     int                     e;
     int                     er;
     int                     readmore;
     const unsigned char    *alpn = NULL;
     unsigned int            alpnlen = 0;
     restconf_http_proto     proto = HTTP_11;  /* Non-SSL negotiation NYI */
+    int                     ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
 #ifdef HAVE_LIBNGHTTP2
@@ -1740,11 +1740,11 @@ restconf_socket_extract(clixon_handle    h,
     cxobj     *x;
     char      *str = NULL;
     char      *reason = NULL;
-    int        ret;
     char      *body;
     cg_var    *cv = NULL;
     yang_stmt *y;
     yang_stmt *ysub = NULL;
+    int        ret;
 
     if ((x = xpath_first(xs, nsc, "namespace")) == NULL){
         clixon_err(OE_XML, EINVAL, "Mandatory namespace not given");

@@ -363,10 +363,10 @@ check_unique_list(cxobj     *x,
     size_t  slen = 0;
     char   *xpath0 = NULL;
     char   *xpath1 = NULL;
-    int     ret;
     cvec   *cvk;
     cvec   *nsc0 = NULL;
     cvec   *nsc1 = NULL;
+    int     ret;
 
     /* Check if multiple direct children */
     cvk = yang_cvec_get(yu);
@@ -485,9 +485,9 @@ check_empty_list_minmax(cxobj     *xt,
                         cxobj    **xret)
 {
     int        retval = -1;
-    int        ret;
     yang_stmt *yprev = NULL;
     int        inext;
+    int        ret;
 
     if (yang_config(ye) == 1){
         if(yang_keyword_get(ye) == Y_CONTAINER &&
@@ -587,8 +587,8 @@ xml_yang_minmax_gap_analysis(cxobj      *xt,
 {
     int        retval = -1;
     yang_stmt *ye;
-    int        ret;
     yang_stmt *ych = NULL;
+    int        ret;
 
     ye = *yep;
     if (y && (ych = yang_choice(y)) == NULL)
@@ -699,9 +699,9 @@ xml_yang_validate_minmax(cxobj  *xt,
     yang_stmt    *ye = NULL;    /* yang each list to catch emtpy */
     enum rfc_6020 keyw;
     int           nr = 0;
-    int           ret;
     yang_stmt    *yt;
     int           inext = 0;
+    int           ret;
 
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){

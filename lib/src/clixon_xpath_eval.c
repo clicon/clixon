@@ -784,11 +784,11 @@ xml_cv_cache(cxobj   *x,
     yang_stmt   *y;
     yang_stmt   *yrestype;
     enum cv_type cvtype;
-    int          ret;
     char        *reason=NULL;
     int          options = 0;
     uint8_t      fraction = 0;
     char        *body;
+    int          ret;
 
     if ((body = xml_body(x)) == NULL)
         body="";

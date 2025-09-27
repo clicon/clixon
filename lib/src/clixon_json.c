@@ -414,8 +414,8 @@ json2xml_decode(cxobj *x,
     yang_stmt    *y;
     enum rfc_6020 keyword;
     cxobj        *xc;
-    int           ret;
     yang_stmt    *ytype = NULL;
+    int           ret;
 
     if ((y = xml_spec(x)) != NULL){
         keyword = yang_keyword_get(y);
@@ -1673,7 +1673,6 @@ clixon_json_parse_file(FILE      *fp,
                        cxobj    **xerr)
 {
     int       retval = -1;
-    int       ret;
     char     *jsonbuf = NULL;
     int       jsonbuflen = BUFLEN; /* start size */
     int       oldjsonbuflen;
@@ -1681,6 +1680,7 @@ clixon_json_parse_file(FILE      *fp,
     char      ch;
     int       len = 0;
     size_t    sz;
+    int       ret;
 
     if (xt==NULL){
         clixon_err(OE_JSON, EINVAL, "xt is NULL");

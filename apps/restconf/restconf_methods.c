@@ -743,8 +743,8 @@ api_data_delete(clixon_handle h,
     cxobj     *xretdis = NULL; /* return from discard */
     cxobj     *xerr = NULL;
     char      *username;
-    int        ret;
     cxobj     *xe; /* xml error, no free */
+    int        ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "api_path:%s", api_path);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){

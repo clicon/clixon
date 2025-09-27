@@ -526,7 +526,6 @@ clicon_parse(clixon_handle  h,
 {
     int               retval = -1;
     char             *modename;
-    int               ret;
     parse_tree       *pt;     /* Orig */
     cg_obj           *match_obj = NULL;
     cvec             *cvv = NULL;
@@ -534,6 +533,7 @@ clicon_parse(clixon_handle  h,
     char             *reason = NULL;
     cligen_handle     ch;
     pt_head          *ph;
+    int               ret;
 
     ch = cli_cligen(h);
     if (clixon_logflags_get()&CLIXON_LOG_STDOUT)

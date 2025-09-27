@@ -104,7 +104,6 @@ mibyang_leaf_register(clixon_handle h,
     int                           retval = -1;
     netsnmp_handler_registration *nhreg = NULL;
     netsnmp_mib_handler          *handler;
-    int                           ret;
     char                         *modes_str = NULL;
     char                         *default_str = NULL;
     oid                           oid1[MAX_OID_LEN] = {0,};
@@ -113,6 +112,7 @@ mibyang_leaf_register(clixon_handle h,
     char                         *name;
     clixon_snmp_handle           *sh;
     cbuf                         *cboid = NULL;
+    int                           ret;
 
     if ((cboid = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -227,7 +227,6 @@ mibyang_table_register(clixon_handle h,
     int                              retval = -1;
     netsnmp_handler_registration    *nhreg;
     clixon_snmp_handle              *sh;
-    int                              ret;
     netsnmp_mib_handler             *handler;
     netsnmp_table_registration_info *table_info = NULL;
     cvec                            *cvk = NULL; /* vector of index keys */
@@ -238,6 +237,7 @@ mibyang_table_register(clixon_handle h,
     yang_stmt                       *ys;
     char                            *name;
     int                              inext;
+    int                              ret;
 
     if ((ys = yang_parent_get(ylist)) == NULL ||
         yang_keyword_get(ys) != Y_CONTAINER){
@@ -417,8 +417,8 @@ mibyang_augment_register(clixon_handle h,
     size_t     oid1len = MAX_OID_LEN;
     oid        oid2[MAX_OID_LEN] = {0,};
     size_t     oid2len = MAX_OID_LEN;
-    int        ret;
     char      *ri;
+    int        ret;
 
     if ((ret = yangext_oid_get(yaug, oid2, &oid2len, &oidstr)) < 0)
         goto done;
@@ -475,9 +475,9 @@ mibyang_table_poll(clixon_handle h,
     cvec      *cvk_name;
     cvec      *cvk_val = NULL; /* vector of index keys: original index */
     yang_stmt *ys;
-    int        ret;
     oid        oidk[MAX_OID_LEN] = {0,};
     size_t     oidklen = MAX_OID_LEN;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     if ((ys = yang_parent_get(ylist)) == NULL ||
@@ -557,9 +557,9 @@ mibyang_traverse(clixon_handle h,
     int        retval = -1;
     yang_stmt *ys = NULL;
     yang_stmt *yp;
-    int        ret;
     int        inext;
     static oid zero_oid = 0;
+    int        ret;
 
     clixon_debug(CLIXON_DBG_SNMP, "%s", yang_argument_get(yn));
     switch(yang_keyword_get(yn)){

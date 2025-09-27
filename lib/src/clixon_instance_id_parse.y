@@ -134,8 +134,7 @@
 #define _PARSE_DEBUG(s)
 #endif
 
-/* 
- * Also called from yacc generated code *
+/*! Also called from yacc generated code *
  */
 void
 clixon_instance_id_parseerror(void *_iy,

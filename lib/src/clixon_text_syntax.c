@@ -128,8 +128,8 @@ text_wdef(cxobj            *x,
     char      *body;
     cxobj     *xc;
     yang_stmt *yc;
-    int        ret;
     int        config;
+    int        ret;
 
     switch (wdef){
     case WITHDEFAULTS_EXPLICIT:
@@ -226,13 +226,14 @@ text2file(cxobj            *xn,
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
     cbuf      *cbb = NULL;
-    int        ret;
 #ifndef TEXT_SYNTAX_NOPREFIX
     yang_stmt *yp = NULL;
     yang_stmt *ymod;
     yang_stmt *ypmod;
     char      *prefix = NULL;
 #endif
+    int        ret;
+
     if (xn == NULL || fn == NULL){
         clixon_err(OE_XML, EINVAL, "xn or fn is NULL");
         goto done;
@@ -1115,11 +1116,11 @@ _text_syntax_parse(char      *str,
 {
     int                     retval = -1;
     clixon_text_syntax_yacc ts = {0,};
-    int                     ret;
     cxobj                  *x;
     cbuf                   *cberr = NULL;
     int                     failed = 0; /* yang assignment */
     cxobj                  *xc;
+    int                     ret;
 
     if (clixon_debug_get() & CLIXON_DBG_DETAIL)
         clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "%s", str);
@@ -1266,7 +1267,6 @@ clixon_text_syntax_parse_file(FILE      *fp,
                               cxobj    **xerr)
 {
     int       retval = -1;
-    int       ret;
     char     *textbuf = NULL;
     int       textbuflen = BUFLEN; /* start size */
     int       oldtextbuflen;
@@ -1274,6 +1274,7 @@ clixon_text_syntax_parse_file(FILE      *fp,
     char      ch;
     int       len = 0;
     size_t    sz;
+    int       ret;
 
     if (xt == NULL){
         clixon_err(OE_XML, EINVAL, "xt is NULL");

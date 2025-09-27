@@ -958,8 +958,8 @@ check_choice_child(cxobj     *xt,
     yang_stmt *ytp;      /* yt:s parent */
     yang_stmt *ytcase = NULL;   /* yt:s parent case if any */
     yang_stmt *ytchoice = NULL;
-    int        ret;
     cxobj     *xp;
+    int        ret;
 
     if ((ytp = yang_parent_get(yt)) == NULL)
         goto ok;

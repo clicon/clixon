@@ -2811,7 +2811,6 @@ ys_populate_leaf(clixon_handle h,
     yang_stmt      *ydef;
     enum cv_type    cvtype = CGV_ERR;
     int             cvret;
-    int             ret;
     char           *reason = NULL;
     yang_stmt      *yrestype = NULL;  /* resolved type */
     char           *restype;  /* resolved type */
@@ -2819,6 +2818,7 @@ ys_populate_leaf(clixon_handle h,
     uint8_t         fraction_digits = 0;
     int             options = 0x0;
     yang_stmt      *ytypedef; /* where type is define */
+    int             ret;
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
@@ -4410,8 +4410,8 @@ yang_extension_value(yang_stmt *ys,
     cg_var    *cv;
     char      *prefix = NULL;
     cbuf      *cb = NULL;
-    int        ret;
     int        inext;
+    int        ret;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "ys is NULL");

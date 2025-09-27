@@ -526,8 +526,7 @@ main(int    argc,
             logdst = d;
             break;
         }
-    /* 
-     * Here we have the debug flag settings, use that.
+    /* Here we have the debug flag settings, use that.
      * Syslogs also to stderr, but later turn stderr off in daemon mode. 
      * error only to syslog. debug to syslog
      * XXX: if started in a start-daemon script, there will be irritating
@@ -655,7 +654,7 @@ main(int    argc,
 
     /* Access the remaining argv/argc options (after --) w clicon-argv_get() */
     clicon_argv_set(h, argv0, argc, argv);
-    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst); 
+    clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
 
     /* Defer: Wait to the last minute to print help message */
     if (help)

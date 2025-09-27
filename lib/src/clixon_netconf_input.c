@@ -194,10 +194,10 @@ netconf_input_msg2(unsigned char      **bufp,
 {
     int       retval = -1;
     int       i;
-    int       ret;
     int       found = 0;
     size_t    len;
     char      ch;
+    int       ret;
 
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "");
     len = *lenp;

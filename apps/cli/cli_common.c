@@ -302,12 +302,12 @@ mtpoint_paths(yang_stmt *yspec0,
     yang_stmt *yu = NULL;
     yang_stmt *ybot0 = NULL;
     cvec      *nsc0 = NULL;
-    int        ret;
     char      *api_path_fmt0 = NULL;
     cbuf      *cb = NULL;
     cxobj     *xbot0 = NULL;
     cxobj     *xtop0 = NULL;
     yang_stmt *yspec1;
+    int        ret;
 
     if (api_path_fmt01 == NULL){
         clixon_err(OE_FATAL, EINVAL, "arg is NULL");
@@ -407,13 +407,13 @@ cli_dbxml(clixon_handle       h,
     yang_stmt *y = NULL;        /* yang spec of xpath */
     cxobj     *xtop = NULL;     /* xpath root */
     cxobj     *xerr = NULL;
-    int        ret;
     cg_var    *cv;
     char      *str;
     int        cvvi = 0;
     char      *mtpoint = NULL;
     yang_stmt *yspec0 = NULL;
     int        argc = 0;
+    int        ret;
 
     /* Top-level yspec */
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){

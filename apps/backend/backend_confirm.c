@@ -721,12 +721,12 @@ from_client_cancel_commit(clixon_handle h,
                           void         *arg,
                           void         *regarg)
 {
-    cxobj               *persist_id_xml;
-    char                *persist_id = NULL;
-    uint32_t             myid;
-    int                  retval = -1;
-    int                  rollback = 0;
-    struct client_entry *ce = (struct client_entry *)arg;
+    int           retval = -1;
+    client_entry *ce = (client_entry *)arg;
+    cxobj        *persist_id_xml;
+    char         *persist_id = NULL;
+    uint32_t      myid;
+    int           rollback = 0;
 
     myid = ce->ce_id;
     if ((persist_id_xml = xml_find_type(xe, NULL, "persist-id", CX_ELMNT)) != NULL) {

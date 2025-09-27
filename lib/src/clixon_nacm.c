@@ -487,8 +487,8 @@ nacm_datanode_prepare(clixon_handle    h,
     yang_stmt *yspec;
     cxobj   **xvec = NULL;
     int       xlen = 0;
-    int       ret;
     prepvec  *pv;
+    int       ret;
 
     yspec = clicon_dbspec_yang(h);
     for (i=0; i<rlistlen; i++){         /* Loop through rule list */
@@ -802,9 +802,9 @@ nacm_datanode_write(clixon_handle    h,
     cxobj  **rvec = NULL; /* rules */
     char    *write_default = NULL;
     cvec    *nsc = NULL;
-    int      ret;
     prepvec *pv_list = NULL;
     char    *xpath = NULL;
+    int      ret;
 
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
@@ -1012,8 +1012,8 @@ nacm_datanode_read_recurse(clixon_handle h,
 {
     int      retval = -1;
     cxobj   *x;
-    int      ret;
     prepvec *pv;
+    int      ret;
 
     if (xml_spec(xn)){ /* Check this node */
         pv = pv_list;
