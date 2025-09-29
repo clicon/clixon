@@ -500,7 +500,7 @@ api_path_fmt_subst_list_key(cbuf      *cb,
  *            2 : ip = "1.2.3.4"
  *   api_path:  /interfaces/interface=e/ipv4/address=1.2.3.4
  * @param[in]  api_path_fmt  XML key format, eg /aaa/%s/name
- * @param[in]  cvv           cligen variable vector, one for every wildchar in api_path_fmt
+ * @param[in]  cvv0          cligen variable vector, one for every wildchar in api_path_fmt
  * @param[in]  yspec
  * @param[out] api_path      api_path, eg /aaa/17. Free after use
  * @param[out] cvv_i          1..cvv-len. Index into cvv of last cvv entry used, For example,
@@ -526,7 +526,7 @@ api_path_fmt_subst_list_key(cbuf      *cb,
  */
 int
 api_path_fmt2api_path(const char *api_path_fmt,
-                      cvec       *cvv,
+                      cvec       *cvv0,
                       yang_stmt  *yspec,
                       char      **api_path,
                       int        *cvv_i)
@@ -541,12 +541,19 @@ api_path_fmt2api_path(const char *api_path_fmt,
     char   *str;
     char   *strenc=NULL;
     cg_var *cv;
+    cvec   *cvv = NULL;
     size_t  len;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
+    /* Make a copy of cvv0 without keywords, in case CLICON_CLI_VARONLY is 0 */
+    if ((cvv = cvec_dup(cvv0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_dup");
+        goto done;
+    }
+    cvec_exclude_keys(cvv);
     j = 1; /* j==0 is cli string */
     len = strlen(api_path_fmt);
     for (i=0; i<len; i++){
@@ -613,6 +620,8 @@ api_path_fmt2api_path(const char *api_path_fmt,
         *cvv_i = j;
     retval = 0;
  done:
+    if (cvv)
+        cvec_free(cvv);
     if (cb)
         cbuf_free(cb);
     return retval;
