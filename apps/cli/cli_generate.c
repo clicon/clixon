@@ -572,7 +572,8 @@ yang2cli_var_pattern(clixon_handle h,
 static int yang2cli_stmt(clixon_handle h, yang_stmt *ys, int level, cbuf *cb);
 
 static int yang2cli_var_union(clixon_handle h, yang_stmt *ys, char *origtype,
-                              yang_stmt *ytype, char *helptext, cbuf *cb);
+                              yang_stmt *ytype, char *helptext,
+                              uint32_t *patpref, cbuf *cb);
 
 /*! Generate CLI code for Yang leaf state ment to CLIgen variable of specific type
  *
@@ -587,13 +588,12 @@ static int yang2cli_var_union(clixon_handle h, yang_stmt *ys, char *origtype,
  * @param[in]  cvv      Cvec with array of range_min/range_max cv:s
  * @param[in]  patterns Cvec of regexp patterns
  * @param[in]  fraction for decimal64, how many digits after period
- * @param[out] flags    Keep track of previous settings, using YANG_OPTIONS_ flags
+ * @param[out] patpref  Keep track of pattern preferences
  * @param[out] cb       Buffer where cligen code is written
  * @retval     0        OK
  * @retval    -1        Error
  * @see yang_type_resolve for options and other arguments
- * @note flags used for setting increased preference in unions of a single string pattern
- *       to avoid ambiguity
+ * @note patpref used for setting increased preference in unions to avoid pattern ambiguity
  */
 static int
 yang2cli_leaf_var_sub(clixon_handle h,
@@ -605,7 +605,7 @@ yang2cli_leaf_var_sub(clixon_handle h,
                       cvec         *cvv,
                       cvec         *patterns,
                       uint8_t       fraction_digits,
-                      uint32_t     *flags,
+                      uint32_t     *patpref,
                       cbuf         *cb
                       )
 {
@@ -657,21 +657,24 @@ yang2cli_leaf_var_sub(clixon_handle h,
     }
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
         cprintf(cb, " fraction-digits:%u", fraction_digits);
-
-    if (options & (YANG_OPTIONS_RANGE)){
+    if (options & YANG_OPTIONS_RANGE){
         if (yang2cli_var_range(ys, options, cvv, cb) < 0)
             goto done;
     }
-    else if (options & (YANG_OPTIONS_LENGTH)){
+    else if (options & YANG_OPTIONS_LENGTH){
         if (yang2cli_var_range(ys, options, cvv, cb) < 0)
             goto done;
     }
     if (patterns && cvec_len(patterns)){
         if (yang2cli_var_pattern(h, patterns, cb) < 0)
             goto done;
-        if (flags && (*flags & YANG_OPTIONS_PATTERN) == 0x0){
-            cprintf(cb, " preference:%u", COV_PREF_STRING_REGEXP+1);
-            *flags |= YANG_OPTIONS_PATTERN;
+        if (patpref){ /* Skip first, then increment and print preference */
+            if (*patpref == 0)
+                *patpref = COV_PREF_STRING_REGEXP;
+            else{
+                (*patpref)++;
+                cprintf(cb, " preference:%u", *patpref);
+            }
         }
     }
     cprintf(cb, ">");
@@ -690,7 +693,7 @@ yang2cli_leaf_var_sub(clixon_handle h,
  * @param[in]  ys        Yang statement (caller of type)
  * @param[in]  origtype  Name of original type in the call
  * @param[in]  ytsub     Yang type invocation, a sub-type of a resolved union type
- * @param[out] flags    Keep track of previous settings
+ * @param[out] patpref   Keep track of pattern preferences
  * @param[out] cb        Buffer where cligen code is written
  * @retval     0         OK
  * @retval    -1         Error
@@ -701,7 +704,7 @@ yang2cli_var_union_one(clixon_handle h,
                        char         *origtype,
                        yang_stmt    *ytsub,
                        char         *helptext,
-                       uint32_t     *flags,
+                       uint32_t     *patpref,
                        cbuf         *cb)
 {
     int          retval = -1;
@@ -729,7 +732,7 @@ yang2cli_var_union_one(clixon_handle h,
     restype = ytype?yang_argument_get(ytype):NULL;
 
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
-        if (yang2cli_var_union(h, ys, origtype, ytype, helptext, cb) < 0)
+        if (yang2cli_var_union(h, ys, origtype, ytype, helptext, patpref, cb) < 0)
             goto done;
     }
     /* XXX leafref inside union ? */
@@ -737,7 +740,7 @@ yang2cli_var_union_one(clixon_handle h,
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;
         if ((retval = yang2cli_leaf_var_sub(h, ys, ytype, helptext, cvtype,
-                                            options, cvv, patterns, fraction_digits, flags, cb)) < 0)
+                                            options, cvv, patterns, fraction_digits, patpref, cb)) < 0)
             goto done;
     }
     retval = 0;
@@ -755,6 +758,7 @@ yang2cli_var_union_one(clixon_handle h,
  * @param[in]  origtype Name of original type in the call
  * @param[in]  ytype    Yang resolved type (a union in this case)
  * @param[in]  helptext CLI help text
+ * @param[out] patpref  Keep track of pattern preferences
  * @param[out] cb       Buffer where cligen code is written
  * @retval     0        OK
  * @retval    -1        Error
@@ -765,13 +769,13 @@ yang2cli_var_union(clixon_handle h,
                    char         *origtype,
                    yang_stmt    *ytype,
                    char         *helptext,
+                   uint32_t     *patpref,
                    cbuf         *cb)
 {
     int        retval = -1;
     yang_stmt *ytsub;
     int        i;
     int        inext;
-    uint32_t   flags = 0x0;
 
     i = 0;
     inext = 0;
@@ -784,7 +788,7 @@ yang2cli_var_union(clixon_handle h,
             continue;
         if (i++)
             cprintf(cb, "|");
-        if (yang2cli_var_union_one(h, ys, origtype, ytsub, helptext, &flags, cb) < 0)
+        if (yang2cli_var_union_one(h, ys, origtype, ytsub, helptext, patpref, cb) < 0)
             goto done;
     }
     retval = 0;
@@ -916,10 +920,10 @@ yang2cli_leafref_var(clixon_handle h,
  * sub-types.
  * eg type union{ type int32; type string } --> (<x:int32>| <x:string>)
  * Another is multiple ranges
- * @note leafrefs are troublesome. In this code their cligen type are string, but they should really
- * be the type of the referred node. But since the path pointing to the referred node is XML, and
- * only YANG is known here, we cannot easily determine the YANG node of the referred XML node,
- * and thus its type.
+ * @note leafrefs are troublesome. In this code their cligen type are string,
+ * but they should really be the type of the referred node. But since the path
+ * pointing to the referred node is XML, and only YANG is known here, we cannot
+ * easily determine the YANG node of the referred XML node, and thus its type.
  */
 static int
 yang2cli_leaf_var(clixon_handle h,
@@ -944,6 +948,7 @@ yang2cli_leaf_var(clixon_handle h,
     char         *type;
     int           flag;
     int           regular_value;
+    uint32_t      patpref = 0;
     int           ret;
 
     if ((patterns = cvec_new(0)) == NULL){
@@ -979,7 +984,7 @@ yang2cli_leaf_var(clixon_handle h,
     if (strcmp(restype, "union") == 0){
         /* Union: loop over resolved type's sub-types (can also be recursive unions) */
         cprintf(cb, "(");
-        if (yang2cli_var_union(h, ys, origtype, yrestype, helptext, cb) < 0)
+        if (yang2cli_var_union(h, ys, origtype, yrestype, helptext, &patpref, cb) < 0)
             goto done;
     }
     else if (strcmp(restype, "leafref") == 0){

@@ -20,7 +20,11 @@ module clixon-example {
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
-    leaf value {
+    import ietf-inet-types {
+        prefix inet;
+    }
+    leaf value1 {
+        description "Single layer union";
         type union {
             type string{
                 pattern "[a-z]+";
@@ -29,6 +33,23 @@ module clixon-example {
                 pattern "[b-z0-9]+";
             }
         }
+    }
+    leaf value2 {
+        description "Two layer union";
+        type union {
+            type union {
+              type string{
+                  pattern "[a-z]+";
+              }
+            }
+            type string{
+                pattern "[b-z0-9]+";
+            }
+        }
+    }
+    leaf inet-host {
+        description "more complicated type structure";
+        type inet:host;
     }
 }
 EOF
@@ -41,7 +62,7 @@ CLICON_PLUGIN="example_cli";
 onetwo {
     # bcd is proper ambiguous
     <a:string regexp:"[a-z]+">, mycallback("one");
-    <b:string regexp:"[b-z0-9]+">, mycallback("two");    
+    <b:string regexp:"[b-z0-9]+">, mycallback("two");
 }
 three {
     # bcd should not be ambiguous
@@ -100,14 +121,20 @@ fi
 new "wait backend"
 wait_backend
 
+new "autocli value2"
+expectpart "$($clixon_cli -1 -f $cfg set value2 bcd)" 0 "^$"
+
+new "autocli inet-host"
+expectpart "$($clixon_cli -1 -f $cfg set inet-host 10.10.10.10)" 0 "^$"
+
 new "autocli match first"
-expectpart "$($clixon_cli -1 -f $cfg set value abc)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set value1 abc)" 0 "^$"
 
 new "autocli match second"
-expectpart "$($clixon_cli -1 -f $cfg set value bc9)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set value1 bc9)" 0 "^$"
 
 new "autocli match third"
-expectpart "$($clixon_cli -1 -f $cfg set value bcd)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set value1 bcd)" 0 "^$"
 
 new "cli match first"
 expectpart "$($clixon_cli -1 -f $cfg onetwo abc 2>&1)" 0 "arg = one"
