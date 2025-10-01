@@ -3,6 +3,7 @@
 # A union with more than one string pattern can be "ambiguous" but resolves with preference
 # setting of first element.
 # Also test with explicit non-auto cli commands
+# Also test partial match of expanded values, see https://github.com/clicon/cligen/issues/133
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -50,6 +51,12 @@ module clixon-example {
     leaf inet-host {
         description "more complicated type structure";
         type inet:host;
+    }
+    leaf twobyte {
+        description "type to expand which should not match partial";
+        type string{
+            pattern "[a-z]{2}:[a-z]{2}";
+        }
     }
 }
 EOF
@@ -153,6 +160,12 @@ expectpart "$($clixon_cli -1 -f $cfg three bc9 2>&1)" 0 "arg = three"
 
 new "cli match third both"
 expectpart "$($clixon_cli -1 -f $cfg three bcd 2>&1)" 0 "arg = three"
+
+new "cli set aa:bb"
+expectpart "$($clixon_cli -1 -f $cfg set twobyte aa:bb 2>&1)" 0 "^$"
+
+new "cli set aa: should fail"
+expectpart "$($clixon_cli -1 -f $cfg set twobyte aa: 2>&1)" 255 "Partial match"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
