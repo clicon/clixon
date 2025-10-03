@@ -912,10 +912,11 @@ from_client_commit(clixon_handle h,
     client_entry *ce = (client_entry *)arg;
     uint32_t      myid = ce->ce_id;
     uint32_t      iddb;
-    cbuf         *cbx = NULL; /* Assist cbuf */
+    cbuf         *cbm = NULL; /* netconf error message */
     yang_stmt    *yspec;
     db_elmnt     *de;
     char         *db = NULL;
+    client_entry *ce1;
     int           ret;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL) {
@@ -933,21 +934,33 @@ from_client_commit(clixon_handle h,
     iddb = xmldb_islocked(h, db);
     /* Is candidate locked? */
     if (iddb && myid != iddb){
-        if ((cbx = cbuf_new()) == NULL){
+        if ((cbm = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
-        if (netconf_in_use(cbret, "protocol", "Operation failed, lock is already held") < 0)
+        cprintf(cbm, "Operation failed at commit, candidate is locked by client %u", iddb);
+        if ((ce1 = backend_client_find(h, iddb)) != NULL){
+            cprintf(cbm, " by user:%s", ce1->ce_username);
+            if (ce1->ce_transport)
+                cprintf(cbm, " on transport:%s", ce1->ce_transport);
+        }
+        if (netconf_in_use(cbret, "protocol", cbuf_get(cbm)) < 0)
             goto done;
         goto ok;
     }
     iddb = xmldb_islocked(h, "running");
     if (iddb && myid != iddb){
-        if ((cbx = cbuf_new()) == NULL){
+        if ((cbm = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
-        if (netconf_in_use(cbret, "protocol", "Operation failed, lock is already held") < 0)
+        cprintf(cbm, "Operation failed at commit, running is locked by client %u", iddb);
+        if ((ce1 = backend_client_find(h, iddb)) != NULL){
+            cprintf(cbm, " by user:%s", ce1->ce_username);
+            if (ce1->ce_transport)
+                cprintf(cbm, " on transport:%s", ce1->ce_transport);
+        }
+        if (netconf_in_use(cbret, "protocol", cbuf_get(cbm)) < 0)
             goto done;
         goto ok;
     }
@@ -989,8 +1002,8 @@ from_client_commit(clixon_handle h,
  ok:
     retval = 0;
  done:
-    if (cbx)
-        cbuf_free(cbx);
+    if (cbm)
+        cbuf_free(cbm);
     return retval; /* may be zero if we ignoring errors from commit */
 } /* from_client_commit */
 
@@ -1016,22 +1029,34 @@ from_client_discard_changes(clixon_handle h,
     client_entry *ce = (client_entry *)arg;
     uint32_t      myid = ce->ce_id;
     uint32_t      iddb;
-    cbuf         *cbx = NULL; /* Assist cbuf */
+    cbuf         *cbi = NULL; /* netconf error info */
+    cbuf         *cbm = NULL; /* netconf error message */
     db_elmnt     *de;
     char         *db;
     char         *db0 = NULL;
+    client_entry *ce1;
 
     if (xmldb_find_create(h, "candidate", ce->ce_id, &de, &db) < 0)
         goto done;
     iddb = xmldb_islocked(h, db);
     if (iddb && myid != iddb){
-        if ((cbx = cbuf_new()) == NULL){
+        if ((cbi = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
-        cprintf(cbx, "<session-id>%u</session-id>", iddb);
-        cprintf(cbx, "<db>%s</db>", db);
-        if (netconf_lock_denied(cbret, cbuf_get(cbx), "Operation failed, lock is already held") < 0)
+        cprintf(cbi, "<session-id>%u</session-id>", iddb);
+        cprintf(cbi, "<db>%s</db>", db);
+        if ((cbm = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cbm, "Operation failed at discard, candidate is locked by client:%u", iddb);
+        if ((ce1 = backend_client_find(h, iddb)) != NULL){
+            cprintf(cbm, " by user:%s", ce1->ce_username);
+            if (ce1->ce_transport)
+                cprintf(cbm, " on transport:%s", ce1->ce_transport);
+        }
+        if (netconf_lock_denied(cbret, cbuf_get(cbi), cbuf_get(cbm)) < 0)
             goto done;
         goto ok;
     }
@@ -1064,8 +1089,10 @@ from_client_discard_changes(clixon_handle h,
  ok:
     retval = 0;
  done:
-    if (cbx)
-        cbuf_free(cbx);
+    if (cbi)
+        cbuf_free(cbi);
+    if (cbm)
+        cbuf_free(cbm);
     return retval; /* may be zero if we ignoring errors from commit */
 }
 

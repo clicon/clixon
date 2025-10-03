@@ -381,7 +381,8 @@ sleep 1
 PIDS=($(jobs -l % | cut -c 6- | awk '{print $1}'))
 
 new "try commit should fail"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>in-use</error-tag><error-severity>error</error-severity><error-message>Operation failed, lock is already held</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>in-use</error-tag><error-severity>error</error-severity><error-message>Operation failed at commit, running is locked by client"
+# by user:[a-z]+ on transport:cl:netconf</error-message></rpc-error></rpc-reply>"
 
 new "soft kill ${PIDS[0]}"
 kill ${PIDS[0]}                   # kill the while loop above to close STDIN on 1st
