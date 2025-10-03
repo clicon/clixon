@@ -72,23 +72,6 @@
 #include "backend_get.h"
 #include "backend_client.h"
 
-/*! Find client by session-id
- *
- * @param[in] ce_list   List of clients
- * @param[in] id        Session id
- */
-static client_entry *
-ce_find_byid(client_entry *ce_list,
-             uint32_t      id)
-{
-    client_entry *ce;
-
-    for (ce = ce_list; ce; ce = ce->ce_next)
-        if (ce->ce_id == id)
-            return ce;
-    return NULL;
-}
-
 /*! Construct a client string description from client_entry information for logging
  *
  * @param[in]  ce   Client entry struct
@@ -1237,7 +1220,7 @@ from_client_kill_session(clixon_handle h,
     if (ret == 0)
         goto ok;
     /* may or may not be in active client list, probably not */
-    if ((ce1 = ce_find_byid(backend_client_list(h), id)) != NULL){
+    if ((ce1 = backend_client_find(backend_client_list(h), id)) != NULL){
         backend_client_rm(h, ce1); /* Removes client struct */
     }
     if (release_all_dbs(h, ce, id) < 0)
@@ -2080,7 +2063,7 @@ from_client_msg(clixon_handle h,
         clixon_debug(CLIXON_DBG_BACKEND, "Warning: incoming session-id:%u does not match ce_id:%u on socket: %d", op_id, ce->ce_id, ce->ce_s);
         /* Copy transport from orig client-entry */
         if (ce->ce_transport == NULL &&
-            (ce0 = ce_find_byid(backend_client_list(h), op_id)) != NULL &&
+            (ce0 = backend_client_find(backend_client_list(h), op_id)) != NULL &&
             ce0->ce_transport){
             if ((ce->ce_transport = strdup(ce0->ce_transport)) == NULL){
                 clixon_err(OE_UNIX, errno, "strdup");

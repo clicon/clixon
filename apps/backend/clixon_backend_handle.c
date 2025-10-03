@@ -213,6 +213,26 @@ backend_client_delete(clixon_handle h,
     return 0;
 }
 
+/*! Find client entry given id
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  id   Client/session id
+ * @retval     ce   Client entry
+ * @retval     NULL Not found
+ */
+client_entry *
+backend_client_find(clixon_handle h,
+                    uint32_t      id)
+{
+    client_entry *ce_list = backend_client_list(h);
+    client_entry *ce = NULL;
+
+    for (ce = ce_list; ce; ce = ce->ce_next)
+        if (ce->ce_id == id)
+            break;
+    return ce;
+}
+
 /*! Debug print backend clients
  *
  * @param[in]  h   Clixon handle

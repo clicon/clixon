@@ -79,5 +79,6 @@ typedef struct client_entry client_entry;
 /*
  * Prototypes
  */
+client_entry *backend_client_find(clixon_handle h, uint32_t id);
 
 #endif /* _CLIXON_BACKEND_CLIENT_H_ */
