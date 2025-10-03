@@ -129,7 +129,10 @@ expectpart "$($clixon_cli -1 -f $cfg show config)" 0 "^<myrest xmlns=\"urn:examp
 new "Expand <TAB>"
 expectpart "$(echo "set myrest 	" | $clixon_cli -f $cfg 2>&1)" 0 "set myrest a b c"
 
-new "Expand a <TAB>"
+new "Expand a<TAB>"
+expectpart "$(echo "set myrest a	" | $clixon_cli -f $cfg 2>&1)" 0 "set myrest a b c"
+
+new "Expand a<SPACE><TAB>"
 expectpart "$(echo "set myrest a 	" | $clixon_cli -f $cfg 2>&1)" 0 "set myrest a b c"
 
 new "Show config again"

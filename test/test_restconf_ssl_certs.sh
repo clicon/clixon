@@ -2,7 +2,7 @@
 # Restconf+NACM openssl functionality using server and client certs
 # The test creates certs and keys:
 # A CA, server key/cert, user key/cert for two users
-# Can we try illegal certs?
+# Can we try invalid certs?
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
