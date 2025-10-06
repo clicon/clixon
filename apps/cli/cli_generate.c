@@ -1984,7 +1984,7 @@ yang2cli_grouping(clixon_handle h,
      * handle=NULL for global namespace, this means expand callbacks must be in
      * CLICON namespace, not in a cli frontend plugin.
      */
-    if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)
+    if (cligen_expand_str2fn(pt0, (expand_str2fn_t*)clixon_str2fn, NULL) < 0)
         goto done;
     /* Append cligen tree and name it */
     if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
@@ -2128,7 +2128,7 @@ yang2cli_yspec(clixon_handle h,
      * handle=NULL for global namespace, this means expand callbacks must be in
      * CLICON namespace, not in a cli frontend plugin.
      */
-    if (cligen_expandv_str2fn(pt0, (expandv_str2fn_t*)clixon_str2fn, NULL) < 0)
+    if (cligen_expand_str2fn(pt0, (expand_str2fn_t*)clixon_str2fn, NULL) < 0)
         goto done;
     /* Append cligen tree and name it */
     if (ph_add_set(cli_cligen(h), treename, pt0) < 0)

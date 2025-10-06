@@ -164,8 +164,10 @@ expectpart "$($clixon_cli -1 -f $cfg three bcd 2>&1)" 0 "arg = three"
 new "cli set aa:bb"
 expectpart "$($clixon_cli -1 -f $cfg set twobyte aa:bb 2>&1)" 0 "^$"
 
+if false; then # Only if CLIGEN_DONT_MATCH_PARTIAL_EXPANDS set in cligen_custom.h
 new "cli set aa: should fail"
 expectpart "$($clixon_cli -1 -f $cfg set twobyte aa: 2>&1)" 255 "Partial match"
+fi
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

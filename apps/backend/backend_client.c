@@ -1933,7 +1933,7 @@ from_client_process_control(clixon_handle h,
 /*! Clixon hello to check liveness
  *
  * @param[in]  h       Clixon handle
- * @param[in]  xn      Request: <rpc><xn></rpc>
+ * @param[in]  xe      Request: <rpc><xn></rpc>
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
  * @param[in]  regarg  User argument given at rpc_callback_register()

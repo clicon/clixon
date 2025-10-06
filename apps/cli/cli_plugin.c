@@ -288,11 +288,11 @@ clispec_load_file(clixon_handle h,
                    filename, plgnam, plgnam);
         goto done;
     }
-     if (cligen_expandv_str2fn(pt, (expandv_str2fn_t*)clixon_str2fn, handle) < 0)
-         goto done;
-     /* Variable translation functions */
-     if (cligen_translate_str2fn(pt, (translate_str2fn_t*)clixon_str2fn, handle) < 0)
-         goto done;
+    if (cligen_expand_str2fn(pt, (expand_str2fn_t*)clixon_str2fn, handle) < 0)
+        goto done;
+    /* Variable translation functions */
+    if (cligen_translate_str2fn(pt, (translate_str2fn_t*)clixon_str2fn, handle) < 0)
+        goto done;
 
     /* Make sure we have a syntax mode specified */
     if (mode == NULL || strlen(mode) < 1) { /* may be null if not given in file */
@@ -359,7 +359,7 @@ clispec_load_file(clixon_handle h,
     }
     cligen_parsetree_free(pt, 1);
     retval = 0;
-done:
+ done:
     if (cvv)
         cvec_free(cvv);
     if (vec)
