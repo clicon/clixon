@@ -69,6 +69,11 @@ module clixon-lib {
        - link # For split multiple XML files
       ";
 
+    revision 2025-08-01 {
+        description
+            "Added: netconf-framing-type
+             Released in Clixon 7.6";
+    }
     revision 2024-11-01 {
         description
             "Added: system-only-config extension
@@ -297,6 +302,20 @@ module clixon-lib {
             bit detail3 {
                 description "Probably more detail than you want";
                 position 26;
+            }
+        }
+    }
+    typedef netconf-framing-type {
+        description
+            "How to trigger service-commit notifications, and thereby action scripts.";
+        type enumeration{
+            enum eom {
+                description
+                    "NETCONF framing using end-of-message as defined in RFC 4742";
+            }
+            enum chunked {
+                description
+                    "NETCONF framing using chunked encoding as defined in RFC 6242";
             }
         }
     }

@@ -112,6 +112,7 @@
  *
  * Clixon extention: content so that RFC8040 content attribute can be conveyed
  * internally used in <get>
+ * @see netconf_content_map
  */
 enum netconf_content{
     CONTENT_CONFIG,    /* config data only */
@@ -136,11 +137,14 @@ enum error_option{ /* edit-config */
     CONTINUE_ON_ERROR
 };
 
-/* NETCONF framing
+/*! NETCONF framing
+ *
+ * @see netconf_framing_map
+ * @see netconf-framing-type in clixon-lib.yang
  */
 enum framing_type{
-    NETCONF_SSH_EOM=0,   /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
-    NETCONF_SSH_CHUNKED, /* RFC 6242 Chunked framing */
+    NETCONF_SSH_EOM = 0,     /* RFC 4742, RFC 6242 hello msg (end-of-msg: ]]>]]>)*/
+    NETCONF_SSH_CHUNKED,     /* RFC 6242 Chunked framing */
 };
 typedef enum framing_type netconf_framing_type;
 
@@ -231,6 +235,8 @@ int netconf_module_load(clixon_handle h);
 char *netconf_db_find(cxobj *xn, const char *name);
 const netconf_content netconf_content_str2int(const char *str);
 const char *netconf_content_int2str(netconf_content nr);
+const netconf_framing_type netconf_framing_str2int(const char *str);
+const char *netconf_framing_int2str(netconf_framing_type fr);
 int netconf_capabilites(clixon_handle h, cbuf *cb);
 int netconf_hello_server(clixon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clixon_handle h, cbuf *cb);

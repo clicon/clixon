@@ -153,15 +153,17 @@ clixon_client_terminate(clixon_handle h)
  *
  * @param[in]  sock     Socket to netconf server
  * @param[in]  descr    Description of peer for logging
- * @param[in]  version  Netconf version for capability announcement
- * @param[in]  privcand Send private-candidate capability
+ * @param[in]  base10   Announce netconf 1.0 capability
+ * @param[in]  base11   Announce netconf 1.1 capability
+ * @param[in]  privcand Announce private-candidate capability
  * @retval     0        OK
  * @retval    -1        Error
  */
 int
 clixon_client_hello(int         sock,
                     const char *descr,
-                    int         version,
+                    int         base10,
+                    int         base11,
                     int         privcand)
 {
     int   retval = -1;
@@ -175,12 +177,13 @@ clixon_client_hello(int         sock,
     //    cprintf(msg, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     cprintf(msg, "<hello xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(msg, "<capabilities>");
-    cprintf(msg, "<capability>%s</capability>",
-            version==0?NETCONF_BASE_CAPABILITY_1_0:NETCONF_BASE_CAPABILITY_1_1);
+    if (base10)
+        cprintf(msg, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_0);
+    if (base11)
+        cprintf(msg, "<capability>%s</capability>", NETCONF_BASE_CAPABILITY_1_1);
     if (privcand)
          cprintf(msg, "<capability>%s</capability>", NETCONF_PRIVATE_CANDIDATE_CAPABILITY);
     cprintf(msg, "</capabilities>");
-
     cprintf(msg, "</hello>");
     if (clixon_msg_send10(sock, descr, msg) < 0)
         goto done;

@@ -32,6 +32,8 @@ Expected: October 2025
 
 Developers may need to change their code
 
+* Changed signature of send hello function:
+  * `clixon_client_hello(s, d, v)` -> `clixon_client_hello(s, d, base10, base11, privcand)`
 * Change int to size_t in `cxvec_append()` and related functions and data-types
   * Calling types may need to be adjusted
 * Modified and re-factor datastore API

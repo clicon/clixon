@@ -1942,6 +1942,28 @@ netconf_content_int2str(netconf_content nr)
     return clicon_int2str(netconf_content_map, nr);
 }
 
+/*! NETCONF framing
+ *
+ * @see netconf-framing-type in clixon-lib.yang
+ */
+static const map_str2int netconf_framing_map[] = {
+    {"eom",         NETCONF_SSH_EOM},
+    {"chunked",     NETCONF_SSH_CHUNKED},
+    {NULL,         -1}
+};
+
+const netconf_framing_type
+netconf_framing_str2int(const char *str)
+{
+    return clicon_str2int(netconf_framing_map, str);
+}
+
+const char *
+netconf_framing_int2str(netconf_framing_type fr)
+{
+    return clicon_int2str(netconf_framing_map, fr);
+}
+
 /*! List capabilities
  *
  * RFC5277 NETCONF Event Notifications
