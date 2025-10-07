@@ -1947,9 +1947,9 @@ netconf_content_int2str(netconf_content nr)
  * @see netconf-framing-type in clixon-lib.yang
  */
 static const map_str2int netconf_framing_map[] = {
-    {"eom",         NETCONF_SSH_EOM},
-    {"chunked",     NETCONF_SSH_CHUNKED},
-    {NULL,         -1}
+    {"1.0",  NETCONF_SSH_EOM},
+    {"1.1",  NETCONF_SSH_CHUNKED},
+    {NULL,  -1}
 };
 
 const netconf_framing_type

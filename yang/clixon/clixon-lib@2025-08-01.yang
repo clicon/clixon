@@ -309,13 +309,13 @@ module clixon-lib {
         description
             "How to trigger service-commit notifications, and thereby action scripts.";
         type enumeration{
-            enum eom {
+            enum 1.0 {
                 description
-                    "NETCONF framing using end-of-message as defined in RFC 4742";
+                    "NETCONF 1.0 framing using end-of-message as defined in RFC 4742";
             }
-            enum chunked {
+            enum 1.1 {
                 description
-                    "NETCONF framing using chunked encoding as defined in RFC 6242";
+                    "NETCONF 1.1 framing using chunked encoding as defined in RFC 6242";
             }
         }
     }
