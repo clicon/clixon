@@ -1934,6 +1934,10 @@ ys_parse_date_arg(const char *datearg,
     int      i;
     uint32_t d = 0;
 
+    if (strcmp(datearg, "latest") == 0){
+        d = 10000;
+        goto ok;
+    }
     if (strlen(datearg) != 10 || datearg[4] != '-' || datearg[7] != '-'){
         clixon_err(OE_YANG, EINVAL, "Revision date %s, but expected: YYYY-MM-DD", datearg);
         goto done;
@@ -1953,6 +1957,7 @@ ys_parse_date_arg(const char *datearg,
         goto done;
     }
     d += i; /* day */
+ ok:
     *dateint = d;
     retval = 0;
  done:
@@ -1969,9 +1974,10 @@ cg_var *
 ys_parse(yang_stmt   *ys,
          enum cv_type cvtype)
 {
-    int     cvret;
-    char   *reason = NULL;
-    cg_var *cv = NULL;
+    int        cvret;
+    char      *reason = NULL;
+    cg_var    *cv = NULL;
+    yang_stmt *ys2;
 
     if ((cv = yang_cv_get(ys)) != NULL){
         /* eg mandatory in uses is already set and then copied */
@@ -1990,6 +1996,8 @@ ys_parse(yang_stmt   *ys,
         clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
         goto done;
     }
+    if ((ys2 = yang_orig_get(ys)) != NULL)
+        yang_cv_set(ys2, cv_dup(cv));
     yang_cv_set(ys, cv);
     /* cvret == 1 means parsing is OK */
   done:
@@ -2078,7 +2086,6 @@ ys_parse_sub(yang_stmt  *ys,
             strcmp(arg, "obsolete")){
             clixon_err(OE_YANG, errno, "Invalid status: \"%s\", expected current, deprecated, or obsolete", arg);
             goto done;
-
         }
         break;
     case Y_MAX_ELEMENTS:

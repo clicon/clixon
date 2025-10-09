@@ -20,6 +20,7 @@ Expected: October 2025
 
 ### Features
 
+* Tolerate "<filename>@latest.yang" as yang filename.
 * New: Implement YANG "augment" as sub-statement of a "uses" statement
 * New: Compare RPC as defined in RFC9144 and yang module ietf-nmda-compare
 * New: [NETCONF and RESTCONF Private candidate datastores](https://github.com/clicon/clixon/issues/615)
