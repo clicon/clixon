@@ -70,6 +70,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: YANG error-app-tag identifies as error-message causing false duplicate 
+* Fixed: YANG error-app-tag not in range and length as it should
 * Fixed: [https://github.com/clicon/clixon/issues/624](Circular YANG includes leads to SEGV)
 * Fixed: [Autocli of yang union if several elements are pattern strings may return ambiguos](https://github.com/clicon/clixon/issues/623)
 * Fixed: YANG domain lost when parsing import/include YANGs

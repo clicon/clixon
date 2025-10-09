@@ -789,6 +789,7 @@ range_substmts : range_substmts range_substmt
               ;
 
 range_substmt : error_message_stmt   { _PARSE_DEBUG("range-substmt -> error-message-stmt");}
+| error_app_tag_stmt   { _PARSE_DEBUG("range-substmt -> error-app-tag-stmt"); }
               | description_stmt     { _PARSE_DEBUG("range-substmt -> description-stmt"); }
               | reference_stmt       { _PARSE_DEBUG("range-substmt -> reference-stmt"); }
               | unknown_stmt         { _PARSE_DEBUG("range-substmt -> unknown-stmt");}
@@ -831,6 +832,7 @@ length_substmts : length_substmts length_substmt
               ;
 
 length_substmt : error_message_stmt  { _PARSE_DEBUG("length-substmt -> error-message-stmt");}
+              | error_app_tag_stmt   { _PARSE_DEBUG("length-substmt -> error-app-tag-stmt"); }
               | description_stmt     { _PARSE_DEBUG("length-substmt -> description-stmt"); }
               | reference_stmt       { _PARSE_DEBUG("length-substmt -> reference-stmt"); }
               | unknown_stmt         { _PARSE_DEBUG("length-substmt -> unknown-stmt");}
@@ -1004,7 +1006,7 @@ error_message_stmt   : K_ERROR_MESSAGE string stmtend
                ;
 
 error_app_tag_stmt : K_ERROR_APP_TAG string stmtend
-               { if (ysp_add(_yy, Y_ERROR_MESSAGE, $2, NULL) == NULL) _YYERROR("error_message_stmt");
+               { if (ysp_add(_yy, Y_ERROR_APP_TAG, $2, NULL) == NULL) _YYERROR("error_message_stmt");
                   _PARSE_DEBUG("error-app-tag-stmt -> ERROR-APP-TAG string"); }
                ;
 

@@ -3617,15 +3617,16 @@ ys_populate2(yang_stmt    *ys,
         if (ys_populate_leaf(h, ys) < 0)
             goto done;
         break;
-    case Y_MANDATORY: /* call yang_mandatory() to check if set */
     case Y_CONFIG:
+        if (ys_parse(ys, CGV_BOOL) == NULL)
+            goto done;
+        if ((cv = yang_cv_get(ys)) != NULL && !cv_bool_get(cv))
+            yang_flag_set(yang_parent_get(ys), YANG_FLAG_STATE_LOCAL);
+        break;
+    case Y_MANDATORY: /* call yang_mandatory() to check if set */
     case Y_REQUIRE_INSTANCE:
         if (ys_parse(ys, CGV_BOOL) == NULL)
             goto done;
-        if (ys->ys_keyword == Y_CONFIG){
-            if ((cv = yang_cv_get(ys)) != NULL && !cv_bool_get(cv))
-                yang_flag_set(yang_parent_get(ys), YANG_FLAG_STATE_LOCAL);
-        }
         break;
     default:
         break;
