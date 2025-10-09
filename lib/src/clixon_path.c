@@ -896,7 +896,7 @@ api_path2xpath_cvv(cvec      *api_path,
                     free(valvec);
                     valvec = NULL;
                 }
-                if ((valvec = clicon_strsep(val, ",", &nvalvec)) == NULL)
+                if ((valvec = clixon_strsep1(val, ",", &nvalvec)) == NULL)
                     goto done;
                 cvk = yang_cvec_get(y); /* Use Y_LIST cache, see ys_populate_list() */
                 cvi = NULL;
@@ -1212,7 +1212,7 @@ api_path2xml_vec(char            **vec,
              * Note that vnr can be < length of cvk, due to empty or unset values
              * Note also that valvec entries are encoded
              */
-            if ((valvec = clicon_strsep(restval, ",", &nvalvec)) == NULL)
+            if ((valvec = clixon_strsep1(restval, ",", &nvalvec)) == NULL)
                 goto done;
             if ((nvalvec != cvec_len(cvk)) && strict){
                 cprintf(cberr, "List key %s length mismatch", name);
@@ -1433,7 +1433,7 @@ api_path2xml_mnt(char             *api_path,
             goto done;
         goto fail;
     }
-    if ((vec = clicon_strsep(api_path, "/", &nvec)) == NULL)
+    if ((vec = clixon_strsep1(api_path, "/", &nvec)) == NULL)
         goto done;
     /* Remove trailing '/'. Like in /a/ -> /a */
     if (nvec > 1 && !strlen(vec[nvec-1]))

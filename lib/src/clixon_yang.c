@@ -2972,7 +2972,7 @@ range_parse(yang_stmt   *ys,
     char  *v;
     char  *v2;
 
-    if ((vec = clicon_strsep(yang_argument_get(ys), "|", &nvec)) == NULL)
+    if ((vec = clixon_strsep1(yang_argument_get(ys), "|", &nvec)) == NULL)
         goto done;
     for (i=0; i<nvec; i++){
         v = vec[i];
@@ -4134,7 +4134,7 @@ yang_arg2cvec(yang_stmt *ys,
     cvec   *cvv = NULL;
     cg_var *cv;
 
-    if ((vec = clicon_strsep(yang_argument_get(ys), " ", &nvec)) == NULL)
+    if ((vec = clixon_strsep3(yang_argument_get(ys), " ", &nvec)) == NULL)
         goto done;
     if ((cvv = cvec_new(nvec)) == NULL){
         clixon_err(OE_YANG, errno, "cvec_new");

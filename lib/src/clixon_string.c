@@ -68,7 +68,7 @@
  *   char **vec = NULL;
  *   char  *v;
  *   int    nvec;
- *   if ((vec = clicon_strsep("/home/user/src/clixon", "/", &nvec)) == NULL)
+ *   if ((vec = clixon_strsep1("/home/user/src/clixon", "/", &nvec)) == NULL)
  *     err;
  *   for (i=0; i<nvec; i++){
  *     v = vec[i]; 
@@ -84,9 +84,9 @@
  * @see clixon_strsplit
  */
 char **
-clicon_strsep(char       *string,
-              const char *delim,
-              int        *nvec0)
+clixon_strsep1(char       *string,
+               const char *delim,
+               int        *nvec0)
 {
     char **vec = NULL;
     char  *ptr;
@@ -187,6 +187,65 @@ clixon_strsep2(char       *str,
     return retval;
 }
 
+/*! Split string into a vector based on char delimiters. Using malloc
+ *
+ * Like clixon_strsep1 but iterates over delimiters so that a sequence of
+ * delimiters is treated as one
+ * @endcode
+ * @param[in]   string     String to be split
+ * @param[in]   delim      String of delimiter characters
+ * @param[out]  nvec       Number of entries in returned vector
+ * @retval      vec        Vector of strings. NULL terminated. Free after use
+ * @retval      NULL       Error *
+ * @see clixon_strsplit
+ */
+char **
+clixon_strsep3(char       *string,
+               const char *delim,
+               int        *nvec0)
+{
+    char **vec = NULL;
+    char  *ptr;
+    char  *p;
+    int    nvec = 1;
+    int    i;
+    size_t siz;
+    char  *s;
+    char  *d;
+    int    prev;
+
+    if ((s = string)==NULL)
+        goto done;
+    prev = 0;
+    while (*s){
+        if ((d = index(delim, *s)) != NULL){
+            if (!prev)
+                nvec++;
+            prev = 1;
+        }
+        else
+            prev = 0;
+        s++;
+    }
+    /* alloc vector and append copy of string */
+    siz = (nvec+1)* sizeof(char*) + strlen(string)+1;
+    if ((vec = (char**)malloc(siz)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    memset(vec, 0, siz);
+    ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
+    strcpy(ptr, string);
+    i = 0;
+    while ((p = strsep(&ptr, delim)) != NULL){
+        if (*p != '\0')
+            vec[i++] = p;
+    }
+    *nvec0 = nvec;
+ done:
+    return vec;
+}
+
 /*! Concatenate elements of a string array into a string. 
  *
  * An optional delimiter string can be specified which will be inserted between 
@@ -275,7 +334,7 @@ clixon_string_del_join(char       *str1,
  *    if (b)
  *       free(b);
  * @note caller need to free prefix and suffix after use
- * @see clicon_strsep  not just single split
+ * @see clixon_strsep1  not just single split
  */
 int
 clixon_strsplit(const char *string,
@@ -419,12 +478,13 @@ int
 uri_percent_decode(const char *enc,
                    char      **strp)
 {
-    int   retval = -1;
-    char *str = NULL;
-    int   i, j;
-    char  hstr[3];
+    int    retval = -1;
+    char  *str = NULL;
+    int    i;
+    int    j;
+    char   hstr[3];
     size_t len;
-    char *ptr;
+    char  *ptr;
 
     if (enc == NULL){
         clixon_err(OE_UNIX, EINVAL, "enc is NULL");
@@ -1013,7 +1073,7 @@ clixon_trim(char *str)
     return s;
 }
 
-/*! Generic trim chars from front and end of a string destructively, return
+/*! Generic trim chars from front and end of a string destructively
  *
  * The function modifies the input string
  * The return value is a pointer into the existing string
@@ -1261,7 +1321,7 @@ main(int argc, char **argv)
         return 0;
     }
     str0 = argv[1];
-    if ((vec = clicon_strsep(str0, " \t", &nvec)) == NULL)
+    if ((vec = clixon_strsep3(str0, " \t", &nvec)) == NULL)
         return -1;
     fprintf(stderr, "nvec: %d\n", nvec);
     for (i=0; i<nvec+1; i++)

@@ -731,7 +731,7 @@ cv_validate1(clixon_handle h,
                  */
                 str = clixon_trim2(str, " \t\n"); /* May be misplaced, strip earlier? */
                 nvec = 0;
-                if ((vec = clicon_strsep(str, " \t", &nvec)) == NULL)
+                if ((vec = clixon_strsep3(str, " \t", &nvec)) == NULL)
                     goto done;
                 for (i=0; i<nvec; i++){
                     if ((v = vec[i]) == NULL || !strlen(v))

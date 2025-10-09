@@ -228,6 +228,7 @@ cli_callback_generate(clixon_handle h,
 
 /*! Print cligen help string as ("<helpstring>")
  *
+ * Also translate  any ") -> "  since they break clispec parsing
  * @param[in]  cb       CLIgen buf holding generated CLIspec
  * @param[in]  helptext Help text
  */
@@ -235,8 +236,15 @@ static int
 yang2cli_helptext(cbuf *cb,
                   char *helptext)
 {
-    if (helptext)
-        cprintf(cb, "(\"%s\")", helptext);
+    char *s;
+
+    if (helptext){
+        s = helptext;
+        while ((s = strstr(s, "\")")) != NULL) /* translate ") */
+            *(s+1) = ' ';
+        s = helptext;
+        cprintf(cb, "(\"%s\")", s);
+    }
     return 0;
 }
 

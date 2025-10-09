@@ -303,7 +303,7 @@ clispec_load_file(clixon_handle h,
         }
     }
     /* Find all modes in CLICON_MODE string: where to append the pt syntax tree */
-    if ((vec = clicon_strsep(mode, ":", &nvec)) == NULL)
+    if ((vec = clixon_strsep1(mode, ":", &nvec)) == NULL)
         goto done;
 
     if (nvec == 1 && strcmp(vec[0], "*") == 0){

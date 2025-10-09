@@ -509,7 +509,7 @@ api_root_restconf(clixon_handle        h,
     }
     clixon_debug(CLIXON_DBG_RESTCONF, "ACCEPT: %s %s", media_list, restconf_media_int2str(media_out));
 
-    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
+    if ((pvec = clixon_strsep1(path, "/", &pn)) == NULL)
         goto done;
 
     /* Sanity check of path. Should be /restconf/ */

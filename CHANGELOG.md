@@ -34,6 +34,7 @@ Expected: October 2025
 
 Developers may need to change their code
 
+* Renamed `clicon_strsep() --> `clixon_strsep1()
 * Changed signature of send hello function:
   * `clixon_client_hello(s, d, v)` -> `clixon_client_hello(s, d, base10, base11, privcand)`
 * Change int to size_t in `cxvec_append()` and related functions and data-types

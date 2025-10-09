@@ -255,7 +255,7 @@ api_stream(clixon_handle h,
     if ((path = restconf_uripath(h)) == NULL)
         goto done;
     pretty = restconf_pretty_get(h);
-    if ((pvec = clicon_strsep(path, "/", &pn)) == NULL)
+    if ((pvec = clixon_strsep1(path, "/", &pn)) == NULL)
         goto done;
     /* Sanity check of path. Should be /stream/<name> */
     if (pn != 3){

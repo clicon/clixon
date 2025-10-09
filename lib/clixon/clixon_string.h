@@ -60,8 +60,9 @@ static inline char * strdup4(char *str)
 /*
  * Prototypes
  */
-char **clicon_strsep(char *string, const char *delim, int  *nvec0);
+char **clixon_strsep1(char *string, const char *delim, int  *nvec0);
 int    clixon_strsep2(char *str, const char *delim1, const char *delim2, char ***vcp, int *nvec);
+char **clixon_strsep3(char *string, const char *delim, int  *nvec0);
 char  *clicon_strjoin (int argc, char **argv, const char *delim);
 char  *clixon_string_del_join(char *str1, const char *del, const char *str2);
 int    clixon_strsplit(const char *nodeid, const int delim, char **prefix, char **id);
@@ -81,5 +82,8 @@ int    clixon_str_subst(char *str, cvec *cvv, cbuf *cb);
 #ifndef HAVE_STRNDUP
 char *clicon_strndup (const char *, size_t);
 #endif /* ! HAVE_STRNDUP */
+
+/* Backward compatible 7.5 */
+#define clicon_strsep(x, d, n) clixon_strsep1((x), (d), (n))
 
 #endif  /* _CLIXON_STRING_H_ */

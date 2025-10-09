@@ -1090,7 +1090,7 @@ yang_bitsstr2val(clixon_handle   h,
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
     }
-    if ((vec = clicon_strsep(bitsstr, " ", &nvec)) == NULL){
+    if ((vec = clixon_strsep3(bitsstr, " ", &nvec)) == NULL){
         clixon_err(OE_UNIX, EINVAL, "split string failed");
         goto done;
     }
@@ -1157,7 +1157,7 @@ yang_bitsstr2flags(yang_stmt *ytype,
         clixon_err(OE_UNIX, EINVAL, "flags is NULL");
         goto done;
     }
-    if ((vec = clicon_strsep(bitsstr, " ", &nvec)) == NULL){
+    if ((vec = clixon_strsep3(bitsstr, " ", &nvec)) == NULL){
         clixon_err(OE_UNIX, EINVAL, "split string failed");
         goto done;
     }

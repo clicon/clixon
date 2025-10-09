@@ -555,7 +555,7 @@ autocli_edit_mode(clixon_handle h,
         clixon_err(OE_XML, EINVAL, "No edit-mode-default rule");
         goto done;
     }
-    if ((vec = clicon_strsep(str, " ", &nvec)) == NULL)
+    if ((vec = clixon_strsep3(str, " ", &nvec)) == NULL)
         goto done;
     for (i=0; i<nvec; i++){
         v = vec[i];

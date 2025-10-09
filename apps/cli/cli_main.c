@@ -486,7 +486,7 @@ rest_commands(clixon_handle h,
     int           nvec;
     int           i;
 
-    if ((vec = clicon_strsep(restarg, ";", &nvec)) == NULL)
+    if ((vec = clixon_strsep3(restarg, ";", &nvec)) == NULL)
         goto done;
     for (i=0; i<nvec; i++){
         v = vec[i];

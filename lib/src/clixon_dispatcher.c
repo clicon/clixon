@@ -109,7 +109,7 @@
  * @param[out] plist_len Pointer to storage space for path array length
  * @retval     0         OK
  * @retval    -1         Error
- * XXX consider using clixon_strsep
+ * XXX consider using clixon_strsep1
  */
 static int
 split_path(char   *path,

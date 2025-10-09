@@ -120,7 +120,7 @@ xpath_append(cbuf      *cb0,
         goto ok;
     if ((myprefix = yang_find_myprefix(y)) == NULL)
         goto done;
-    if ((vec = clicon_strsep(xpath1, "/", &nvec)) == NULL)
+    if ((vec = clixon_strsep1(xpath1, "/", &nvec)) == NULL)
         goto done;
     if (xpath1[0] == '/')
         cbuf_reset(cb0);
