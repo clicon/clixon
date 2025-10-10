@@ -1978,6 +1978,7 @@ ys_parse(yang_stmt   *ys,
     char      *reason = NULL;
     cg_var    *cv = NULL;
     yang_stmt *ys2;
+    cg_var    *cv2 = NULL;
 
     if ((cv = yang_cv_get(ys)) != NULL){
         /* eg mandatory in uses is already set and then copied */
@@ -1996,8 +1997,13 @@ ys_parse(yang_stmt   *ys,
         clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
         goto done;
     }
-    if ((ys2 = yang_orig_get(ys)) != NULL)
-        yang_cv_set(ys2, cv_dup(cv));
+    if ((ys2 = yang_orig_get(ys)) != NULL){
+        if ((cv2 = cv_dup(cv)) == NULL){
+            clixon_err(OE_YANG, errno, "cv_dup");
+            goto done;
+        }
+        yang_cv_set(ys2, cv2);
+    }
     yang_cv_set(ys, cv);
     /* cvret == 1 means parsing is OK */
   done:

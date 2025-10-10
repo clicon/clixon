@@ -200,7 +200,7 @@
 #include "clixon_yang_parse.h"
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
- * And then run the testcase with -D 1
+ * And then run the testcase with -D CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL
  * Disable it to stop any calls to clixon_debug. Having it on by default would mean very large debug outputs.
  */
 #if 0
@@ -1831,6 +1831,8 @@ string        : qstrings { $$=$1;
                    _PARSE_DEBUG("string -> qstrings"); }
               | ustring  { $$=$1;
                    _PARSE_DEBUG( "string -> ustring"); }
+              | '+'      { $$=strdup("+");
+                   _PARSE_DEBUG( "string -> +"); }
               ;
 
 /* quoted string */
