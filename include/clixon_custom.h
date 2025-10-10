@@ -288,3 +288,11 @@
  * Enable to allow anydata in augments
  */
 #define AUGMENT_ALLOW_ANYDATA
+
+/*! Ignore unimplemented XPath functions byreplacing them with true()
+ *
+ * Some XPath functions are not yet implemented. If set, occurences of those functions
+ * are replaced with the "true" function.
+ * Otherwise they result in YANG parse error.
+ */
+#define XPATH_FUNCTION_NYI_IGNORE

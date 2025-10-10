@@ -263,6 +263,9 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_FLOOR:
     case XPATHFN_CEILING:
     case XPATHFN_ROUND:
+#ifdef XPATH_FUNCTION_NYI_IGNORE
+        fn = XPATHFN_TRUE;
+#else
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
@@ -270,6 +273,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
         cprintf(cb, "XPath function \"%s\" is not implemented", name);
         clixon_xpath_parseerror(xpy, cbuf_get(cb));
         goto done;
+#endif
         break;
     case XPATHFN_RE_MATCH:  /* Group of implemented xpath functions */
     case XPATHFN_CURRENT:
