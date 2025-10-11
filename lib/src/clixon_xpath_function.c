@@ -655,6 +655,13 @@ xp_function_count(xp_ctx            *xc,
  * or the first node has no expanded-name, an empty string is returned. If the argument is
  * omitted, it defaults to a node-set with the context node as its only member.
  * Signature: string local-name(node-set?)
+ * @param[in]  xc   Incoming context
+ * @param[in]  xs   XPath node tree
+ * @param[in]  nsc  XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests (non-standard)
+ * @param[out] xrp  Resulting context
+ * @retval     0    OK
+ * @retval    -1    Error
  */
 int
 xp_function_local_name(xp_ctx            *xc,
@@ -672,12 +679,16 @@ xp_function_local_name(xp_ctx            *xc,
     char   *name;
     char   *local_name;
 
-    if (xs == NULL || xs->xs_c0 == NULL){
-        clixon_err(OE_XML, EINVAL, "not expects but did not get one argument");
-        goto done;
+    if (xs != NULL && xs->xs_c0){
+        if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
+            goto done;
     }
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
-        goto done;
+    else{
+        /* If the argument is omitted, it defaults to a node-set with the context node
+           as its only member.*/
+        if ((xr0 = ctx_dup(xc)) == NULL)
+            goto done;
+    }
     if ((xr = malloc(sizeof(*xr))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -846,8 +857,7 @@ xp_function_concat(xp_ctx            *xc,
                    int                localonly,
                    xp_ctx           **xrp)
 {
-    int         retval = -1;
-
+    int     retval = -1;
     xp_ctx *xr0 = NULL;
     xp_ctx *xr1 = NULL;
     xp_ctx *xr = NULL;
@@ -857,10 +867,10 @@ xp_function_concat(xp_ctx            *xc,
     cbuf   *cb = NULL;
 
     if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-        clixon_err(OE_XML, EINVAL, "contain expects but did not get at least two arguments");
+        clixon_err(OE_XML, EINVAL, "concat expects but did not get at least two arguments");
         goto done;
     }
-    /* contains two arguments in xs: boolean contains(string, string) */
+    /* contains two arguments in xs: cncat contains(string, string) */
     if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
         goto done;
     if (ctx2string(xr0, &s0) < 0)
