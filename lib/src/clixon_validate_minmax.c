@@ -292,8 +292,23 @@ check_unique_list_direct(cxobj     *x,
              * referenced leafs are not taken into account */
             str = cv_string_get(cvi);
             if (index(str, '/') != NULL){
-                clixon_err(OE_YANG, 0, "Multiple descendant nodes not allowed (w /)");
+                yang_stmt *ymod = ys_module(y);
+#ifdef YANG_UNIQUE_MULTI_IGNORE
+                clixon_log(NULL, LOG_WARNING,
+                           "%s: %d: Warning: Module %s %s: Ignoring multiple descendant nodes %s",
+                           __func__, __LINE__,
+                           yang_argument_get(ymod),
+                           yang_argument_get(y),
+                           yang_argument_get(yu));
+                goto ok;
+#else
+                clixon_err(OE_YANG, 0,
+                           "NYI: Module %s %s: Multiple descendant nodes %s",
+                           yang_argument_get(ymod),
+                           yang_argument_get(y),
+                           yang_argument_get(yu));
                 goto done;
+#endif
             }
             if ((xi = xml_find(x, str)) == NULL)
                 break;
@@ -525,7 +540,7 @@ check_empty_list_minmax(cxobj     *xt,
  * Two cases:
  * 1) multiple direct children (no prefixes), eg "a b"
  * 2) single xpath with canonical prefixes, eg "/ex:a/ex:b"
-  * @param[in]  x     XML LIST node
+ * @param[in]  x     XML LIST node
  * @param[in]  xt    XML parent
  * @param[in]  y     YANG of x
  * @param[out] xret  Error as XML if ret = 0

@@ -296,3 +296,12 @@
  * Otherwise they result in YANG parse error.
  */
 #undef XPATH_FUNCTION_NYI_IGNORE
+
+/*! Do not cause error if YANG unique with multiple descendendant nodes.
+ *
+ * Example from openconfig-network-instance.yang:
+ *    list interface {
+ *       key "id";
+ *       unique "config/interface config/subinterface";
+ */
+#define YANG_UNIQUE_MULTI_IGNORE

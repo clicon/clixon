@@ -20,6 +20,7 @@ Expected: October 2025
 
 ### Features
 
+* Add compile-time option `YANG_UNIQUE_MULTI_IGNORE` to accept multiple descendant nodes in a unique statement.
 * XPath functions:
   * Support `concat` and `number` XPath function
   * `XPATH_FUNCTION_NYI_IGNORE` compile-time constant to ignore unimplemented XPath functions
