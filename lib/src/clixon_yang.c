@@ -244,7 +244,7 @@ yang_argument_get(yang_stmt *ys)
     return ys->ys_argument;
 }
 
-/*! Set yang argument, not not copied
+/*! Set yang argument, not copied
  *
  * @param[in] ys   Yang statement node
  * @param[in] arg  Argument, note must be malloced
@@ -2787,6 +2787,61 @@ yang_deviation(yang_stmt *ys,
     return retval;
 }
 
+/*! Populate yang leafs after parsing before augment/uses
+ *
+ * Rewrite default identityref values that lack prefixes
+ * @param[in] h    Clixon handle
+ * @param[in] ys   The yang statement to populate.
+ * @retval    0    OK
+ * @retval   -1    Error with clixon_err called
+ * @see https://github.com/clicon/clixon/issues/628
+ */
+static int
+ys_populate_leaf1(clixon_handle h,
+                 yang_stmt    *ys)
+{
+    int        retval = -1;
+    yang_stmt *ydef;
+    yang_stmt *yrestype = NULL;  /* resolved type */
+    char      *restype;  /* resolved type */
+    char      *origtype=NULL;   /* original type */
+    char      *new = NULL;
+    size_t     sz;
+    char      *prefix = NULL;
+    char      *id = NULL;
+    char      *prefix1;
+    char      *defarg;
+
+    if (yang_type_get(ys, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    restype = yrestype?yang_argument_get(yrestype):NULL;
+    if ((ydef = yang_find(ys, Y_DEFAULT, NULL)) != NULL){
+        defarg = yang_argument_get(ydef);
+        if (nodeid_split(defarg, &prefix, &id) < 0)
+            goto done;
+        if (id != NULL &&
+            prefix == NULL &&
+            strcmp(restype, "identityref") == 0 &&
+            (prefix1 = yang_find_myprefix(ys)) != NULL){
+            sz = strlen(prefix1) + strlen(id) + 2;
+            if ((new = malloc(sz)) == NULL){
+                clixon_err(OE_UNIX, errno, "malloc");
+                goto done;
+            }
+            snprintf(new, sz, "%s:%s", prefix1, id);
+            free(defarg);
+            yang_argument_set(ydef, new);
+        }
+    }
+    retval = 0;
+  done:
+    if (id)
+        free(id);
+    if (prefix)
+        free(prefix);
+    return retval;
+}
+
 /*! Populate yang leafs after parsing. Create cv and fill it in.
  *
  * Populate leaf in 2nd round of yang parsing, now that context is complete:
@@ -2802,8 +2857,8 @@ yang_deviation(yang_stmt *ys,
  * @retval   -1    Error with clixon_err called
  */
 static int
-ys_populate_leaf(clixon_handle h,
-                 yang_stmt    *ys)
+ys_populate_leaf2(clixon_handle h,
+                  yang_stmt    *ys)
 {
     int             retval = -1;
     cg_var         *cv = NULL;
@@ -3149,8 +3204,8 @@ ys_populate_type(clixon_handle h,
                  yang_stmt    *ys)
 
 {
-    int             retval = -1;
-    yang_stmt      *ybase;
+    int        retval = -1;
+    yang_stmt *ybase;
 
     if (strcmp(yang_argument_get(ys), "decimal64") == 0){
         if (yang_find(ys, Y_FRACTION_DIGITS, NULL) == NULL){
@@ -3548,6 +3603,11 @@ ys_populate(yang_stmt    *ys,
         if (ys_populate_identity(h, ys, NULL) < 0)
             goto done;
         break;
+    case Y_LEAF:
+    case Y_LEAF_LIST:
+        if (ys_populate_leaf1(h, ys) < 0)
+            goto done;
+        break;
     case Y_LENGTH:
         if (ys_populate_length(h, ys) < 0)
             goto done;
@@ -3614,7 +3674,7 @@ ys_populate2(yang_stmt    *ys,
         break;
     case Y_LEAF:
     case Y_LEAF_LIST:
-        if (ys_populate_leaf(h, ys) < 0)
+        if (ys_populate_leaf2(h, ys) < 0)
             goto done;
         break;
     case Y_CONFIG:

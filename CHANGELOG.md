@@ -74,6 +74,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [YANG identityref from uses/grouping from separate module does not work](https://github.com/clicon/clixon/issues/628)
 * Fixed: YANG error-app-tag identifies as error-message causing false duplicate
 * Fixed: YANG error-app-tag not in range and length as it should
 * Fixed: [https://github.com/clicon/clixon/issues/624](Circular YANG includes leads to SEGV)

@@ -83,6 +83,21 @@ module example-des {
          base "crypto:symmetric-key";
          description "Triple DES crypto algorithm.";
        }
+       identity newdes{
+          description "New stand-alone identity";
+       }
+       identity newdes3 {
+         base newdes;
+       }
+       grouping desname {
+          leaf bname {
+             description "Uses identity accessed by base module";
+             type identityref {
+                base newdes;
+             }
+             default newdes3;
+         }
+       }
 }
 EOF
 
@@ -148,6 +163,13 @@ module example-my-crypto {
           }
        }
        uses myname;
+       list mynewdes {
+          key a;
+          leaf a {
+              type string;
+          }
+          uses des:desname;
+       }
 }
 EOF
 
@@ -387,6 +409,12 @@ expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-m
 
 new "netconf get other identity"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><crypto xmlns=\"urn:example:my-crypto\" xmlns:des=\"urn:example:des\">des:des3</crypto>" ""
+
+new "netconf set identity grouped from other module"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><mynewdes xmlns=\"urn:example:my-crypto\"><a>x</a></mynewdes></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate>></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
