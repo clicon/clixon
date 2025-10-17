@@ -184,8 +184,8 @@ install: $(YANGSPECS) $(CLISPECS) $(PLUGINS) $(APPNAME).xml restconf.xml autocli
 	install -m 0644 autocli.xml $(DESTDIR)$(sysconfdir)/clixon/$(APPNAME)
 	install -m 0644 restconf.xml $(DESTDIR)$(sysconfdir)/clixon/$(APPNAME)
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/$(APPNAME)/yang
-	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)
-	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)
+	install -d -m 0755 $(DESTDIR)$(YANG_INSTALLDIR)/$(APPNAME)
+	install -m 0644 $(YANGSPECS) $(DESTDIR)$(YANG_INSTALLDIR)/$(APPNAME)
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/cli
 	install -m 0644 $(INSTALLFLAGS) $(CLI_PLUGIN) $(DESTDIR)$(libdir)/$(APPNAME)/cli
 	install -d -m 0755 $(DESTDIR)$(libdir)/$(APPNAME)/backend
