@@ -247,7 +247,7 @@ check_drop_priv(clixon_handle h,
             goto done;
     if (xmldb_drop_priv(h, "running", newuid, gid) < 0)
         goto done;
-    if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         if (xmldb_exists(h, "candidate") != 1)
             if (xmldb_create(h, "candidate") < 0)
                 goto done;
@@ -860,7 +860,7 @@ main(int    argc,
     else
         if (startup_mode == SM_RUNNING_STARTUP)
             startup_mode = SM_RUNNING;
-    if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate"))
+    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE"))
         xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
@@ -950,7 +950,7 @@ main(int    argc,
         status = STARTUP_OK;
         cbuf_reset(cbret); /* cbret contains error info */
     }
-    if (!if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         if (xmldb_candidate_new(h, "candidate", 0) == NULL)
             goto done;
     }

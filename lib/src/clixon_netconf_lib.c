@@ -2044,8 +2044,11 @@ netconf_capabilites(clixon_handle h,
      * rfc 6241 Sec 8.4 confirmed-commit capabilities */
     if (if_feature(h, "ietf-netconf", "confirmed-commit"))
         cprintf(cb, "<capability>urn:ietf:params:netconf:capability:confirmed-commit:1.1</capability>");
-    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate"))
+
+    /* Private candidate option requires yang feature declaration */
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
         cprintf(cb, "<capability>%s%s</capability>", NETCONF_PRIVATE_CANDIDATE_CAPABILITY, "?supported-resolution-modes=revert-on-conflict");
+    }
     cprintf(cb, "</capabilities>");
     retval = 0;
  done:

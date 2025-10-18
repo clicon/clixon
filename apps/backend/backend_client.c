@@ -182,7 +182,7 @@ release_all_dbs(clixon_handle h,
     if (xmldb_candidate_find(h, "candidate", ceid, &de0, &db0) < 0)
         goto done;
     if (de0 != NULL){
-        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
             if (xmldb_delete(h, db0) < 0)
                 goto done;
             if (xmldb_candidate_find(h, "candidate-orig", ceid, NULL, &db1) < 0)
@@ -738,7 +738,7 @@ from_client_edit_config(clixon_handle h,
                 break;
             }
         }
-        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
             /* First step, rebase private candidate with running */
             if ((ret = backend_update(h, ce, de, cbret)) < 0)
                 goto done;
@@ -760,7 +760,7 @@ from_client_edit_config(clixon_handle h,
             goto ok;
         }
 #ifdef PRIVCAND_DELETE_ON_COMMIT
-        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
             char *db1 = NULL;
 
             /* Remove candidate and candidate-orig*/
@@ -978,7 +978,7 @@ from_client_delete_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate") &&
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE") &&
         xmldb_candidate_get(de)){
         /* deleting the private candidate will destroy the private candidate for
            that session */

@@ -198,7 +198,7 @@ netconf_hello_msg(clixon_handle h,
         *eof = 1;
         goto done;
     }
-    if (foundprivcand == 0 && if_feature(h, "ietf-netconf-private-candidate", "private-candidate")) {
+    if (foundprivcand == 0 && clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         clixon_err(OE_XML, errno, "Server received hello without private candidate capability, terminating");
         *eof = 1;
         goto done;

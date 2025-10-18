@@ -54,6 +54,7 @@ module clixon-config {
             "Added options:
                 CLICON_XMLDB_CANDIDATE_INMEM
                 CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA
+                CLICON_XMLDB_PRIVATE_CANDIDATE
              Released in Clixon 7.6";
     }
     revision 2025-05-01 {
@@ -1272,6 +1273,19 @@ module clixon-config {
                  If true run candidate datastore in-mem, do not sync candidate to disk.";
             type boolean;
             default false;
+        }
+        leaf CLICON_XMLDB_PRIVATE_CANDIDATE {
+            type boolean;
+            default false;
+            description
+                "If true, enable NETCONF and RESTCONF Private Candidate Datastores
+                 draft-ietf-netconf-privcand-07 for all sessions.
+                 The server announces the private-candidate capability
+                 Client sessions not announcing private candidate are closed
+                 To fully enable private-candidate, the YANG feature
+                 ietf-netconf-private-candidate:private candidate should
+                 also be enabled.
+                 If false, use shared candidates for all sessions";
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;

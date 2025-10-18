@@ -53,3 +53,10 @@ You may also do `make push` if you want to push the image, but you may then cons
 
 (You may have to login for push with sudo docker login -u <username>)
 
+## Other YANGs
+
+You can add other YANGs for experimentation by:
+```
+  $ sudo docker cp myyangs.tgz clixon-example:/usr/local/share/clixon/example
+```
+then untar it an restart the backend

@@ -964,7 +964,7 @@ from_client_commit(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         /* First step, rebase private candidate with running */
         if ((ret = backend_update(h, ce, de, cbret)) < 0)
             goto done;
@@ -979,7 +979,7 @@ from_client_commit(clixon_handle h,
         goto ok;
     }
 #ifdef PRIVCAND_DELETE_ON_COMMIT
-    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         char *db1 = NULL;
 
         /* Remove candidate and candidate-orig*/
@@ -1060,7 +1060,7 @@ from_client_discard_changes(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         /* The behaviour of the <discard-changes> operation is updated such that
          * discarding the changes in a private candidate will reset it to the
          * state it was when it was initially created, or to the state following
@@ -1437,7 +1437,7 @@ xmldb_candidate_find(clixon_handle h,
     db_elmnt *de = NULL;
     int       privcand;
 
-    privcand = if_feature(h, "ietf-netconf-private-candidate", "private-candidate");
+    privcand = clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE");
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
@@ -1481,7 +1481,7 @@ xmldb_find_create(clixon_handle h,
     db_elmnt *de_orig = NULL;
 
     if (strcmp(db, "candidate") == 0){
-        if (if_feature(h, "ietf-netconf-private-candidate", "private-candidate")){
+        if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
             if (xmldb_candidate_find(h, "candidate", ceid, &de, NULL) < 0)
                 goto done;
             if (de == NULL){
