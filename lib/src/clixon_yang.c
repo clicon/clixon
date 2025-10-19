@@ -2635,7 +2635,6 @@ yang_print_cbuf(cbuf      *cb,
 int
 yang_deviation(yang_stmt *ys,
                void      *arg)
-
 {
     int           retval = -1;
     char         *nodeid;
@@ -2740,7 +2739,7 @@ yang_deviation(yang_stmt *ys,
                     }
                     break;
                 }
-                if (_yang_use_orig && yang_orig_get(ytarget) != NULL)
+                if (_yang_use_orig && yang_orig_get(ytarget) != NULL && uses_orig_ptr(kw))
                     ;
                 else {
                     /* Remove old */
