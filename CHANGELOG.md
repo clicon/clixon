@@ -75,6 +75,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Multiple deviations to same grouping when CLICON_YANG_USE_ORIGINAL doesnt work](https://github.com/clicon/clixon/issues/629)
 * Fixed: [YANG identityref from uses/grouping from separate module does not work](https://github.com/clicon/clixon/issues/628)
 * Fixed: YANG error-app-tag identifies as error-message causing false duplicate
 * Fixed: YANG error-app-tag not in range and length as it should

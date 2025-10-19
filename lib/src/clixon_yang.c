@@ -1531,6 +1531,8 @@ yn_iter(yang_stmt *yparent,
  * Special case: look in imported INPUTs as well (for (sub)modules.
  * This could need an optimized lookup, especially the INPUT case.
  * Most common use for the special case, ie in openconfig, is grouping and identity
+ * Note also in the case of the use-orig optimization that uses the child of
+ * the original if that exists rather than the actual child.
  * @param[in]  yn         Yang node, current context node.
  * @param[in]  keyword    if 0 match any keyword. Actual type: enum rfc_6020
  * @param[in]  argument   String compare w argument. if NULL, match any.
@@ -1556,13 +1558,6 @@ yang_find(yang_stmt  *yn,
     if (yang_flag_get(yn, YANG_FLAG_FIND) != 0x0)
         return NULL;
     yang_flag_set(yn, YANG_FLAG_FIND);
-    if (_yang_use_orig &&
-        (yorig = yang_orig_get(yn)) != NULL &&
-        uses_orig_ptr(keyword)){
-        yret = yang_find(yorig, keyword, argument);
-        yang_flag_reset(yn, YANG_FLAG_FIND);
-        return yret;
-    }
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
         if (keyword == 0 || ys->ys_keyword == keyword){
@@ -1572,7 +1567,6 @@ yang_find(yang_stmt  *yn,
                 break;
             }
         }
-#if 1
         /* Special case: if not match and yang node is module or submodule, extend
          * search to include submodules 
          * It would be nice to get rid of this special case, and then also remove
@@ -1589,7 +1583,18 @@ yang_find(yang_stmt  *yn,
                 yretsub = yang_find(ym, keyword, argument);
             }
         }
-#endif
+    }
+
+    if (yret != NULL && yang_flag_get(yret, YANG_FLAG_REFINE))
+        ;
+    else {
+        if (_yang_use_orig &&
+            (yorig = yang_orig_get(yn)) != NULL &&
+            uses_orig_ptr(keyword)){
+            yret = yang_find(yorig, keyword, argument);
+            yang_flag_reset(yn, YANG_FLAG_FIND);
+            return yret;
+        }
     }
     yang_flag_reset(yn, YANG_FLAG_FIND);
     return yret?yret:yretsub;
@@ -2732,7 +2737,9 @@ yang_deviation(yang_stmt *ys,
                     }
                     break;
                 }
-                if (ytc){
+                if (_yang_use_orig && yang_orig_get(ytarget) != NULL)
+                    ;
+                else {
                     /* Remove old */
                     if (ys_prune_self(ytc) < 0)
                         goto done;

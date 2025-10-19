@@ -64,10 +64,14 @@ module example-base{
             leaf my {
                 /* deviate replaces with int and default -42 */
                 type uint16;
+                mandatory false;
             }
         }
     }
     uses system-top;
+    container again {
+       uses system-top;
+    }
 }
 EOF
 
@@ -95,7 +99,7 @@ function testrun()
         start_backend -s init -f "$cfg"
     fi
 
-    new "wait backend"
+    new "wait backend 1"
     wait_backend
 
     new "Add user bob"
@@ -280,7 +284,7 @@ if [ "$BE" -ne 0 ]; then
     start_backend -s init -f "$cfg"
 fi
 
-new "wait backend"
+new "wait backend 2"
 wait_backend
 
 new "show default value, expect deviated"
@@ -340,7 +344,7 @@ if [ "$BE" -ne 0 ]; then
     start_backend -s init -f "$cfg"
 fi
 
-new "wait backend"
+new "wait backend 3"
 wait_backend
 
 new "set negative value"
@@ -354,6 +358,56 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf validate expect fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>bad-element</error-tag><error-info><bad-element>my</bad-element></error-info><error-severity>error</error-severity><error-message>Number 98735 out of range: -128 - 127</error-message></rpc-error></rpc-reply>"
+
+cat <<EOF > $fyangdev
+module example-deviations{
+   yang-version 1.1;
+   prefix ed;
+   namespace "urn:example:deviations";
+   import example-base {
+         prefix base;
+   }
+   typedef mytype {
+      type int8;
+   }
+   deviation /base:system/base:my {
+      deviate replace {
+         mandatory true;
+      }
+   }
+   deviation /base:again/base:system/base:my {
+      deviate replace {
+         mandatory true;
+      }
+   }
+}
+EOF
+
+if [ "$BE" -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf "$cfg"
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg -o CLICON_YANG_USE_ORIGINAL=true"
+    start_backend -s init -f "$cfg -o CLICON_YANG_USE_ORIGINAL=true"
+fi
+
+# use-original optimization and two deviations with separate uses to same grouping
+new "wait backend 4"
+wait_backend
+
+new "set system without my"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>my</bad-element></error-info><error-severity>error</error-severity><error-message>Mandatory variable of system in module example-base</error-message></rpc-error></rpc-reply>"
+
+new "set system my"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><my>17</my></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ "$BE" -ne 0 ]; then
     new "Kill backend"
