@@ -669,7 +669,7 @@ yang_find_module_by_namespace_revision(yang_stmt  *yspec,
  *
  * @param[in]  yspec      A yang specification
  * @param[in]  name       Name
- * @param[in]  rev        Revision
+ * @param[in]  rev        Revision, if NULL match first
  * @retval     ymod       Yang module statement if found
  * @retval     NULL       not found
  * @see yang_find_module_by_namespace
@@ -686,7 +686,7 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
     int        inext;
 
     if (name == NULL){
-        clixon_err(OE_CFG, EINVAL, "No ns or rev");
+        clixon_err(OE_CFG, EINVAL, "No name");
         goto done;
     }
     inext = 0;

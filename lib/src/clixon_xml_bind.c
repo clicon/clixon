@@ -563,8 +563,10 @@ xml_bind_yang0_opt(clixon_handle h,
         goto done;
         break;
     }
-    if (ret == 0)
+    if (ret == 0){
+        clixon_debug(OE_YANG, "Bind failed: %s", xml_name(xt));
         goto fail;
+    }
     else if (ret == 2)     /* ret=2 for anyxml from parent^ */
         goto ok;
     strip_body_objects(xt);

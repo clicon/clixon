@@ -1640,7 +1640,7 @@ yang_parse_post(clixon_handle h,
 
     /* 6: Macro expansion of all uses/grouping pairs.
      *    All uses expansion is made "in-place", ie not after expansion.
-     *    Exanded nodes are marked with "GROUPING" flag
+     *    Expanded nodes are marked with "GROUPING" flag
      *    This alters the original YANG: after this all YANG uses have been expanded
      *    augments as sub-statements of uses are also done here
      */

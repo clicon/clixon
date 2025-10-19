@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
- 
+
   Copyright (C) 2009-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
@@ -24,7 +24,7 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
@@ -98,7 +98,7 @@ static int yang_search_index_extension(clixon_handle h, yang_stmt *yext, yang_st
 /*
  * Local variables
  */
-/* Mapping between yang keyword string <--> clixon constants 
+/* Mapping between yang keyword string <--> clixon constants
  * Here is also the place where doc on some types store variables (cv)
  */
 static const map_str2int ykmap[] = {
@@ -327,7 +327,7 @@ yang_cv_get(yang_stmt *ys)
  *
  * @param[in] ys  Yang statement node
  * @param[in] cv  cligen variable
- * @note: Frees on replace, not if cv is NULL. This is for some ys_cp/ys_dup cases, which means 
+ * @note: Frees on replace, not if cv is NULL. This is for some ys_cp/ys_dup cases, which means
  *        you need to free it explicitly to set it to NULL proper.
  */
 int
@@ -1024,8 +1024,8 @@ ys_new(enum rfc_6020 keyw)
 }
 
 /*! Free a single yang statement, dont remove children, called after children freed
- * 
- * @param[in]  ys   Yang node to remove 
+ *
+ * @param[in]  ys   Yang node to remove
  * @param[in]  self Free own node including child vector
  * @retval     0    OK
  * @retval    -1    Error
@@ -1097,7 +1097,7 @@ ys_free1(yang_stmt *ys,
     return 0;
 }
 
-/*! Remove child i from parent yp (dont free) 
+/*! Remove child i from parent yp (dont free)
  *
  * @param[in]  yp   Parent node
  * @param[in]  i    Order of child to remove
@@ -1163,7 +1163,7 @@ ys_prune_self(yang_stmt *ys)
     return retval;
 }
 
-/*! Free all yang children tree recursively 
+/*! Free all yang children tree recursively
  *
  * @param[in]  ys   Yang node to its children recursively
  */
@@ -1185,7 +1185,7 @@ ys_freechildren(yang_stmt *ys)
     return 0;
 }
 
-/*! Free a yang statement tree recursively 
+/*! Free a yang statement tree recursively
  *
  * @param[in]  ys   Yang node to remove and all its children recursively
  * @note does not remove yang node from tree
@@ -1205,7 +1205,7 @@ ys_free(yang_stmt *ys)
     return 0;
 }
 
-/*! Allocate larger yang statement vector adding empty field last 
+/*! Allocate larger yang statement vector adding empty field last
  */
 static int
 yn_realloc(yang_stmt *yn)
@@ -1409,7 +1409,7 @@ ys_cp(yang_stmt *ynew,
  * @retval   -1     Error
  * This may involve duplicating strings, etc.
  * The new yang tree needs to be freed by ys_free().
- * The parent of new is NULL, it needs to be explicityl inserted somewhere
+ * The parent of new is NULL, it needs to be explicitly inserted somewhere
  */
 yang_stmt *
 ys_dup(yang_stmt *old)
@@ -1528,7 +1528,7 @@ yn_iter(yang_stmt *yparent,
 /*! Find first child yang_stmt with matching keyword and argument
  *
  * Find child given keyword and argument.
- * Special case: look in imported INPUTs as well (for (sub)modules.
+ * Special case: look in imported INPUTs as well for (sub)modules.
  * This could need an optimized lookup, especially the INPUT case.
  * Most common use for the special case, ie in openconfig, is grouping and identity
  * Note also in the case of the use-orig optimization that uses the child of
@@ -1568,7 +1568,7 @@ yang_find(yang_stmt  *yn,
             }
         }
         /* Special case: if not match and yang node is module or submodule, extend
-         * search to include submodules 
+         * search to include submodules
          * It would be nice to get rid of this special case, and then also remove
          * the YANG_FLAG_FIND mechanism
          */
@@ -1905,7 +1905,7 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
  *    if ((found = yang_find_namespace_by_prefix(ys, "ex", &ns)) < 0)
  *      err;
  *    if (found)
- *      // use ns *    
+ *      // use ns *
  * @endcode
  * @see yang_find_module_by_prefix
  */
@@ -2132,7 +2132,7 @@ yang_order(yang_stmt *y)
     while (yang_keyword_get(yp) == Y_CASE || yang_keyword_get(yp) == Y_CHOICE)
         yp = yp->ys_parent;
 
-    /* XML nodes with yang specs that are children of modules are special - 
+    /* XML nodes with yang specs that are children of modules are special -
      * In clixon, they are seen as an "implicit" container where the XML can come from different
      * modules. The order must therefore be global among yang top-symbols to be unique.
      * Example: <x xmlns="foo"/><y xmlns="bar"/>
@@ -2159,7 +2159,7 @@ yang_order(yang_stmt *y)
 /*! Map from YANG keywords ints to strings
  *
  * @param[in] int  Integer representation of YANG keywords
- * @retval    str  String representation of YANG keywords 
+ * @retval    str  String representation of YANG keywords
  */
 char *
 yang_key2str(int keyword)
@@ -2261,7 +2261,7 @@ ys_module(yang_stmt *ys)
  * With "real" top module means that if sub-module is the top-node,
  * the module that the sub-module belongs-to is found recursively
  * @param[in]  ys    Any yang statement in a yang tree
- * @param[out] ymod  The top module or sub-module 
+ * @param[out] ymod  The top module or sub-module
  * @retval     0     OK, returned module in ymod
  * @retval    -1     YANG validation error: all yang statements should have a "real" module
  * @see ys_module
@@ -2411,8 +2411,8 @@ yang_print_cb(FILE             *f,
 
 /*! Print yang specification to file
  *
- * @param[in]  f         File to print to.
- * @param[in]  yn        Yang node to print
+ * @param[in]  f    File to print to.
+ * @param[in]  yn   Yang node to print
  * @see yang_print_cbuf
  */
 int
@@ -2422,32 +2422,35 @@ yang_print(FILE      *f,
     return yang_print_cb(f, yn, fprintf);
 }
 
-/*! Print yang top-level modules only
+/*! Print one-level yang spec
  *
- * @param[in]  f         File to print to.
- * @param[in]  yspec     Yang spec to print
- * @see yang_print_cbuf
+ * Special pretty-print if yn is yang-spec
+ * @param[in]  f    File to print to.
+ * @param[in]  yn   Yang node to print
  */
 int
-yang_spec_print(FILE      *f,
-                yang_stmt *yspec)
+yang_print1(FILE      *f,
+            yang_stmt *yn)
 {
-    yang_stmt *ym;
+    yang_stmt *yc;
     yang_stmt *yrev;
+    int        spec;
     int        inext;
 
-    if (yspec == NULL || yang_keyword_get(yspec) != Y_SPEC){
-        clixon_err(OE_YANG, EINVAL, "yspec is not of type Y_SPEC");
+    if (yn == NULL){
+        clixon_err(OE_YANG, EINVAL, "yn is NULL");
         return -1;
     }
+    spec = yang_keyword_get(yn) == Y_SPEC;
     inext = 0;
-    while ((ym = yn_iter(yspec, &inext)) != NULL) {
-        fprintf(f, "%s", yang_key2str(ym->ys_keyword));
-        fprintf(f, " %s", yang_argument_get(ym));
-        if ((yrev = yang_find(ym, Y_REVISION, NULL)) != NULL){
-            fprintf(f, "@%s", yang_argument_get(yrev));
+    while ((yc = yn_iter(yn, &inext)) != NULL) {
+        fprintf(f, "%s", yang_key2str(yc->ys_keyword));
+        fprintf(f, " %s", yang_argument_get(yc));
+        if (spec){
+            if ((yrev = yang_find(yc, Y_REVISION, NULL)) != NULL)
+                fprintf(f, "@%s", yang_argument_get(yrev));
+            fprintf(f, ".yang");
         }
-        fprintf(f, ".yang");
         fprintf(f, "\n");
     }
     return 0;
@@ -2619,7 +2622,7 @@ yang_print_cbuf(cbuf      *cb,
     return retval;
 }
 
-/*! Yang deviation/deviate 
+/*! Yang deviation/deviate
  *
  * Identify deviation target node, and go through all its deviate statements.
  * Features/if-feature must have run before
@@ -2662,7 +2665,7 @@ yang_deviation(yang_stmt *ys,
     if (ytarget == NULL){
         clixon_log(h, LOG_WARNING, "deviation %s: target not found", nodeid);
         goto ok;
-        /* The RFC does not explicitly say the target node MUST exist 
+        /* The RFC does not explicitly say the target node MUST exist
            clixon_err(OE_YANG, 0, "schemanode sanity check of %s", nodeid);
            goto done;
         */
@@ -2767,7 +2770,7 @@ yang_deviation(yang_stmt *ys,
             inext = 0;
             while ((yc = yn_iter(yd, &inext)) != NULL) {
                 /* The substatement's keyword MUST match a corresponding keyword in the target node, and the
-                 * argument's string MUST be equal to the corresponding keyword's argument string in the 
+                 * argument's string MUST be equal to the corresponding keyword's argument string in the
                  * target node. */
                 kw = yang_keyword_get(yc);
                 if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
@@ -2852,10 +2855,10 @@ ys_populate_leaf1(clixon_handle h,
 /*! Populate yang leafs after parsing. Create cv and fill it in.
  *
  * Populate leaf in 2nd round of yang parsing, now that context is complete:
- * 1. Find type specification and set cv type accordingly 
- * 2. Create the CV using cvtype and name it 
+ * 1. Find type specification and set cv type accordingly
+ * 2. Create the CV using cvtype and name it
  * 3. Check if default value. Here we parse the string in the default-stmt and add it to leafs cv.
- * 4. Check if leaf is part of list, if key exists mark leaf as key/unique 
+ * 4. Check if leaf is part of list, if key exists mark leaf as key/unique
  * XXX: extend type search
  *
  * @param[in] h    Clixon handle
@@ -2975,7 +2978,7 @@ ys_populate_list(clixon_handle h,
 
 /*! Set range or length boundary for built-in yang types
  *
- * Help functions to range and length statements 
+ * Help functions to range and length statements
  * @retval     0       OK
  * @retval    -1       Error
  */
@@ -3064,8 +3067,8 @@ range_parse(yang_stmt   *ys,
  * @param[in] ys   The yang statement (range) to populate.
  * @retval    0    OK
  * @retval   -1    Error
- * Actually: bound[..bound] (| bound[..bound])*  
- *   where bound is integer, decimal or keywords 'min' or 'max. 
+ * Actually: bound[..bound] (| bound[..bound])*
+ *   where bound is integer, decimal or keywords 'min' or 'max.
  * RFC 7950 9.2.4:
  *  A range consists of an explicit value, or a lower-inclusive bound,
  *  two consecutive dots "..", and an upper-inclusive bound.  Multiple
@@ -3125,7 +3128,7 @@ ys_populate_range(clixon_handle h,
  * @retval    0    OK
  * @retval   -1    Error
  *
- * Actually: len[..len] (| len[..len])*  
+ * Actually: len[..len] (| len[..len])*
  *   len is unsigned integer or keywords 'min' or 'max'
  *
  * From RFC 7950 Sec 9.4.4:
@@ -3287,7 +3290,7 @@ ys_populate_identity(clixon_handle h,
         cprintf(cb, "%s:%s", yang_argument_get(ymod), id);
         idref = cbuf_get(cb);
     }
-    /* Iterate through all base statements and check the base identity exists 
+    /* Iterate through all base statements and check the base identity exists
      * AND populate the base identity recursively
      */
     inext = 0;
@@ -3300,7 +3303,7 @@ ys_populate_identity(clixon_handle h,
             goto done;
         }
         //          continue; /* root identity */
-        /* Check if derived id is already in base identifier 
+        /* Check if derived id is already in base identifier
          * note that cvec is always created in ys_new()
          */
         idrefvec = yang_cvec_get(ybaseid);
@@ -3461,7 +3464,7 @@ ys_populate_unique(clixon_handle h,
  * y0) The location of the extension definition. E.g. extension autocli-op
  * y1) The location of the unknown-statement (ys). This is for example: cl:autocli-op hide.
  *     Lookup of "cl" is lexically scoped in this context (to find (y0)).
- * y2) The unknown statement may be used by uses/grouping of (y1). But "cl" is declared 
+ * y2) The unknown statement may be used by uses/grouping of (y1). But "cl" is declared
  *     in y1 context. This is fixed by setting ys_mymodule to y1 which is then used in
  *     lookups such as in yang_extension_value().
  * @see yang_extension_value  Called on expanded YANG, eg in context of (y2)
@@ -3508,7 +3511,7 @@ ys_populate_unknown(clixon_handle h,
         return -1;
     }
 #endif
-    /* Make extension callbacks that may alter yang structure 
+    /* Make extension callbacks that may alter yang structure
      * Note: this may be a "layering" violation: assuming plugins are loaded
      * at yang parse time
      */
@@ -3529,7 +3532,7 @@ ys_populate_unknown(clixon_handle h,
 
 /*! Populate modules / submodules
  *
- * Check RFC 7950: 7.1.4: All prefixes, including the prefix for the module itself, 
+ * Check RFC 7950: 7.1.4: All prefixes, including the prefix for the module itself,
  * MUST be unique within the module or submodule.
  * @param[in] h    Clixon handle
  * @param[in] ys   The yang statement (module/submodule) to populate.
@@ -3592,7 +3595,6 @@ ys_populate_module_submodule(clixon_handle h,
  * Preferably run this command using yang_apply
  * Done in 2nd pass after complete parsing to be sure to have a complete
  * parse-tree
-
  * After this pass, cv:s are set for LEAFs and LEAF-LISTs
  * @see ys_parse_sub   for first pass and what can be assumed
  * @see ys_populate2   for after grouping expand and augment
@@ -3716,7 +3718,7 @@ ys_populate2(yang_stmt    *ys,
  * @retval    0   Feature not enabled: remove yt
  * @retval   -1   Error
  * @note On return 0 the over-lying function need to remove yt from its parent
- * @note cannot use yang_apply here since child-list is modified (destructive) 
+ * @note cannot use yang_apply here since child-list is modified (destructive)
  * @note if-features is parsed in full context here, previous restricted pass in ys_parse_sub
  */
 int
@@ -3787,8 +3789,8 @@ yang_features(clixon_handle h,
 
 /*! Apply a function call recursively on all yang-stmt s recursively
  *
- * Recursively traverse all yang-nodes in a parse-tree and apply fn(arg) for 
- * each object found. The function is called with the yang-stmt and an 
+ * Recursively traverse all yang-nodes in a parse-tree and apply fn(arg) for
+ * each object found. The function is called with the yang-stmt and an
  * argument as args.
  * The tree is traversed depth-first, which at least guarantees that a parent is
  * traversed before a child.
@@ -3912,7 +3914,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
     while ((cv = cvec_each(nodeid_cvv, cv)) != NULL){
         prefix = cv_name_get(cv);
         id = cv_string_get(cv);
-        /* Top level is repeated from abs case, but here this is done to match with 
+        /* Top level is repeated from abs case, but here this is done to match with
          * matching module below
          * Get namespace */
         if ((ns = xml_nsctx_get(nsc, prefix)) == NULL){
@@ -3927,7 +3929,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
             goto done;
         }
         ys = yang_find_schemanode(yp, id);
-        /* Special case: if rpc/action, an empty input/output may need to be created, it is optional but may 
+        /* Special case: if rpc/action, an empty input/output may need to be created, it is optional but may
          * still be referenced.
          * XXX: maybe input/output should always be created when rpc/action is created?
          */
@@ -3958,7 +3960,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
     return retval;
 }
 
-/*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec  
+/*! Given an absolute schema-nodeid (eg /a/b/c) find matching yang spec
  *
  * @param[in]  yn            Original yang stmt (where call is made)
  * @param[in]  schema_nodeid Absolute schema-node-id, ie /a/b
@@ -4024,7 +4026,7 @@ yang_abs_schema_nodeid(yang_stmt  *yn,
     }
     else if (xml_nsctx_yang(yn, &nsc) < 0)
             goto done;
-    /* Since this is an _absolute_ schema nodeid start from top 
+    /* Since this is an _absolute_ schema nodeid start from top
      * Get namespace */
     cv = cvec_i(nodeid_cvv, 0);
     prefix = cv_name_get(cv);
@@ -4052,7 +4054,7 @@ yang_abs_schema_nodeid(yang_stmt  *yn,
     return retval;
 }
 
-/*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec  
+/*! Given a descendant schema-nodeid (eg a/b/c) find matching yang spec
  *
  * @param[in]  yn            Yang node (must be part of yspec tree, cannot be "dangling")
  * @param[in]  schema_nodeid Descendant schema-node-id, ie a/b
@@ -4109,7 +4111,7 @@ yang_desc_schema_nodeid(yang_stmt    *yn,
             cv_name_set(cv, NULL);
         }
     }
-    /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv 
+    /* Make a namespace context from yang for the prefixes (names) of nodeid_cvv
      * Requires yn exist in hierarchy
      */
     if (xml_nsctx_yang(yn, &nsc) < 0)
@@ -4150,7 +4152,7 @@ yang_config(yang_stmt *ys)
 
 /*! Return config state of this node taking parents/ancestors into account
  *
- * config statement is default true. 
+ * config statement is default true.
  * @param[in] ys  Yang statement
  * @retval    1   Neither node nor any of its ancestors has config false
  * @retval    0   Node or one of its ancestor has config false or is RPC or notification
@@ -4177,7 +4179,7 @@ yang_config_ancestor(yang_stmt *ys)
 
 /*! Given a yang node, translate the argument string to a cv vector
  *
- * @param[in]  ys         Yang statement 
+ * @param[in]  ys         Yang statement
  * @param[in]  delimiter  Delimiter character (eg ' ' or ',')
  * @retval     cvec  Vector of strings. Free with cvec_free()
  * @retval     NULL  Error
@@ -4186,7 +4188,7 @@ yang_config_ancestor(yang_stmt *ys)
  *    cg_var *cv = NULL;
  *    if ((cvv = yang_arg2cvec(ys, " ")) == NULL)
  *       goto err;
- *    while ((cv = cvec_each(cvv, cv)) != NULL) 
+ *    while ((cv = cvec_each(cvv, cv)) != NULL)
  *         ...cv_string_get(cv);
  *    cvec_free(cvv);
  * @endcode
@@ -4326,7 +4328,7 @@ yang_type_cache_set2(yang_stmt *ys,
     return retval;
 }
 
-/*! Get individual fields (direct/destructively) from yang type cache. 
+/*! Get individual fields (direct/destructively) from yang type cache.
  *
  * @param[out] patterns Initialized cvec of regexp patterns strings
  * @param[out] rxmode   Which regexp engine to use, see enum regexp_mode
@@ -4417,7 +4419,7 @@ yang_type_cache_free(yang_type_cache *ycache)
     return 0;
 }
 
-/*! Add a simple anydata-node 
+/*! Add a simple anydata-node
  *
  * One usecase is CLICON_YANG_UNKNOWN_ANYDATA when unknown data is treated as anydata
  * @param[in]  yp    Yang parent statement
@@ -4447,7 +4449,7 @@ yang_anydata_add(yang_stmt *yp,
 /*! Find extension argument and return if extension exists and its argument value
  *
  * @param[in]  ys     Yang statement where unknown statement may occur referencing to extension
- * @param[in]  name   Name of the extension 
+ * @param[in]  name   Name of the extension
  * @param[in]  ns     The namespace of the module where the extension is defined
  * @param[out] exist  The extension exists.
  * @param[out] value  Extension value if any
@@ -4599,9 +4601,9 @@ yang_list_index_add(yang_stmt *ys)
 }
 
 /*! Callback for yang clixon search_index extension
- * 
+ *
  * @param[in] h    Clixon handle
- * @param[in] yext Yang node of extension 
+ * @param[in] yext Yang node of extension
  * @param[in] ys   Yang node of (unknown) statement belonging to extension
  * @retval    0    OK (warnings may appear)
  * @retval   -1    Error
