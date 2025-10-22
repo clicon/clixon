@@ -2844,6 +2844,8 @@ ys_populate_leaf1(clixon_handle h,
     }
     retval = 0;
   done:
+    if (origtype)
+        free(origtype);
     if (id)
         free(id);
     if (prefix)
