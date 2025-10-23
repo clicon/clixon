@@ -171,8 +171,10 @@ static const map_str2int ykmap[] = {
     {"when",             Y_WHEN},
     {"yang-version",     Y_YANG_VERSION},
     {"yin-element",      Y_YIN_ELEMENT},
-    {"yang-specification", Y_SPEC}, /* XXX: NOTE NOT YANG STATEMENT, reserved
-                                       for top level spec */
+    /* Note from here not actual yang statements, but meta-yang for the implementation */
+    {"yang-mounts",      Y_MOUNTS},
+    {"yang-domain",      Y_DOMAIN},
+    {"yang-specification",Y_SPEC},
     {NULL,               -1}
 };
 
@@ -2434,6 +2436,7 @@ yang_print1(FILE      *f,
 {
     yang_stmt *yc;
     yang_stmt *yrev;
+    char      *keyw;
     int        spec;
     int        inext;
 
@@ -2444,7 +2447,8 @@ yang_print1(FILE      *f,
     spec = yang_keyword_get(yn) == Y_SPEC;
     inext = 0;
     while ((yc = yn_iter(yn, &inext)) != NULL) {
-        fprintf(f, "%s", yang_key2str(yc->ys_keyword));
+        keyw = yang_key2str(yc->ys_keyword);
+        fprintf(f, "%s", keyw?keyw:"unknown");
         fprintf(f, " %s", yang_argument_get(yc));
         if (spec){
             if ((yrev = yang_find(yc, Y_REVISION, NULL)) != NULL)
@@ -2457,7 +2461,7 @@ yang_print1(FILE      *f,
 }
 
 /*! Print yang top-level specs
- *a
+ *
  * @param[in]  f         File to print to.
  * @param[in]  ymounts   Yang mounts to print
  */
