@@ -39,6 +39,8 @@ CFLAGS  	= @CFLAGS@
 LDFLAGS 	= @LDFLAGS@
 LIBS    	= @LIBS@
 
+#DOCKERFLAGS="--no-cache"
+
 # docker.hub image. CHANGE THIS IF YOU PUSH YOUR OWN
 IMG   = clixon/clixon-example
 
@@ -78,4 +80,3 @@ install-include:
 install:
 
 uninstall:
-

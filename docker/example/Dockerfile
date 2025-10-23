@@ -1,6 +1,6 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
-# 
+#
 # Copyright (C) 2017-2019 Olof Hagsand
 # Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 #
@@ -23,7 +23,7 @@
 # in which case the provisions of the GPL are applicable instead
 # of those above. If you wish to allow use of your version of this file only
 # under the terms of the GPL, and not to allow others to
-# use your version of this file under the terms of Apache License version 2, 
+# use your version of this file under the terms of Apache License version 2,
 # indicate your decision by deleting the provisions above and replace them with
 # the notice and other provisions required by the GPL. If you do not delete
 # the provisions above, a recipient may use your version of this file under
@@ -79,13 +79,17 @@ RUN make DESTDIR=/clixon/build install-include
 WORKDIR /clixon/clixon/example/main
 RUN make
 RUN make DESTDIR=/clixon/build install
-RUN mkdir -p /clixon/build/etc
-RUN install example.xml /clixon/build/etc/clixon.xml
+RUN mkdir -p /clixon/build/usr/local/etc/clixon
+RUN mkdir -p /clixon/build/usr/local/etc/clixon/example
+RUN install example.xml /clixon/build/usr/local/etc/clixon/example.xml
 
 # Copy startscript
 WORKDIR /clixon
-COPY startsystem.sh startsystem.sh 
+COPY startsystem.sh startsystem.sh
 RUN install startsystem.sh /clixon/build/usr/local/bin/
+
+WORKDIR /clixon/build/usr/local/share/clixon
+COPY yang/ example/
 
 #
 # Stage 2
@@ -135,9 +139,8 @@ RUN echo -n 'admin:admin' | chpasswd
 COPY --from=0 /clixon/build/ /
 
 # Overwrite config file since install dirs are wrong
-COPY example.xml /usr/local/etc/clixon/example.xml
 # Create symlink so you can run clixon without -f arg
-RUN ln -s /usr/local/etc/clixon/example.xml /usr/local/etc/clixon.xml 
+RUN ln -s /usr/local/etc/clixon/example.xml /etc/clixon.xml
 
 # Start daemons
 CMD /usr/local/bin/startsystem.sh

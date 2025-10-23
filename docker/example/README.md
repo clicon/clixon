@@ -53,9 +53,18 @@ You may also do `make push` if you want to push the image, but you may then cons
 
 (You may have to login for push with sudo docker login -u <username>)
 
-## Other YANGs
+## Modification
 
-You can add other YANGs for experimentation by:
+You can modify the example container with your own YANGs, keys, config-file and startup-db
+
+Yangs: Create a dir yang/ in this dir and add your yang files to it
+
+Key: Start the container with SSHKEY=<your pubkey> ./start.sh
+
+exmaple.xml: Place a file called "example.xml" in this dir.
+
+Startup: Place a file called "startup_db" in this dir.
+
 ```
   $ sudo docker cp myyangs.tgz clixon-example:/usr/local/share/clixon/example
 ```
