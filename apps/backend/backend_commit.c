@@ -461,7 +461,7 @@ startup_commit(clixon_handle h,
         goto done;
     /* [Delete and] create running db */
     if (xmldb_exists(h, "running") == 1){
-        if (xmldb_delete(h, "running") != 0 && errno != ENOENT)
+        if (xmldb_delete(h, "running", 0) != 0 && errno != ENOENT)
             goto done;;
     }
     if (xmldb_create(h, "running") < 0)
@@ -983,12 +983,12 @@ from_client_commit(clixon_handle h,
         char *db1 = NULL;
 
         /* Remove candidate and candidate-orig*/
-        if (xmldb_delete(h, xmldb_name_get(de)) < 0)
+        if (xmldb_delete(h, xmldb_name_get(de), 1) < 0)
             goto done;
         if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
             goto done;
         if (db1 != NULL){
-            if (xmldb_delete(h, db1) < 0)
+            if (xmldb_delete(h, db1, 1) < 0)
                 goto done;
         }
     }

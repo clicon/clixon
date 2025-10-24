@@ -183,12 +183,12 @@ release_all_dbs(clixon_handle h,
         goto done;
     if (de0 != NULL){
         if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
-            if (xmldb_delete(h, db0) < 0)
+            if (xmldb_delete(h, db0, 1) < 0)
                 goto done;
             if (xmldb_candidate_find(h, "candidate-orig", ceid, NULL, &db1) < 0)
                 goto done;
             if (db1 != NULL){
-                if (xmldb_delete(h, db1) < 0)
+                if (xmldb_delete(h, db1, 1) < 0)
                     goto done;
             }
         }
@@ -764,12 +764,12 @@ from_client_edit_config(clixon_handle h,
             char *db1 = NULL;
 
             /* Remove candidate and candidate-orig*/
-            if (xmldb_delete(h, xmldb_name_get(de)) < 0)
+            if (xmldb_delete(h, xmldb_name_get(de), 1) < 0)
                 goto done;
             if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
                 goto done;
             if (db1 != NULL){
-                if (xmldb_delete(h, db1) < 0)
+                if (xmldb_delete(h, db1, 1) < 0)
                     goto done;
             }
         }
@@ -968,7 +968,7 @@ from_client_delete_config(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (xmldb_delete(h, target) < 0){
+    if (xmldb_delete(h, target, 0) < 0){
         if ((cbmsg = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
@@ -988,7 +988,7 @@ from_client_delete_config(clixon_handle h,
             clixon_err(OE_DB, 0, "candidate-orig not found");
             goto done;
         }
-        if (xmldb_delete(h, db1) < 0)
+        if (xmldb_delete(h, db1, 1) < 0)
             goto done;
     }
     else {

@@ -861,7 +861,7 @@ main(int    argc,
         if (startup_mode == SM_RUNNING_STARTUP)
             startup_mode = SM_RUNNING;
     if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE"))
-        xmldb_delete(h, "candidate");
+        xmldb_delete(h, "candidate", 0);
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -870,7 +870,7 @@ main(int    argc,
     switch (startup_mode){
     case SM_INIT: /* Scratch running and start from empty */
         /* Delete any rollback database, if it exists */
-        xmldb_delete(h, "rollback");
+        xmldb_delete(h, "rollback", 0);
         /* [Delete and] create running db */
         if (xmldb_db_reset(h, "running") < 0)
             goto done;
@@ -889,7 +889,7 @@ main(int    argc,
         if (ret != 1)
             if (xmldb_copy(h, "tmp", "running") < 0)
                 goto done;
-        xmldb_delete(h, "tmp");
+        xmldb_delete(h, "tmp", 0);
         if (ret2status(ret, &status) < 0)
             goto done;
         break;

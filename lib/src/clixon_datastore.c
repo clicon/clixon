@@ -888,10 +888,11 @@ xmldb_clear(clixon_handle h,
     return 0;
 }
 
-/*! Delete database, clear cache if any. Remove file and dir
+/*! Delete database, clear cache if any. Remove or truncate file and dir
  *
  * @param[in]  h   Clixon handle
  * @param[in]  db  Database
+ * @param[in]  rm  Remove file if non-zero, else truncate file
  * @retval     0   OK
  * @retval    -1   Error
  * @note Datastores / dirs are not actually deleted so that a backend after dropping priviliges
@@ -899,7 +900,8 @@ xmldb_clear(clixon_handle h,
  */
 int
 xmldb_delete(clixon_handle h,
-             const char   *db)
+             const char   *db,
+             int rm)
 {
     int            retval = -1;
     char          *filename = NULL;
@@ -916,12 +918,21 @@ xmldb_delete(clixon_handle h,
         goto done;
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
-    if (lstat(filename, &st) == 0)
-        if (truncate(filename, 0) < 0){
-            clixon_err(OE_DB, errno, "truncate %s", filename);
-            goto done;
+    if (lstat(filename, &st) == 0){
+        if (!rm){
+            if (truncate(filename, 0) < 0){
+                clixon_err(OE_DB, errno, "truncate %s", filename);
+                goto done;
+            }
         }
-    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        else {
+            if (unlink(filename) < 0){
+                 clixon_err(OE_DB, errno, "unlink %s", filename);
+                goto done;
+            }
+        }
+   }
+   if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
         if (xmldb_db2subdir(h, db, &subdir) < 0)
             goto done;
         if (stat(subdir, &st) == 0){
@@ -934,9 +945,17 @@ xmldb_delete(clixon_handle h,
             for (i = 0; i < ndp; i++){
                 cbuf_reset(cb);
                 cprintf(cb, "%s/%s", subdir, dp[i].d_name);
-                if (truncate(cbuf_get(cb), 0) < 0){
-                    clixon_err(OE_DB, errno, "truncate %s", filename);
-                    goto done;
+                if (!rm){
+                    if (truncate(cbuf_get(cb), 0) < 0){
+                        clixon_err(OE_DB, errno, "truncate %s", filename);
+                        goto done;
+                    }
+                }
+                else {
+                    if (unlink(filename) < 0){
+                         clixon_err(OE_DB, errno, "unlink %s", filename);
+                        goto done;
+                    }
                 }
             }
         }
@@ -1012,7 +1031,7 @@ xmldb_db_reset(clixon_handle h,
                const char   *db)
 {
     if (xmldb_exists(h, db) == 1){
-        if (xmldb_delete(h, db) != 0 && errno != ENOENT)
+        if (xmldb_delete(h, db, 0) != 0 && errno != ENOENT)
             return -1;
     }
     if (xmldb_create(h, db) < 0)

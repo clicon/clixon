@@ -645,6 +645,11 @@ if [ $? -ne 0 ]; then
     err1 "Failed: test private candidate using expect"
 fi
 
+new "Issue 631: Private candidate datastores are not deleted"
+if  ls $dir/db/candidate* >/dev/null 2>&1; then
+    err
+fi
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
