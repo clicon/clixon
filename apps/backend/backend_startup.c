@@ -175,7 +175,7 @@ startup_mode_startup(clixon_handle h,
                     goto ok;
                 case 1:
                     /* validation ok */
-                    xmldb_delete(h, "rollback");
+                    xmldb_delete(h, "rollback", 0);
                     goto ok;
                 default:
                     /* Unexpected response */
@@ -346,7 +346,7 @@ startup_extraxml(clixon_handle h,
         xml_free(xt);
     if (xt0)
         xml_free(xt0);
-    if (xmldb_delete(h, tmp_db) != 0 && errno != ENOENT)
+    if (xmldb_delete(h, tmp_db, 0) != 0 && errno != ENOENT)
         return -1;
     return retval;
  fail:

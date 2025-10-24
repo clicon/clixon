@@ -392,7 +392,7 @@ cancel_confirmed_commit(clixon_handle h)
 
     confirmed_commit_state_set(h, INACTIVE);
 
-    if (xmldb_delete(h, "rollback") < 0)
+    if (xmldb_delete(h, "rollback", 0) < 0)
         clixon_err(OE_DB, 0, "Error deleting the rollback configuration");
     return 0;
 }
@@ -604,7 +604,7 @@ handle_confirmed_commit(clixon_handle h,
         /* There was no subsequent confirmed-commit, meaning this is the end of the confirmed/confirming sequence;
          * The new configuration is already committed to running and the rollback database can now be deleted
          */
-        if (xmldb_delete(h, "rollback") < 0) {
+        if (xmldb_delete(h, "rollback", 0) < 0) {
             clixon_err(OE_DB, 0, "Error deleting the rollback configuration");
             goto done;
         }
@@ -685,7 +685,7 @@ do_rollback(clixon_handle h,
     }
     cbuf_free(cbret);
 
-    if (xmldb_delete(h, "rollback") < 0) {
+    if (xmldb_delete(h, "rollback", 0) < 0) {
         clixon_log(h, LOG_WARNING, "A rollback occurred but the rollback_db wasn't deleted.");
         errstate |= ROLLBACK_DB_NOT_DELETED;
         goto done;
