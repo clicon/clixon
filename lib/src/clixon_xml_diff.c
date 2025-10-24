@@ -924,7 +924,7 @@ diff_rebase_exec(diff_rebase_t *dr)
  *
  * @param[in]  x0   XML object 0
  * @param[in]  x1   XML object 1
- * @param[out] eq   0: equal, <0: x0 < x1, >0: x0 > x1
+ * @param[out] obj  0: equal, <0: x0 < x1, >0: x0 > x1
  * @retval     0    OK
  * @retval    -1    Error
  */
@@ -957,8 +957,7 @@ xml_node_same(cxobj *x0,
     /* Same object */
     y0 = xml_spec(x0);
     y1 = xml_spec(x1);
-    assert(y0 && y1);
-    if (y0 != y1) /* choice */{
+    if (y0 && y1 && y0 != y1){  /* choice */
         *obj = 1;
         goto done;
     }
@@ -996,8 +995,28 @@ xml_node_eq(cxobj *x0,
     /* Same object */
     y0 = xml_spec(x0);
     y1 = xml_spec(x1);
-    assert(y0 && y1);
-    if (yang_keyword_get(y0) == Y_LEAF){
+    if (y0 && y1){
+        if (yang_keyword_get(y0) == Y_LEAF){
+            b0 = xml_body(x0);
+            b1 = xml_body(x1);
+            if (b0 == NULL && b1 == NULL)
+                *eq = 1;
+            else if (b0 == NULL || b1 == NULL
+                     || strcmp(b0, b1) != 0
+                     ){
+                *eq = 0;
+                if (value0)
+                    *value0 = b0;
+                if (value1)
+                    *value1 = b1;
+            }
+            else
+                *eq = 1;
+        }
+        else
+            *eq = 1;
+    }
+    else{
         b0 = xml_body(x0);
         b1 = xml_body(x1);
         if (b0 == NULL && b1 == NULL)
@@ -1014,8 +1033,6 @@ xml_node_eq(cxobj *x0,
         else
             *eq = 1;
     }
-    else
-        *eq = 1;
     retval = 0;
     // done:
     return retval;
