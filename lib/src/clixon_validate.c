@@ -631,6 +631,7 @@ validate_identityref(cxobj     *xt,
     cbuf       *cb = NULL;
     cvec       *idrefvec; /* Derived identityref list: (module:id)**/
     yang_stmt  *ymod;
+    char       *ns = NULL;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -662,11 +663,19 @@ validate_identityref(cxobj     *xt,
         goto fail;
     }
 
-    /* idref from prefix:id to module:id */
-    if (prefix == NULL)
-        ymod = ys_module(ys);
-    else{ /* from prefix to name */
-        ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
+    /* idref prefix to module */
+    if (xml2ns(xt, prefix, &ns) < 0)
+        goto done;
+    if (ns != NULL)
+        ymod = yang_find_module_by_namespace(ys_spec(ytype), ns);
+    else
+        ymod = NULL;
+    if (ymod == NULL){
+        /* idref from prefix:id to module:id */
+        if (prefix == NULL)
+            ymod = ys_module(ys);
+        else /* from prefix to name */
+            ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
     }
     if (ymod == NULL){
         cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
@@ -1251,7 +1260,6 @@ static int
 check_mandatory(cxobj     *xt,
                 yang_stmt *yt,
                 cxobj    **xret)
-
 {
     int        retval = -1;
     cxobj     *x;

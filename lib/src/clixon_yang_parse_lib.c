@@ -152,7 +152,7 @@ ys_grouping_module_resolve(yang_stmt  *ymod,
 
 /*! Resolve a grouping name from a point in the yang tree
  *
- * @param[in]  ys         Yang statement of "uses" statement doing the lookup
+ * @param[in]  yuses      Yang statement of "uses" statement doing the lookup
  * @param[in]  prefix     Prefix of grouping to look for
  * @param[in]  name       Name of grouping to look for
  * @param[out] ygrouping0 A found grouping yang structure as result

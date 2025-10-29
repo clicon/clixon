@@ -1611,17 +1611,38 @@ yang_find(yang_stmt  *yn,
  *
  * @see yang_find   Looks for any node
  * @note May deviate from RFC since it explores choice/case not just return it.
- * XXX: differentiate between not found and error
  */
 yang_stmt *
-yang_find_datanode(yang_stmt *yn,
-                   char      *argument)
+yang_find_datanode(yang_stmt  *yn,
+                   const char *argument)
+{
+    return yang_find_datanode_ns(yn, argument, NULL);
+}
+
+/*! Find child data node (container, leaf, list, leaf-list) with matching argument  and namespace
+ *
+ * @param[in]  yn         Yang node, current context node.
+ * @param[in]  argument   Argument that child should match with
+ * @param[in]  namespace  Matching namespace, if NULL first
+ * @retval     ymatch     Matching child
+ * @retval     NULL       No match or error
+ *
+ * @see yang_find   Looks for any node
+ * @note May deviate from RFC since it explores choice/case not just return it.
+ * XXX: differentiate between not found and error
+ */
+
+yang_stmt *
+yang_find_datanode_ns(yang_stmt  *yn,
+                      const char *argument,
+                      const char *namespace)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
+    char      *ns;
     int        inext;
     int        inext2;
 
@@ -1631,7 +1652,7 @@ yang_find_datanode(yang_stmt *yn,
             inext2 = 0;
             while ((yc = yn_iter(ys, &inext2)) != NULL){
                 if (yang_keyword_get(yc) == Y_CASE) /* Look for its children */
-                    ysmatch = yang_find_datanode(yc, argument);
+                    ysmatch = yang_find_datanode_ns(yc, argument, namespace);
                 else
                     if (yang_datanode(yc)){
                         if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
@@ -1643,15 +1664,21 @@ yang_find_datanode(yang_stmt *yn,
         } /* Y_CHOICE */
         else if (yang_keyword_get(ys) == Y_INPUT ||
                  yang_keyword_get(ys) == Y_OUTPUT){ /* Look for its children */
-            if ((ysmatch = yang_find_datanode(ys, argument)) != NULL)
+            if ((ysmatch = yang_find_datanode_ns(ys, argument, namespace)) != NULL)
                 break;
         }
         else if (yang_datanode(ys)){
             if (argument == NULL)
                 ysmatch = ys;
-            else
-                if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+            else if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
+                if (namespace == NULL)
                     ysmatch = ys;
+                else {
+                    if ((ns = yang_find_mynamespace(ys)) != NULL &&
+                        strcmp(namespace, ns) == 0)
+                        ysmatch = ys;
+                }
+            }
             if (ysmatch)
                 goto done; // maybe break?
         }
@@ -1667,7 +1694,7 @@ yang_find_datanode(yang_stmt *yn,
             if (yang_keyword_get(ys) == Y_INCLUDE){
                 name = yang_argument_get(ys);
                 yc = yang_find_module_by_name(yspec, name);
-                if ((ysmatch = yang_find_datanode(yc, argument)) != NULL)
+                if ((ysmatch = yang_find_datanode_ns(yc, argument, namespace)) != NULL)
                     break;
             }
         }

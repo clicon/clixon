@@ -650,7 +650,7 @@ netconf_common_rpc_err_xml(cxobj     **xret,
  * An expected element is missing.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "application" or "protocol"
- * @param[in]  info    bad-element xml
+ * @param[in]  element Missing element
  * @param[in]  message Error message
  * @retval     0       OK
  * @retval    -1       Error

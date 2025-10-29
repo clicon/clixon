@@ -219,7 +219,7 @@ populate_self_parent(clixon_handle h,
                 }
             }
         }
-        if ((y = yang_find_datanode(yparent, name)) == NULL){
+        if ((y = yang_find_datanode_ns(yparent, name, ns)) == NULL){
             if (_yang_unknown_anydata){
                 /* Add dummy Y_ANYDATA yang stmt, see ysp_add */
                 if (NULL == (y = yang_anydata_add(yparent, name)))
@@ -564,7 +564,7 @@ xml_bind_yang0_opt(clixon_handle h,
         break;
     }
     if (ret == 0){
-        clixon_debug(OE_YANG, "Bind failed: %s", xml_name(xt));
+        clixon_debug(CLIXON_DBG_YANG, "Bind failed: %s", xml_name(xt));
         goto fail;
     }
     else if (ret == 2)     /* ret=2 for anyxml from parent^ */

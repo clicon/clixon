@@ -626,6 +626,7 @@ text_modify(clixon_handle       h,
     char      *restype;
     int        ismount = 0;
     yang_stmt *mount_yspec = NULL;
+    char      *ns;
     int        ret;
 
     if (x1 == NULL){
@@ -1008,7 +1009,10 @@ text_modify(clixon_handle       h,
             while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
                 x1cname = xml_name(x1c);
                 /* Get yang spec of the child by child matching */
-                if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+                ns = NULL;
+                if (xml2ns(x1c, xml_prefix(x1c), &ns) < 0)
+                    goto done;
+                if ((yc = yang_find_datanode_ns(y0, x1cname, ns)) == NULL){
                     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT"))
                         yc = xml_spec(x1c);
                     if (yc == NULL){
@@ -1065,7 +1069,10 @@ text_modify(clixon_handle       h,
             while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
                 x0c = x0vec[i++];
                 x1cname = xml_name(x1c);
-                if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
+                ns = NULL;
+                if (xml2ns(x1c, xml_prefix(x1c), &ns) < 0)
+                    goto done;
+                if ((yc = yang_find_datanode_ns(y0, x1cname, ns)) == NULL) {
                     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT"))
                         yc = xml_spec(x1c);
                 }

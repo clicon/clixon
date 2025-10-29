@@ -79,11 +79,18 @@ clixon_yang_parsewrap(void)
    The argument is a string
 
    Example: keyword argument ; keyword ; keyword { keyword argument; } keyword
+
+   It was difficult to fix + syntax in lex, which is now in yacc, so
+   the first match of the identifier was remove, it should actually be:
+      [A-Za-z_][A-Za-z0-9_\-\.]*
+   but is now:
+      [A-Za-z_][A-Za-z0-9_\-\.]+
+   Instead the first char is checked in ysp_add
 */
 
 %}
 
-identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
+identifier      [A-Za-z0-9_\-\.]+
 
 %x KEYWORD
 %x DEVIATE
