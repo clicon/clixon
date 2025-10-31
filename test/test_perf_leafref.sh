@@ -182,7 +182,7 @@ new "Add wrong leaf ref"
 expectpart "$($clixon_cli -1 -f $cfg set x rb wrong)" 0 "^$"
 
 new "Validate expect fail leaf"
-expectpart "$($clixon_cli -1 -f $cfg validate 2>&1)" 255 "Validate failed. Edit and try again or discard changes: application data-missing <rb>wrong</rb>: instance-required : ../../a/b"
+expectpart "$($clixon_cli -1 -f $cfg validate 2>&1)" 255 "Validate failed. Edit and try again or discard changes: application data-missing" "<rb>wrong</rb>: instance-required : ../../a/b"
 
 new "Delete wrong leaf"
 expectpart "$($clixon_cli -1 -f $cfg delete x rb wrong)" 0 "^$"
@@ -191,7 +191,7 @@ new "Add wrong list leaf ref"
 expectpart "$($clixon_cli -1 -f $cfg set x rd error)" 0 "^$"
 
 new "Validate expect fail list"
-expectpart "$($clixon_cli -1 -f $cfg validate 2>&1)" 255 "Validate failed. Edit and try again or discard changes: application data-missing <rd>error</rd>: instance-required : ../../a/c/d"
+expectpart "$($clixon_cli -1 -f $cfg validate 2>&1)" 255 "Validate failed. Edit and try again or discard changes: application data-missing" "<rd>error</rd>: instance-required : ../../a/c/d"
 
 new "Delete wrong leaf"
 expectpart "$($clixon_cli -1 -f $cfg delete x rd error)" 0 "^$"

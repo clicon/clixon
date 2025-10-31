@@ -100,6 +100,59 @@ struct leafref_opt leafref_opt = {0,};
 
 #endif
 
+/*! Construct an errmsg from a yang node including useful info
+ *
+ * @param[in,out] cbp  CLIgen buf containing errmsg, free with cbuf_free, create if NULL
+ * @param[in]     xn   XML node
+ * @param[in]     yn   Yang node (may be != spec of xn for types eg)
+ * @retval        0    OK
+ * @retval       -1    Error
+ * XXX: Use this in more places
+ */
+static int
+validate_errmsg(cbuf     **cbp,
+                cxobj     *xn,
+                yang_stmt *yn)
+{
+    int        retval = -1;
+    cbuf      *cb = *cbp;
+    char      *arg;
+    yang_stmt *yp;
+    yang_stmt *ymod;
+    char      *xpath = NULL;
+
+    if (cb == NULL &&
+        (cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (yn != NULL){
+        arg = yang_argument_get(yn);
+        cprintf(cb, "yang node: \"%s %s\"", yang_key2str(yang_keyword_get(yn)), arg?arg:"");
+        if ((yp = yang_parent_get(yn)) != NULL){
+            arg = yang_argument_get(yp);
+            cprintf(cb, " with parent: \"%s %s\"", yang_key2str(yang_keyword_get(yp)), arg?arg:"");
+        }
+        if ((ymod = ys_module(yn)) != NULL)
+            cprintf(cb, " in file \"%s\"", yang_filename_get(ymod));
+#ifdef YANG_SPEC_LINENR
+        cprintf(cb, " on line %u", yang_linenum_get(yn));
+#endif
+    }
+    if (xn != NULL){
+        if (xml2xpath(xn, NULL, 0, 0, &xpath) < 0)
+            goto done;
+        if (xpath)
+            cprintf(cb, " error-path: %s", xpath);
+    }
+    *cbp = cb;
+    retval = 0;
+ done:
+    if (xpath)
+        free(xpath);
+    return retval;
+}
+
 /*! Leafref validation error
  *
  * RFC 7950 15.5 requires:
@@ -108,29 +161,36 @@ struct leafref_opt leafref_opt = {0,};
  * error-path:     Path to the instance-identifier or leafref leaf.
  * @param[in]  xpath error-path
  * @param[in]  xt    Derive info, like: <ref>value</ref>
+ * @param[in]  yt    Yang spec of xt
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     0     OK
  * @retval    -1     Error
  */
 static int
-validate_leafref_err(char   *xpath,
-                     cxobj  *xt,
-                     cxobj **xret)
+validate_leafref_err(char      *xpath,
+                     cxobj     *xt,
+                     yang_stmt *yt,
+                     cxobj    **xret)
 {
     int   retval = -1;
-    cbuf *cb = NULL;
+    cbuf *cbi = NULL;
+    cbuf *cbm = NULL;
 
-    if ((cb = cbuf_new()) == NULL){
+    if ((cbi = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "<%s>%s</%s>", xml_name(xt), xml_body(xt), xml_name(xt));
-    if (xret && netconf_missing_yang_xml(xret, xpath, "instance-required", cbuf_get(cb), NULL) < 0)
+    cprintf(cbi, "<%s>%s</%s>", xml_name(xt), xml_body(xt), xml_name(xt));
+    if (validate_errmsg(&cbm, xt, yt) < 0)
+        goto done;
+    if (xret && netconf_missing_yang_xml(xret, xpath, "instance-required", cbuf_get(cbi), cbuf_get(cbm)) < 0)
         goto done;
     retval = 0;
  done:
-    if (cb)
-        cbuf_free(cb);
+    if (cbi)
+        cbuf_free(cbi);
+    if (cbm)
+        cbuf_free(cbm);
     return retval;
 }
 
@@ -411,7 +471,7 @@ leafref_opt_search(char   *xpath,
             goto done;
     }
     if (myx == NULL){
-        if (validate_leafref_err(xpath, xt, xret) < 0)
+        if (validate_leafref_err(xpath, xt, xml_spec(xt), xret) < 0)
             goto done;
         goto fail;
     }
@@ -451,7 +511,7 @@ leafref_opt_exit(clixon_handle h)
 /*! Validate xml node of type leafref, ensure the value is one of that path's reference
  *
  * @param[in]  xt    XML leaf node of type leafref
- * @param[in]  ys    Yang spec of leaf
+ * @param[in]  yt    Yang spec of leaf
  * @param[in]  ytype Yang type statement belonging to the XML node
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     Validation OK
@@ -476,13 +536,13 @@ leafref_opt_exit(clixon_handle h)
  *  in addition to the definition in Section 6.4.1:
  *   o  If the "path" statement is defined within a typedef, the context
  *      node is the leaf or leaf-list node in the data tree that
- *      references the typedef. (ie ys)
+ *      references the typedef. (ie yt)
  *   o  Otherwise, the context node is the node in the data tree for which
- *      the "path" statement is defined. (ie ys)
+ *      the "path" statement is defined. (ie yt)
  */
 static int
 validate_leafref(cxobj     *xt,
-                 yang_stmt *ys,
+                 yang_stmt *yt,
                  yang_stmt *ytype,
                  cxobj    **xret)
 {
@@ -524,10 +584,10 @@ validate_leafref(cxobj     *xt,
     }
     if ((leafrefbody = xml_body(xt)) == NULL)
         goto ok;
-    if (xml_nsctx_yang(ys, &nsc) < 0)
+    if (xml_nsctx_yang(yt, &nsc) < 0)
         goto done;
 #ifdef LEAFREF_OPTIMIZE
-    if (ys == leafref_opt.lc_cache_yang &&
+    if (yt == leafref_opt.lc_cache_yang &&
          leafref_opt.lc_cache_x0){
         if ((ret = leafref_opt_cache_check(xt, leafref_opt.lc_cache_x0, xpath, 0)) < 0)
             goto done;
@@ -541,8 +601,8 @@ validate_leafref(cxobj     *xt,
         if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
             goto done;
 #ifdef LEAFREF_OPTIMIZE
-    if (ys != leafref_opt.lc_cache_yang){
-        if (leafref_opt_cache_new(ys, xt, xvec, xlen) < 0)
+    if (yt != leafref_opt.lc_cache_yang){
+        if (leafref_opt_cache_new(yt, xt, xvec, xlen) < 0)
             goto done;
         leafref_opt.lc_bin_search = 0;
         leafref_opt.lc_bin_x0 = NULL;
@@ -568,7 +628,7 @@ validate_leafref(cxobj     *xt,
                     break;
             }
             if (i==xlen){
-                if (validate_leafref_err(xpath, xt, xret) < 0)
+                if (validate_leafref_err(xpath, xt, yt, xret) < 0)
                     goto done;
                 goto fail;
             }
@@ -662,7 +722,6 @@ validate_identityref(cxobj     *xt,
             goto done;
         goto fail;
     }
-
     /* idref prefix to module */
     if (xml2ns(xt, prefix, &ns) < 0)
         goto done;
@@ -678,13 +737,11 @@ validate_identityref(cxobj     *xt,
             ymod = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
     }
     if (ymod == NULL){
-        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s ",
                 node,
-                yang_argument_get(ybaseid),
-                yang_argument_get(ys_module(ybaseid)));
-#ifdef YANG_SPEC_LINENR
-        cprintf(cberr, ":%d", yang_linenum_get(ybaseid));
-#endif
+                yang_argument_get(ybaseid));
+        if (validate_errmsg(&cberr, xt, ybaseid) < 0)
+            goto done;
         if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
@@ -696,14 +753,11 @@ validate_identityref(cxobj     *xt,
      */
     idrefvec = yang_cvec_get(ybaseid);
     if (cvec_find(idrefvec, idref) == NULL){
-
-        cprintf(cberr, "Identityref validation failed, %s not derived from %s in %s.yang",
+        cprintf(cberr, "Identityref validation failed, %s not derived from %s ",
                 node,
-                yang_argument_get(ybaseid),
-                yang_argument_get(ys_module(ybaseid)));
-#ifdef YANG_SPEC_LINENR
-                cprintf(cberr, ":%d", yang_linenum_get(ybaseid));
-#endif
+                yang_argument_get(ybaseid));
+        if (validate_errmsg(&cberr, xt, ybaseid) < 0)
+            goto done;
         if (xret && netconf_operation_failed_xml(xret, "application", cbuf_get(cberr)) < 0)
             goto done;
         goto fail;
@@ -1330,9 +1384,12 @@ check_mandatory(cxobj     *xt,
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
-                cprintf(cb, "Mandatory variable of %s in module %s", xml_name(xt), yang_argument_get(ys_module(yc)));
+                cprintf(cb, "Missing mandatory XML %s node. ", yang_argument_get(yc));
+                if (validate_errmsg(&cb, xt, yc) < 0)
+                    goto done;
                 if (xret && netconf_missing_element_xml(xret, "application", yang_argument_get(yc), cbuf_get(cb)) < 0)
                             goto done;
+                clixon_debug(CLIXON_DBG_YANG, "Unknown XML element %s: %s", yang_argument_get(yc), cbuf_get(cb));
                 goto fail;
             }
             break;
@@ -1385,6 +1442,7 @@ xml_yang_validate_add(clixon_handle h,
     cg_var        *cv0;
     enum cv_type   cvtype;
     validate_level vl = VL_NONE;
+    cbuf          *cb = NULL;
     int            ret;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
@@ -1444,7 +1502,14 @@ xml_yang_validate_add(clixon_handle h,
             if ((ret = ys_cv_validate(h, cv, yt, NULL, &reason)) < 0)
                 goto done;
             if (ret == 0){
-                if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), reason) < 0)
+                if ((cb = cbuf_new()) == NULL){
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cb, "%s: ", reason);
+                if (validate_errmsg(&cb, xt, yt) < 0)
+                    goto done;
+                if (xret && netconf_bad_element_xml(xret, "application",  yang_argument_get(yt), cbuf_get(cb)) < 0)
                     goto done;
                 goto fail;
             }
@@ -1463,6 +1528,8 @@ xml_yang_validate_add(clixon_handle h,
   ok:
     retval = 1;
  done:
+    if (cb)
+        cbuf_free(cb);
     if (cv)
         cv_free(cv);
     if (reason)
@@ -1649,6 +1716,7 @@ xml_yang_validate_all1(clixon_handle h,
             cprintf(cb, " in namespace: %s", ns);
         if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xt), cbuf_get(cb)) < 0)
             goto done;
+        clixon_debug(CLIXON_DBG_YANG, "Unknown XML element: %s", cbuf_get(cb));
         goto fail;
     }
     if (yang_config(yt) != 0){
@@ -1662,10 +1730,14 @@ xml_yang_validate_all1(clixon_handle h,
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
-            cprintf(cb, "Failed WHEN condition of %s in module %s (WHEN xpath is %s)",
-                    xml_name(xt),
-                    yang_argument_get(ys_module(yt)),
-                    xpath1);
+            cprintf(cb, "WHEN condition failed, xpath is %s ", xpath1);
+            yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath1); //XXX
+            if (validate_errmsg(&cb, xt, yt) < 0)
+                goto done;
+            clixon_debug(OE_YANG, "Operation failed: %s", cbuf_get(cb));
+#ifdef YANG_WHEN_ALWAYS_TRUE
+            goto ok;
+#endif
             if (xret && netconf_operation_failed_xml(xret, "application",
                                                      cbuf_get(cb)) < 0)
                 goto done;
@@ -1718,6 +1790,9 @@ xml_yang_validate_all1(clixon_handle h,
         while ((yc = yn_iter(yt, &inext)) != NULL) {
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
+            /* Deviate non-supported, see yang_deviation */
+            if (yang_flag_get(yc, YANG_FLAG_NOT_SUPPORT))
+                continue;
             if (!saw_node)
                 clixon_debug_xml(CLIXON_DBG_XPATH, xt, "");
             saw_node = 1;
@@ -1741,11 +1816,22 @@ xml_yang_validate_all1(clixon_handle h,
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
                 }
+                cprintf(cb, "Failed MUST xpath '%s'", xpath);
+#if 1
+                if (ye)
+                    cprintf(cb, " %s ", yang_argument_get(ye));
+                if (validate_errmsg(&cb, xt, yt) < 0)
+                    goto done;
+                if (xret && netconf_operation_failed_xml(xret, "application",
+                                                 cbuf_get(cb)) < 0)
+                    goto done;
+#else
                 cprintf(cb, "Failed MUST xpath '%s' of '%s' in module %s",
                         xpath, xml_name(xt),  yang_argument_get(ys_module(yt)));
                 if (xret && netconf_operation_failed_xml(xret, "application",
                                                  ye?yang_argument_get(ye):cbuf_get(cb)) < 0)
                     goto done;
+#endif
                 goto fail;
             }
             if (nsc){

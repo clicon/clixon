@@ -101,6 +101,7 @@
                                       * original. May also be due to deviations of derived trees
                                       */
 #define YANG_FLAG_FIND        0x4000 /* Dynamic flag in yang_find for recursive sub-modules */
+#define YANG_FLAG_NOT_SUPPORT 0x8000 /* Deviate not-supported, dont check validate */
 
 /*! Names of top-level data YANGs
  */

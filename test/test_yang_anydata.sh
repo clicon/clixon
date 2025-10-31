@@ -119,11 +119,11 @@ function testrun()
             XML="$XMLA$XMLU"
         else
             XML="$XMLA"
-            unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown</error-message></rpc-error>"
+            unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown"
         fi
     else
         XML="$XMLA"
-        unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown</error-message></rpc-error>"
+        unknownreply="<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>u3</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: u3 with parent: b in namespace: urn:example:unknown"
     fi
 
     if $startup; then # get config from startup
@@ -234,7 +234,7 @@ EOF
     echo "$STATE0" > $fstate 
 
     new "Get state (negative test)"
-    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown. Internal error, state callback returned invalid XML from plugin: example_backend</error-message>" ""
+    expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get content=\"nonconfig\"></get></rpc>" "error-message>Failed to find YANG spec of XML node: u5 with parent: sb in namespace: urn:example:unknown"
 
         new "restconf get state(negative)"
     expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+xml" $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 412" "<error-tag>operation-failed</error-tag><error-info><bad-element>u5</bad-element></error-info>"

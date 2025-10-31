@@ -179,12 +179,14 @@ populate_self_parent(clixon_handle h,
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, "Missing parent") < 0)
             goto done;
+        clixon_debug(OE_YANG, "Missing parent: %s", name);
         goto fail;
     }
     if ((yparent = xml_spec(xp)) == NULL){
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, "Missing parent yang node") < 0)
             goto done;
+        clixon_debug(OE_YANG, "Missing parent yang node: %s", name);
         goto fail;
     }
     if (yang_keyword_get(yparent) == Y_ANYXML || yang_keyword_get(yparent) == Y_ANYDATA){
@@ -213,6 +215,7 @@ populate_self_parent(clixon_handle h,
                         if (xerr &&
                             netconf_unknown_element_xml(xerr, "application", name, "No YANG sp") < 0)
                             goto done;
+                        clixon_debug(OE_YANG, "Unknown element xml, no YANG spec: %s", name);
                         goto fail;
                     }
                     yparent = ymod;
@@ -239,9 +242,11 @@ populate_self_parent(clixon_handle h,
             cprintf(cb, " with parent: %s", xml_name(xp));
             if (ns)
                 cprintf(cb, " in namespace: %s", ns);
+            cprintf(cb, " in file: %s", yang_filename_get(ys_module(yparent)));
             if (xerr &&
                 netconf_unknown_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
                 goto done;
+            clixon_debug(OE_YANG, "Unknown XML element %s", cbuf_get(cb));
             goto fail;
         }
     }
@@ -250,6 +255,7 @@ populate_self_parent(clixon_handle h,
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, "Missing namespace") < 0)
             goto done;
+        clixon_debug(OE_YANG, "Missing namespace of %s", name);
         goto fail;
     }
     /* Assign spec only if namespaces match */
@@ -262,6 +268,7 @@ populate_self_parent(clixon_handle h,
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, cbuf_get(cb)) < 0)
             goto done;
+        clixon_debug(OE_YANG, "Bad element XML of %s: %s", name, cbuf_get(cb));
         goto fail;
     }
  set:
@@ -498,8 +505,10 @@ xml_bind_yang(clixon_handle h,
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
         if ((ret = xml_bind_yang0(h, xc, yb, yspec, jsonenc, xerr)) < 0)
             goto done;
-        if (ret == 0)
+        if (ret == 0){
+            clixon_debug(CLIXON_DBG_YANG, "Bind failed: %s", xml_name(xc));
             goto fail;
+        }
     }
     retval = 1;
  done:
@@ -662,8 +671,10 @@ xml_bind_yang0(clixon_handle h,
         goto done;
         break;
     }
-    if (ret == 0)
+    if (ret == 0){
+        clixon_debug(CLIXON_DBG_YANG, "Bind failed: %s", xml_name(xt));
         goto fail;
+    }
     else if (ret == 2)     /* ret=2 for anyxml from parent^ */
         goto ok;
     strip_body_objects(xt);

@@ -2708,11 +2708,7 @@ yang_deviation(yang_stmt *ys,
             continue;
         devop = yang_argument_get(yd);
         if (strcmp(devop, "not-supported") == 0){
-            if (ys_prune_self(ytarget) < 0)
-                goto done;
-            if (ys_free(ytarget) < 0)
-                goto done;
-            goto ok; /* Target node removed, no other deviates possible */
+            yang_flag_set(ytarget, YANG_FLAG_NOT_SUPPORT);
         }
         else if (strcmp(devop, "add") == 0){
             inext = 0;

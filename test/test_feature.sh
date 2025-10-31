@@ -192,7 +192,7 @@ function testrun()
 
     if $enabled; then
         new "netconf set extra element under $node (expect fail)"
-        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>kallekaka</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: kallekaka with parent: $node in namespace: urn:example:clixon</error-message></rpc-error></rpc-reply>"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>kallekaka</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: kallekaka with parent: $node in namespace: urn:example:clixon"
     else
         new "netconf set extra element under $node"
         expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><$node xmlns=\"urn:example:clixon\"><kallekaka/></$node></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

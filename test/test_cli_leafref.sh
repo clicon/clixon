@@ -273,7 +273,7 @@ new "netconf set leafref str wrong type"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><leafrefs xmlns=\"urn:example:clixon\"><leafref><name>str</name></leafref></leafrefs></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "cli validate"
-expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "'str' is not a number <bad-element>name</bad-element>"
+expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "'str' is not a number" "<bad-element>name</bad-element>"
 
 new "cli discard"
 expectpart "$($clixon_cli -1 -f $cfg -l o discard)" 0 ""
@@ -289,7 +289,7 @@ new "set leafref require-instance 99 (non-existent)"
 expectpart "$($clixon_cli -1 -f $cfg set leafrefsreqinst leafref 99)" 0 "^"$
 
 new "cli validate expect failure"
-expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "data-missing <name>99</name>: instance-required : /table/parameter/name"
+expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 255 "data-missing" "<name>99</name>: instance-required : /table/parameter/name"
 
 new "cli discard"
 expectpart "$($clixon_cli -1 -f $cfg -l o discard)" 0 ""

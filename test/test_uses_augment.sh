@@ -100,8 +100,8 @@ expectpart "$($clixon_cli -1 -f $cfg commit)" 0 ""
 new "cli set value z"
 expectpart "$($clixon_cli -1 -f $cfg set c table parameter z value 99)" 0 ""
 
-new "commit Not OK"
-expectpart "$($clixon_cli -1 -f $cfg commit 2>&1)" 255 "Failed WHEN condition of value in module test1"
+new "commit fail"
+expectpart "$($clixon_cli -1 -f $cfg commit 2>&1)" 255 "WHEN condition failed"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
