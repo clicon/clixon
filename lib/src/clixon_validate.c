@@ -564,6 +564,9 @@ validate_leafref(cxobj     *xt,
 #endif
 
     /* require instance */
+#ifdef CLIXON_RELAX_VALIDATE
+    goto ok;
+#endif
     if ((yreqi = yang_find(ytype, Y_REQUIRE_INSTANCE, NULL)) != NULL){
         if ((cv = yang_cv_get(yreqi)) != NULL) /* shouldn't happen */
             require_instance = cv_bool_get(cv);
@@ -1380,6 +1383,9 @@ check_mandatory(cxobj     *xt,
                     break; /* got it */
             }
             if (x == NULL){
+#ifdef CLIXON_RELAX_VALIDATE
+                clixon_log(NULL, LOG_WARNING, "Missing mandatory XML %s node in YANG module %s", yang_argument_get(yc), yang_filename_get(ys_module(yc)));
+#else
                 if ((cb = cbuf_new()) == NULL){
                     clixon_err(OE_UNIX, errno, "cbuf_new");
                     goto done;
@@ -1391,6 +1397,7 @@ check_mandatory(cxobj     *xt,
                             goto done;
                 clixon_debug(CLIXON_DBG_YANG, "Unknown XML element %s: %s", yang_argument_get(yc), cbuf_get(cb));
                 goto fail;
+#endif
             }
             break;
         default:
@@ -1733,6 +1740,9 @@ xml_yang_validate_all1(clixon_handle h,
             if (validate_errmsg(&cb, xt, yt) < 0)
                 goto done;
             clixon_debug(OE_YANG, "Operation failed: %s", cbuf_get(cb));
+#ifdef CLIXON_RELAX_VALIDATE
+            goto ok;
+#endif
             if (xret && netconf_operation_failed_xml(xret, "application",
                                                      cbuf_get(cb)) < 0)
                 goto done;
