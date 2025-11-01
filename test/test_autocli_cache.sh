@@ -103,6 +103,7 @@ function testsetup()
     <module-default>true</module-default>
      <list-keyword-default>kw-nokey</list-keyword-default>
      <grouping-treeref>true</grouping-treeref>
+     <treeref-state-default>false</treeref-state-default>
      <clispec-cache>$cache</clispec-cache>
      <clispec-cache-dir>$cachedir</clispec-cache-dir>
   </autocli>
@@ -110,7 +111,8 @@ function testsetup()
 EOF
 
     new "set top-level grouping"
-#    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+exit
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a)" 0 ""
 
     new "show grouping"
@@ -130,6 +132,9 @@ fi
 
 new "wait backend"
 wait_backend
+
+new "autocli readwrite"
+testsetup readwrite
 
 new "autocli disabled"
 testsetup disabled

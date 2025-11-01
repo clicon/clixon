@@ -305,3 +305,9 @@
  *       unique "config/interface config/subinterface";
  */
 #define YANG_UNIQUE_MULTI_IGNORE
+
+/*! Query backend of autocli cache
+ *
+ * Instead of local dir
+ */
+#define AUTOCLI_CACHE_PROTOCOL

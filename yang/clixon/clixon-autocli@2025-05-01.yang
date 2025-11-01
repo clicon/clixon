@@ -221,6 +221,7 @@ module clixon-autocli{
         leaf treeref-state-default {
             description
                 "If 'true', generate CLI from YANG state/non-config statements as well, not only config data.
+                 This can be useful for show state commands
                  Many specs have very large state parts, for example openconfig has ca 10 times
                  larger state than config parts, see for example openconfig-isis.yang.";
             type boolean;
@@ -261,16 +262,17 @@ module clixon-autocli{
             type boolean;
             default false;
         }
-
         leaf clispec-cache{
             description
                 "Autocli cache to save generated autocli specs between runs.
-
                  If enabled, before generating clispecs from YANG, check if
                  a cached clispec already exists.
-                 One of disabled, read, write or readwrite";
+                 One of disabled, read, write or readwrite.
+                 If set to read, write or readwrite, then clispec-cache-dir must also be set.
+                 Deprecated, see backend implementation using CLICON_CLISPEC_CACHE_DIR";
             type cache-type;
             default disabled;
+            status deprecated;
         }
         leaf clispec-cache-dir {
             type string;
@@ -281,7 +283,9 @@ module clixon-autocli{
                  Directory is created if it does not exist.
                  Typical location: $datadir/clixon/clispec
                  The cli client must have read/write access to this directory
-                 The dir is expanded, ie, can be relative and include tilde";
+                 The dir is expanded, ie, can be relative and include tilde
+                 Deprecated, see backend implementation using CLICON_CLISPEC_CACHE_DIR";
+            status deprecated;
         }
         /* rules */
         list rule {

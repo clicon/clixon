@@ -1759,7 +1759,7 @@ clicon_rpc_update(clixon_handle h)
  */
 int
 clicon_rpc_debug(clixon_handle h,
-                int           level)
+                 int           level)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -1866,7 +1866,6 @@ clicon_rpc_restconf_debug(clixon_handle h,
     return retval;
 }
 
-
 /*! Send a hello request to the backend server on INTERNAL netconf connection
  *
  * @param[in]  h           Clixon handle
@@ -1902,6 +1901,97 @@ clicon_hello_req(clixon_handle h,
         goto done;
     if (parse_hello(h, xret, id) < 0)
         goto done;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
+/*! Make a clixon cache rpc call from client to backend server
+ *
+ * @param[in]     h        Clixon handle
+ * @param[in]     op       Operation: read, write, clear
+ * @param[in]     type     Cache type: autocli, yang-domain, xmldb
+ * @param[in]     domain   Domain string
+ * @param[in]     module   Yang module
+ * @param[in]     revision Yang module revision
+ * @param[in]     keyword  Yang node keyword
+ * @param[in]     name     Yang node name
+ * @param[in,out] data     Cache data
+ * @retval        0        OK
+ * @retval       -1        Error and logged to syslog
+ * @see rpc clixon-cache in clixon-lib.yang
+ */
+int
+clixon_rpc_clixon_cache(clixon_handle h,
+                        const char   *op,
+                        const char   *type,
+                        const char   *domain,
+                        const char   *module,
+                        const char   *revision,
+                        const char   *keyword,
+                        const char   *name,
+                        cbuf         *cbdata)
+{
+    int      retval = -1;
+    cxobj   *xret = NULL;
+    cxobj   *xerr;
+    char    *username;
+    uint32_t session_id;
+    cbuf    *cb = NULL;
+
+    if (op == NULL || type == NULL){
+        clixon_err(OE_XML, EINVAL, "op or type not given");
+        goto done;
+    }
+    if (session_id_check(h, &session_id) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cb, ">");
+    cprintf(cb, "<clixon-cache xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cb, "<operation>%s</operation>", op);
+    cprintf(cb, "<type>%s</type>", type);
+    if (domain)
+        cprintf(cb, "<domain>%s</domain>", domain);
+    if (module)
+        cprintf(cb, "<module>%s</module>", module);
+    if (revision)
+        cprintf(cb, "<revision>%s</revision>", revision);
+    if (keyword)
+        cprintf(cb, "<keyword>%s</keyword>", keyword);
+    if (name)
+        cprintf(cb, "<name>%s</name>", name);
+    if (cbdata && cbuf_len(cbdata)){
+        cprintf(cb, "<data>");
+        xml_chardata_cbuf_append(cb, 0, cbuf_get(cbdata)); // or CDATA?
+        cprintf(cb, "</data>");
+    }
+    cprintf(cb, "</clixon-cache>");
+    cprintf(cb, "</rpc>");
+
+    if (clicon_rpc_msg(h, cb, &xret) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Debug");
+        goto done;
+    }
+    if (xpath_first(xret, NULL, "//rpc-reply/ok") == NULL){
+        clixon_err(OE_XML, 0, "rpc error"); /* XXX extract info from rpc-error */
+        goto done;
+    }
     retval = 0;
  done:
     if (cb)

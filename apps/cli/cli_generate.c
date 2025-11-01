@@ -1701,47 +1701,94 @@ ph_add_set(cligen_handle h,
     return retval;
 }
 
-/*! Generate clispecs, read / write from autocli cache if defined
+#ifdef AUTOCLI_CACHE_PROTOCOL
+static int
+cli_autocli_cache_proto(clixon_handle h,
+                        yang_stmt     *ys,
+                        yang_stmt     *ymod,
+                        const char    *domain,
+                        int            skiptop,
+                        yang_stmt     *yrev,
+                        cbuf          *cb)
+{
+    int        retval = -1;
+    char      *module;
+    char      *revision;
+    char      *keyword;
+    char      *name;
+    int        inext;
+    yang_stmt *yc;
+
+    module = yang_argument_get(ymod);
+    revision = yrev?yang_argument_get(yrev):NULL;
+    keyword = yang_key2str(yang_keyword_get(ys));
+    name = yang_argument_get(ys);
+    if (clixon_rpc_clixon_cache(h, "read", "autocli", domain, module, revision,
+                                keyword,
+                                name, cb) < 0)
+        goto done;
+    /* Generate if not read (or get back a zero?) */
+    if (cbuf_len(cb) == 0){
+        if (skiptop){
+            inext = 0;
+            while ((yc = yn_iter(ys, &inext)) != NULL)
+                if (yang2cli_stmt(h, yc, 1, cb) < 0)
+                    goto done;
+        }
+        else if (yang2cli_stmt(h, ys, 0, cb) < 0)
+            goto done;
+        if (clixon_rpc_clixon_cache(h, "write", "autocli", domain, module, revision,
+                                    keyword, name, cb) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+#else /* AUTOCLI_CACHE_PROTOCOL */
+
+/*! Generate clispecs, read / write from autocli local file cache
  *
- * Cache entry is: <AUTOCLI_CACHE_DIR>/<domain>/<module>@<revision>[-<tag>-<name>].cli
  * @param[in]  h       Clixon handle
+ * @param[in]  ys      Yang node, can be module or grouping
  * @param[in]  ymod    Yang module object
  * @param[in]  domain  Domain string
  * @param[in]  skiptop Do not include ymod when generating clispec
  * @param[out] cb      Clispec
- * XXX only disable and readwrite
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
-cli_autocli_gen_cache(clixon_handle h,
-                      yang_stmt    *ys,
-                      yang_stmt    *ymod,
-                      char         *domain,
-                      int           skiptop,
-                      cbuf         *cb)
+cli_autocli_cache_file(clixon_handle   h,
+                       yang_stmt      *ys,
+                       yang_stmt      *ymod,
+                       const char     *domain,
+                       int             skiptop,
+                       yang_stmt      *yrev,
+                       autocli_cache_t type,
+                       const char     *dir00,
+                       cbuf            *cb)
 {
-    int             retval = -1;
-    yang_stmt      *yrev;
-    cbuf           *dbuf = NULL;
-    cbuf           *fbuf = NULL;
-    char           *dir00 = NULL;
-    char           *dir0 = NULL;
-    char           *dir = NULL;
-    char           *filename = NULL;
-    struct stat     fstat;
-    FILE           *f = NULL;
-    char           *str = NULL;
-    size_t          len;
-    autocli_cache_t type;
-    int             inext;
-    yang_stmt      *yc;
-    wordexp_t       wresult = {0,}; /* for tilde expansion */
-    int             ret;
+    int         retval = -1;
+    char       *dir0 = NULL;
+    char       *dir = NULL;
+    cbuf       *dbuf = NULL;
+    cbuf       *fbuf = NULL;
+    char       *str = NULL;
+    char       *filename = NULL;
+    struct stat fstat;
+    FILE       *f = NULL;
+    wordexp_t   wresult = {0,}; /* for tilde expansion */
+    int         inext;
+    yang_stmt  *yc;
+    size_t      len;
+    int         ret;
 
-    if ((yrev = yang_find(ymod, Y_REVISION, NULL)) == NULL){
-        clixon_debug(CLIXON_DBG_CLI, "CLI cache: skip %s: No revision", yang_argument_get(ymod));
-    }
-    if (autocli_cache(h, &type, &dir00) < 0)
+    if (type != AUTOCLI_CACHE_DISABLED && dir00 == NULL){
+        clixon_err(OE_CFG, 0, "clixon-autocli setting: clispec-cache is set but clispec-cache-dir is not set which is required");
         goto done;
+    }
     if (dir00 != NULL){
         if ((ret = wordexp(dir00, &wresult, 0)) != 0){
             clixon_err(OE_UNIX, errno, "wordexp(%s) %d", dir00, ret);
@@ -1865,16 +1912,68 @@ cli_autocli_gen_cache(clixon_handle h,
     retval = 0;
  done:
     wordfree(&wresult);
-    if (str)
-        free(str);
     if (fbuf)
         cbuf_free(fbuf);
     if (dbuf)
         cbuf_free(dbuf);
     if (f)
         fclose(f);
+    if (str)
+        free(str);
     return retval;
 }
+#endif /* AUTOCLI_CACHE_PROTOCOL */
+
+#if 0
+/*! Generate clispecs, read / write from autocli cache if defined
+ *
+ * Cache entry is: <AUTOCLI_CACHE_DIR>/<domain>/<module>@<revision>[-<tag>-<name>].cli
+ * @param[in]  h       Clixon handle
+ * @param[in]  ys      Yang node, can be module or grouping
+ * @param[in]  ymod    Yang module object
+ * @param[in]  domain  Domain string
+ * @param[in]  skiptop Do not include ymod when generating clispec
+ * @param[out] cb      Clispec
+ * @retval     0       OK
+ * @retval    -1       Error
+ * XXX only disable and readwrite
+ */
+static int
+cli_autocli_gen_cache(clixon_handle h,
+                      yang_stmt    *ys,
+                      yang_stmt    *ymod,
+                      const char   *domain,
+                      int           skiptop,
+                      cbuf         *cb)
+{
+    int             retval = -1;
+    char           *dir00 = NULL;
+    autocli_cache_t type;
+
+    if (autocli_cache(h, &type, &dir00) < 0)
+        goto done;
+#ifdef AUTOCLI_CACHE_PROTOCOL
+    if (cli_autocli_cache_protocol(h,
+                                   ys,
+                                   yang_argument_get(ymod),
+                                   domain,
+                                   skiptop,
+                                   type, cb) < 0)
+        goto done;
+#else
+    yang_stmt      *yrev;
+
+    yrev = yang_find(ymod, Y_REVISION, NULL);
+
+    if (cli_autocli_cache_file(h, ys, ymod, domain, skiptop,
+                               yrev, type, dir00, cb) < 0)
+        goto done;
+#endif
+    retval = 0;
+ done:
+    return retval;
+}
+#endif
 
 /*! Generate clispec for all modules in a grouping
  *
@@ -1917,7 +2016,6 @@ yang2cli_grouping(clixon_handle h,
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    /* Traverse YANG, loop through all modules and generate CLI, inline of yang2cli_stmt */
     if (yang_find(ys, Y_STATUS, "obsolete") != NULL){
         clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "obsolete: %s %s, skipped", yang_argument_get(ys), yang_argument_get(ys_module(ys)));
         goto empty;
@@ -1929,8 +2027,25 @@ yang2cli_grouping(clixon_handle h,
     if (autocli_treeref_state(h, &treeref_state) < 0)
         goto done;
     if (treeref_state || yang_config(ys)){
-        if (cli_autocli_gen_cache(h, ys, ymod, domain, 1, cb) < 0)
+        yang_stmt      *yrev;
+
+        yrev = yang_find(ymod, Y_REVISION, NULL);
+#ifdef AUTOCLI_CACHE_PROTOCOL
+        if (cli_autocli_cache_proto(h, ys, ymod, domain, 1,
+                                    yrev,
+                                    cb) < 0)
             goto done;
+#else
+        autocli_cache_t type;
+        char           *dir00 = NULL;
+
+        if (autocli_cache(h, &type, &dir00) < 0)
+            goto done;
+        if (cli_autocli_cache_file(h, ys, ymod, domain, 1,
+                                   yrev,
+                                   type, dir00, cb) < 0)
+            goto done;
+#endif
     }
     if (cbuf_len(cb) == 0){
         /* Create empty tree */
@@ -2033,6 +2148,7 @@ yang2cli_yspec(clixon_handle h,
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *ymod;
+    yang_stmt      *yrev;
     yang_stmt      *ydomain;
     int             enable;
     cbuf           *cb = NULL;
@@ -2067,8 +2183,35 @@ yang2cli_yspec(clixon_handle h,
             continue;
         cbuf_reset(cb);
         /* See if they are in cache, otherwise generate it */
-        if (cli_autocli_gen_cache(h, ymod, ymod, yang_argument_get(ydomain), 0, cb) < 0)
+        yrev = yang_find(ymod, Y_REVISION, NULL);
+#ifdef AUTOCLI_CACHE_PROTOCOL
+        if (cli_autocli_cache_proto(h,
+                                    ymod,
+                                    ymod,
+                                    yang_argument_get(ydomain),
+                                    0,
+                                    yrev,
+                                    cb) < 0)
             goto done;
+#else
+        autocli_cache_t type;
+        char           *dir00 = NULL;
+
+        if (autocli_cache(h, &type, &dir00) < 0)
+            goto done;
+        if (cli_autocli_cache_file(h,
+                                   ymod,
+                                   ymod,
+                                   yang_argument_get(ydomain),
+                                   0,
+                                   yrev,
+                                   type,
+                                   dir00,
+                                   cb) < 0)
+            goto done;
+#endif
+        //        if (cli_autocli_gen_cache(h, ymod, ymod, yang_argument_get(ydomain), 0, cb) < 0)
+        //            goto done;
         if (cbuf_len(cb) == 0)
             continue;
         /* Note Tie-break of same top-level symbol: prefix is NYI

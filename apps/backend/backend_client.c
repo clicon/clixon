@@ -70,6 +70,7 @@
 #include "clixon_backend_commit.h"
 #include "backend_handle.h"
 #include "backend_get.h"
+#include "backend_cache.h"
 #include "backend_client.h"
 
 /*! Construct a client string description from client_entry information for logging
@@ -526,8 +527,8 @@ do_lock(clixon_handle h,
 /*! Loads all or part of a specified configuration to target configuration
  * 
  * @param[in]  h       Clixon handle 
- * @param[in]  xn      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
  * @param[in]  regarg  User argument given at rpc_callback_register() 
  * @retval     0       OK
@@ -1902,10 +1903,10 @@ from_client_process_control(clixon_handle h,
                             void         *arg,
                             void         *regarg)
 {
-    int      retval = -1;
-    cxobj   *x;
-    char    *name = NULL;
-    char    *opstr = NULL;
+    int            retval = -1;
+    cxobj         *x;
+    char          *name = NULL;
+    char          *opstr = NULL;
     proc_operation op = PROC_OP_NONE;
 
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
@@ -2420,6 +2421,9 @@ backend_rpc_init(clixon_handle h)
         goto done;
     if (rpc_callback_register(h, from_client_process_control, NULL,
                               CLIXON_LIB_NS, "process-control") < 0)
+        goto done;
+    if (rpc_callback_register(h, from_client_clixon_cache, NULL,
+                              CLIXON_LIB_NS, "clixon-cache") < 0)
         goto done;
     retval =0;
  done:

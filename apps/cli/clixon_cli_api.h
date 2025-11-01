@@ -120,6 +120,7 @@ cvec *cvec_append(cvec *cvv0, cvec *cvv1);
 int   cvec_concat_cb(cvec *cvv, cbuf *cb);
 int cli_process_control(clixon_handle h, cvec *vars, cvec *argv);
 int cli_alias_cb(clixon_handle h, cvec *cvv, cvec *argv);
+int cli_cache_clear(clixon_handle h, cvec *cvv, cvec *argv);
 
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
