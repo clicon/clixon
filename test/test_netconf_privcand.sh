@@ -168,6 +168,12 @@ cat <<EOF > $dbdir/startup_db
 </${DATASTORE_TOP}>"
 EOF
 
+# Add candidate datastore files to be removed by backend
+echo "left-behind" > $dir/db/candidate.333.db
+echo "left-behind" > $dir/db/candidate_orig.333.db
+mkdir $dir/db/candidate.444.d/
+echo "multi" > $dir/db/candidate.444.d/sha.db
+
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)

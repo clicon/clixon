@@ -61,7 +61,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <libgen.h>
-
+#include <ftw.h>
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -418,6 +418,56 @@ usage(clixon_handle h,
     exit(-1);
 }
 
+/* Function called by ftw, removes the file if the string "candidate" is present in the path */
+static 
+int ftw_rm_candidate_file(const char *fpath, const struct stat *sb, int tflag) {
+    if (tflag == FTW_F && strstr(fpath, "candidate") != NULL)
+        return unlink(fpath);
+    return 0;
+}
+/* Function called by ftw, removes the directory if the string "candidate" is present in the path */
+static 
+int ftw_rm_candidate_dir(const char *fpath, const struct stat *sb, int tflag) {
+    if (tflag == FTW_D && strstr(fpath, "candidate") != NULL)
+        return rmdir(fpath);
+    return 0;
+}
+
+/* Clear any candidate information that may remain in the file system
+ * if the previous execution did not terminate properly: 
+ * candidate.db
+ * candidate.123.db
+ * candidate_orig.123.db
+ * candidate.d/0.xml
+ *
+ * @param[in] h   Clixon handle
+ * @retval    0   OK
+ * @retval   -1   Error
+ */
+static
+int xmldb_cleanup_candidates(clixon_handle h) {
+    int   retval = -1;
+    char *dir;
+    
+    if ((dir = clicon_xmldb_dir(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "CLICON_XMLDB_DIR not set");
+        goto done;
+    }
+    /*  First file tree walk to removes all files where the string "candidate" is present in the path. */
+    if (ftw(dir, ftw_rm_candidate_file, 15) < 0) {
+        clixon_err(OE_FATAL, 0, "Cannot delete candidate files");
+        goto done;
+    }
+    /* Second file tree walk to removes all empty directories where the string "candidate" is present in the path. */
+    if (ftw(dir, ftw_rm_candidate_dir, 15) < 0) {
+        clixon_err(OE_FATAL, 0, "Cannot delete candidate directories");
+        goto done;
+    }
+    retval = 0;
+done:
+    return retval;
+}
+
 /* Clixon backend application main entry point
  */
 int
@@ -659,7 +709,6 @@ main(int    argc,
     /* Defer: Wait to the last minute to print help message */
     if (help)
         usage(h, argv[0]);
-
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
     cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
@@ -860,7 +909,11 @@ main(int    argc,
     else
         if (startup_mode == SM_RUNNING_STARTUP)
             startup_mode = SM_RUNNING;
-    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE"))
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
+        if (xmldb_cleanup_candidates(h) < 0)
+            goto done;
+    }
+    else
         xmldb_delete(h, "candidate");
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
