@@ -1889,8 +1889,12 @@ yang_spec_load_dir(clixon_handle h,
             revm = cv_uint32_get(yang_cv_get(yrev));
         /* Sanity check that file revision does not match internal rev stmt */
         if (revf && revm && revm != revf){ /* XXX */
+#ifdef CLIXON_RELAX_VALIDATE
+            clixon_log(h, LOG_WARNING, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm);
+#else
             clixon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm);
             goto done;
+#endif
         }
         /* If ym0 and ym exists, delete the yang with oldest revision
          * This is a failsafe in case anything else fails

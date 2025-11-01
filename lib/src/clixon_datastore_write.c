@@ -359,6 +359,9 @@ check_when_condition(cxobj     *x0p,
                 yang_argument_get(y),
                 xpath,
                 yang_argument_get(ys_module(y)));
+#ifdef CLIXON_RELAX_VALIDATE
+        goto ok;
+#endif
         if (netconf_unknown_element(cbret, "application", yang_argument_get(y),
                                     cbuf_get(cberr)) < 0)
             goto done;
