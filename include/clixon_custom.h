@@ -314,5 +314,5 @@
  * 4) Ignore all missing mandatory elements in XML
  * Note that disabling these validation may make you accept invalid YANGs that may fail with other tools later.
  */
-#undef CLIXON_RELAX_VALIDATE
+#define CLIXON_RELAX_VALIDATE
 
