@@ -307,3 +307,15 @@
 /*! CLI generation has YANG dependencies in post-processing
  */
 #define YANG2CLI_POST
+
+/*! Relax YANG validation for debugging
+ *
+ * Mainly for debugging but can be useful when bringing up new YANGs, use with care
+ * This includes:
+ * 1) Accepting mismatching revisions between filename and inside file
+ * 2) Implicitly set all YANG "require-instance" as false on all leafrefs
+ * 3) Implicitly set all YANG "when" as true everywhere
+ * 4) Ignore all missing mandatory elements in XML
+ * Note that disabling these validation may make you accept invalid YANGs that may fail with other tools later.
+ */
+#undef CLIXON_RELAX_VALIDATE
