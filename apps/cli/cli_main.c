@@ -66,7 +66,6 @@
 #include "clixon_cli_api.h"
 
 #include "cli_plugin.h"
-#include "cli_autocli.h"
 #include "cli_generate.h"
 #include "cli_common.h"
 #include "cli_handle.h"

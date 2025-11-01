@@ -20,6 +20,7 @@ Expected: October 2025
 
 ### Features
 
+* Add clear cache operations for yang-domain and clispecs
 * Add compile-time option `YANG_UNIQUE_MULTI_IGNORE` to accept multiple descendant nodes in a unique statement.
 * XPath functions:
   * Support `concat` and `number` XPath function
@@ -31,6 +32,7 @@ Expected: October 2025
 * All internal session clients start with NETCONF hello
 * New `clixon-lib@2025-08-01.yang` revision
    * Added `netconf-framing-type`
+   * Added `rpc clixon-cache`
 * New `clixon-config@2025-08-01.yang` revision
    * Added option: `CLICON_XMLDB_CANDIDATE_INMEM` to run candidate datastore in-mem
    * Added option: `CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA` to encode schema content with CDATA

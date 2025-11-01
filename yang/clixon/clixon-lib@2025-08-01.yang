@@ -72,6 +72,7 @@ module clixon-lib {
     revision 2025-08-01 {
         description
             "Added: netconf-framing-type
+                    rpc clixon-cache
              Released in Clixon 7.6";
     }
     revision 2024-11-01 {
@@ -319,6 +320,32 @@ module clixon-lib {
             }
         }
     }
+    typedef cache-operation {
+        type enumeration {
+            enum read {
+                description "Request cache data from server";
+            }
+            enum write {
+                description "Write cache data to server";
+            }
+            enum clear {
+                description "Clear cache";
+            }
+        }
+    }
+    typedef cache-type {
+        type enumeration {
+            enum autocli {
+                description "Autocli clispec cache";
+            }
+            enum yang-domain {
+                description "Yang domain specs as defined by CLICON_YANG_DOMAIN_DIR";
+            }
+            enum datastore {
+                description "XML datastores (xmldb)";
+            }
+        }
+    }
     identity snmp {
         description
             "SNMP";
@@ -556,6 +583,57 @@ module clixon-lib {
                         type empty;
                     }
                 }
+            }
+        }
+    }
+    rpc clixon-cache {
+        description
+            "Perform operations on cache data.
+             This includes clearing data, as well as read and write data between client and backend server.
+             If read operation returns data-missing the entry does not exist";
+        input {
+            leaf operation {
+                type cache-operation;
+                mandatory true;
+            }
+            leaf type {
+                type cache-type;
+                mandatory true;
+            }
+            leaf domain {
+                description
+                    "YANG or XMLDB domain, in the latter case prefix of xmldb name";
+                type string;
+            }
+            leaf module {
+                description
+                    "YANG module";
+                type string;
+            }
+            leaf revision {
+                description
+                    "YANG module revision";
+                type string;
+            }
+            leaf keyword {
+                description
+                    "YANG symbol keyword, eg grouping";
+                type string;
+            }
+            leaf name {
+                description
+                    "YANG symbol name";
+                type string;
+            }
+            anydata data {
+                description "Put cache data";
+                when "../operation = 'write'";
+            }
+        }
+        output {
+            anydata data {
+                description "Get cache data";
+                when "../operation = 'read'";
             }
         }
     }

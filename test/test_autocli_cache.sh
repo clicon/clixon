@@ -27,6 +27,7 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_CLISPEC_DIR>$dir</CLICON_CLISPEC_DIR>
+  <CLICON_CLISPEC_CACHE_DIR>$dir</CLICON_CLISPEC_CACHE_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
@@ -52,6 +53,9 @@ validate("Validate changes"), cli_validate();
 delete("Delete a configuration item") {
       @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
+}
+clear("Clear system state") {
+    autocli("Autocli file cache"), cli_cache_clear("autocli", "default"); # clixon-cache branch
 }
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
@@ -103,6 +107,7 @@ function testsetup()
     <module-default>true</module-default>
      <list-keyword-default>kw-nokey</list-keyword-default>
      <grouping-treeref>true</grouping-treeref>
+     <treeref-state-default>false</treeref-state-default>
      <clispec-cache>$cache</clispec-cache>
      <clispec-cache-dir>$cachedir</clispec-cache-dir>
   </autocli>
@@ -110,7 +115,8 @@ function testsetup()
 EOF
 
     new "set top-level grouping"
-#    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+exit
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a)" 0 ""
 
     new "show grouping"
@@ -130,6 +136,9 @@ fi
 
 new "wait backend"
 wait_backend
+
+new "autocli readwrite"
+testsetup readwrite
 
 new "autocli disabled"
 testsetup disabled

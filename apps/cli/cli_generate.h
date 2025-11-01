@@ -52,7 +52,7 @@
 #define MTPOINT_PREFIX    "mtpoint:"
 
 /* variable expand function */
-#define GENERATE_EXPAND_XMLDB "expand_dbvar"
+#define GENERATE_EXPAND_XMLDB "expand_dbvar" //  AUTOCLI_CACHE_PROTOCOL
 
 /* Name of autocli CLIgen treename */
 #define AUTOCLI_TREENAME "basemodel"

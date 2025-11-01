@@ -69,7 +69,6 @@
 
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
-#include "cli_autocli.h"
 #include "cli_common.h" /* internal functions */
 
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)

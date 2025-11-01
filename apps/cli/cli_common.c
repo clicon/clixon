@@ -2126,3 +2126,36 @@ cli_alias_show(clixon_handle h,
         cbuf_free(cb);
     return retval;
 }
+
+/*! Clear system cache
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables: function parameters
+ * @param[in]  argv  Arguments given at the callback
+ * @param[in]  argv  <type>
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+cli_cache_clear(clixon_handle h,
+                cvec         *cvv,
+                cvec         *argv)
+{
+    int   retval = -1;
+    char *type;
+    char *domain = NULL;
+    int   i = 0;
+
+    if (cvec_len(argv) != 1 && cvec_len(argv) != 2){
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: <type> [<domain>]");
+        goto done;
+    }
+    type = cv_string_get(cvec_i(argv, i++));
+    if (cvec_len(argv) > i)
+        domain = cv_string_get(cvec_i(argv, i++));
+    if (clixon_rpc_clixon_cache(h, "clear", type, domain, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}

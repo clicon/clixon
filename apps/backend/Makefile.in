@@ -94,6 +94,7 @@ APPSRC += backend_client.c
 APPSRC += backend_get.c
 APPSRC += backend_plugin_restconf.c # Pseudo plugin for restconf daemon
 APPSRC += backend_startup.c
+APPSRC += backend_cache.c
 APPOBJ  = $(APPSRC:.c=.o)
 
 # Accessible from plugin
