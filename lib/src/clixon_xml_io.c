@@ -499,6 +499,39 @@ xml_print(FILE  *f,
     return xml2file_recurse(f, x, 0, 1, NULL, fprintf, 0, WITHDEFAULTS_REPORT_ALL, 0, 0);
 }
 
+/*! Print one-level XML tree
+ *
+ * Special pretty-print one-level XML tree for very large trees
+ * @param[in]  f   File to print to.
+ * @param[in]  xd  XML node to print
+ */
+int
+xml_print1(FILE  *f,
+           cxobj *xn)
+{
+    cxobj *xc;
+
+    fprintf(f, "<%s>\n", xml_name(xn));
+    xc = NULL;
+    while ((xc = xml_child_each(xn, xc, -1)) != NULL) {
+        switch(xml_type(xc)){
+        case CX_BODY:
+            fprintf(stderr, "   %s\n", xml_value(xc));
+            break;
+        case CX_ATTR:
+            fprintf(stderr, "   %s=\"%s\"\n", xml_name(xc), xml_value(xc));
+            break;
+        case CX_ELMNT:
+            fprintf(f, "   <%s/>\n", xml_name(xc));
+            break;
+        default:
+            break;
+        }
+    }
+    fprintf(f, "</%s>\n", xml_name(xn));
+    return 0;
+}
+
 /*! Dump cxobj structure with pointers and flags for debugging, internal function
  */
 static int
