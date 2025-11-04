@@ -106,5 +106,7 @@ int xmldb_populate(clixon_handle h, const char *db);
 int xmldb_multi_upgrade(clixon_handle h, const char *db);
 int xmldb_drop_priv(clixon_handle h, const char *db, uid_t uid, gid_t gid);
 int xmldb_system_only_config(clixon_handle h, const char *xpath, cvec *nsc, cxobj **xret);
+int xmldb_candidate_find(clixon_handle h, const char *name, uint32_t ceid, db_elmnt **dep, char **db);
+int xmldb_post_commit(clixon_handle h, uint32_t ceid);
 
 #endif /* _CLIXON_DATASTORE_H */

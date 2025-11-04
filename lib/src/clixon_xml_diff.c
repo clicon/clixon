@@ -924,14 +924,14 @@ diff_rebase_exec(diff_rebase_t *dr)
  *
  * @param[in]  x0   XML object 0
  * @param[in]  x1   XML object 1
- * @param[out] obj  0: equal, <0: x0 < x1, >0: x0 > x1
+ * @param[out] eq  0: equal, <0: x0 < x1, >0: x0 > x1
  * @retval     0    OK
  * @retval    -1    Error
  */
 static int
 xml_node_same(cxobj *x0,
               cxobj *x1,
-              int   *obj)
+              int   *eq)
 {
     int        retval = -1; /* Not equal */
     yang_stmt *y0;
@@ -939,29 +939,29 @@ xml_node_same(cxobj *x0,
     int        ret;
 
     if (x0 == NULL && x1 == NULL){
-        *obj = 0;
+        *eq = 0;
         goto ok;
     }
     else if (x0 == NULL){
-        *obj = 1;
+        *eq = 1;
         goto ok;
     }
     else if (x1 == NULL){
-        *obj = -1;
+        *eq = -1;
         goto ok;
     }
     if ((ret = xml_cmp(x0, x1, 0, 0, NULL)) != 0){
-        *obj = ret;
+        *eq = ret;
         goto ok;
     }
     /* Same object */
     y0 = xml_spec(x0);
     y1 = xml_spec(x1);
     if (y0 && y1 && y0 != y1){  /* choice */
-        *obj = 1;
+        *eq = 1;
         goto done;
     }
-    *obj = 0;
+    *eq = 0;
  ok:
     retval = 0;
  done:
@@ -1141,7 +1141,7 @@ xml_rebase(clixon_handle  h,
     cxobj     *x0c;
     cxobj     *x1c;
     cxobj     *x2c;
-    //    yang_stmt *y0c = NULL;
+    yang_stmt *y0c = NULL;
     yang_stmt *y1c = NULL;
     //    yang_stmt *y2c = NULL;
     int        same10;
@@ -1164,7 +1164,7 @@ xml_rebase(clixon_handle  h,
         if (x0c){
             if (xml2xpath(x0c, NULL, 0, 0, &xpath0) < 0)
                 goto done;
-            // y0c = xml_spec(x0c);
+            y0c = xml_spec(x0c);
         }
         if (x1c){
             if (xml2xpath(x1c, NULL, 0, 0, &xpath1) < 0)
@@ -1175,6 +1175,21 @@ xml_rebase(clixon_handle  h,
             if (xml2xpath(x2c, NULL, 0, 0, &xpath2) < 0)
                 goto done;
             // y2c = xml_spec(x2c);
+        }
+        /* Special error case if origin is not YANG bound */
+        if (x0c && x1c && strcmp(xml_name(x0c), xml_name(x1c)) == 0){
+            if (y0c == NULL && y1c != NULL){
+                if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL, "New node is yang bound but not origin", cbret) < 0)
+                    goto done;
+                conflict++;
+                break;
+            }
+            if (y0c != NULL && y1c == NULL){
+                if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL, "Orig node is yang bound but not new", cbret) < 0)
+                    goto done;
+                conflict++;
+                break;
+            }
         }
         if (xml_node_same(x1c, x0c, &same10) < 0)
             goto done;
@@ -1266,7 +1281,6 @@ xml_rebase(clixon_handle  h,
         else if (same10 > 0){ /* Deleted x1c */
             if (same20 < 0){
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
-                goto next;
             }
             else if (same20 == 0){
                 if (xml_tree_equal(x0c, x2c) != 0){
@@ -1277,7 +1291,6 @@ xml_rebase(clixon_handle  h,
                 }
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
                 x2c = xml_child_each(x2, x2c, CX_ELMNT);
-                goto next;
             }
             else if (same20 > 0){ /* Deleted both in x1c and x2c */
                 if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL,
@@ -1286,6 +1299,7 @@ xml_rebase(clixon_handle  h,
                 conflict++;
                 x0c = xml_child_each(x0, x0c, CX_ELMNT);
             }
+            goto next;
         }
         if (xml_rebase(h, x0c, x1c, x2c, &conflict, cbret, dr) < 0)
             goto done;

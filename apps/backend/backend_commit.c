@@ -740,7 +740,7 @@ candidate_commit(clixon_handle  h,
     /* After commit, make a post-commit call (sure that all plugins have committed) */
     if (plugin_transaction_commit_done_all(h, td) < 0)
         goto done;
-    /* 8. Success: Copy candidate to running 
+    /* 8. Success: Copy candidate to running
      */
     if (xmldb_copy(h, db, "running") < 0)
         goto done;
@@ -787,7 +787,7 @@ candidate_commit(clixon_handle  h,
 /*! Check private candidate, rebase to running if no conflict
  *
  * @param[in]   h     Clixon handle
- * @param[in]   ce    Client entry
+ * @param[in]   ceid  Client id
  * @param[in]   de1   Datastore entry of candidate
  * @param[out]  cbret Reply msg if retval=0
  * @retval      1     OK
@@ -796,7 +796,7 @@ candidate_commit(clixon_handle  h,
  */
 int
 backend_update(clixon_handle h,
-               client_entry *ce,
+               uint32_t      ceid,
                db_elmnt     *de1,
                cbuf         *cbret)
 {
@@ -811,7 +811,7 @@ backend_update(clixon_handle h,
     diff_rebase_t *dr = NULL;
 
     /* Original candidate */
-    if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, &de0, &db0) < 0)
+    if (xmldb_candidate_find(h, "candidate-orig", ceid, &de0, &db0) < 0)
         goto done;
     if (de0 == NULL){
         clixon_err(OE_DB, 0, "candidate-orig de not found");
@@ -966,7 +966,7 @@ from_client_commit(clixon_handle h,
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
         /* First step, rebase private candidate with running */
-        if ((ret = backend_update(h, ce, de, cbret)) < 0)
+        if ((ret = backend_update(h, ce->ce_id, de, cbret)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
@@ -978,21 +978,8 @@ from_client_commit(clixon_handle h,
                 goto done;
         goto ok;
     }
-#ifdef PRIVCAND_DELETE_ON_COMMIT
-    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
-        char *db1 = NULL;
-
-        /* Remove candidate and candidate-orig*/
-        if (xmldb_delete(h, xmldb_name_get(de)) < 0)
-            goto done;
-        if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
-            goto done;
-        if (db1 != NULL){
-            if (xmldb_delete(h, db1) < 0)
-                goto done;
-        }
-    }
-#endif
+    if (xmldb_post_commit(h, ce->ce_id) < 0)
+        goto done;
     if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
         xmldb_unlock(h, db);
     if (ret == 0)
@@ -1189,7 +1176,7 @@ from_client_update(clixon_handle h,
     }
     if (xmldb_find_create(h, "candidate", ce->ce_id, &de, NULL) < 0)
         goto done;
-    if ((ret = backend_update(h, ce, de, cbret)) < 0)
+    if ((ret = backend_update(h, ce->ce_id, de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1412,50 +1399,6 @@ system_only_data_add(clixon_handle h,
     }
     retval = 0;
  done:
-    return retval;
-}
-
-/*! Get candidate datastore, if privcand return private, otherwise shared
- *
- * @param[in]  h     Clixon handle
- * @param[in]  name  Name, typically "candidate"
- * @param[in]  ceid  Client/session id
- * @param[out] dep   Datastore element if given
- * @param[out] db    Datastore name if given, pointer into de
- * @retval     0     OK element
- * @retval    -1     Error
- */
-int
-xmldb_candidate_find(clixon_handle h,
-                     const char   *name,
-                     uint32_t      ceid,
-                     db_elmnt    **dep,
-                     char        **db)
-{
-    int       retval = -1;
-    cbuf     *cb = NULL;
-    db_elmnt *de = NULL;
-    int       privcand;
-
-    privcand = clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE");
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_XML, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(cb, "%s", name);
-    if (privcand){
-        cprintf(cb, ".%u", ceid);
-    }
-    if ((de = xmldb_find(h, cbuf_get(cb))) != NULL){
-        if (dep)
-            *dep = de;
-        if (db)
-            *db = xmldb_name_get(de);
-    }
-    retval = 0;
- done:
-    if (cb)
-        cbuf_free(cb);
     return retval;
 }
 

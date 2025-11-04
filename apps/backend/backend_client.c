@@ -740,7 +740,7 @@ from_client_edit_config(clixon_handle h,
         }
         if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
             /* First step, rebase private candidate with running */
-            if ((ret = backend_update(h, ce, de, cbret)) < 0)
+            if ((ret = backend_update(h, ce->ce_id, de, cbret)) < 0)
                 goto done;
             if (ret == 0)
                 goto ok;
@@ -759,21 +759,8 @@ from_client_edit_config(clixon_handle h,
             }
             goto ok;
         }
-#ifdef PRIVCAND_DELETE_ON_COMMIT
-        if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
-            char *db1 = NULL;
-
-            /* Remove candidate and candidate-orig*/
-            if (xmldb_delete(h, xmldb_name_get(de)) < 0)
-                goto done;
-            if (xmldb_candidate_find(h, "candidate-orig", ce->ce_id, NULL, &db1) < 0)
-                goto done;
-            if (db1 != NULL){
-                if (xmldb_delete(h, db1) < 0)
-                    goto done;
-            }
-        }
-#endif
+        if (xmldb_post_commit(h, ce->ce_id) < 0)
+            goto done;
     }
     /* Clixon extension: copy */
     if ((attr = xml_find_value(xe, "copystartup")) != NULL &&

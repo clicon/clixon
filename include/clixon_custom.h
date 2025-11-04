@@ -272,15 +272,6 @@
  */
 #define LEAFREF_OPTIMIZE
 
-/*! Delete private candidate at commit
- *
- * The privcand draft is unclear whether you should update and additionally delete
- * the privcand and its origin on commit.
- * Enable this to delete candidate on commit, and then it is createad on first access,
- * Disable to just update candidate to running
- */
-#define PRIVCAND_DELETE_ON_COMMIT
-
 /*! Enable anydata as child in augments
  *
  * RFC 7950 Sec 7.17 does not include anydata in nodes that can be used within

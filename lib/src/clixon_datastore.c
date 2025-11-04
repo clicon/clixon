@@ -1270,3 +1270,75 @@ xmldb_system_only_config(clixon_handle h,
     retval = 0;
     goto done;
 }
+
+/*! Get candidate datastore, if privcand return private, otherwise shared
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  name  Name, typically "candidate"
+ * @param[in]  ceid  Client/session id
+ * @param[out] dep   Datastore element if given
+ * @param[out] db    Datastore name if given, pointer into de
+ * @retval     0     OK element
+ * @retval    -1     Error
+ */
+int
+xmldb_candidate_find(clixon_handle h,
+                     const char   *name,
+                     uint32_t      ceid,
+                     db_elmnt    **dep,
+                     char        **db)
+{
+    int       retval = -1;
+    cbuf     *cb = NULL;
+    db_elmnt *de = NULL;
+    int       privcand;
+
+    privcand = clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE");
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s", name);
+    if (privcand){
+        cprintf(cb, ".%u", ceid);
+    }
+    if ((de = xmldb_find(h, cbuf_get(cb))) != NULL){
+        if (dep)
+            *dep = de;
+        if (db)
+            *db = xmldb_name_get(de);
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! Do post-commit stuff, typically privcand
+ */
+int
+xmldb_post_commit(clixon_handle h,
+                  uint32_t      ceid)
+{
+    int   retval = -1;
+    char *db0 = NULL;
+    char *db1 = NULL;
+
+    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
+        if (xmldb_candidate_find(h, "candidate", ceid, NULL, &db0) < 0)
+            goto done;
+        /* Remove candidate and candidate-orig*/
+        if (xmldb_delete(h, db0) < 0)
+            goto done;
+        if (xmldb_candidate_find(h, "candidate-orig", ceid, NULL, &db1) < 0)
+            goto done;
+        if (db1 != NULL){
+            if (xmldb_delete(h, db1) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
