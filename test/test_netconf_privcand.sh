@@ -206,16 +206,16 @@ expecteof "$clixon_netconf -f $cfg" 0 "$PRIVCANDHELLO" \
 "<capability>urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>" "^$"
 
 new "4.8.1.1.1 <resolution-mode> parameter revert-on-conflict accepted"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"><resolution-mode>revert-on-conflict</resolution-mode></update></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "4.8.1.1.1 <resolution-mode> parameter revert-on-conflict is optional"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "4.8.1.1 <update> operation by client not ok, prefer-candidate conflict resolution."
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-candidate</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"><resolution-mode>prefer-candidate</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
 
 new "4.8.1.1 <update> operation by client not ok, prefer-running conflict resolution"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$PRIVCANDHELLO" "<rpc $DEFAULTNS><update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"><resolution-mode>prefer-running</resolution-mode></update></rpc>" "" "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"42\"><rpc-error><error-type>application</error-type><error-tag>operation-not-supported</error-tag><error-severity>error</error-severity><error-message>Resolution mode not supported</error-message></rpc-error></rpc-reply>"
 
 new "4.5.3 RESTCONF  Retrieve the Server Capability Information json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/ietf-netconf-monitoring:netconf-state/capabilities/capability)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+json" \
@@ -314,14 +314,14 @@ rpc $session_2 "<commit/>"
 
 puts "4.7.3.3 Session 1 updates its configuration and fails"
 # A conflict is detected, the update fails with an <rpc-error> and no merges/overwrite operations happen.
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "Conflict occured: Cannot change node value, node is removed"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"><resolution-mode>revert-on-conflict</resolution-mode></update>" "Conflict occured: Cannot change node value, node is removed"
 
 puts "4.7.3.3 Session 1 discards its changes"
 puts "4.8.2.11 <discard-changes> operates on private candidate"
 rpc $session_1 "<discard-changes/>"
 
 puts "4.7.3.3 Session 1 updates its configuraion successfully"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 
 # Conflict est sequence: reset session 1, edit and commit session 2, edit and update session 1
 proc conflict { content_1 content_2 update_reply} {
@@ -334,10 +334,10 @@ proc conflict { content_1 content_2 update_reply} {
 	rpc $session_2 "<edit-config><target><candidate/></target><config>$content_2</config></edit-config>"
     rpc $session_2 "<commit/>"
     # Session 1 updates its configuration
-    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" $update_reply
+    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>" $update_reply
     # Reset session 1 after conflict
     rpc $session_1 "<discard-changes/>"
-    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+    rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 }
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change of any value"
@@ -427,7 +427,7 @@ rpc $session_2 "<edit-config><target><candidate/></target><config><l xmlns=\"urn
 puts "4.8.2.1 <commit> implicit update ok"
 rpc $session_1 "<commit/>"
 puts "4.8.2.1 <commit> implicit update failed with when revert-on-conflict resolution"
-rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "rpc-error"
+rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>" "rpc-error"
 rpc $session_2 "<commit/>" "rpc-error"
 
 puts "4.8.2.2 <get-config> creates private candidate"
@@ -517,7 +517,7 @@ puts "4.5.3 NETCONF verifies RESTCONF update in running"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">restconf 1</l>"
 
 puts "4.5.3 NETCONF update operation ok"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
  
 puts "4.5.3 NETCONF updates object in private candidate"
 rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf</l></config></edit-config>"
@@ -534,7 +534,7 @@ puts "4.5.3 NETCONF verifies RESTCONF update in running"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">restconf 2</l>"
 
 puts "4.5.3 NETCONF update operation fails"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>" "rpc-error"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>" "rpc-error"
 rpc $session_1 "<discard-changes/>"
 rpc $session_1 "<commit/>"
 
@@ -557,9 +557,9 @@ rpc $session_2 "<commit/>" "rpc-error"
 
 # reset session
 rpc $session_1 "<discard-changes/>"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 rpc $session_2 "<discard-changes/>"
-rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 
 puts "4.8.2.1.1 <confirmed/> commit ok"
 rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">commit</l></config></edit-config>"
@@ -622,7 +622,7 @@ rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=
 
 rpc $session_1 "<commit/>" "Conflict occured"
 rpc $session_1 "<discard-changes/>"
-rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:netconf:private-candidate:1.0\"/>"
+rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 
 cli "set l \"cli-conflict\""
 rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"

@@ -82,7 +82,7 @@
 
 /*! draft-ietf-netconf-privcand  NETCONF and RESTCONF Private Candidate Datastores
  */
-#define NETCONF_PRIVCAND_NAMESPACE "urn:ietf:params:xml:ns:netconf:private-candidate:1.0"
+#define NETCONF_PRIVCAND_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate"
 
 /* Default STREAM namespace (see rfc5277 3.1)
  * From RFC8040:
@@ -102,7 +102,7 @@
  */
 #define EVENT_RFC5277_NAMESPACE "urn:ietf:params:xml:ns:netmod:notification"
 
-/* NETCONF and RESTCONF Private Candidate Datastores draft-ietf-netconf-privcand-07
+/* NETCONF and RESTCONF Private Candidate Datastores draft-ietf-netconf-privcand-08
  */
 #define NETCONF_PRIVATE_CANDIDATE_CAPABILITY "urn:ietf:params:netconf:capability:private-candidate:1.0"
 /*

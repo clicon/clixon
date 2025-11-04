@@ -1279,7 +1279,7 @@ module clixon-config {
             default false;
             description
                 "If true, enable NETCONF and RESTCONF Private Candidate Datastores
-                 draft-ietf-netconf-privcand-07 for all sessions.
+                 draft-ietf-netconf-privcand for all sessions.
                  The server announces the private-candidate capability
                  Client sessions not announcing private candidate are closed
                  To fully enable private-candidate, the YANG feature

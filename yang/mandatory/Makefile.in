@@ -73,7 +73,7 @@ YANGSPECS += ietf-list-pagination-nc@2025-04-03.yang
 
 # Compare and private candidate
 YANGSPECS += ietf-nmda-compare@2024-04-16.yang
-YANGSPECS += ietf-netconf-private-candidate@2024-09-12.yang
+YANGSPECS += ietf-netconf-private-candidate@2025-10-30.yang
 
 all:
 
