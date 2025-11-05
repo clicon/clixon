@@ -888,7 +888,7 @@ xmldb_get_cache(clixon_handle     h,
     modstate_diff_t *msdiff = NULL;
     int              ret;
 
-    clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
@@ -978,12 +978,12 @@ xmldb_get_cache(clixon_handle     h,
  * @see xmldb_get_cache
  */
 static int
-xmldb_get_copy(clixon_handle     h,
-               const char       *db,
-               cvec             *nsc,
-               const char       *xpath,
-               cxobj           **xret,
-               cxobj           **xerr)
+xmldb_get_copy(clixon_handle h,
+               const char   *db,
+               cvec         *nsc,
+               const char   *xpath,
+               cxobj       **xret,
+               cxobj       **xerr)
 {
     int        retval = -1;
     yang_stmt *yspec0;
@@ -996,7 +996,7 @@ xmldb_get_copy(clixon_handle     h,
     db_elmnt  *de;
     int        ret;
 
-    clixon_debug(CLIXON_DBG_DATASTORE, "db %s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE, "Get copy of %s db", db);
     if (xret == NULL){
         clixon_err(OE_DB, EINVAL, "xret is NULL");
         return -1;

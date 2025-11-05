@@ -1179,13 +1179,13 @@ xml_rebase(clixon_handle  h,
         /* Special error case if origin is not YANG bound */
         if (x0c && x1c && strcmp(xml_name(x0c), xml_name(x1c)) == 0){
             if (y0c == NULL && y1c != NULL){
-                if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL, "New node is yang bound but not origin", cbret) < 0)
+                if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL, "Origin is not bound to yang, but new is", cbret) < 0)
                     goto done;
                 conflict++;
                 break;
             }
             if (y0c != NULL && y1c == NULL){
-                if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL, "Orig node is yang bound but not new", cbret) < 0)
+                if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL, "Orig node is bound to yang, but new is not", cbret) < 0)
                     goto done;
                 conflict++;
                 break;

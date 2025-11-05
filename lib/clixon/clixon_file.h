@@ -45,5 +45,6 @@ int clicon_files_recursive(const char *dir, const char *regexp, cvec *cvv);
 int clicon_file_copy(char *src, char *target);
 int clicon_dir_copy(char *src, char *target);
 int clicon_file_cbuf(const char *filename, cbuf *cb);
+int clixon_dir_remove_files(const char *dir, const char *subdir, const char *pattern);
 
 #endif /* _CLIXON_FILE_H_ */

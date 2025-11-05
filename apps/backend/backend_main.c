@@ -860,8 +860,8 @@ main(int    argc,
     else
         if (startup_mode == SM_RUNNING_STARTUP)
             startup_mode = SM_RUNNING;
-    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE"))
-        xmldb_delete(h, "candidate");
+    if (xmldb_delete_candidates(h) < 0)
+        goto done;
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");

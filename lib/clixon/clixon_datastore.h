@@ -96,6 +96,7 @@ int xmldb_lock_timestamp(clixon_handle h, const char *db, struct timeval *tv);
 int xmldb_exists(clixon_handle h, const char *db);
 int xmldb_clear(clixon_handle h, const char *db);
 int xmldb_delete(clixon_handle h, const char *db);
+int xmldb_delete_candidates(clixon_handle h);
 int xmldb_create(clixon_handle h, const char *db);
 /* utility functions */
 int xmldb_db_reset(clixon_handle h, const char *db);

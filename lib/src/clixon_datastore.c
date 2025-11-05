@@ -293,6 +293,7 @@ xmldb_new(clixon_handle h,
 {
     db_elmnt *de = NULL;
 
+    clixon_debug(CLIXON_DBG_DATASTORE, "Create: %s", db);
     if ((de = calloc(1, sizeof(*de))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
@@ -677,7 +678,7 @@ xmldb_copy_de(clixon_handle h,
     }
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DATASTORE, "retval:%d", retval);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     return retval;
 }
 
@@ -698,7 +699,7 @@ xmldb_copy(clixon_handle h,
     db_elmnt   *de1;
     db_elmnt   *de2;
 
-    clixon_debug(CLIXON_DBG_DATASTORE, "%s %s", from, to);
+    clixon_debug(CLIXON_DBG_DATASTORE, "copy %s to %s", from, to);
     if ((de1 = xmldb_find(h, from)) == NULL)
         de1 = xmldb_new(h, from);
     if ((de2 = xmldb_find(h, to)) == NULL)
@@ -897,6 +898,9 @@ xmldb_clear(clixon_handle h,
  * @note Datastores / dirs are not actually deleted so that a backend after dropping priviliges
  *       can re-create them. It is not possible to drop priviliges when private candidate option
  *       is enabled because candidate datastores are created dynamically for each session.
+ *       However, privcand deletes and creates candidates continuously and are teherefore deleted.
+ *       This also means you cannot run privcand and drop-privs.
+ *       This needs a redesign, possibly a chroot of XMLDB_DIR under clicon usage
  */
 int
 xmldb_delete(clixon_handle h,
@@ -907,77 +911,121 @@ xmldb_delete(clixon_handle h,
     struct stat    st = {0,};
     cbuf          *cb = NULL;
     char          *subdir = NULL;
-    struct dirent *dp = NULL;
-    int            ndp;
-    int            i;
-    char          *regexp = NULL;
     db_elmnt      *de;
     int            del = 0;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
-    if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
-        if ((de = xmldb_find(h, db)) != NULL)
-            del = xmldb_candidate_get(de);
-    } 
     if (xmldb_clear(h, db) < 0)
         goto done;
-    if (xmldb_db2file(h, db, &filename) < 0)
-        goto done;
-    if (lstat(filename, &st) == 0) {
-        if (del) {
-            clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "unlink %s", filename);
-            if (unlink(filename) < 0) {
-                clixon_err(OE_DB, errno, "unlink %s", filename);
-                goto done;
-            }
-        }
-        else {
-            if (truncate(filename, 0) < 0){
-                clixon_err(OE_DB, errno, "truncate %s", filename);
-                goto done;
-            }
-        }
-    }
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
         if (xmldb_db2subdir(h, db, &subdir) < 0)
             goto done;
         if (stat(subdir, &st) == 0){
-            if ((ndp = clicon_file_dirent(subdir, &dp, regexp, S_IFREG)) < 0)
+            if (clixon_dir_remove_files(subdir, NULL, NULL) < 0)
                 goto done;
-            if ((cb = cbuf_new()) == NULL){
-                clixon_err(OE_XML, errno, "cbuf_new");
+            clixon_debug(CLIXON_DBG_DATASTORE, "rmdir %s", subdir);
+            if (rmdir(subdir) < 0){
+                clixon_err(OE_DB, errno, "rmdir %s", subdir);
                 goto done;
             }
-            for (i = 0; i < ndp; i++){
-                cbuf_reset(cb);
-                cprintf(cb, "%s/%s", subdir, dp[i].d_name);
-                if (del) {
-                    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "unlink %s", cbuf_get(cb));
-                    if (unlink(cbuf_get(cb)) < 0) {
-                        clixon_err(OE_DB, errno, "unlink %s", cbuf_get(cb));
-                        goto done;
-                    }
+        }
+    }
+    else {
+        if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
+            if ((de = xmldb_find(h, db)) != NULL)
+                del = xmldb_candidate_get(de);
+        }
+        if (xmldb_db2file(h, db, &filename) < 0)
+            goto done;
+        if (lstat(filename, &st) == 0) {
+            if (del) {
+                clixon_debug(CLIXON_DBG_DATASTORE, "unlink %s", filename);
+                if (unlink(filename) < 0) {
+                    clixon_err(OE_DB, errno, "unlink %s", filename);
+                    goto done;
                 }
-                else {
-                    if (truncate(cbuf_get(cb), 0) < 0){
-                        clixon_err(OE_DB, errno, "truncate %s", cbuf_get(cb));
-                        goto done;
-                    }
+            }
+            else {
+                clixon_debug(CLIXON_DBG_DATASTORE, "truncate %s", filename);
+                if (truncate(filename, 0) < 0){
+                    clixon_err(OE_DB, errno, "truncate %s", filename);
+                    goto done;
                 }
-             }
+            }
         }
     }
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (dp)
-        free(dp);
     if (cb)
         cbuf_free(cb);
     if (subdir)
         free(subdir);
     if (filename)
         free(filename);
+    return retval;
+}
+
+
+/*! Clear any candidate information that may remain in the file system
+ *
+ * if the previous execution did not terminate properly:
+ *   candidate.db
+ *   candidate.123.db
+ *   candidate_orig.123.db
+ *   candidate.d/0.xml
+  * @param[in] h   Clixon handle
+ * @retval    0   OK
+ * @retval   -1   Error
+ */
+int
+xmldb_delete_candidates(clixon_handle h)
+{
+    int            retval = -1;
+    char          *dir;
+    struct dirent *dp = NULL;
+    int            ndp;
+    cbuf          *cb = NULL;
+    char          *subdir;
+    int            i;
+
+    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
+        xmldb_delete(h, "candidate");
+        goto ok;
+    }
+    if ((dir = clicon_xmldb_dir(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "CLICON_XMLDB_DIR not set");
+        goto done;
+    }
+    if (clixon_dir_remove_files(dir, NULL, "candidate\\.[0-9]+$") < 0)
+        goto done;
+    if (clixon_dir_remove_files(dir, NULL, "candidate-orig\\.[0-9]+$") < 0)
+        goto done;
+    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        if ((ndp = clicon_file_dirent(dir, &dp, "^candidate", S_IFDIR)) < 0)
+            goto done;
+        for (i = 0; i < ndp; i++) {
+            if (clixon_dir_remove_files(dir, dp[i].d_name, "\\.xml") < 0)
+                goto done;
+            cbuf_reset(cb);
+            cprintf(cb, "%s/%s", dir, dp[i].d_name);
+            subdir = cbuf_get(cb);
+            clixon_debug(CLIXON_DBG_DATASTORE, "rmdir %s", subdir);
+            if (rmdir(subdir) < 0){
+                clixon_err(OE_DB, errno, "rmdir %s", subdir);
+                goto done;
+            }
+        }
+    }
+ ok:
+    retval = 0;
+done:
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 

@@ -1429,7 +1429,7 @@ xmldb_find_create(clixon_handle h,
                 goto done;
             if (de == NULL){
                 if ((de = xmldb_candidate_new(h, "candidate", ceid)) == NULL)
-                goto done;
+                    goto done;
             }
             if (xmldb_cache_get(de) == NULL){
                 if (xmldb_copy(h, "running", xmldb_name_get(de)) < 0)

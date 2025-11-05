@@ -455,3 +455,51 @@ clicon_file_cbuf(const char *filename,
         errno = err;
     return retval;
 }
+
+/*! Remove all files in a dir with optional pattern
+ *
+ * @param[in]  dir     Directory
+ * @param[in]  subdir  Optional sub-directory
+ * @param[in]  pattern Regexp
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+int
+clixon_dir_remove_files(const char *dir,
+                        const char *subdir,
+                        const char *pattern)
+{
+    int            retval = -1;
+    struct dirent *dp = NULL;
+    int            ndp;
+    cbuf          *cb = NULL;
+    int            i;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "%s", dir);
+    if (subdir)
+        cprintf(cb, "/%s", subdir);
+    if ((ndp = clicon_file_dirent(cbuf_get(cb), &dp, pattern, S_IFREG)) < 0)
+        goto done;
+    for (i = 0; i < ndp; i++) {
+        cbuf_reset(cb);
+        cprintf(cb, "%s", dir);
+        if (subdir)
+            cprintf(cb, "/%s", subdir);
+        cprintf(cb, "/%s", dp[i].d_name);
+        if (unlink(cbuf_get(cb)) < 0){
+            clixon_err(OE_UNIX, errno, "unlink(%s)", cbuf_get(cb));
+            goto done;
+        }
+    }
+    retval = 0;
+ done:
+    if (dp)
+        free(dp);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
