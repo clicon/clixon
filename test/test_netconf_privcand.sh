@@ -168,6 +168,15 @@ cat <<EOF > $dbdir/startup_db
 </${DATASTORE_TOP}>"
 EOF
 
+# add database files to mimic a previous uncontrolled termination of clixon
+echo "crash" > $dir/db/candidate_db            # shared
+echo "crash" > $dir/db/candidate.12345_db      # privcand
+echo "crash" > $dir/db/candidate-orig.12345_db # privcand orig
+test -d $dir/db/candidate.6789.d || mkdir $dir/db/candidate.6789.d
+echo "crash" > $dir/db/candidate.6789.d/0.xml  # multi
+test -d $dir/db/candidate-orig.6789.d || mkdir $dir/db/candidate-orig.6789.d
+echo "crash" > $dir/db/candidate-orig.6789.d/0.xml
+
 # Bring your own backend
 if [ $BE -ne 0 ]; then
     # kill old backend (if any)
@@ -182,6 +191,12 @@ fi
 
 new "wait backend"
 wait_backend
+
+new "Issue 631: Private candidate datastores are not deleted at start"
+if  ls $dir/db/candidate* >/dev/null 2>&1; then
+    ls $dir/db/candidate*
+    err1
+fi
 
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
@@ -645,9 +660,10 @@ if [ $? -ne 0 ]; then
     err1 "Failed: test private candidate using expect"
 fi
 
-new "Issue 631: Private candidate datastores are not deleted"
+new "Issue 631: Private candidate datastores are not deleted at end"
 if  ls $dir/db/candidate* >/dev/null 2>&1; then
-    err
+    ls $dir/db/candidate*
+    err1
 fi
 
 if [ $BE -ne 0 ]; then

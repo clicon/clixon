@@ -966,7 +966,6 @@ xmldb_delete(clixon_handle h,
     return retval;
 }
 
-
 /*! Clear any candidate information that may remain in the file system
  *
  * if the previous execution did not terminate properly:
@@ -989,39 +988,32 @@ xmldb_delete_candidates(clixon_handle h)
     char          *subdir;
     int            i;
 
-    if (!clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
-        xmldb_delete(h, "candidate");
-        goto ok;
-    }
     if ((dir = clicon_xmldb_dir(h)) == NULL){
         clixon_err(OE_FATAL, 0, "CLICON_XMLDB_DIR not set");
         goto done;
     }
-    if (clixon_dir_remove_files(dir, NULL, "candidate\\.[0-9]+$") < 0)
+    /* shared is candidate_db; privcand is candidate.56_db and candidate-orig.56_db */
+    if (clixon_dir_remove_files(dir, NULL, "^candidate") < 0)
         goto done;
-    if (clixon_dir_remove_files(dir, NULL, "candidate-orig\\.[0-9]+$") < 0)
+    /* multi is candidate.d/0.xml and candidate.56.d/0.xml */
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
-    if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
-        if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_XML, errno, "cbuf_new");
+    }
+    if ((ndp = clicon_file_dirent(dir, &dp, "^candidate", S_IFDIR)) < 0)
+        goto done;
+    for (i = 0; i < ndp; i++) {
+        if (clixon_dir_remove_files(dir, dp[i].d_name, "\\.xml") < 0)
             goto done;
-        }
-        if ((ndp = clicon_file_dirent(dir, &dp, "^candidate", S_IFDIR)) < 0)
+        cbuf_reset(cb);
+        cprintf(cb, "%s/%s", dir, dp[i].d_name);
+        subdir = cbuf_get(cb);
+        clixon_debug(CLIXON_DBG_DATASTORE, "rmdir %s", subdir);
+        if (rmdir(subdir) < 0){
+            clixon_err(OE_DB, errno, "rmdir %s", subdir);
             goto done;
-        for (i = 0; i < ndp; i++) {
-            if (clixon_dir_remove_files(dir, dp[i].d_name, "\\.xml") < 0)
-                goto done;
-            cbuf_reset(cb);
-            cprintf(cb, "%s/%s", dir, dp[i].d_name);
-            subdir = cbuf_get(cb);
-            clixon_debug(CLIXON_DBG_DATASTORE, "rmdir %s", subdir);
-            if (rmdir(subdir) < 0){
-                clixon_err(OE_DB, errno, "rmdir %s", subdir);
-                goto done;
-            }
         }
     }
- ok:
     retval = 0;
 done:
     if (cb)

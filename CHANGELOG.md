@@ -1009,6 +1009,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Private candidates: candidate datastores are not deleted](https://github.com/clicon/clixon/issues/631)
 * Fixed: Leak in restconf http/1 data path: when multiple packets in same connection.
 * Fixed: [Replace operation](https://github.com/clicon/clixon/issues/350)
 * Fixed: [When multiple lists have same key name, need more elaborate error message in case of configuration having duplicate keys](https://github.com/clicon/clixon/issues/362)
