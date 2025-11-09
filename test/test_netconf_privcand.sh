@@ -245,13 +245,14 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 
 new "Spawn expect script to simulate two NETCONF sessions"
 # -d to debug matching info
-sudo expect - "$clixon_netconf" "$cfg" $(whoami) <<'EOF'
+sudo expect - "$clixon_netconf" "$cfg" "$RCPROTO" $(whoami) <<'EOF'
 # Use of expect to start two NETCONF sessions
 log_user 0
 set timeout 2
 set clixon_netconf [lindex $argv 0]
 set CFG [lindex $argv 1]
-set USER [lindex $argv 2]
+set RCPROTO [lindex $argv 2]
+set USER [lindex $argv 3]
 
 puts "Spawn first NETCONF session"
 global session_1
@@ -522,7 +523,7 @@ rpc $session_2 "<get/>" "<l xmlns=\"urn:example:clixon\">six</l>"
 
 puts "4.5.3 RESTCONF request updates object"
 set json "{\"clixon-example:l\":\"restconf 1\"}"
-set rsp [exec curl -Ssik -X PUT -H "Accept:application/yang-data+json" -H "Content-Type:application/yang-data+json" -d $json https://localhost/restconf/data/clixon-example:l ]
+set rsp [exec curl -Ssik -X PUT -H "Accept:application/yang-data+json" -H "Content-Type:application/yang-data+json" -d $json $RCPROTO://localhost/restconf/data/clixon-example:l ]
 if {[string match {*204*} $rsp] == 0} {
     puts "Restconf response: $rsp"
     exit 4
@@ -539,7 +540,7 @@ rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn
  
  puts "4.5.3 RESTCONF request updates object"
  set json "{\"clixon-example:l\":\"restconf 2\"}"
-set rsp [exec curl -Ssik -X PUT -H "Accept:application/yang-data+json" -H "Content-Type:application/yang-data+json" -d $json https://localhost/restconf/data/clixon-example:l ]
+set rsp [exec curl -Ssik -X PUT -H "Accept:application/yang-data+json" -H "Content-Type:application/yang-data+json" -d $json $RCPROTO://localhost/restconf/data/clixon-example:l ]
 if {[string match {*204*} $rsp] == 0} {
     puts "Restconf response: $rsp"
     exit 4
