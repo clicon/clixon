@@ -1111,7 +1111,7 @@ xmldb_get(clixon_handle    h,
           char            *xpath,
           cxobj          **xret)
 {
-    return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 1, 0, xret, NULL, NULL);
+    return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 0, 0, xret, NULL, NULL);
 }
 
 /*! Get content of datastore, use cache if present

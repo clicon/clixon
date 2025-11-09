@@ -286,6 +286,12 @@ xmldb_volatile_set(db_elmnt *de,
 }
 
 /*! Create new xmldb object
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  db  Database
+ * @retval     0   OK
+ * @retval    -1   Error
+ * @see xmldb_create
  */
 db_elmnt *
 xmldb_new(clixon_handle h,
@@ -293,7 +299,7 @@ xmldb_new(clixon_handle h,
 {
     db_elmnt *de = NULL;
 
-    clixon_debug(CLIXON_DBG_DATASTORE, "Create: %s", db);
+    clixon_debug(CLIXON_DBG_DATASTORE, "New: %s", db);
     if ((de = calloc(1, sizeof(*de))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
@@ -1027,6 +1033,7 @@ done:
  * @param[in]  db  Database
  * @retval     0   OK
  * @retval    -1   Error
+ * @see xmldb_new
  */
 int
 xmldb_create(clixon_handle h,
