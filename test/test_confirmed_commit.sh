@@ -145,7 +145,7 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "wait backend"
+new "wait backend 1"
 wait_backend
 
 new "1. Hello check confirm-commit capability"
@@ -248,7 +248,7 @@ new "Check $ROLLBACK_PATH"
 new "start backend -s running -f $cfg"
 start_backend -s running -f $cfg
 
-new "wait backend"
+new "wait backend 2"
 wait_backend
 
 assert_config_equals "running" "$CONFIGB"
@@ -265,7 +265,7 @@ start_backend -s init -f $cfg
 ################################################################################
 new "11. backend loads failsafe at startup if rollback present but cannot be loaded"
 
-new "wait backend"
+new "wait backend 3"
 wait_backend
 
 reset
@@ -295,7 +295,7 @@ EOF
 new "start backend -s running -f $cfg"
 start_backend -s running -f $cfg
 
-new "wait backend"
+new "wait backend 4"
 wait_backend
 
 assert_config_equals "running" "$FAILSAFE_CFG"
@@ -306,7 +306,7 @@ stop_backend -f $cfg
 new "start backend -s init -f $cfg"
 start_backend -s init -f $cfg -lf/tmp/clixon.log -D1
 
-new "wait backend"
+new "wait backend 5"
 wait_backend
 
 ################################################################################

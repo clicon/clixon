@@ -11,8 +11,8 @@
 function memonce(){
     what=$1
 
-    valgrindfile=$(mktemp)
-    echo "valgrindfile:$valgrindfile"
+    valgrindfile=$(sudo mktemp -p /var/tmp/$0)  # Dont create in "sticky" dir which can limit create/del
+    sudo chmod 666 $valgrindfile
     clixon_backend=
     clixon_restconf=
     clixon_cli=

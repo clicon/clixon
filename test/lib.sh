@@ -599,7 +599,7 @@ function start_restconf(){
     local clixon_restconf_="${clixon_restconf#sudo -g * }"
     # Start in background 
 #    echo "sudo -u $wwwstartuser ${clixon_restconf_} $RCLOG -D $DBG $*"
-    sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $* </dev/null &>/dev/null &
+    sudo -u $wwwstartuser $clixon_restconf_ $RCLOG -D $DBG $* </dev/null &> /var/tmp/restconf.log &
     if [ $? -ne 0 ]; then
         err1 "expected 0" "$?"
     fi
@@ -646,6 +646,9 @@ function wait_restconf(){
     while [[ "$hdr" != *"200"* ]]; do
 #       echo "wait_restconf $i"
         if [ $i -ge $DEMLOOP ]; then
+            if [ -f /var/tmp/restconf.log ]; then
+                cat /var/tmp/restconf.log
+            fi
             err1 "restconf timeout $DEMWAIT seconds"
         fi
         sleep $DEMSLEEP

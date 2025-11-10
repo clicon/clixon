@@ -145,9 +145,6 @@ if [ $BE -ne 0 ]; then
     stop_backend -f $cfg
 fi
 
-# for some reason valgrind tests fail below?
-if [ ${valgrindtest} -eq 0 ]; then # Error dont cleanup mem OK
-
 # XXX there may be inconsistent YANGs in this dir
 YANGDIR=$YANG_INSTALLDIR
 
@@ -192,7 +189,6 @@ EOF
         continue
     fi
 done
-fi # valgrind
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
