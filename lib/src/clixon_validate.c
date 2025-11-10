@@ -1724,14 +1724,12 @@ xml_yang_validate_all1(clixon_handle h,
         clixon_debug(CLIXON_DBG_XPATH|CLIXON_DBG_DETAIL, "nr:%d xpath:%s return:%d", nr, xpath1, ret);
         if (ret < 0)
             goto done;
-
         if (hit && nr == 0){
             if ((cb = cbuf_new()) == NULL){
                 clixon_err(OE_UNIX, errno, "cbuf_new");
                 goto done;
             }
             cprintf(cb, "WHEN condition failed, xpath is %s ", xpath1);
-            yang_check_when_xpath(xt, xml_parent(xt), yt, &hit, &nr, &xpath1); //XXX
             if (validate_errmsg(&cb, xt, yt) < 0)
                 goto done;
             clixon_debug(OE_YANG, "Operation failed: %s", cbuf_get(cb));

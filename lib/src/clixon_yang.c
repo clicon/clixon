@@ -601,8 +601,10 @@ yang_when_xpath_get(yang_stmt *ys,
  * Ie, for yang structures like: augment <path> { when <xpath>; ... }
  * Inserts new yang nodes at <path> with this special "when" struct (not yang node)
  * @param[in]  ys     Yang statement
- * @param[out] xpath  Free after use
- * @param[out] nsc    Free with cvec_free
+ * @param[out] xpath  XPath, free after use
+ * @param[out] nsc    Namespace context, free with cvec_free
+ * @retval     0      OK
+ * @retval    -1      Error
  */
 int
 yang_when_canonical_xpath_get(yang_stmt *ys,

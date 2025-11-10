@@ -1022,6 +1022,8 @@ xmldb_delete_candidates(clixon_handle h)
     }
     retval = 0;
 done:
+    if (dp)
+        free(dp);
     if (cb)
         cbuf_free(cb);
     return retval;
