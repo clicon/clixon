@@ -1529,8 +1529,9 @@ xmldb_candidate_new(clixon_handle h,
     db = cbuf_get(cb);
     if ((de = xmldb_new(h, db)) == NULL)
         goto done;
-    if (clicon_option_bool(h, "CLICON_XMLDB_CANDIDATE_INMEM"))
-        xmldb_volatile_set(de, 1);
+#ifdef XMLDB_CANDIDATE_INMEM
+    xmldb_volatile_set(de, 1);
+#endif
     xmldb_candidate_set(de, 1);
     if (xmldb_copy(h, "running", db) < 0)
         goto done;

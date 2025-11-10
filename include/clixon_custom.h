@@ -296,3 +296,10 @@
  *       unique "config/interface config/subinterface";
  */
 #define YANG_UNIQUE_MULTI_IGNORE
+
+/*! Keep candidate datastores in memory, do not sync to file.
+ *
+ * In-mem is good for performance, but difficult to debug
+ * Also may be unnecesary due to other optimizations
+ */
+#undef XMLDB_CANDIDATE_INMEM

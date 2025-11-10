@@ -52,7 +52,6 @@ module clixon-config {
     revision 2025-08-01 {
         description
             "Added options:
-                CLICON_XMLDB_CANDIDATE_INMEM
                 CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA
                 CLICON_XMLDB_PRIVATE_CANDIDATE
              Released in Clixon 7.6";
@@ -1266,13 +1265,6 @@ module clixon-config {
                  not read from the system.
                  The system-only data is still not stored in the datastore however.
                  See also extension system-only-config in clixon-lib.yang";
-        }
-        leaf CLICON_XMLDB_CANDIDATE_INMEM {
-            description
-                "If false, Sync candidate datastore to disk
-                 If true run candidate datastore in-mem, do not sync candidate to disk.";
-            type boolean;
-            default false;
         }
         leaf CLICON_XMLDB_PRIVATE_CANDIDATE {
             type boolean;
