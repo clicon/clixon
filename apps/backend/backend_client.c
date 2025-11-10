@@ -1598,8 +1598,6 @@ from_client_compare(clixon_handle h,
     char         *id2 = NULL;
     db_elmnt     *de1 = NULL;
     db_elmnt     *de2 = NULL;
-    int           all = 0;
-    int           report_origin = 0;
     cxobj        *xpath_filter = NULL;
     char         *xpath0;
     char         *xpath1 = NULL;
@@ -1647,11 +1645,6 @@ from_client_compare(clixon_handle h,
     }
     if (xmldb_find_create(h, id2, ce->ce_id, &de2, NULL) < 0)
         goto done;
-    if (xml_find(xe, "all") != NULL)
-        all++;
-    if (xml_find(xe, "report-origin") != NULL)
-        report_origin++;
-
     /* filter: subtree-filter or xpath-filter */
     if ((xpath_filter = xml_find(xe, "xpath-filter")) != NULL){
         if ((xpath0 = xml_body(xpath_filter)) != NULL){

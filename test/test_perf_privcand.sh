@@ -169,7 +169,7 @@ wait_backend
 
 new "Spawn expect script to simulate two CLI sessions"
 # -d to debug matching info
-time sudo expect - "$cfg" $(whoami) <<'EOF'
+time sudo expect -f- "$cfg" $(whoami) <<'EOF'
 
 log_user 0
 set timeout 5

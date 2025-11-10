@@ -465,6 +465,8 @@ json_rpc_transform(clixon_handle  h,
  done:
     if (cb)
         cbuf_free(cb);
+    if (xerr)
+        xml_free(xerr);
     return retval;
  fail:
     retval = 0;

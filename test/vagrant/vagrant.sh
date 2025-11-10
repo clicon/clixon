@@ -136,6 +136,7 @@ case $release in
         $sshcmd sudo pkg install -y git gmake bash
         # cligen
         $sshcmd sudo pkg install -y bison flex
+        $sshcmd sudo pkg install -y expect # for tests
         # Add restconf user
         if [ ! $($sshcmd id -u $wwwuser) ]; then
             $sshcmd sudo pw useradd $wwwuser -d /nonexistent -s /usr/sbin/nologin 

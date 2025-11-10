@@ -310,7 +310,7 @@ xmldb_new(clixon_handle h,
         de = NULL;
         goto done;
     }
-    clicon_hash_add(clicon_db_elmnt(h), de->de_name, &de, sizeof(de))==NULL?-1:0;
+    clicon_hash_add(clicon_db_elmnt(h), de->de_name, &de, sizeof(de));
  done:
     return de;
 }

@@ -241,10 +241,10 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 'Cache-Control: no-cache' \
 '<capability xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring">urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>'
 
-
 new "Spawn expect script to simulate two NETCONF sessions"
 # -d to debug matching info
-sudo expect - "$clixon_netconf" "$cfg" "$RCPROTO" $(whoami) <<'EOF'
+# -f- means read commands from stdin
+sudo expect -f- "$clixon_netconf" "$cfg" "$RCPROTO" $(whoami) <<'EOF'
 # Use of expect to start two NETCONF sessions
 log_user 0
 set timeout 2
@@ -552,7 +552,6 @@ puts "4.5.3 NETCONF update operation fails"
 rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>" "rpc-error"
 rpc $session_1 "<discard-changes/>"
 rpc $session_1 "<commit/>"
-
 
 puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
 rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>"
