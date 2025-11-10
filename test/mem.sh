@@ -10,8 +10,11 @@
 # what: (backend|restconf|cli|netconf|snmp)* # no args means all
 function memonce(){
     what=$1
-
-    valgrindfile=$(sudo mktemp -p /var/tmp/$0)  # Dont create in "sticky" dir which can limit create/del
+    dir=/var/tmp/$0
+    if [ ! -d $dir ]; then
+        mkdir $dir
+    fi
+    valgrindfile=$(sudo mktemp -p $dir)  # Dont create in "sticky" dir which can limit create/del
     sudo chmod 666 $valgrindfile
     clixon_backend=
     clixon_restconf=
@@ -23,14 +26,10 @@ function memonce(){
             valgrindtest=2 # This means backend valgrind test
             : ${DEMWAIT:=10} # valgrind backend needs some time to get up
             # trace-children=no for test_restconf_rpc.sh
-            sudo chown root $valgrindfile
-            sudo chmod 777  $valgrindfile
             clixon_backend="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no --log-file=$valgrindfile clixon_backend"
             ;;
         'restconf')
             valgrindtest=3 # This means restconf valgrind test
-            sudo chown root $valgrindfile
-            sudo chmod 777  $valgrindfile
             : ${DEMWAIT:=15} # valgrind backend needs some time to get up
             clixon_restconf="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_restconf"
             ;;
@@ -46,7 +45,6 @@ function memonce(){
             ;;
         'snmp')
             valgrindtest=4 # This means snmp valgrind test
-            sudo chmod 660 $valgrindfile
             : ${DEMWAIT:=15} # valgrind snmp needs some time to get up
             clixon_snmp="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_snmp"
             ;;
