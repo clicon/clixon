@@ -223,27 +223,32 @@ fail:
  * \c XML Namechar, see: https://www.w3.org/TR/2008/REC-xml-20081126/#NT-NameChar
  *
  * \p{X} category escape.  the ones identified in openconfig and yang-models are: 
- *   \p{L} Letters     [ultmo]?
- *   \p{M} Marks       [nce]?
- *   \p{N} Numbers     [dlo]?
- *   \p{P} Punctuation [cdseifo]?
- *   \p{Z} Separators  [slp]?
- *   \p{S} Symbols     [mcko]?
- *   \p{O} Other       [cfon]?
+ *   \p{L} Letters          [ultmo]?
+ *   \p{M} Marks            [nce]?
+ *   \p{N} Numbers          [dlo]?
+ *   \p{P} Punctuation      [cdseifo]?
+ *   \p{Z} Separators       [slp]?
+ *   \p{S} Symbols          [mcko]?
+ *   \p{O} Other            [cfon]?
+ *   \p{IsBasicLatin}        Unicode for ASCII
+ *   \p{IsLatin-1Supplement} Second Unicode block
  * For non-printable, \n, \t, \r see https://www.regular-expressions.info/nonprint.html
  */
 int
 regexp_xsd2posix(char  *xsd,
                  char **posix)
 {
-    int   retval = -1;
-    cbuf *cb = NULL;
-    char  x;
-    int   i;
-    int   j; /* lookahead */
-    int   esc;
-    int   minus = 0;
+    int    retval = -1;
+    cbuf  *cb = NULL;
+    char   x;
+    char  *s0;
+    char  *s1;
+    int    i;
+    int    j; /* lookahead */
+    int    esc;
+    int    minus = 0;
     size_t len;
+    size_t len1;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -275,22 +280,24 @@ regexp_xsd2posix(char  *xsd,
                 j = i+1;
                 if (j+2 < strlen(xsd) &&
                     xsd[j] == '{' &&
-                    (xsd[j+2] == '}' || xsd[j+3] == '}')){
+                    (s1 = strchr(&xsd[j+2],'}')) != NULL){
+                    s0 = (char*)&xsd[j+1];
+                    len1 = s1 - s0;
                     switch (xsd[j+1]){
                     case 'L': /* Letters */
-                        cprintf(cb, "a-zA-Z"); /* assume in [] */
+                        cprintf(cb, "a-zA-Z");
                         break;
                     case 'M': /* Marks */
-                        cprintf(cb, "\?!"); /* assume in [] */
+                        cprintf(cb, "\?!");
                         break;
                     case 'N': /* Numbers */
                         cprintf(cb, "0-9");
                         break;
                     case 'P': /* Punctuation */
-                        cprintf(cb, "a-zA-Z"); /* assume in [] */
+                        cprintf(cb, "a-zA-Z");
                         break;
                     case 'Z': /* Separators */
-                        cprintf(cb, "\t "); /* assume in [] */
+                        cprintf(cb, "\t ");
                         break;
                     case 'S': /* Symbols */
                          /* assume in [] */
@@ -298,13 +305,20 @@ regexp_xsd2posix(char  *xsd,
                     case 'C': /* Others */
                          /* assume in [] */
                         break;
+                    case 'I': /* Is... */
+                        if (len1 == strlen("IsBasicLatin")){
+                            if (strncmp(s0, "IsBasicLatin", len1) == 0)
+                                ;
+                        }
+                        else if (len1 == strlen("IsLatin1-1Supplement")){
+                            if (strncmp(s0, "IsLatin1-1Supplement", len1) == 0)
+                                ;
+                        }
+                        break;
                     default:
                         break;
                     }
-                    if (xsd[j+2] == '}')
-                        i = j+2;
-                    else
-                        i = j+3;
+                    i = j + 1 + len1;
                 }
                 /* if syntax error, just leave it */
                 break;
