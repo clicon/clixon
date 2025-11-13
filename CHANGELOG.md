@@ -74,6 +74,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [RESTCONF GET/PUT across mountpoint for CLOSED device causes restconf_terminate](https://github.com/clicon/clixon-controller/issues/230)
 * Fixed: [yang parsing of an identifier that is a multiline quoted string](https://github.com/clicon/clixon-controller/issues/200)
 * Fixed: [Multiple deviations to same grouping when CLICON_YANG_USE_ORIGINAL doesnt work](https://github.com/clicon/clixon/issues/629)
 * Fixed: [YANG identityref from uses/grouping from separate module does not work](https://github.com/clicon/clixon/issues/628)

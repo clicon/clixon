@@ -931,30 +931,50 @@ restconf_socket_init(const char   *netns0,
     return retval;
 }
 
-/*! Callback used by api_path2xml when yang mountpoint is empty
+/*! Callback given XML mount-point, return yang-spec of mount-point
  *
- * @param[in]  h   Clixon handle
- * @param[in]  x   XML node
- * @param[out] yp  YANG
+ * @param[in]   xmt   XML mount-point in XML tree
+ * @param[out]  yspec Resulting mounted yang spec if retval = 1
+ * @param[out]  xerr  Netconf error message if retval=0
+ * @retval      1     OK
+ * @retval      0     Invalid api_path or associated XML, netconf error in
+ * @retval     -1     Fatal error
+ * @see api_path2xml  Uses callback when yang mountpoint is empty
  */
 int
 restconf_apipath_mount_cb(clixon_handle h,
-                          cxobj        *x,
-                          yang_stmt   **yp)
+                          cxobj        *xmt,
+                          yang_stmt   **yspec,
+                          cxobj       **xerr)
 {
     int    retval = -1;
     cxobj *xyanglib = NULL;
+    cbuf  *cberr = NULL;
     int    ret;
 
-    if (clixon_plugin_yang_mount_all(h, x, NULL, NULL, &xyanglib) < 0)
-        goto done;
+    if (clixon_plugin_yang_mount_all(h, xmt, NULL, NULL, &xyanglib) < 0){
+        if ((cberr = cbuf_new()) == NULL){
+            clixon_err(OE_XML, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cberr, "%s", clixon_err_reason());
+        if (xerr && netconf_operation_failed_xml(xerr, "application", cbuf_get(cberr))< 0)
+            goto done;
+        clixon_err_reset();
+        goto fail;
+    }
     if (xyanglib != NULL){
-        if ((ret = yang_schema_yanglib_mount_parse(h, x, xyanglib, yp)) < 0)
+        if ((ret = yang_schema_yanglib_mount_parse(h, xmt, xyanglib, yspec)) < 0)
             goto done;
     }
-    retval = 0;
+    retval = 1;
  done:
+    if (cberr)
+        cbuf_free(cberr);
     if (xyanglib)
         xml_free(xyanglib);
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }

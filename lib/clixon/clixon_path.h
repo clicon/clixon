@@ -72,8 +72,19 @@ typedef struct {
     yang_stmt  *cp_yang;     /* Corresponding yang spec (after XML match - ie resolved) */
 } clixon_path;
 
-/*! Callback if empty mount-point is encountered */
-typedef int (api_path_mnt_cb_t)(clixon_handle h, cxobj *x, yang_stmt **yp);
+/*! Callback given XML mount-point, return yang-spec of mount-point
+ *
+ * Used by api_path2xml when yang mountpoint is empty
+ * @param[in]   h     Clixon handle
+ * @param[in]   xmt   XML mount-point in XML tree
+ * @param[out]  yspec Resulting mounted yang spec if retval = 1
+ * @param[out]  xerr  Netconf error message if retval=0
+ * @retval      1     OK
+ * @retval      0     Invalid api_path or associated XML, netconf error in
+ * @retval     -1     Fatal error
+ * @see api_path2xml  Uses callback when yang mountpoint is empty
+ */
+typedef int (api_path_mnt_cb_t)(clixon_handle h, cxobj *xmt, yang_stmt **yspec, cxobj **xerr);
 
 /*
  * Prototypes

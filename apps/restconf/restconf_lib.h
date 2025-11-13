@@ -101,7 +101,7 @@ int   restconf_drop_privileges(clixon_handle h);
 int   restconf_authentication_cb(clixon_handle h, void *req, int pretty, restconf_media media_out);
 int   restconf_config_init(clixon_handle h, cxobj *xrestconf);
 int   restconf_socket_init(const char *netns0, const char *addrstr, const char *addrtype, uint16_t port, int backlog, int flags, int *ss);
-int   restconf_apipath_mount_cb(clixon_handle h, cxobj *x, yang_stmt **yp);
+int   restconf_apipath_mount_cb(clixon_handle h, cxobj *xmt, yang_stmt **yspec, cxobj **xerr);
 
 #endif /* _RESTCONF_LIB_H_ */
 

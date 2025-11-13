@@ -1136,8 +1136,10 @@ api_path2xml_vec(char            **vec,
             if ((ret = yang_mount_get_yspec_any(y0, &y0)) < 0)
                 goto done;
             if (ret == 0 && mnt_cb != NULL){
-                if (mnt_cb(arg, x0, &y0) < 0)
+                if ((ret = mnt_cb(arg, x0, &y0, xerr)) < 0)
                     goto done;
+                if (ret == 0)
+                    goto fail;
             }
         }
         if ((ymod = yang_find_module_by_name(y0, prefix)) == NULL){
