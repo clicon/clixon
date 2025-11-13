@@ -1465,53 +1465,12 @@ cli_show_options(clixon_handle h,
                  cvec         *cvv,
                  cvec         *argv)
 {
-    int            retval = -1;
-    clicon_hash_t *hash = clicon_options(h);
-    int            i;
-    char         **keys = NULL;
-    void          *val;
-    size_t         klen;
-    size_t         vlen;
-    cxobj         *x = NULL;
+    int retval = -1;
 
-    if (clicon_hash_keys(hash, &keys, &klen) < 0)
+    if (clicon_option_dump1(h, stdout, FORMAT_XML, 1) < 0)
         goto done;
-    for(i = 0; i < klen; i++) {
-        val = clicon_hash_value(hash, keys[i], &vlen);
-        if (vlen){
-            if (((char*)val)[vlen-1]=='\0') /* assume string */
-                fprintf(stdout, "%s: \"%s\"\n", keys[i], (char*)val);
-            else
-                fprintf(stdout, "%s: 0x%p , length %zu\n", keys[i], val, vlen);
-        }
-        else
-            fprintf(stdout, "%s: NULL\n", keys[i]);
-    }
-    /* Next print CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_MIB from config tree
-     * Since they are lists they are placed in the config tree.
-     */
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
-            continue;
-        fprintf(stdout, "%s: \"%s\"\n", xml_name(x), xml_body(x));
-    }
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
-            continue;
-        fprintf(stdout, "%s: \"%s\"\n", xml_name(x), xml_body(x));
-    }
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
-        if (strcmp(xml_name(x), "CLICON_SNMP_MIB") != 0)
-            continue;
-        fprintf(stdout, "%s: \"%s\"\n", xml_name(x), xml_body(x));
-    }
-   retval = 0;
+    retval = 0;
  done:
-    if (keys)
-        free(keys);
     return retval;
 }
 

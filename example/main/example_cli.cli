@@ -92,7 +92,9 @@ show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression")
        [<ns:string>("Namespace")], show_conf_xpath("candidate");
     version("Show version"), cli_show_version("candidate", "text", "/");
-    options("Show clixon options"), cli_show_options();
+    options("Show clixon options"), cli_show_options();{
+       @|example_pipe, cli_show_options();
+    }
     compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "default");{
     		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
 		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
