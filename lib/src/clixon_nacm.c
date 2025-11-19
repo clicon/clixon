@@ -1436,6 +1436,8 @@ verify_nacm_user(clixon_handle           h,
 
     if (cred == NC_NONE)
         goto ok;
+    if (strcmp(rpcname, "close-session") == 0)
+        goto ok;
     if (peername == NULL){
         clixon_debug(CLIXON_DBG_NACM, "NACM user deny: No peer user credentials");
         if (netconf_access_denied(cbret, "application", "No peer user credentials available") < 0)

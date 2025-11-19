@@ -53,6 +53,7 @@
 #include <time.h>
 #include <signal.h>
 #include <dlfcn.h>
+#include <pwd.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -426,15 +427,18 @@ get_user_cookie(char  *cookiestr,
 int
 restconf_terminate(clixon_handle h)
 {
-    cvec      *nsctx;
-    cxobj     *x;
-    int        fs; /* fgcx socket */
+    cvec          *nsctx;
+    cxobj         *x;
+    int            fs; /* fgcx socket */
+    struct passwd *pw;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((fs = clicon_socket_get(h)) != -1)
         close(fs);
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
+    if ((pw = getpwuid(getuid())) != NULL) /* Force user to close-session */
+        clicon_username_set(h, pw->pw_name);
     clicon_rpc_close_session(h);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)

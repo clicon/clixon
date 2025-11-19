@@ -471,7 +471,6 @@ clicon_rpc_netconf(clixon_handle h,
 
 /*! Generic xml netconf clicon rpc
  *
- * Want to go over to use netconf directly between client and server,...
  * @param[in]  h       clicon handle
  * @param[in]  xml     XML netconf tree
  * @param[out] xret    Return XML netconf tree, error or OK
@@ -1342,6 +1341,9 @@ clicon_rpc_close_session(clixon_handle h)
     int       s;
     cbuf     *cb = NULL;
 
+    /* Special handling: do not send close if there is no ongoing session */
+    if (clicon_session_id_get(h, NULL) < 0)
+        goto ok;
     if (session_id_check(h, &session_id) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
@@ -1368,6 +1370,7 @@ clicon_rpc_close_session(clixon_handle h)
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Close session");
         goto done;
     }
+ ok:
     retval = 0;
  done:
     if (cb)
@@ -1865,7 +1868,6 @@ clicon_rpc_restconf_debug(clixon_handle h,
         xml_free(xret);
     return retval;
 }
-
 
 /*! Send a hello request to the backend server on INTERNAL netconf connection
  *

@@ -882,7 +882,8 @@ clicon_session_id_get(clixon_handle h,
 
     if ((p = clicon_hash_value(cdat, "session-id", NULL)) == NULL)
         return -1;
-    *id = *(uint32_t*)p;
+    if (id)
+        *id = *(uint32_t*)p;
     return 0;
 }
 
