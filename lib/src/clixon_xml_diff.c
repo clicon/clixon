@@ -1084,7 +1084,7 @@ xml_rebase_conflict(clixon_handle h,
             cprintf(cb, "value0: %s ", value0);
         if (value1)
             cprintf(cb, "value1: %s ", value1);
-        if (netconf_operation_failed(cbret, "application", cbuf_get(cb)) < 0)
+        if (netconf_operation_failed(cbret, "application", "%s", cbuf_get(cb)) < 0)
             goto done;
     }
     retval = 0;

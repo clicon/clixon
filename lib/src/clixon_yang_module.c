@@ -718,8 +718,8 @@ yang_find_module_by_name_revision(yang_stmt  *yspec,
  * @see yang_find_module_by_prefix    module-specific prefix
  */
 yang_stmt *
-yang_find_module_by_name(yang_stmt *yspec,
-                         char      *name)
+yang_find_module_by_name(yang_stmt  *yspec,
+                         const char *name)
 {
     yang_stmt *ymod;
     int        inext;

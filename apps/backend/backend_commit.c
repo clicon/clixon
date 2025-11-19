@@ -646,7 +646,7 @@ candidate_validate(clixon_handle h,
         if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
             goto done;
         if (!cbuf_len(cbret) &&
-            netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
             goto done;
         goto fail;
     }
@@ -852,7 +852,7 @@ backend_update(clixon_handle h,
                 goto done;
         /* Reset candidate-orig to running */
         if (xmldb_copy(h, db1, db0) < 0){
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                 goto done;
             goto fail;
         }
@@ -1057,14 +1057,14 @@ from_client_discard_changes(clixon_handle h,
             goto done;
         if (db0 != NULL){
             if (xmldb_copy(h, db0, db) < 0){
-                if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+                if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                     goto done;
                 goto ok;
             }
         }
     }
     else if (xmldb_copy(h, "running", db) < 0){
-        if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+        if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
             goto done;
         goto ok;
     }

@@ -77,7 +77,7 @@ yang_stmt *yang_find_module_by_prefix_yspec(yang_stmt *yspec, const char *prefix
 yang_stmt *yang_find_module_by_namespace(yang_stmt *yspec, const char *ns);
 yang_stmt *yang_find_module_by_namespace_revision(yang_stmt *yspec, const char *ns, const char *revision);
 yang_stmt *yang_find_module_by_name_revision(yang_stmt *yspec, const char *name, const char *revision);
-yang_stmt *yang_find_module_by_name(yang_stmt *yspec, char *name);
+yang_stmt *yang_find_module_by_name(yang_stmt *yspec, const char *name);
 int        yang_metadata_annotation_check(cxobj *x, yang_stmt *ymod, int *ismeta);
 int        yang_metadata_init(clixon_handle h);
 int        yang_lib2yspec(clixon_handle h, cxobj *yanglib, char *mntpnt, char *domain, yang_stmt *yspec);

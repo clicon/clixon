@@ -372,7 +372,7 @@ static int
 xmldb_db2file1(clixon_handle h,
                const char   *db,
                int           multi,
-               char         **filename)
+               char        **filename)
 {
     int   retval = -1;
     cbuf *cb = NULL;

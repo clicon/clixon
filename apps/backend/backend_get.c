@@ -753,7 +753,7 @@ get_list_pagination(clixon_handle     h,
                 goto done;
             }
             cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
-            if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+            if (netconf_operation_failed(cbret, "application", "%s", cbuf_get(cbmsg)) < 0)
                 goto done;
             goto ok;
         }
@@ -1045,7 +1045,7 @@ get_common(clixon_handle   h,
                 goto done;
             }
             cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
-            if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+            if (netconf_operation_failed(cbret, "application", "%s", cbuf_get(cbmsg)) < 0)
                 goto done;
             goto ok;
         }
@@ -1065,7 +1065,7 @@ get_common(clixon_handle   h,
                     goto done;
                 }
                 cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
-                if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                if (netconf_operation_failed(cbret, "application", "%s", cbuf_get(cbmsg)) < 0)
                     goto done;
                 goto ok;
             }
@@ -1083,7 +1083,7 @@ get_common(clixon_handle   h,
                     goto done;
                 }
                 cprintf(cbmsg, "Get %s datastore: %s", db, clixon_err_reason());
-                if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg)) < 0)
+                if (netconf_operation_failed(cbret, "application", "%s", cbuf_get(cbmsg)) < 0)
                     goto done;
                 goto ok;
             }

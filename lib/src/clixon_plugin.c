@@ -2005,7 +2005,7 @@ clixon_plugin_report_err(clixon_handle h,
     if (clixon_plugin_rpc_err_set(h)) {
         if ((ret = netconf_gen_rpc_err(h, cbret)) < 0)
             return ret;
-    } else if ((ret = netconf_operation_failed(cbret, "application",
+    } else if ((ret = netconf_operation_failed(cbret, "application", "%s",
                                                clixon_err_reason())) < 0) {
         return ret;
     }

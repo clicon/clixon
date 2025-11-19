@@ -315,7 +315,7 @@ int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_iter(yang_stmt *yparent, int *inext);
 char      *yang_key2str(int keyword);
-int        yang_str2key(char *str);
+int        yang_str2key(const char *str);
 int        ys_module_by_xml(yang_stmt *ysp, struct xml *xt, yang_stmt **ymodp);
 yang_stmt *ys_module(yang_stmt *ys);
 int        ys_real_module(yang_stmt *ys, yang_stmt **ymod);

@@ -526,8 +526,8 @@ do_lock(clixon_handle h,
 /*! Loads all or part of a specified configuration to target configuration
  * 
  * @param[in]  h       Clixon handle 
- * @param[in]  xn      Request: <rpc><xn></rpc> 
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error.. 
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @param[in]  arg     client-entry
  * @param[in]  regarg  User argument given at rpc_callback_register() 
  * @retval     0       OK
@@ -697,7 +697,7 @@ from_client_edit_config(clixon_handle h,
         goto ok;
     }
     if ((ret = xmldb_put(h, target, operation, xc, username, cbret)) < 0){
-        if (netconf_operation_failed(cbret, "protocol", clixon_err_reason())< 0)
+        if (netconf_operation_failed(cbret, "protocol", "%s", clixon_err_reason())< 0)
             goto done;
         goto ok;
     }
@@ -753,7 +753,7 @@ from_client_edit_config(clixon_handle h,
         }
         if (ret == 0){ /* discard */
             if (xmldb_copy(h, "running", target) < 0){
-                if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+                if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                     goto done;
                 goto ok;
             }
@@ -766,7 +766,7 @@ from_client_edit_config(clixon_handle h,
     if ((attr = xml_find_value(xe, "copystartup")) != NULL &&
         strcmp(attr, "true") == 0){
         if (xmldb_copy(h, "running", "startup") < 0){
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                 goto done;
             goto ok;
         }
@@ -875,7 +875,7 @@ from_client_copy_config(clixon_handle h,
             goto done;
         }
         cprintf(cbmsg, "Copy %s datastore to %s: %s", source, target, clixon_err_reason());
-        if (netconf_operation_failed(cbret, "application", cbuf_get(cbmsg))< 0)
+        if (netconf_operation_failed(cbret, "application", "%s", cbuf_get(cbmsg))< 0)
             goto done;
         goto ok;
     }
@@ -961,7 +961,7 @@ from_client_delete_config(clixon_handle h,
             goto done;
         }
         cprintf(cbmsg, "Delete %s datastore: %s", target, clixon_err_reason());
-        if (netconf_operation_failed(cbret, "protocol", cbuf_get(cbmsg))< 0)
+        if (netconf_operation_failed(cbret, "protocol", "%s", cbuf_get(cbmsg))< 0)
             goto done;
         goto ok;
     }
@@ -985,7 +985,7 @@ from_client_delete_config(clixon_handle h,
                 goto done;
             }
             cprintf(cbmsg, "Create %s datastore: %s", target, clixon_err_reason());
-            if (netconf_operation_failed(cbret, "protocol", cbuf_get(cbmsg))< 0)
+            if (netconf_operation_failed(cbret, "protocol", "%s", cbuf_get(cbmsg))< 0)
                 goto done;
             goto ok;
         }
@@ -1882,10 +1882,10 @@ from_client_process_control(clixon_handle h,
                             void         *arg,
                             void         *regarg)
 {
-    int      retval = -1;
-    cxobj   *x;
-    char    *name = NULL;
-    char    *opstr = NULL;
+    int            retval = -1;
+    cxobj         *x;
+    char          *name = NULL;
+    char          *opstr = NULL;
     proc_operation op = PROC_OP_NONE;
 
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
@@ -2079,7 +2079,7 @@ from_client_msg(clixon_handle h,
     }
     else if (strcmp(rpcname, "hello") == 0){
         if ((ret = rpc_callback_call(h, x, ce, &nr, cbret)) < 0){
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                 goto done;
             clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call: hello", __func__);
             ce->ce_out_rpc_errors++;
@@ -2184,7 +2184,7 @@ from_client_msg(clixon_handle h,
         }
         clixon_err_reset();
         if ((ret = rpc_callback_call(h, xe, ce, &nr, cbret)) < 0){
-            if (netconf_operation_failed(cbret, "application", clixon_err_reason())< 0)
+            if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                 goto done;
             clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call:%s", __func__, xml_name(xe));
             ce->ce_out_rpc_errors++;
@@ -2212,7 +2212,7 @@ from_client_msg(clixon_handle h,
     } /* while */
  reply:
     if (cbuf_len(cbret) == 0)
-        if (netconf_operation_failed(cbret, "application",
+        if (netconf_operation_failed(cbret, "application", "%s",
                                      clixon_err_category()?clixon_err_reason():"unknown")< 0)
             goto done;
     // XXX    clixon_debug(CLIXON_DBG_MSG, "Reply:%s", cbuf_get(cbret));

@@ -1733,9 +1733,6 @@ xml_yang_validate_all1(clixon_handle h,
             if (validate_errmsg(&cb, xt, yt) < 0)
                 goto done;
             clixon_debug(OE_YANG, "Operation failed: %s", cbuf_get(cb));
-#ifdef YANG_WHEN_ALWAYS_TRUE
-            goto ok;
-#endif
             if (xret && netconf_operation_failed_xml(xret, "application",
                                                      cbuf_get(cb)) < 0)
                 goto done;

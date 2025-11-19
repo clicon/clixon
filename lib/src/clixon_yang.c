@@ -2204,7 +2204,7 @@ yang_key2str(int keyword)
  * @retval    int  Integer representation of YANG keywords
  */
 int
-yang_str2key(char *str)
+yang_str2key(const char *str)
 {
     return clicon_str2int(ykmap, str);
 }

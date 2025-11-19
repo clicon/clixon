@@ -1392,7 +1392,7 @@ netconf_operation_not_supported(cbuf       *cb,
  * some reason not covered by any other error condition.
  * @param[out] cb      CLIgen buf. Error XML is written in this buffer
  * @param[in]  type    Error type: "rpc", "application" or "protocol"
- * @param[in]  message Error message (will be XML encoded)
+ * @param[in]  message Format string for error message (will be XML encoded)
  * @retval     0       OK
  * @retval    -1       Error
  * @see netconf_operation_failed_xml  Same but returns XML tree
@@ -1400,17 +1400,37 @@ netconf_operation_not_supported(cbuf       *cb,
 int
 netconf_operation_failed(cbuf       *cb,
                          char const *type,
-                         char const *message)
+                         char const *messagefmt,
+                         ...)
 {
-    int    retval = -1;
-    cxobj *xret = NULL;
+    int     retval = -1;
+    cxobj  *xret = NULL;
+    char   *message = NULL;
+    size_t  len;
+    va_list ap;
 
+    va_start(ap, messagefmt);
+    len = vsnprintf(NULL, 0, messagefmt, ap);
+    va_end(ap);
+    if ((message = malloc(len+1)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    va_start(ap, messagefmt);
+    if (vsnprintf(message, len+1, messagefmt, ap) < 0){
+        clixon_err(OE_UNIX, errno, "vsnprintf");
+        va_end(ap);
+        goto done;
+    }
+    va_end(ap);
     if (netconf_operation_failed_xml(&xret, type, message) < 0)
         goto done;
     if (clixon_xml2cbuf(cb, xret, 0, 0, NULL, -1, 0) < 0)
         goto done;
     retval = 0;
  done:
+    if (message)
+        free(message);
     if (xret)
         xml_free(xret);
     return retval;

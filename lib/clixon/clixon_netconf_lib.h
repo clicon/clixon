@@ -222,7 +222,7 @@ int netconf_missing_choice_xml(cxobj **xret, cxobj *x, const char *missing_choic
                                const char *message);
 int netconf_operation_not_supported_xml(cxobj **xret, const char *type, const char *message);
 int netconf_operation_not_supported(cbuf *cb, const char *type, const char *message);
-int netconf_operation_failed(cbuf *cb, const char *type, const char *message);
+int netconf_operation_failed(cbuf *cb, const char *type, const char *message, ...) __attribute__ ((format (printf, 3, 4)));
 int netconf_operation_failed_xml(cxobj **xret, const char *type, const char *message);
 int netconf_malformed_message(cbuf *cb, const char *message);
 int netconf_malformed_message_xml(cxobj **xret, const char *message);
