@@ -3,6 +3,7 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
+  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -30,44 +31,47 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  *
-  * C-code corresponding to clixon-autocli.yang
+
  */
 
-#ifndef _CLI_AUTOCLI_H_
-#define _CLI_AUTOCLI_H_
+#ifndef _CLIXON_AUTOCLI_GENERATE_H_
+#define _CLIXON_AUTOCLI_GENERATE_H_
 
 /*
- * Types
+ * Constants
  */
-/*! Autocli operation, see clixon-autocli.yang autocli-op type
+/* This is the default "virtual" callback function of the auto-cli. It should be overwritten by
+ * a callback specified in a clispec, such as:
+ * @code
+ * set @datamodel, cli_set();
+ * @endcode
+ * where the virtual callback (overwrite_me) is overwritten by cli_set.
  */
-enum autocli_op{
-    AUTOCLI_OP_ENABLE,
-    AUTOCLI_OP_DISABLE,
-    AUTOCLI_OP_COMPRESS,
-};
+#define GENERATE_CALLBACK "overwrite_me"
+#define GROUPING_CALLBACK "prepend_me"
+#define MTPOINT_PREFIX    "mtpoint:"
 
-/* See clixon-autocli.yang cache-type */
-enum autocli_cache{
-    AUTOCLI_CACHE_DISABLED, /* Do not use cache  */
-    AUTOCLI_CACHE_READ,     /* If clispec file exists read from cache, if not found generate */
-    AUTOCLI_CACHE_WRITE,    /* Generate clispec and write to cache */
-    AUTOCLI_CACHE_READWRITE /* If clispec file exists, read from cache,
-                               if not found, generate and write cache file */
-};
-typedef enum autocli_cache autocli_cache_t;
+/* variable expand function */
+#define GENERATE_EXPAND_XMLDB "expand_dbvar"
+
+/* Name of autocli CLIgen treename */
+#define AUTOCLI_TREENAME "basemodel"
+
+/*! Delimiter when creating yang2cli grouping cmd label */
+#define AUTOCLI_CMD_DELIM "--"
+
+/*! Backward-compatible 7.5 CLIgen preferences for strings
+ */
+#ifndef COV_PREF_STRING_REGEXP
+#define COV_PREF_STRING_REGEXP 7
+#endif
 
 /*
  * Prototypes
  */
-int autocli_module(clixon_handle h, char *modname, int *enable);
-int autocli_completion(clixon_handle h, int *completion);
-int autocli_grouping_treeref(clixon_handle h, int *grouping_treeref);
-int autocli_list_keyword(clixon_handle h, autocli_listkw_t *listkw);
-int autocli_compress(clixon_handle h, yang_stmt *ys, int *compress);
-int autocli_treeref_state(clixon_handle h, int *treeref_state);
-int autocli_edit_mode(clixon_handle h, char *keyw, int *flag);
-int autocli_cache(clixon_handle h, autocli_cache_t *type, char **dir);
+int yang2cli_tree_decode(const char *cmd, const char *delim, char **domain, char **spec, char **module,
+                        char **revision, char **keyword, char **argument);
+int yang2cli_grouping(clixon_handle h, yang_stmt *ys, yang_stmt *ymod, const char *domain, const char *treename, cbuf *cb);
+int yang2cli_stmt(clixon_handle h, yang_stmt *ys, int level, cbuf *cb);
 
-#endif  /* _CLI_AUTOCLI_H_ */
+#endif  /* _CLIXON_AUTOCLI_GENERATE_H_ */

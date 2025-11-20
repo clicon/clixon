@@ -19,6 +19,19 @@
 ## 7.7.0
 Expected: February 2026
 
+### Features
+
+* Add cache protocol for yang-domains and clispecs
+  * This includes read and clear operations between cli client and backend
+* New `clixon-lib@2025-12-01.yang` revision
+   * Added `rpc clixon-cache`
+* New `clixon-autocli@2025-12-01.yang` revision
+   * Deprecated `clispec-cache`
+   
+### Corrected Bugs
+
+* Fixed: Error log at restconf exit
+
 ## 7.6.0
 21 November 2025
 

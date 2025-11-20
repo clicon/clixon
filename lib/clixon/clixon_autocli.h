@@ -3,7 +3,6 @@
   ***** BEGIN LICENSE BLOCK *****
  
   Copyright (C) 2009-2019 Olof Hagsand
-  Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 
   This file is part of CLIXON.
 
@@ -31,43 +30,51 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
+  *
+  * C-code corresponding to clixon-autocli.yang
  */
 
-#ifndef _CLI_GENERATE_H_
-#define _CLI_GENERATE_H_
+#ifndef _CLIXON_AUTOCLI_H_
+#define _CLIXON_AUTOCLI_H_
 
 /*
- * Constants
+ * Types
  */
-/* This is the default "virtual" callback function of the auto-cli. It should be overwritten by
- * a callback specified in a clispec, such as:
- * @code
- * set @datamodel, cli_set();
- * @endcode
- * where the virtual callback (overwrite_me) is overwritten by cli_set.
+/*! Autocli list keyword type, see clixon-autocli.yang list-keyword-type
+ *
+ * Assume a YANG LIST: 
+ *    list a {
+ *       key x;
+ *       leaf x;
+ *       leaf y;
+ *    }
+ * Maybe this type should be in cli_autocli.h
  */
-#define GENERATE_CALLBACK "overwrite_me"
-#define GROUPING_CALLBACK "prepend_me"
-#define MTPOINT_PREFIX    "mtpoint:"
+enum autocli_listkw{
+    AUTOCLI_LISTKW_NONE,  /* No extra keywords, only <vars>: a <x> <y> */
+    AUTOCLI_LISTKW_NOKEY, /* Keywords on non-key variables: a <x> y <y> */
+    AUTOCLI_LISTKW_ALL,   /* Keywords on all variables: a x <x> y <y> */
+};
+typedef enum autocli_listkw autocli_listkw_t;
 
-/* Name of autocli CLIgen treename */
-#define AUTOCLI_TREENAME "basemodel"
-
-/*! Delimiter when creating yang2cli grouping cmd label */
-#define AUTOCLI_CMD_DELIM "--"
-
-/*! Backward-compatible 7.5 CLIgen preferences for strings
+/*! Autocli operation, see clixon-autocli.yang autocli-op type
  */
-#ifndef COV_PREF_STRING_REGEXP
-#define COV_PREF_STRING_REGEXP 7
-#endif
+enum autocli_op{
+    AUTOCLI_OP_ENABLE,
+    AUTOCLI_OP_DISABLE,
+    AUTOCLI_OP_COMPRESS,
+};
 
 /*
  * Prototypes
  */
-int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, char *treename);
-int yang2cli_grouping_wrap(cligen_handle ch, const char *name, cvec *cvt, void *arg, char **namep);
-int yang2cli_init(clixon_handle h);
+int autocli_module(clixon_handle h, char *modname, int *enable);
+int autocli_completion(clixon_handle h, int *completion);
+int autocli_grouping_treeref(clixon_handle h, int *grouping_treeref);
+int autocli_list_keyword(clixon_handle h, autocli_listkw_t *listkw);
+int autocli_compress(clixon_handle h, yang_stmt *ys, int *compress);
+int autocli_treeref_state(clixon_handle h, int *treeref_state);
+int autocli_edit_mode(clixon_handle h, char *keyw, int *flag);
+int autocli_cache(clixon_handle h, char **dir);
 
-#endif  /* _CLI_GENERATE_H_ */
+#endif  /* _CLIXON_AUTOCLI_H_ */

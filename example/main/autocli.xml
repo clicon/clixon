@@ -5,8 +5,9 @@
      <treeref-state-default>false</treeref-state-default>
      <edit-mode-default>list container</edit-mode-default>
      <completion-default>true</completion-default>
+     <grouping-treeref>true</grouping-treeref>
      <rule>
-       <name>Exclude all ietf modules</name>
+       <name>Exclude ietf nacm module</name>
        <description>
          This is to avoid generating autocli rules for standard top-level IETF YANGs, such as NACM
        </description>

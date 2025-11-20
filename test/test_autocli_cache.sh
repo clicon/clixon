@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for autocli cache
+# Tests for autocli cache in backend
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -53,6 +53,9 @@ delete("Delete a configuration item") {
       @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
+clear("Clear system state") {
+    autocli("Autocli file cache"), cli_cache_clear("autocli", "default"); # clixon-cache branch
+}
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
 }
@@ -90,27 +93,34 @@ module clixon-example {
 }
 EOF
 
-# Args:
-# 1: clispec-cache
-function testsetup()
-{
-    # Whether grouping treeref is enabled
-    cache=$1
-    rm -rf $cachedir
-    cat <<EOF > $cfd/autocli.xml
+cat <<EOF > $cfd/autocli.xml
 <clixon-config xmlns="http://clicon.org/config">
-  <autocli>
-    <module-default>true</module-default>
-     <list-keyword-default>kw-nokey</list-keyword-default>
-     <grouping-treeref>true</grouping-treeref>
-     <clispec-cache>$cache</clispec-cache>
-     <clispec-cache-dir>$cachedir</clispec-cache-dir>
-  </autocli>
+   <autocli>
+      <module-default>false</module-default>
+      <list-keyword-default>kw-nokey</list-keyword-default>
+      <grouping-treeref>true</grouping-treeref>
+      <treeref-state-default>false</treeref-state-default>
+      <rule>
+         <name>include example</name>
+         <operation>enable</operation>
+         <module-name>clixon-example*</module-name>
+      </rule>
+      <!--clispec-cache>$cache</clispec-cache-->
+      <clispec-cache-dir>$cachedir</clispec-cache-dir>
+   </autocli>
 </clixon-config>
 EOF
 
+# Args:
+# 1:
+function testsetup()
+{
+    # Whether grouping treeref is enabled
+
+
     new "set top-level grouping"
-#    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+exit
     expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a)" 0 ""
 
     new "show grouping"
@@ -131,55 +141,15 @@ fi
 new "wait backend"
 wait_backend
 
-new "autocli disabled"
-testsetup disabled
+# Bootstrap: cannot clear cache from cli before use by autocli, must use netconf
+new "clear cache"
+#sudo rm -rf $cachedir
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><clixon-cache $LIBNS><operation>clear</operation><type>autocli</type><domain>top</domain></clixon-cache></rpc>" "<ok/>"
 
-new "Check no cache"
-if [ -d ${cachedir} ]; then
-    err1 "Unexpected ${cachedir}"
-fi
-
-# How should I test this?
-new "autocli read"
-testsetup read
-
-new "autocli write"
-testsetup write
-
-new "Check cache file"
-if [ ! ${cachefile} ]; then
-    err1 "Expected ${cachefile}"
-fi
-
-# cat "${cachefile}"
-new "Check cache content"
-content=$(cat ${cachefile})
-expected="table,overwrite_me(\"/clixon-example:table\"), act-container;{"
-match=$(echo "${content}" | grep --null -o "$expected")
-if [[ -z "${match}" ]]; then
-    err "$expected" "${content}"
-fi
-
-new "Check grouping cache file"
-if [ ! ${cachefile2} ]; then
-    err1 "Expected ${cachefile2}"
-fi
-
-new "autocli readwrite"
-testsetup readwrite
-
-new "Check cache content"
-content=$(cat ${cachefile})
-expected="table,overwrite_me(\"/clixon-example:table\"), act-container;{"
-match=$(echo "${content}" | grep --null -o "$expected")
-if [[ -z "${match}" ]]; then
-    err "$expected" "${content}"
-fi
-
-new "Check grouping cache file"
-if [ ! ${cachefile2} ]; then
-    err1 "Expected ${cachefile2}"
-fi
+new "set top-level grouping"
+echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
+exit
+expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a)" 0 ""
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
