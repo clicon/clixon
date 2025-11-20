@@ -70,6 +70,7 @@
 #include "clixon_backend_commit.h"
 #include "backend_handle.h"
 #include "backend_get.h"
+#include "backend_cache.h"
 #include "backend_client.h"
 
 /*! Construct a client string description from client_entry information for logging
@@ -2400,6 +2401,9 @@ backend_rpc_init(clixon_handle h)
         goto done;
     if (rpc_callback_register(h, from_client_process_control, NULL,
                               CLIXON_LIB_NS, "process-control") < 0)
+        goto done;
+    if (rpc_callback_register(h, from_client_clixon_cache, NULL,
+                              CLIXON_LIB_NS, "clixon-cache") < 0)
         goto done;
     retval =0;
  done:

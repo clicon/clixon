@@ -37,7 +37,8 @@
  *   cli-edit-mode - This is the api-path of the current cli mode in the loaded yang context
  *   cli-edit-cvv  - These are the assigned cligen list of variables with values at the edit-mode
  *   cli-edit-filter - Label filters for this mode
- *   cli-edit-mtpoint - If edit modes are used, which mountpoint to use if any
+ *   cli-edit-mtdomain - If edit modes are used, which mountpoint domain to use if any
+ *   cli-edit-mtspec - If edit modes are used, which mountpoint spec to use if any
  */
 
 #ifdef HAVE_CONFIG_H
@@ -72,7 +73,6 @@
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
-#include "cli_autocli.h"
 #include "cli_common.h"
 
 /*
@@ -124,11 +124,11 @@ cli_auto_edit(clixon_handle h,
     cg_obj       *co;
     cg_obj       *coorig;
     cvec         *cvv2 = NULL; /* cvv2 = cvv0 + cvv1 */
+    cg_var       *cv;
     int           argc = 0;
-    char         *str;
-    char         *mtpoint = NULL;
+    char         *mtdomain = NULL;
+    char         *mtspec = NULL;
     yang_stmt    *yspec0;
-    char         *mtpoint2 = NULL;
 
     if (cvec_len(argv) != 2 && cvec_len(argv) != 3){
         clixon_err(OE_PLUGIN, EINVAL, "Usage: %s(api_path_fmt>*, <treename>)", __func__);
@@ -139,14 +139,16 @@ cli_auto_edit(clixon_handle h,
         goto done;
     }
     api_path_fmt = cv_string_get(cvec_i(argv, argc++));
-    str = cv_string_get(cvec_i(argv, argc++));
-    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
-        mtpoint = str + strlen("mtpoint:");
-        clixon_debug(CLIXON_DBG_CLI, "mtpoint:%s", mtpoint);
-        treename = cv_string_get(cvec_i(argv, argc++));
+    cv = cvec_i(argv, argc++);
+    if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
+        goto done;
+    if (mtdomain){
+        cv = cvec_i(argv, argc++);
+        treename = cv_string_get(cv);
     }
-    else
-        treename = str;
+    else{
+        treename = cv_string_get(cv);
+    }
     /* Find current cligen tree */
     if ((ph = cligen_ph_find(cli_cligen(h), treename)) == NULL){
         clixon_err(OE_PLUGIN, 0, "No such parsetree header: %s", treename);
@@ -176,9 +178,9 @@ cli_auto_edit(clixon_handle h,
         clixon_err(OE_YANG, EINVAL, "No apipath found");
         goto done;
     }
-    if (mtpoint){
+    if (mtdomain){
         /* Get and combine api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
         if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, NULL) < 0)
             goto done;
@@ -191,13 +193,13 @@ cli_auto_edit(clixon_handle h,
     /* Store this as edit-mode */
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
-    if (mtpoint){
-        if ((mtpoint2 = strdup(mtpoint)) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
+    if (mtdomain){
+        if (clicon_data_set(h, "cli-edit-mtdomain", mtdomain) < 0)
             goto done;
-        }
-        if (clicon_data_set(h, "cli-edit-mtpoint", mtpoint2) < 0)
+        mtdomain = NULL;
+        if (clicon_data_set(h, "cli-edit-mtspec", mtspec) < 0)
             goto done;
+        mtspec = NULL;
     }
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
         goto done;
@@ -212,10 +214,12 @@ cli_auto_edit(clixon_handle h,
     }
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (api_path_fmt01)
         free(api_path_fmt01);
-    if (mtpoint2)
-        free(mtpoint2);
     if (api_path)
         free(api_path);
     return retval;
@@ -253,6 +257,8 @@ cli_auto_up(clixon_handle h,
     size_t   len;
     cvec    *cvv_filter = NULL;
     yang_stmt *yspec0;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     char    *mtpoint = "";
 
     if (cvec_len(argv) != 1){
@@ -294,7 +300,8 @@ cli_auto_up(clixon_handle h,
         clicon_data_set(h, "cli-edit-mode", "");
         clicon_data_cvec_del(h, "cli-edit-cvv");
         clicon_data_cvec_del(h, "cli-edit-filter");
-        clicon_data_set(h, "cli-edit-mtpoint", "");
+        clicon_data_set(h, "cli-edit-mtdomain", "");
+        clicon_data_set(h, "cli-edit-mtspec", "");
         goto ok;
     }
     /* get before and after api-path-fmt (as generated from yang) */
@@ -314,8 +321,10 @@ cli_auto_up(clixon_handle h,
         cvec_append_var(cvv1, cv);
     }
     clicon_data_get(h, "cli-edit-mtpoint", &mtpoint);
-    if (strlen(mtpoint)) {
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt1, &api_path_fmt2) < 0)
+    if (mtpoint_decode(mtpoint, ":", &mtdomain, &mtspec) < 0)
+        goto done;
+    if (mtdomain){
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt1, &api_path_fmt2) < 0)
             goto done;
         if (api_path_fmt2api_path(api_path_fmt2, cvv1, yspec0, &api_path, NULL) < 0)
             goto done;
@@ -331,6 +340,10 @@ cli_auto_up(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (api_path_fmt2)
         free(api_path_fmt2);
     if (api_path)
@@ -369,7 +382,8 @@ cli_auto_top(clixon_handle h,
     clicon_data_set(h, "cli-edit-mode", "");
     clicon_data_cvec_del(h, "cli-edit-cvv");
     clicon_data_cvec_del(h, "cli-edit-filter");
-    clicon_data_set(h, "cli-edit-mtpoint", "");
+    clicon_data_set(h, "cli-edit-mtdomain", "");
+    clicon_data_set(h, "cli-edit-mtspec", "");
     retval = 0;
  done:
     return retval;

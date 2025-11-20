@@ -76,10 +76,11 @@
 #include "clixon_backend_commit.h"
 #include "backend_handle.h"
 #include "backend_startup.h"
+#include "backend_cache.h"
 #include "backend_plugin_restconf.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
+#define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:Ao:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -403,8 +404,8 @@ usage(clixon_handle h,
             "\t-q \t\tQuit startup directly after upgrading and print result on stdout\n"
             "\t-U <user>\tRun backend daemon as this user AND drop privileges permanently\n"
             "\t-g <group>\tClient membership required to this group (default: %s)\n"
-
             "\t-y <file>\tLoad yang spec file (override yang main module)\n"
+            "\t-A\t\tDo not clear autocli cache on startup\n\n"
             "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
             argv0,
             plgdir ? plgdir : "none",
@@ -458,6 +459,7 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int           print_version = 0;
     int32_t       d;
+    int autocli_cache_clear = 1;
 
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
@@ -634,6 +636,9 @@ main(int    argc,
         case 'y' : /* Load yang absolute filename */
             if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
                 goto done;
+            break;
+        case 'A': /* Do not clear autocli cache on startup */
+            autocli_cache_clear = 0;
             break;
         case 'o':{ /* Configuration option */
             char          *val;
@@ -1026,7 +1031,10 @@ main(int    argc,
      * initializations */
     if (check_drop_priv(h, gid, yspec) < 0)
         goto done;
-
+    if (autocli_cache_clear){
+        if (backend_autocli_clear_cache(h) < 0)
+            goto done;
+    }
     /* Start session-id for clients */
     clicon_session_id_set(h, 1);
 #if 0 /* debug */

@@ -53,10 +53,10 @@
 #include "clixon_err.h"
 #include "clixon_digest.h"
 
-/*! Given null-terminated string, return malloced NULL_terinated SHA digest string in hex
+/*! Given null-terminated string, return malloced NULL_terminated SHA digest string in hex
  *
  * @param[in]  str     Input null-terminated string
- * @param[out] hexstrp Output null-terminated digest HEX string
+ * @param[out] hexstrp Output null-terminated malloced digest HEX string, free after use
  * @retval     0       OK
  * @retval    -1       Error
  */

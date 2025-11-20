@@ -114,7 +114,7 @@ clicon_data_set(clixon_handle h,
                 const char   *name,
                 const char   *val)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
+    clicon_hash_t *cdat = clicon_data(h);
 
     return clicon_hash_add(cdat, name, val, strlen(val)+1)==NULL?-1:0;
 }

@@ -100,7 +100,7 @@ clixon_strsep1(const char *string,
     if ((s = string)==NULL)
         goto done;
     while (*s){
-        if ((d = index(delim, *s)) != NULL)
+        if ((d = strchr(delim, *s)) != NULL)
             nvec++;
         s++;
     }
@@ -218,7 +218,7 @@ clixon_strsep3(const char *string,
         goto done;
     prev = 0;
     while (*s){
-        if ((d = index(delim, *s)) != NULL){
+        if ((d = strchr(delim, *s)) != NULL){
             if (!prev)
                 nvec++;
             prev = 1;
@@ -792,7 +792,7 @@ xml_chardata_decode_ampersand(char *str,
     cbuf    *cb = NULL;
     int      ret;
 
-    if ((semi = index(str, ';')) == NULL)
+    if ((semi = strchr(str, ';')) == NULL)
         goto fail;
     *semi = '\0';
     len = strlen(str);
@@ -969,9 +969,9 @@ uri_str2cvec(const char *string,
          * |     |      |
          * s     val    snext
          */
-        if ((snext = index(s, delim1)) != NULL)
+        if ((snext = strchr(s, delim1)) != NULL)
             *(snext++) = '\0';
-        if ((val = index(s, delim2)) != NULL){
+        if ((val = strchr(s, delim2)) != NULL){
             *(val++) = '\0';
             if (decode){
                 if (uri_percent_decode(val, &valu) < 0)
@@ -1088,10 +1088,10 @@ clixon_trim2(char       *str,
     char *s = str;
     int   i;
 
-    while (strlen(s) && index(trims, s[0])) /* trim from front */
+    while (strlen(s) && strchr(trims, s[0])) /* trim from front */
         s++;
     for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
-        if (index(trims, s[i]))
+        if (strchr(trims, s[i]))
             s[i] = '\0';
         else
             break;

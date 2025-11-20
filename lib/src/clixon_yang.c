@@ -884,7 +884,7 @@ yspec_new(clixon_handle h,
     return yspec_new1(h, YANG_DOMAIN_TOP, name);
 }
 
-/*! Create new yang specification, addd as child to top-level yang_mounts
+/*! Create new yang specification, add as child to top-level yang_mounts
  *
  * @param[in] h      Clixon handle
  * @param[in] domain Yang domain
@@ -919,42 +919,6 @@ yspec_new1(clixon_handle h,
     return yspec;
  done:
     return NULL;
-}
-
-/*! Create or add a shared yspec
- *
- * @param[in]   h       Clixon handle
- * @param[in]   xpath   Mount xpath, saved in cvec
- * @param[in]   domain  YANG domain
- * @param[in]   yspec0  Input NULL if no previous shared exist, otherwise a shared yspec but new name
- * @retval      yspec1  New or (previously shared)
- * @retval      NULL    Error
- * @note yspec name used by concatenating domain and a unique number.
- */
-yang_stmt *
-yspec_new_shared(clixon_handle h,
-                 const char   *xpath,
-                 const char   *domain,
-                 const char   *name,
-                 yang_stmt    *yspec0)
-{
-    yang_stmt *yspec1 = NULL;
-
-    if (yspec0 != NULL){ /* shared */
-        yspec1 = yspec0;
-    }
-    else {
-        if ((yspec1 = yspec_new1(h, domain, name)) == NULL)
-            goto done;
-        yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
-        clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
-    }
-    if (yang_cvec_add(yspec1, CGV_STRING, xpath) == NULL){
-        yspec1 = NULL;
-        goto done;
-    }
- done:
-    return yspec1;
 }
 
 /*! Create new yang domain

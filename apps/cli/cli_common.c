@@ -286,17 +286,19 @@ identityref_add_ns(cxobj *x,
  * The result computed from the top-level yspec and mountpoint xpath are:
  * - api_pathfmt10 Combined api-path for both trees
  * @param[in]  yspec0         Top-level yang-spec
- * @param[in]  mtpoint        Mount-point, generic: if there are several with same yang, any will do
+ * @param[in]  mtpoint        Mount-point, on the form: <domain>:<spec>
  * @param[in]  api_path_fmt1  Second part of api-path-fmt
  * @param[out] api_path_fmt01 Combined api-path-fmt
  * @retval     0    OK
  * @retval    -1    Error
  */
 int
-mtpoint_paths(yang_stmt *yspec0,
-              char      *mtpoint,
-              char      *api_path_fmt1,
-              char     **api_path_fmt01)
+mtpoint_paths(clixon_handle h,
+              yang_stmt    *yspec0,
+              const char   *domain,
+              const char   *spec,
+              const char   *api_path_fmt1,
+              char        **api_path_fmt01)
 {
     int        retval = -1;
     yang_stmt *yu = NULL;
@@ -306,7 +308,7 @@ mtpoint_paths(yang_stmt *yspec0,
     cbuf      *cb = NULL;
     cxobj     *xbot0 = NULL;
     cxobj     *xtop0 = NULL;
-    yang_stmt *yspec1;
+    char      *xpath;
     int        ret;
 
     if (api_path_fmt01 == NULL){
@@ -319,22 +321,22 @@ mtpoint_paths(yang_stmt *yspec0,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+    if (yang_mount_get_xpath(h, domain, spec, NULL, &xpath) < 0)
+        goto done;
+    if (xpath == NULL){
+        clixon_err(OE_FATAL, 0, "No mountpoint xpath found in yspec %s", spec);
+        goto done;
+    }
+    if (yang_path_arg(yspec0, xpath, &yu) < 0)
         goto done;
     if (yu == NULL){
         clixon_err(OE_FATAL, 0, "yu not found");
         goto done;
     }
-    if (yang_mount_get(yu, mtpoint, &yspec1) < 0)
-        goto done;
-    if (yspec1 == NULL){
-        clixon_err(OE_FATAL, 0, "yspec1 not found");
-        goto done;
-    }
     xbot0 = xtop0;
     if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
         goto done;
-    if ((ret = xpath2xml(mtpoint, nsc0, xtop0, yspec0, &xbot0, &ybot0, NULL)) < 0)
+    if ((ret = xpath2xml(xpath, nsc0, xtop0, yspec0, &xbot0, &ybot0, NULL)) < 0)
         goto done;
     if (xbot0 == NULL){
         clixon_err(OE_YANG, 0, "No xbot");
@@ -408,9 +410,9 @@ cli_dbxml(clixon_handle       h,
     cxobj     *xtop = NULL;     /* xpath root */
     cxobj     *xerr = NULL;
     cg_var    *cv;
-    char      *str;
     int        cvvi = 0;
-    char      *mtpoint = NULL;
+    char      *mtdomain = NULL;
+    char      *mtspec = NULL;
     yang_stmt *yspec0 = NULL;
     int        argc = 0;
     int        ret;
@@ -424,6 +426,9 @@ cli_dbxml(clixon_handle       h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
+    /* Remove all keywords */
+    if (cvec_exclude_keys(cvv) < 0)
+        goto done;
     /* Concatenate all argv strings to a single string */
     if (cvec_concat_cb(argv, api_path_fmt_cb) < 0)
         goto done;
@@ -431,16 +436,12 @@ cli_dbxml(clixon_handle       h,
     if (cvec_len(argv) > 0){
         argc = cvec_len(argv) - 1;
         cv = cvec_i(argv, argc++);
-        str = cv_string_get(cv);
-        if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0)
-            mtpoint = str + strlen("mtpoint:");
+        if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
+            goto done;
     }
-    /* Remove all keywords */
-    if (cvec_exclude_keys(cvv) < 0)
-        goto done;
-    if (mtpoint){
+    if (mtdomain){
         /* Get and combined api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
         /* Transform template format string + cvv to actual api-path
          * cvvi indicates if all cvv entries were used
@@ -448,7 +449,7 @@ cli_dbxml(clixon_handle       h,
         if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
-    else {
+    else{
         /* Only top-level tree */
         /* Transform template format string + cvv to actual api-path
          * cvvi indicates if all cvv entries were used
@@ -509,6 +510,10 @@ cli_dbxml(clixon_handle       h,
         goto done;
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (api_path_fmt_cb)
         cbuf_free(api_path_fmt_cb);
     if (api_path_fmt01)
@@ -2124,5 +2129,38 @@ cli_alias_show(clixon_handle h,
  done:
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Clear system cache
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  cvv   Vector of variables: function parameters
+ * @param[in]  argv  Arguments given at the callback
+ * @param[in]  argv  <type>
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+cli_cache_clear(clixon_handle h,
+                cvec         *cvv,
+                cvec         *argv)
+{
+    int   retval = -1;
+    char *type;
+    char *domain = NULL;
+    int   i = 0;
+
+    if (cvec_len(argv) != 1 && cvec_len(argv) != 2){
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: <type> [<domain>]");
+        goto done;
+    }
+    type = cv_string_get(cvec_i(argv, i++));
+    if (cvec_len(argv) > i)
+        domain = cv_string_get(cvec_i(argv, i++));
+    if (clixon_rpc_clixon_cache(h, "clear", type, domain, NULL, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    retval = 0;
+ done:
     return retval;
 }

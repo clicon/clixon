@@ -66,7 +66,6 @@
 #include "clixon_cli_api.h"
 
 #include "cli_plugin.h"
-#include "cli_autocli.h"
 #include "cli_generate.h"
 #include "cli_common.h"
 #include "cli_handle.h"
@@ -908,7 +907,7 @@ main(int    argc,
     if (clicon_option_exists(h, "CLICON_CLI_MODE"))
         if ((tmp = clicon_cli_mode(h)) != NULL)
             if (cli_set_syntax_mode(h, tmp) == 0) {
-                fprintf(stderr, "FATAL: Failed to set syntax mode '%s'\n", tmp);
+                fprintf(stderr, "FATAL: Failed to set syntax mode '%s' (not found)\n", tmp);
                 goto done;
             }
 

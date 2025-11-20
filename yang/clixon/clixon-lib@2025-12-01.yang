@@ -1,0 +1,641 @@
+module clixon-lib {
+    yang-version 1.1;
+    namespace "http://clicon.org/lib";
+    prefix cl;
+
+    import ietf-yang-types {
+        prefix yang;
+    }
+    import ietf-netconf-monitoring {
+        prefix ncm;
+    }
+    import ietf-yang-metadata {
+        prefix "md";
+    }
+    organization
+        "Clicon / Clixon";
+
+    contact
+        "Olof Hagsand <olof@hagsand.se>";
+
+    description
+        "***** BEGIN LICENSE BLOCK *****
+       Copyright (C) 2009-2019 Olof Hagsand
+       Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+
+       This file is part of CLIXON
+
+       Licensed under the Apache License, Version 2.0 (the \"License\");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+            http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an \"AS IS\" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+
+       Alternatively, the contents of this file may be used under the terms of
+       the GNU General Public License Version 3 or later (the \"GPL\"),
+       in which case the provisions of the GPL are applicable instead
+       of those above. If you wish to allow use of your version of this file only
+       under the terms of the GPL, and not to allow others to
+       use your version of this file under the terms of Apache License version 2,
+       indicate your decision by deleting the provisions above and replace them with
+       the notice and other provisions required by the GPL. If you do not delete
+       the provisions above, a recipient may use your version of this file under
+       the terms of any one of the Apache License version 2 or the GPL.
+
+       ***** END LICENSE BLOCK *****
+
+       Clixon Netconf extensions for communication between clients and backend.
+       This scheme adds:
+       - Added values of RFC6022 transport identityref
+       - RPCs for debug, stats and process-control
+       - Informal description of attributes
+
+       Clixon also extends NETCONF for internal use with some internal attributes. These
+       are not visible for external usage bit belongs to the namespace of this YANG.
+       The internal attributes are:
+       - content (also RESTCONF)
+       - depth   (also RESTCONF)
+       - username
+       - autocommit
+       - copystartup
+       - transport (see RFC6022)
+       - source-host (see RFC6022)
+       - objectcreate
+       - objectexisted
+       - link # For split multiple XML files
+      ";
+
+    revision 2025-12-01 {
+        description
+            "Added: rpc clixon-cache
+             Released in Clixon 7.7";
+    }
+    revision 2025-08-01 {
+        description
+            "Added: netconf-framing-type
+             Released in Clixon 7.6";
+    }
+    revision 2024-11-01 {
+        description
+            "Added: system-only-config extension
+             Released in Clixon 7.3";
+    }
+    revision 2024-04-01 {
+        description
+            "Added: debug bits type
+             Added: xmldb-split extension
+             Added: Default format
+             Released in Clixon 7.1";
+    }
+    revision 2024-01-01 {
+        description
+            "Removed container creators from 6.5
+             Released in 7.0";
+    }
+    revision 2023-11-01 {
+        description
+            "Added ignore-compare extension
+             Added creator meta configuration
+             Removed obsolete extension autocli-op
+             Released in 6.5.0";
+    }
+    revision 2023-05-01 {
+        description
+            "Restructured and extended stats rpc to schema mountpoints
+             Moved datastore-format typedef from clixon-config
+            ";
+    }
+    revision 2023-03-01 {
+        description
+            "Added creator meta-object";
+    }
+    revision 2022-12-01 {
+        description
+            "Added values of RFC6022 transport identityref
+             Added description of internal netconf attributes";
+    }
+    revision 2021-12-05 {
+        description
+            "Obsoleted: extension autocli-op";
+    }
+    revision 2021-11-11 {
+        description
+            "Changed: RPC stats extended with YANG stats";
+    }
+    revision 2021-03-08 {
+        description
+            "Changed: RPC process-control output to choice dependent on operation";
+    }
+    revision 2020-12-30 {
+        description
+            "Changed: RPC process-control output parameter status to pid";
+    }
+    revision 2020-12-08 {
+        description
+            "Added: autocli-op extension.
+                    rpc process-control for process/daemon management
+             Released in clixon 4.9";
+    }
+    revision 2020-04-23 {
+        description
+            "Added: stats RPC for clixon XML and memory statistics.
+             Added: restart-plugin RPC for restarting individual plugins without restarting backend.";
+    }
+    revision 2019-08-13 {
+        description
+            "No changes (reverted change)";
+    }
+    revision 2019-06-05 {
+        description
+            "ping rpc added for liveness";
+    }
+    revision 2019-01-02 {
+        description
+            "Released in Clixon 3.9";
+    }
+    typedef service-operation {
+        type enumeration {
+            enum start {
+                description
+                "Start if not already running";
+            }
+            enum stop {
+                description
+                "Stop if running";
+            }
+            enum restart {
+                description
+                "Stop if running, then start";
+            }
+            enum status {
+                description
+                    "Check status";
+            }
+        }
+        description
+            "Common operations that can be performed on a service";
+    }
+    typedef datastore_format{
+        description
+            "Datastore format (only xml and json implemented in actual data.";
+        type enumeration{
+            enum xml{
+                description
+                "Save and load xmldb as XML
+                 More specifically, such a file looks like: <config>...</config> provided
+                 DATASTORE_TOP_SYMBOL is 'config'";
+            }
+            enum json{
+                description "Save and load xmldb as JSON";
+            }
+            enum text{
+                description "'Curly' C-like text format";
+            }
+            enum cli{
+                description "CLI format";
+            }
+            enum default{
+                description "Default format";
+            }
+        }
+    }
+    typedef clixon_debug_t {
+        description
+            "Debug flags.
+             Flags are seperated into subject areas and detail
+             Can also be given directly as -D <flag> to clixon commands
+             Note there are also constants in the code that need to be in sync with these values";
+         type bits {
+            /* Subjects: */
+            bit default {
+                description "Default logs";
+                position 0;
+            }
+            bit msg {
+                description "In/out messages";
+                position 1;
+            }
+            bit init {
+                description "Initialization";
+                position 2;
+            }
+            bit xml {
+                description "XML processing";
+                position 3;
+            }
+            bit xpath {
+                description "XPath processing";
+                position 4;
+            }
+            bit yang {
+                description "YANG processing";
+                position 5;
+            }
+            bit backend {
+                description "Backend-specific";
+                position 6;
+            }
+            bit cli {
+                description "CLI frontend";
+                position 7;
+            }
+            bit netconf {
+                description "NETCONF frontend";
+                position 8;
+            }
+            bit restconf {
+                description "RESTCONF frontend";
+                position 9;
+            }
+            bit snmp {
+                description "SNMP frontend";
+                position 10;
+            }
+            bit nacm {
+                description "NACM processing";
+                position 11;
+            }
+            bit proc {
+                description "Process handling";
+                position 12;
+            }
+            bit datastore {
+                description "Datastore xmldb management";
+                position 13;
+            }
+            bit event {
+                description "Event processing";
+                position 14;
+            }
+            bit rpc {
+                description "RPC handling";
+                position 15;
+            }
+            bit stream {
+                description "Notification streams";
+                position 16;
+            }
+            bit parse {
+                description "Parser: XML,YANG, etc";
+                position 17;
+            }
+            bit app {
+                description "External applications";
+                position 20;
+            }
+            bit app2 {
+                description "External application";
+                position 21;
+            }
+            bit app3 {
+                description "External application 2";
+                position 22;
+            }
+            /* Detail level: */
+            bit detail {
+                description "Details: traces, parse trees, etc";
+                position 24;
+            }
+            bit detail2 {
+                description "Extra details";
+                position 25;
+            }
+            bit detail3 {
+                description "Probably more detail than you want";
+                position 26;
+            }
+        }
+    }
+    typedef netconf-framing-type {
+        description
+            "How to trigger service-commit notifications, and thereby action scripts.";
+        type enumeration{
+            enum 1.0 {
+                description
+                    "NETCONF 1.0 framing using end-of-message as defined in RFC 4742";
+            }
+            enum 1.1 {
+                description
+                    "NETCONF 1.1 framing using chunked encoding as defined in RFC 6242";
+            }
+        }
+    }
+    typedef cache-operation {
+        type enumeration {
+            enum read {
+                description "Request cache data from server";
+            }
+            enum clear {
+                description "Clear cache";
+            }
+        }
+    }
+    typedef cache-type {
+        type enumeration {
+            enum autocli {
+                description "Autocli clispec cache";
+            }
+            enum yang-domain {
+                description "Yang domain specs as defined by CLICON_YANG_DOMAIN_DIR";
+            }
+            enum datastore {
+                description "XML datastores (xmldb)";
+            }
+        }
+    }
+    identity snmp {
+        description
+            "SNMP";
+        base ncm:transport;
+    }
+    identity netconf {
+        description
+            "Just NETCONF without specific underlying transport,
+             Clixon uses stdio for its netconf client and therefore does not know whether it is
+             invoked in a script, by a NETCONF/SSH subsystem, etc";
+        base ncm:transport;
+    }
+    identity restconf {
+        description
+            "RESTCONF either as HTTP/1 or /2, TLS or not, reverse proxy (eg fcgi/nginx) or native";
+        base ncm:transport;
+    }
+    identity cli {
+        description
+            "A CLI session";
+        base ncm:transport;
+    }
+    extension ignore-compare {
+        description
+            "The object should be ignored when comparing device configs for equality.
+             The object should never be added, modified, or deleted on target.
+             Essentially a read-only object
+             One example is auto-created objects by the controller, such as uid.";
+    }
+    extension xmldb-split {
+        description
+            "When split configuration stores are used, ie CLICON_XMLDB_MULTI is set,
+             This extension marks where in the configuration tree, one file terminates
+             and a new sub-file is written.
+             A designer adds the 'xmldb-split' extension to a YANG node which should be split.
+             For example, a split could be made at mountpoints.
+             See also the 'link 'attribute.
+             ";
+    }
+    extension system-only-config {
+        description
+            "This extension marks which fields in the configuration tree should not be
+             saved to datastore and be removed from memory after commit.
+             Instead, the application must provide a mechanism to save the system-only-config
+             in the system:
+               1. Mark system-only config data in YANG with this extension
+               2. Write a commit callback for data write
+               2. Write a system-only-config callback for data read
+             Note that the XML with these values will be remove from the datastore. The remaining XML
+             still needs to be valid XML wrt YANG.
+             An example of an invalid marking would be a list key. Because if the list keys are
+             removed, the remaining XML would no longer be valid wrt the YANG list";
+    }
+    md:annotation creator {
+        type string;
+        description
+            "This annotation contains the name of a creator of an object.
+             One application is the clixon controller where multiple services can
+             create the same object. When such a service is deleted (or changed) one needs to keep
+             track of which service created what.
+             Limitations: only objects that are actually added or deleted.
+             A sub-object will not be noted";
+    }
+    rpc debug {
+        description
+            "Set debug flags of backend.
+             Note only numerical values";
+        input {
+            leaf level {
+                type uint32;
+            }
+        }
+    }
+    rpc ping {
+        description "Check aliveness of backend daemon.";
+    }
+    rpc stats { /* Could be moved to state */
+        description "Clixon yang and datastore statistics.";
+        input {
+            leaf modules {
+                description "If enabled include per-module statistics";
+                type boolean;
+                mandatory false;
+            }
+        }
+        output {
+            container global{
+                description
+                    "Clixon global statistics.
+                     These are global counters incremented by new() and decreased by free() calls.
+                     This number is higher than the sum of all datastore/module residing objects, since
+                     objects may be used for other purposes than datastore/modules";
+                leaf xmlnr{
+                    description
+                        "Number of existing XML objects: number of residing xml/json objects
+                         in the internal 'cxobj' representation.";
+                    type uint64;
+                }
+                leaf yangnr{
+                    description
+                        "Number of resident YANG objects. ";
+                    type uint64;
+                }
+            }
+            container datastores{
+                list datastore{
+                    description "Per datastore statistics for cxobj";
+                    key "name";
+                    leaf name{
+                        description "Name of datastore (eg running).";
+                        type string;
+                    }
+                    leaf nr{
+                        description "Number of XML objects. That is number of residing xml/json objects
+                             in the internal 'cxobj' representation.";
+                        type uint64;
+                    }
+                    leaf size{
+                        description "Size in bytes of internal datastore cache of datastore tree.";
+                        type uint64;
+                    }
+                }
+            }
+            container module-sets{
+                list module-set{
+                    description "Statistics per domain, eg top-level and mount-points";
+                    key "name";
+                    leaf name{
+                        description "Name of YANG domain.";
+                        type string;
+                    }
+                    leaf nr{
+                        description
+                            "Total number of YANG objects in set";
+                        type uint64;
+                    }
+                    leaf size{
+                        description
+                            "Total size in bytes of internal YANG object representation for module set";
+                        type uint64;
+                    }
+                    list module{
+                        description "Statistics per module (if modules set in input)";
+                        key "name";
+                        leaf name{
+                            description "Name of YANG module.";
+                            type string;
+                        }
+                        leaf nr{
+                            description
+                                "Number of YANG objects. That is number of residing YANG objects";
+                            type uint64;
+                        }
+                        leaf size{
+                            description
+                                "Size in bytes of internal YANG object representation.";
+                            type uint64;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    rpc restart-plugin {
+        description "Restart specific backend plugins.";
+        input {
+            leaf-list plugin {
+                description "Name of plugin to restart";
+                type string;
+            }
+        }
+    }
+    rpc process-control {
+        description
+            "Control a specific process or daemon: start/stop, etc.
+             This is for direct managing of a process by the backend.
+             Alternatively one can manage a daemon via systemd, containerd, kubernetes, etc.";
+        input {
+            leaf name {
+                description "Name of process";
+                type string;
+                mandatory true;
+            }
+            leaf operation {
+                type service-operation;
+                mandatory true;
+                description
+                    "One of the strings 'start', 'stop', 'restart', or 'status'.";
+            }
+        }
+        output {
+            choice result {
+                case status {
+                    description
+                        "Output from status rpc";
+                    leaf active {
+                        description
+                            "True if process is running, false if not.
+                             More specifically, there is a process-id and it exists (in Linux: kill(pid,0).
+                             Note that this is actual state and status is administrative state,
+                             which means that changing the administrative state, eg stopped->running
+                             may not immediately switch active to true.";
+                        type boolean;
+                    }
+                    leaf description {
+                        type string;
+                        description "Description of process. This is a static string";
+                    }
+                    leaf command {
+                        type string;
+                        description "Start command with arguments";
+                    }
+                    leaf status {
+                        description
+                            "Administrative status (except on external kill where it enters stopped
+                             directly from running):
+                             stopped: pid=0,   No process running
+                             running: pid set, Process started and believed to be running
+                             exiting: pid set, Process is killed by parent but not waited for";
+                        type string;
+                    }
+                    leaf starttime {
+                        description "Time of starting process UTC";
+                        type yang:date-and-time;
+                    }
+                    leaf pid {
+                        description "Process-id of main running process (if active)";
+                        type uint32;
+                    }
+                }
+                case other {
+                    description
+                        "Output from start/stop/restart rpc";
+                    leaf ok {
+                        type empty;
+                    }
+                }
+            }
+        }
+    }
+    rpc clixon-cache {
+        description
+            "Perform operations on cache data.
+             This includes clearing data, as well as read and write data between client and backend server.
+             If read operation returns data-missing the entry does not exist";
+        input {
+            leaf operation {
+                type cache-operation;
+                mandatory true;
+            }
+            leaf type {
+                type cache-type;
+                mandatory true;
+            }
+            leaf domain {
+                description
+                    "YANG or XMLDB domain, in the latter case prefix of xmldb name";
+                type string;
+            }
+            leaf spec {
+                description
+                    "YANG spec";
+                type string;
+            }
+            leaf module {
+                description
+                    "YANG module";
+                type string;
+            }
+            leaf revision {
+                description
+                    "YANG module revision";
+                type string;
+            }
+            leaf keyword {
+                description
+                    "YANG symbol keyword, eg grouping";
+                type string;
+            }
+            leaf argument {
+                description
+                    "YANG argument name";
+                type string;
+            }
+        }
+        output {
+            anydata data {
+                description "Get cache data";
+            }
+        }
+    }
+}

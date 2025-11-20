@@ -34,12 +34,29 @@
   * C-code corresponding to clixon-autocli.yang
  */
 
-#ifndef _CLI_AUTOCLI_H_
-#define _CLI_AUTOCLI_H_
+#ifndef _CLIXON_AUTOCLI_H_
+#define _CLIXON_AUTOCLI_H_
 
 /*
  * Types
  */
+/*! Autocli list keyword type, see clixon-autocli.yang list-keyword-type
+ *
+ * Assume a YANG LIST: 
+ *    list a {
+ *       key x;
+ *       leaf x;
+ *       leaf y;
+ *    }
+ * Maybe this type should be in cli_autocli.h
+ */
+enum autocli_listkw{
+    AUTOCLI_LISTKW_NONE,  /* No extra keywords, only <vars>: a <x> <y> */
+    AUTOCLI_LISTKW_NOKEY, /* Keywords on non-key variables: a <x> y <y> */
+    AUTOCLI_LISTKW_ALL,   /* Keywords on all variables: a x <x> y <y> */
+};
+typedef enum autocli_listkw autocli_listkw_t;
+
 /*! Autocli operation, see clixon-autocli.yang autocli-op type
  */
 enum autocli_op{
@@ -52,9 +69,6 @@ enum autocli_op{
 enum autocli_cache{
     AUTOCLI_CACHE_DISABLED, /* Do not use cache  */
     AUTOCLI_CACHE_READ,     /* If clispec file exists read from cache, if not found generate */
-    AUTOCLI_CACHE_WRITE,    /* Generate clispec and write to cache */
-    AUTOCLI_CACHE_READWRITE /* If clispec file exists, read from cache,
-                               if not found, generate and write cache file */
 };
 typedef enum autocli_cache autocli_cache_t;
 
@@ -70,4 +84,5 @@ int autocli_treeref_state(clixon_handle h, int *treeref_state);
 int autocli_edit_mode(clixon_handle h, const char *keyw, int *flag);
 int autocli_cache(clixon_handle h, autocli_cache_t *type, char **dir);
 
-#endif  /* _CLI_AUTOCLI_H_ */
+
+#endif  /* _CLIXON_AUTOCLI_H_ */

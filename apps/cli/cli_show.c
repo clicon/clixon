@@ -51,15 +51,17 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <pwd.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+
+#include <assert.h> // XXX
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -69,7 +71,6 @@
 
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
-#include "cli_autocli.h"
 #include "cli_common.h" /* internal functions */
 
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)
@@ -344,10 +345,10 @@ expand_dbvar(clixon_handle h,
     cbuf            *cbxpath = NULL;
     yang_stmt       *ypath;
     yang_stmt       *ytype;
-    char            *mtpoint = NULL;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     yang_stmt       *yspec0 = NULL;
     cvec            *nsc0 = NULL;
-    char            *str;
     int              grouping_treeref;
     cvec            *callback_cvv;
     int              argc = 0;
@@ -394,18 +395,17 @@ expand_dbvar(clixon_handle h,
     api_path_fmt = cbuf_get(api_path_fmt_cb);
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
         goto done;
-    str = NULL;
     cv = cvec_i(argv, argc++);
-    str = cv_string_get(cv);
-    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
-        mtpoint = str + strlen("mtpoint:");
+    if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
+        goto done;
+    if (mtdomain != NULL) {
         /* Get and combined api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
         if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
-    else{
+    else {
         if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
@@ -440,7 +440,7 @@ expand_dbvar(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (mtpoint){
+    if (mtdomain){
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
             goto done;
         cv = NULL;      /* Append nsc0 to nsc */
@@ -501,6 +501,10 @@ expand_dbvar(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (cvv2)
         cvec_free(cvv2);
     if (nsc0)
@@ -1212,8 +1216,8 @@ cli_show_auto(clixon_handle h,
     cg_var          *cv;
     char            *api_path_fmt;  /* xml key format */
     char            *api_path_fmt01 = NULL;
-    char            *str;
-    char            *mtpoint = NULL;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     int              fromroot = 0;
     cbuf            *api_path_fmt_cb = NULL;
 
@@ -1235,13 +1239,16 @@ cli_show_auto(clixon_handle h,
     }
     cprintf(api_path_fmt_cb, "%s", cv_string_get(cv));
     api_path_fmt = cbuf_get(api_path_fmt_cb);
-    str = cv_string_get(cvec_i(argv, argc++));
-    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
-        mtpoint = str + strlen("mtpoint:");
-        dbname = cv_string_get(cvec_i(argv, argc++));
+    cv = cvec_i(argv, argc++);
+    if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
+        goto done;
+    if (mtdomain){
+        cv = cvec_i(argv, argc++);
+        dbname = cv_string_get(cv);
     }
-    else
-        dbname = str;
+    else{
+        dbname = cv_string_get(cv);
+    }
     if (cvec_len(argv) > argc)
         if (cli_show_option_format(h, argv, argc++, &format) < 0)
             goto done;
@@ -1268,9 +1275,9 @@ cli_show_auto(clixon_handle h,
     }
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
         goto done;
-    if (mtpoint){
+    if (mtdomain){
         /* Get and combined api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
         if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
@@ -1291,6 +1298,10 @@ cli_show_auto(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (api_path_fmt_cb)
         cbuf_free(api_path_fmt_cb);
     if (cvv2)
@@ -1357,9 +1368,12 @@ cli_show_auto_mode(clixon_handle h,
     int              argc = 0;
     int              skiptop = 0;
     char            *xpath = NULL;
+    char            *mtxpath = NULL;
     yang_stmt       *yspec0;
     yang_stmt       *yspec;
     char            *api_path = NULL;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     char            *mtpoint = NULL;
     yang_stmt       *yu;
     cbuf            *cbxpath = NULL;
@@ -1402,9 +1416,13 @@ cli_show_auto_mode(clixon_handle h,
     else
         api_path = "/";
     if (clicon_data_get(h, "cli-edit-mtpoint", &mtpoint) == 0 && strlen(mtpoint)){
-        if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+        if (mtpoint_decode(mtpoint, ":", &mtdomain, &mtspec) < 0)
             goto done;
-        if (yang_mount_get(yu, mtpoint, &yspec) < 0)
+        if (yang_mount_get_xpath(h, mtdomain, mtspec, NULL, &mtxpath) < 0)
+            goto done;
+        if (yang_path_arg(yspec0, mtxpath, &yu) < 0)
+            goto done;
+        if (yang_mount_get(yu, mtxpath, &yspec) < 0)
             goto done;
     }
     yspec = yspec0;
@@ -1418,7 +1436,7 @@ cli_show_auto_mode(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (mtpoint){
+    if (mtxpath){
         /*
          * XXX disabled the line below, because otherwise the path up to the
          * mount point would be added twice to cbxpath. This is because the
@@ -1440,6 +1458,10 @@ cli_show_auto_mode(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (nsc0)
         cvec_free(nsc0);
     if (cbxpath)

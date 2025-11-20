@@ -303,3 +303,7 @@
  * Also may be unnecesary due to other optimizations
  */
 #undef XMLDB_CANDIDATE_INMEM
+
+/*! CLI generation has YANG dependencies in post-processing
+ */
+#define YANG2CLI_POST

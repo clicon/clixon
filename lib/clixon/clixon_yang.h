@@ -302,7 +302,6 @@ int        yang_stats(yang_stmt *y, enum rfc_6020 keyw, uint64_t *nrp, size_t *s
 /* Other functions */
 yang_stmt *yspec_new(clixon_handle h, const char *name);
 yang_stmt *yspec_new1(clixon_handle h, const char *domain, const char *name);
-yang_stmt *yspec_new_shared(clixon_handle h, const char *xpath, const char *domain, const char *name, yang_stmt *yspec0);
 yang_stmt *ydomain_new(clixon_handle h, const char *domain);
 yang_stmt *ys_new(enum rfc_6020 keyw);
 yang_stmt *ys_prune(yang_stmt *yp, int i);

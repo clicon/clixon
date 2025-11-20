@@ -71,7 +71,6 @@
  *                     XXXX - yang_mount_get(): ymnt + xpath -> yspec
  * - yang_mount_set(): ymnt
  * - xml_yang_mount_get(): xmnt-> yspec
- * - xml_yang_mount_set(): xmnt -> yspec
  * - yang_mount_get_yspec_any(): ymnt -> yspec
  * - yang_mount_xmnt2ymnt_xpath(): xmnt -> ymnt + xpath
  * - yang_mount_xtop2xmnt(): top-level xml -> xmnt vector
@@ -102,6 +101,7 @@
 /* clixon */
 #include "clixon_queue.h"
 #include "clixon_hash.h"
+#include "clixon_digest.h"
 #include "clixon_string.h"
 #include "clixon_map.h"
 #include "clixon_handle.h"
@@ -202,6 +202,60 @@ xml_schema_mount_point(cxobj *x)
         yang_flag_get(y, YANG_FLAG_MTPOINT_POTENTIAL) ? 1 : 0;
 }
 
+/*! Get yangspec mount-point and xpath
+ *
+ * @param[in]  h      Clixon handle
+ * @param[in]  ys     Yang container/list containing unknown node
+ * @param[in]  domain Yang domain, or NULL to iterate through all
+ * @param[in]  xpath  Key for yspec on y (NULL matches first)
+ * @param[out] yspec  YANG stmt spec
+ * @param[out] xpathp Xpath to mountpoint
+ * @retval     0      OK
+ * @retval    -1      Error
+ * With domains it is assumed an xpath is unique across domains, which is true if the xpath
+ * has eg a list name which is unique. But there could be cases where this is not true.
+ * @see yang_mount_get  which is stranger
+ */
+int
+yang_mount_get_xpath(clixon_handle h,
+                     const char   *domain,
+                     const char   *spec,
+                     yang_stmt   **yspecp,
+                     char        **xpathp)
+{
+    int        retval = 1;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
+    yang_stmt *yspec = NULL;
+    cvec      *cvv;
+    cg_var    *cv;
+    int        inext;
+
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
+    inext = 0;
+    ydomain = NULL;
+    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+        if (domain != NULL && strcmp(domain, yang_argument_get(ydomain)) != 0)
+            continue;
+        if ((yspec = yang_find(ydomain, Y_SPEC, spec)) != NULL &&
+            yang_flag_get(yspec, YANG_FLAG_SPEC_MOUNT) != 0){
+            if (yspecp)
+                *yspecp = yspec;
+            if ((cvv = yang_cvec_get(yspec)) != NULL &&
+                (cv = cvec_i(cvv,0)) != NULL &&
+                xpathp)
+                *xpathp = cv_name_get(cv);
+            break;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Get yangspec mount-point
  *
  * @param[in]  ys    Yang container/list containing unknown node
@@ -211,6 +265,7 @@ xml_schema_mount_point(cxobj *x)
  * @retval    -1     Error
  * With domains it is assumed an xpath is unique across domains, which is true if the xpath
  * has eg a list name which is unique. But there could be cases where this is not true.
+ * @see yang_mount_get_xpath  which is slightly different (but more logical)
  */
 int
 yang_mount_get(yang_stmt  *ys,
@@ -248,6 +303,7 @@ yang_mount_get(yang_stmt  *ys,
  done:
     return retval;
 }
+
 
 /*! Get any yspec of a mount-point, special function
  *
@@ -306,7 +362,7 @@ static int
 yang_mount_xmnt2ymnt_xpath(clixon_handle h,
                            cxobj        *xmnt,
                            yang_stmt   **ymntp,
-                           char        **xpath)
+                           char        **xpathp)
 {
     int        retval = -1;
     yang_stmt *yspec;
@@ -330,7 +386,7 @@ yang_mount_xmnt2ymnt_xpath(clixon_handle h,
     if (xml_nsctx_node(xmnt, &nsc0) < 0)
         goto done;
     yspec = clicon_dbspec_yang(h);
-    if ((ret = xpath2canonical(xpath0, nsc0, yspec, xpath, &nsc1, &reason)) < 0)
+    if ((ret = xpath2canonical(xpath0, nsc0, yspec, xpathp, &nsc1, &reason)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -397,40 +453,6 @@ xml_yang_mount_get(clixon_handle   h,
  fail:
     retval = 0;
     goto done;
-}
-
-/*! Set yangspec mount-point via XML mount-point node
- *
- * Stored in a separate structure (not in XML config tree)
- * @param[in]  h      Clixon handle
- * @param[in]  xmnt   XML mount-point
- * @param[in]  yspec  Yangspec for this mount-point (consumed)
- * @retval     0      OK
- * @retval    -1      Error
- */
-int
-xml_yang_mount_set(clixon_handle h,
-                   cxobj        *xmnt,
-                   yang_stmt    *yspec)
-{
-    int        retval = -1;
-    yang_stmt *ymnt = NULL;
-    char      *xpath = NULL;
-    int        ret;
-
-    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xmnt, &ymnt, &xpath)) < 0)
-        goto done;
-    if (ret == 0){
-        clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
-        goto done;
-    }
-    if (yang_mount_set(ymnt) < 0)
-        goto done;
-    retval = 0;
- done:
-    if (xpath)
-        free(xpath);
-    return retval;
 }
 
 /*! Find schema mounts - callback function for xml_apply
@@ -723,67 +745,58 @@ yang_schema_mount_statedata(clixon_handle h,
     goto done;
 }
 
-/*! Given xml mount-point and yanglib, find existing yspec
+/*! Digest of an XML RFC 8525 yang-library
  *
- * Get and loop through all XML from xt mount-points.
- * Get xyanglib and if equal to xt, find and return yspec
- * @param[in]   h        Clixon handle
- * @param[in]   xt       XML tree node
- * @param[in]   xyanglib yanglib in XML
- * @param[out]  yspecp   Yang spec
- * @retval      0        OK
- * @retval     -1        Error
+ * <tree>
+ *   <one>A</one>
+ *   <two>
+ *     <sub>B</sub>
+ *   </two>
+ * </name>
+ * The digest is computed on the following strings of a tree:
+ * @param[in]  xylib   XYanglib
+ * @param[out] digest  Malloced digest, free after use
+ * @retval     0       OK
+ * @retval    -1       Error
+ * XXX: maybe move to better place?
  */
-static int
-yang_schema_find_share(clixon_handle h,
-                       cxobj        *xt,
-                       cxobj        *xyanglib,
-                       yang_stmt   **yspecp)
+int
+xyanglib_digest(cxobj *xylib,
+                char **digest)
 {
-    int     retval = -1;
-    cvec   *cvv = NULL;
-    cg_var *cv;
-    cxobj  *xroot;
-    cxobj  *xmnt;
-    cxobj  *xylib = NULL;
-    int     config = 1;
-    int     ret;
+    int    retval = -1;
+    cbuf  *cb = NULL;
+    cxobj *xmodset;
+    cxobj *xmodule;
+    char  *b;
 
-    xroot = xml_root(xt);
-    /* Get all XML mtpoints */
-    if (yang_mount_xtop2xmnt(xroot, &cvv) < 0)
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
-    /* Loop through XML mount-points */
-    cv = NULL;
-    while ((cv = cvec_each(cvv, cv)) != NULL) {
-        xmnt = cv_void_get(cv);
-        if (xmnt == xt)
-            continue;
-        if (xylib){
-            xml_free(xylib);
-            xylib = NULL;
+    }
+    if ((xmodset = xml_find(xylib, "module-set")) != NULL){
+        xmodule = NULL;
+        while ((xmodule = xml_child_each(xmodset, xmodule, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(xmodule), "name") == 0){
+                cprintf(cb, "%s", xml_body(xmodule));
+                continue;
+            }
+            if (strcmp(xml_name(xmodule), "module") != 0)
+                continue;
+            if ((b = xml_find_body(xmodule, "name")) != NULL)
+                cprintf(cb, "%s", b);
+            if ((b = xml_find_body(xmodule, "revision")) != NULL)
+                cprintf(cb, "%s", b);
+            if ((b = xml_find_body(xmodule, "namespace")) != NULL)
+                cprintf(cb, "%s", b);
         }
-        /* Get xyanglib */
-        if (clixon_plugin_yang_mount_all(h, xmnt, &config, NULL, &xylib) < 0)
+        if (clixon_digest_hex(cbuf_get(cb), digest) < 0)
             goto done;
-        if (xylib == NULL)
-            continue;
-        /* Check if equal */
-        if (xml_tree_equal(xyanglib, xylib) == 1)
-            continue;
-        /* Find and return yspec */
-        *yspecp = NULL;
-        if ((ret = xml_yang_mount_get(h, xmnt, NULL, NULL, yspecp)) < 0)
-            goto done;
-        if (ret == 1 && *yspecp != NULL)
-            break;
     }
     retval = 0;
  done:
-    if (xylib)
-        xml_free(xylib);
-    if (cvv)
-        cvec_free(cvv);
+    if (cb)
+        cbuf_free(cb);
     return retval;
 }
 
@@ -791,7 +804,7 @@ yang_schema_find_share(clixon_handle h,
  *
  * Optionally check for shared yspec
  * @param[in]  h        Clixon handle
- * @param[in]  xt       XML tree node
+ * @param[in]  xmnt     XML tree node
  * @param[in]  xyanglib XML yang-lib
  * @param[out] yspecp   Resulting mounted yang spec
  * @retval     1        OK
@@ -800,30 +813,30 @@ yang_schema_find_share(clixon_handle h,
  */
 int
 yang_schema_yanglib_mount_parse(clixon_handle h,
-                                cxobj        *xt,
+                                cxobj        *xmnt,
                                 cxobj        *xyanglib,
                                 yang_stmt   **yspecp)
 {
     int        retval = -1;
-    cxobj     *xb;
+    cxobj     *xdomain;
     char      *domain = NULL;
     yang_stmt *ymounts;
     yang_stmt *ydomain;
-    yang_stmt *yspec0 = NULL;
     yang_stmt *yspec1 = NULL;
+    yang_stmt *ymnt;
     char      *xpath = NULL;
-    cbuf      *cb = NULL;
-    static unsigned int nr = 0;
+    char      *digest = NULL;
+    int        new = 0;
     int        ret;
 
-    if ((xb = xpath_first(xyanglib, NULL, "module-set/name")) != NULL)
-        domain = xml_body(xb);
+    if ((xdomain = xpath_first(xyanglib, NULL, "module-set/name")) != NULL)
+        domain = xml_body(xdomain);
     if (domain == NULL){
         clixon_err(OE_YANG, 0, "domain not found");
         goto done;
     }
     /* Get xpath */
-    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xt, NULL, &xpath)) < 0)
+    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xmnt, NULL, &xpath)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
@@ -838,17 +851,21 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
             goto done;
     }
     /* Optimization: find equal yspec from other mount-point */
-    if (yang_schema_find_share(h, xt, xyanglib, &yspec0) < 0)
+    if (xyanglib_digest(xyanglib, &digest) < 0)
         goto done;
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_YANG, errno, "cbuf_new");
+    if ((yspec1 = yang_find(ydomain, Y_SPEC, digest)) == NULL){
+        if ((yspec1 = yspec_new1(h, domain, digest)) == NULL)
+            goto done;
+        new++;
+        yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
+    }
+    if (yang_cvec_add(yspec1, CGV_STRING, xpath) == NULL){
+        yspec1 = NULL;
         goto done;
     }
-    cprintf(cb, "%u", nr++);
-    if (NULL == (yspec1 = yspec_new_shared(h, xpath, domain, cbuf_get(cb), yspec0)))
-        goto done;
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
-    if (yspec0 == NULL && yspec1 != NULL){
+    if (new){ // XXX move ^
+        /* Parse yang modules into yspec */
         if ((ret = yang_lib2yspec(h, xyanglib, xpath, domain, yspec1)) < 0)
             goto done;
         if (ret == 0){
@@ -856,17 +873,23 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
             goto anydata;
         }
     }
-    if (xml_yang_mount_set(h, xt, yspec1) < 0)
+    if ((ret = yang_mount_xmnt2ymnt_xpath(h, xmnt, &ymnt, NULL)) < 0)
+        goto done;
+    if (ret == 0){
+        clixon_err(OE_YANG, 0, "Mapping xmnt to ymnt and xpath");
+        goto done;
+    }
+    if (yang_mount_set(ymnt) < 0) /* Just set YANG_FLAG_MOUNTPOINT */
         goto done;
     if (yspecp)
         *yspecp = yspec1;
     yspec1 = NULL;
     retval = 1;
  done:
+    if (digest)
+        free(digest);
     if (yspec1)
         ys_free(yspec1);
-    if (cb)
-        cbuf_free(cb);
     if (xpath)
         free(xpath);
     return retval;
