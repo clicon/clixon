@@ -72,7 +72,6 @@
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
-#include "cli_autocli.h"
 #include "cli_common.h"
 
 /*

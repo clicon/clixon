@@ -39,6 +39,7 @@ module clixon-config {
        Alternatively, the contents of this file may be used under the terms of
        the GNU General Public License Version 3 or later (the \"GPL\"),
        in which case the provisions of the GPL are applicable instead
+
        of those above. If you wish to allow use of your version of this file only
        under the terms of the GPL, and not to allow others to
        use your version of this file under the terms of Apache License version 2,
@@ -92,7 +93,7 @@ module clixon-config {
                 CLICON_YANG_SCHEMA_MOUNT_SHARE: Share same YANGs of equal moint-points.
                 CLICON_SOCK_PRIO: Enable socket event priority
                 CLICON_XMLDB_MULTI: Split datastore into multiple sub files
-                CLICON_CLI_OUTPUT_FORMAT: Defauldirt CLI output format
+                CLICON_CLI_OUTPUT_FORMAT: Default CLI output format
                 CLICON_AUTOLOCK: Implicit locks
              Released in Clixon 7.1";
     }
@@ -572,14 +573,15 @@ module clixon-config {
         leaf CLICON_YANG_DOMAIN_DIR {
             type string;
             description
-                "Virtual domain directory for RFC 8528 mount-points.
+                "Cached domain directory for RFC 8528 mount-points.
                  If set and domain is given, instead of loading from CLICON_YANG_MAIN_DIR,
                  look for .yang files first in CLICON_YANG_DOMAIN_DIR/domain,
                  where domain is given as yangmnt:mount-point <domain>;
                  Useful in eg mountpoints where another YANG domain may be required,
                  even isolated from the main YANG context, as well as from other moint-points.
                  Note that CLICON_YANG_DIR that may be given as library YANGs are not isolated.
-                 If not set, use CLICON_YANG_MAIN_DIR as default.";
+                 If not set, use CLICON_YANG_MAIN_DIR as default.
+                 Can use rpc clixon-lib:clixon-cache type=yang-domain to show and clear";
         }
         leaf CLICON_YANG_MODULE_MAIN {
             type string;

@@ -70,6 +70,7 @@ int clicon_rpc_create_subscription(clixon_handle h, char *stream, char *filter, 
 int clicon_rpc_debug(clixon_handle h, int level);
 int clicon_rpc_restconf_debug(clixon_handle h, int level);
 int clicon_hello_req(clixon_handle h, char *transport, char *source_host, uint32_t *id);
+int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, const char *domain, const char *spec, const char *module, const char *revision, const char *keyword, const char *argument, cbuf *data);
 int clicon_rpc_restart_plugin(clixon_handle h, char *plugin);
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */

@@ -50,11 +50,17 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* libclixon */
-#include <clixon/clixon.h>
-
-#include "clixon_cli_api.h"
-#include "cli_autocli.h"
+/* clixon */
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_data.h"
+#include "clixon_map.h"
+#include "clixon_err.h"
+#include "clixon_autocli.h"
 
 /* Mapping from YANG autocli-op to C enum */
 static const map_str2int autocli_op_map[] = {
@@ -72,15 +78,6 @@ static const map_str2int list_kw_map[] = {
     {NULL,      -1}
 };
 
-/* Mapping from YANG autocli cache-type to C enum */
-static const map_str2int autocli_cache_map[] = {
-    {"disabled",  AUTOCLI_CACHE_DISABLED},
-    {"read",      AUTOCLI_CACHE_READ},
-    {"write",     AUTOCLI_CACHE_WRITE},
-    {"readwrite", AUTOCLI_CACHE_READWRITE},
-    {NULL,       -1}
-};
-
 static int
 autocli_str2op(char *str)
 {
@@ -91,12 +88,6 @@ static int
 autocli_listkw_str2int(char *str)
 {
     return clicon_str2int(list_kw_map, str);
-}
-
-static int
-autocli_cache_str2int(char *str)
-{
-    return clicon_str2int(autocli_cache_map, str);
 }
 
 /*! Filter module name according to cli_autocli.yang setting
@@ -568,37 +559,5 @@ autocli_edit_mode(clixon_handle h,
  done:
     if (vec)
         free(vec);
-    return retval;
-}
-
-/*! Return clispec cache setting
- *
- * @param[in]  h    Clixon handle
- * @param[out] type Cache type
- * @param[out] dir  Cache dir
- * @retval     0    OK
- * @retval    -1    Error
- */
-int
-autocli_cache(clixon_handle    h,
-              autocli_cache_t *type,
-              char           **dir)
-{
-    int    retval = -1;
-    cxobj *xautocli;
-    char  *str;
-
-    if ((xautocli = clicon_conf_autocli(h)) == NULL){
-        clixon_err(OE_YANG, 0, "No clixon-autocli");
-        goto done;
-    }
-    if ((str = xml_find_body(xautocli, "clispec-cache")) == NULL){
-        clixon_err(OE_XML, EINVAL, "No clispec-cache rule");
-        goto done;
-    }
-    *type = autocli_cache_str2int(str);
-    *dir = xml_find_body(xautocli, "clispec-cache-dir");
-    retval = 0;
- done:
     return retval;
 }

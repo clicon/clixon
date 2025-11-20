@@ -34,8 +34,8 @@
 
  */
 
-#ifndef _CLI_GENERATE_H_
-#define _CLI_GENERATE_H_
+#ifndef _CLIXON_AUTOCLI_GENERATE_H_
+#define _CLIXON_AUTOCLI_GENERATE_H_
 
 /*
  * Constants
@@ -50,6 +50,9 @@
 #define GENERATE_CALLBACK "overwrite_me"
 #define GROUPING_CALLBACK "prepend_me"
 #define MTPOINT_PREFIX    "mtpoint:"
+
+/* variable expand function */
+#define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
 /* Name of autocli CLIgen treename */
 #define AUTOCLI_TREENAME "basemodel"
@@ -66,8 +69,10 @@
 /*
  * Prototypes
  */
-int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, char *treename);
-int yang2cli_grouping_wrap(cligen_handle ch, const char *name, cvec *cvt, void *arg, char **namep);
-int yang2cli_init(clixon_handle h);
+int yang2cli_tree_encode(cbuf *cb, const char *delim, const char *domain, const char *spec, const char *module, const char *revision, const char *keyword, const char *argument);
+int yang2cli_tree_decode(const char *cmd, const char *delim, char **domain, char **spec, char **module,
+                        char **revision, char **keyword, char **argument);
+int yang2cli_grouping(clixon_handle h, yang_stmt *ys, yang_stmt *ymod, const char *domain, const char *treename, cbuf *cb);
+int yang2cli_stmt(clixon_handle h, yang_stmt *ys, int level, cbuf *cb);
 
-#endif  /* _CLI_GENERATE_H_ */
+#endif  /* _CLIXON_AUTOCLI_GENERATE_H_ */
