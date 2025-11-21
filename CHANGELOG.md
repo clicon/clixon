@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.6.0](#760) Expected: October 2025
+* [7.6.0](#760) 21 November 2025
 * [7.5.0](#750) 29 July 2025
 * [7.4.0](#740) 3 April 2025
 * [7.3.0](#730) 30 January 2025
@@ -16,39 +16,50 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.6.0
-Expected: October 2025
+21 November 2025
+
+The Clixon 7.6 release supports the private candidate draft and also NETCONF compare in RFC 9144, along with several smaller feature updates.
 
 ### Features
 
-* Add compile-time option `YANG_UNIQUE_MULTI_IGNORE` to accept multiple descendant nodes in a unique statement.
-* XPath functions:
+* New: [NETCONF and RESTCONF Private candidate datastores](https://github.com/clicon/clixon/issues/615)
+  * according to: https://www.ietf.org/archive/id/draft-ietf-netconf-privcand-08.html
+* New: Compare RPC as defined in RFC9144 and yang module ietf-nmda-compare
+* XPath:
   * Support `concat` and `number` XPath function
   * `XPATH_FUNCTION_NYI_IGNORE` compile-time constant to ignore unimplemented XPath functions
-* Tolerate "<filename>@latest.yang" as yang filename.
-* New: Implement YANG "augment" as sub-statement of a "uses" statement
-* New: Compare RPC as defined in RFC9144 and yang module ietf-nmda-compare
-* New: [NETCONF and RESTCONF Private candidate datastores](https://github.com/clicon/clixon/issues/615)
 * All internal session clients start with NETCONF hello
-* New `clixon-lib@2025-08-01.yang` revision
-   * Added `netconf-framing-type`
-* New `clixon-config@2025-08-01.yang` revision
-   * Added option: `CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA` to encode schema content with CDATA
-   * Added option: `CLICON_XMLDB_PRIVATE_CANDIDATE` to enable private candidate
+* Yang features
+  * Tolerate "<filename>@latest.yang" as yang filename.
+  * New: Implement YANG "augment" as sub-statement of a "uses" statement
+  * New `clixon-lib@2025-08-01.yang` revision
+    * Added `netconf-framing-type`
+  * New `clixon-config@2025-08-01.yang` revision
+    * Added option: `CLICON_NETCONF_MONITORING_GETSCHEMA_CDATA` to encode schema content with CDATA
+    * Added option: `CLICON_XMLDB_PRIVATE_CANDIDATE` to enable private candidate
 
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
 
-* Renamed `clicon_strsep() --> `clixon_strsep1()
+* Renamed `clicon_strsep()` --> `clixon_strsep1()`
 * Changed signature of send hello function:
   * `clixon_client_hello(s, d, v)` -> `clixon_client_hello(s, d, base10, base11, privcand)`
 * Change int to size_t in `cxvec_append()` and related functions and data-types
   * Calling types may need to be adjusted
 * Modified and re-factor datastore API
   * Use API instead of direct access of db-elemnt struct
+    * eg `de->de_xml` --> `xmldb_cache_get(de)`
   * `clicon_db_elmnt_get()` -> `xmldb_find()`
   * `clicon_db_elmnt_set()` is replaced by `xmldb_new()` but needs some rewrite
   * `xmldb_get_cache(h, db, yb, xp, md, xe)` -> `xmldb_get_cache(h, db, xp, xe)`
+  * Use indirect access to candidate-db, eg
+    * Instead of :
+       `candidate_commit(h, xe, "candidate",...)`
+    * do:
+       `xmldb_find_create(h, "candidate", ce->ce_id, &de, &db);
+        candidate_commit(h, xe, db,...)`
+    * Same for `candidate_validate()`
 * Modified and refactor rpc_msg API:
   * Replaced `clicon_msg` parameter with cbuf:
     * `clicon_rpc_msg(h, msg,...)` -> `clicon_rpc_msg(h, cb,...)`
@@ -88,7 +99,7 @@ Developers may need to change their code
 * Fixed: Restconf notification: Add "data:" as prefix to every line., not just first
 * Fixed: memory error in rpc_get2 when error handling
 * Fixed: [RESTCONF crashes after sending request that ends with &](https://github.com/clicon/clixon/issues/618)
-* Fixed: Do not use d_type from readdir()
+* Fixed: Do not use `d_type` from `readdir()`
 
 ## 7.5.0
 29 July 2025
