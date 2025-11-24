@@ -249,6 +249,7 @@ cvec2xml_1(cvec   *cvv,
             goto err;
         xml_parent_set(xn, xt);
         xml_child_i_set(xt, i++, xn);
+        xml_child_nr_set(xt, i);
         if ((xb = xml_new("body", xn, CX_BODY)) == NULL) /* this leaks */
             goto err;
         val = cv2str_dup(cv);

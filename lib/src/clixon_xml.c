@@ -180,7 +180,7 @@ struct xml{
                                        memory) cv? */
     /*----- up to here is common to all next is element only */
     struct xml      **x_childvec;   /* vector of children nodes (XXX: use clixon_vec ) */
-    int               x_childvec_len;/* Number of children */
+    size_t            x_childvec_len;/* Number of children */
     int               x_childvec_max;/* Length of allocated vector */
 
     cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
@@ -343,13 +343,14 @@ xml_stats(cxobj    *xt,
  *
  * @param[in]  xn    xml node
  * @retval     name of xml node
+ * XXX One could use the xml_spec argument instead of name as an optimization, but there are
+ * some caveats (eg input/output) which makes the code complex
  */
 char*
 xml_name(cxobj *xn)
 {
-    if (xn == NULL) {
+    if (xn == NULL)
         return NULL;
-    }
     return xn->x_name;
 }
 
@@ -674,7 +675,7 @@ xml_value_set(cxobj      *xn,
     }
     sz = strlen(val)+1;
     if (xn->x_value_cb == NULL){
-        if ((xn->x_value_cb = cbuf_new_alloc(sz)) == NULL){
+        if ((xn->x_value_cb = cbuf_new_alloc(sz + 1)) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
             goto done;
         }
@@ -769,6 +770,25 @@ xml_child_nr(cxobj *xn)
     if (!is_element(xn))
         return 0;
     return xn->x_childvec_len;
+}
+
+/*! Set number of children
+ *
+ * Special usage, eg xml_childvec_set, use with care
+ * @param[in]  xn   xml node
+ * @param[in]  nr   Explicitly set number of children
+ */
+int
+xml_child_nr_set(cxobj *xn,
+                 size_t nr)
+{
+    if (xn == NULL || !is_element(xn)) {
+        clixon_err(OE_XML, EINVAL, "xn is NULL or not element");
+        return -1;
+    }
+    if (nr <= xn->x_childvec_max)
+        xn->x_childvec_len = nr;
+    return 0;
 }
 
 /*! Get number of children of EXCEPT specific type
@@ -1091,12 +1111,13 @@ xml_child_insert_pos(cxobj *xp,
     return 0;
 }
 
-/*! Set a childvec to a specific size, fill with children after
+/*! Allocate a childvec to a specific size, fill with children after
  *
  * @code
  *   xml_childvec_set(x, 2);
  *   xml_child_i_set(x, 0, xc0)
  *   xml_child_i_set(x, 1, xc1);
+ *   xml_child_nr_set(x, 2);
  * @endcode
  */
 int
@@ -1105,7 +1126,7 @@ xml_childvec_set(cxobj *x,
 {
     if (!is_element(x))
         return 0;
-    x->x_childvec_len = len;
+    x->x_childvec_len = 0;
     x->x_childvec_max = len;
     if (x->x_childvec)
         free(x->x_childvec);
@@ -2087,6 +2108,9 @@ xml_copy(cxobj *x0,
     while ((x = xml_child_each(x0, x, -1)) != NULL) {
         if ((xcopy = xml_new(xml_name(x), x1, xml_type(x))) == NULL)
             goto done;
+        if (xml_type(x) == CX_ELMNT && xml_child_nr(x)){
+            xml_childvec_set(xcopy, xml_child_nr(x));
+        }
         if (xml_copy(x, xcopy) < 0) /* recursion */
             goto done;
     }

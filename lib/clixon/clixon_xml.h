@@ -251,6 +251,7 @@ enum cxobj_type xml_type_set(cxobj *xn, enum cxobj_type type);
 int       xml_child_nr(cxobj *xn);
 int       xml_child_nr_type(cxobj *xn, enum cxobj_type type);
 int       xml_child_nr_notype(cxobj *xn, enum cxobj_type type);
+int       xml_child_nr_set(cxobj *xn, size_t nr);
 cxobj    *xml_child_i(cxobj *xn, int i);
 cxobj    *xml_child_i_type(cxobj *xn, int i, enum cxobj_type type);
 cxobj    *xml_child_i_set(cxobj *xt, int i, cxobj *xc);
