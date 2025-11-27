@@ -1499,7 +1499,7 @@ xmldb_netconf_name_find(clixon_handle h,
 
 /*! Create candidate datastore
  *
- * If ce is given, a private candidate is created, if ce=NULL a shared is created
+ * If ce is given, a private candidate is created, if ceid=0 a shared is created
  * @param[in]  h     Clixon handle
  * @param[in]  name  Name prefix, typically "candidate" (but could be eg "failsafe")
  * @param[in]  ceid  If set, assume private candidate and session-id

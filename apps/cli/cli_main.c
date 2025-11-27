@@ -72,7 +72,7 @@
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "+hVD:f:E:l:C:F:1a:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:o:"
 
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  *
@@ -523,6 +523,7 @@ usage(clixon_handle h,
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-F <file> \tRead commands from file (default stdin)\n"
             "\t-1\t\tDo not enter interactive mode\n"
+            "\t-s\t\tDisable output scrolling\n"
             "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
             "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
             "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
@@ -692,6 +693,10 @@ main(int    argc,
             break;
         case '1' : /* Quit after reading database once - dont wait for events */
             once = 1;
+            break;
+        case 's' : /* Disable scrolling */
+            if (clicon_option_add(h, "CLICON_CLI_LINES_DEFAULT", "0") < 0)
+                goto done;
             break;
         case 'a': /* internal backend socket address family */
             if (clicon_option_add(h, "CLICON_SOCK_FAMILY", optarg) < 0)

@@ -19,6 +19,14 @@
 ## 7.7.0
 Expected: February 2026
 
+### Features
+
+* Add `-s` option to `clixon_cli` to disable output scrolling.
+
+### Corrected Bugs
+
+* Fixed: Error log at restconf exit
+
 ## 7.6.0
 21 November 2025
 
