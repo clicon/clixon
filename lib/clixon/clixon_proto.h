@@ -48,8 +48,8 @@ int clixon_inet2sin(const char *addrtype, const char *addrstr, uint16_t port,
                     struct sockaddr *sa, size_t *sa_len);
 
 /* Connect */
-int clixon_rpc_connect_unix(clixon_handle h, char *sockpath, int *sock0);
-int clixon_rpc_connect_inet(clixon_handle h, char *dst, uint16_t port,
+int clixon_rpc_connect_unix(clixon_handle h, const char *sockpath, int *sock0);
+int clixon_rpc_connect_inet(clixon_handle h, const char *dst, uint16_t port,
                             int *sock0);
 int clixon_rpc_connect(clixon_handle h, int *sock0);
 

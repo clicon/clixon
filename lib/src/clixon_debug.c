@@ -129,10 +129,10 @@ static const map_str2int dbgmap[] = {
  * @param[in] int  Bitfield, see CLIXON_DBG_DEFAULT and others
  * @retval    str  String representation of bitfield
  */
-char *
+const char *
 clixon_debug_key2str(int keyword)
 {
-    return (char*)clicon_int2str(dbgmap, keyword);
+    return clicon_int2str(dbgmap, keyword);
 }
 
 /*! Map from clixon debug symbolic string to bitfield
@@ -141,7 +141,7 @@ clixon_debug_key2str(int keyword)
  * @retval    int  Bit representation of bitfield
  */
 int
-clixon_debug_str2key(char *str)
+clixon_debug_str2key(const char *str)
 {
     return clicon_str2int(dbgmap, str);
 }

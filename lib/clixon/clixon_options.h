@@ -97,8 +97,8 @@ enum regexp_mode{
 /*
  * Prototypes
  */
-char *format_int2str(enum format_enum showas);
-int format_str2int(char *str);
+const char *format_int2str(enum format_enum showas);
+int format_str2int(const char *str);
 
 /* Debug dump config options */
 int clicon_option_dump(clixon_handle h, int dblevel);
@@ -107,20 +107,20 @@ int clicon_option_dump(clixon_handle h, int dblevel);
 int clicon_option_dump1(clixon_handle h, FILE *f, int format, int pretty);
 
 /* Add a clicon options overriding file setting */
-int clicon_option_add(clixon_handle h, const char *name, char *value);
+int clicon_option_add(clixon_handle h, const char *name, const char *value);
 
 /* Initialize options: set defaults, read config-file, etc */
 int clicon_options_main(clixon_handle h);
 
 /* Options debug and log helper function */
-int clixon_options_main_helper(clixon_handle h, uint32_t dbg, uint32_t logdst, char *ident);
+int clixon_options_main_helper(clixon_handle h, uint32_t dbg, uint32_t logdst, const char *ident);
 
 /*! Check if a clicon option has a value */
 int clicon_option_exists(clixon_handle h, const char *name);
 
 /* String options, default NULL */
 char *clicon_option_str(clixon_handle h, const char *name);
-int clicon_option_str_set(clixon_handle h, const char *name, char *val);
+int clicon_option_str_set(clixon_handle h, const char *name, const char *val);
 
 /* Option values gixen as int, default -1 */
 int clicon_option_int(clixon_handle h, const char *name);

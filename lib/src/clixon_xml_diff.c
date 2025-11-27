@@ -1765,7 +1765,7 @@ clixon_xml_diff2patch(cxobj   *x1,
 int
 clixon_xml_diff_nacm_read(clixon_handle h,
                           cxobj        *xt,
-                          char         *xpath)
+                          const char   *xpath)
 {
     int     retval = -1;
     cxobj  *xnacm;

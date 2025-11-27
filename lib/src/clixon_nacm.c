@@ -198,9 +198,9 @@ match_access(char *accops,
            has the special value "*".
  */
 static int
-nacm_rule_rpc(char  *rpc,
-              char  *module,
-              cxobj *xrule)
+nacm_rule_rpc(const char *rpc,
+              const char *module,
+              cxobj      *xrule)
 {
     int   retval = -1;
     char *module_rule; /* rule module name */
@@ -251,11 +251,11 @@ nacm_rule_rpc(char  *rpc,
  * @see nacm_datanode_read
  */
 int
-nacm_rpc(char         *rpc,
-         char         *module,
-         char         *username,
-         cxobj        *xnacm,
-         cbuf         *cbret)
+nacm_rpc(const char *rpc,
+         const char *module,
+         const char *username,
+         cxobj      *xnacm,
+         cbuf       *cbret)
 {
     int     retval = -1;
     cxobj  *xrule;
@@ -790,7 +790,7 @@ nacm_datanode_write(clixon_handle    h,
                     cxobj           *xreq,
                     cxobj           *xt,
                     enum nacm_access access,
-                    char            *username,
+                    const char      *username,
                     cxobj           *xnacm,
                     cbuf            *cbret)
 {
@@ -1095,7 +1095,7 @@ nacm_datanode_read_recurse(clixon_handle h,
 int
 nacm_datanode_read1(clixon_handle h,
                     cxobj        *xt,
-                    char         *username,
+                    const char   *username,
                     cxobj        *xnacm)
 {
     int      retval = -1;
@@ -1235,8 +1235,8 @@ nacm_datanode_read_prune(clixon_handle h,
 static int
 nacm_access_check(clixon_handle h,
                   cxobj        *xnacm,
-                  char         *peername,
-                  char         *username)
+                  const char   *peername,
+                  const char   *username)
 {
     int    retval = -1;
     char  *enabled;
@@ -1326,8 +1326,8 @@ nacm_access_check(clixon_handle h,
  */
 int
 nacm_access_pre(clixon_handle h,
-                char         *peername,
-                char         *username,
+                const char   *peername,
+                const char   *username,
                 cxobj       **xnacmp,
                 cbuf         *cbret)
 {
@@ -1426,9 +1426,9 @@ nacm_access_pre(clixon_handle h,
 int
 verify_nacm_user(clixon_handle           h,
                  enum nacm_credentials_t cred,
-                 char                   *peername,
-                 char                   *nacmname,
-                 char                   *rpcname,
+                 const char             *peername,
+                 const char             *nacmname,
+                 const char             *rpcname,
                  cbuf                   *cbret)
 {
     int   retval = -1;

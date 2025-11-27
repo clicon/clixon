@@ -219,7 +219,7 @@ enum format_enum{
 /*
  * Prototypes
  */
-char     *xml_type2str(enum cxobj_type type);
+const char *xml_type2str(enum cxobj_type type);
 int       xml_stats_global(uint64_t *nr);
 int       xml_stats(cxobj *xt, uint64_t *nrp, size_t *szp);
 char     *xml_name(cxobj *xn);
@@ -264,7 +264,7 @@ int       xml_childvec_set(cxobj *x, int len);
 cxobj   **xml_childvec_get(cxobj *x);
 int       clixon_child_xvec_append(cxobj *x, clixon_xvec *xv);
 cxobj    *xml_new(const char *name, cxobj *xn_parent, enum cxobj_type type);
-cxobj    *xml_new_body(char *name, cxobj *parent, char *val);
+cxobj    *xml_new_body(const char *name, cxobj *parent, const char *val);
 yang_stmt *xml_spec(cxobj *x);
 int       xml_spec_set(cxobj *x, yang_stmt *spec);
 cg_var   *xml_cv(cxobj *x);
@@ -290,7 +290,7 @@ char     *xml_find_type_value(cxobj *xn_parent, const char *prefix,
 cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, enum cxobj_type type);
 char     *xml_find_value(cxobj *xn_parent, const char *name);
 char     *xml_find_body(cxobj *xn, const char *name);
-cxobj    *xml_find_body_obj(cxobj *xt, const char *name, char *val);
+cxobj    *xml_find_body_obj(cxobj *xt, const char *name, const char *val);
 int       xml_free0(cxobj *x);
 int       xml_free(cxobj *xn);
 int       xml_copy_one(cxobj *xn0, cxobj *xn1);
@@ -311,10 +311,10 @@ cxobj    *xml_add_attr(cxobj *xn, const char *name, const char *value,
                        const char *prefix, const char *ns);
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);
-int       xml_search_vector_get(cxobj *x, char *name, clixon_xvec **xvec);
+int       xml_search_vector_get(cxobj *x, const char *name, clixon_xvec **xvec);
 int       xml_search_child_insert(cxobj *xp, cxobj *x);
 int       xml_search_child_rm(cxobj *xp, cxobj *x);
-cxobj    *xml_child_index_each(cxobj *xparent, char *name, cxobj *xprev, enum cxobj_type type);
+cxobj    *xml_child_index_each(cxobj *xparent, const char *name, cxobj *xprev, enum cxobj_type type);
 
 #endif
 

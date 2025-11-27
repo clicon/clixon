@@ -167,24 +167,24 @@ static const map_str2int axis_type_map[] = {
 
 /*! Map from axis-type int to string
  */
-char*
+const char*
 axis_type_int2str(int axis_type)
 {
-    return (char*)clicon_int2str(axis_type_map, axis_type);
+    return clicon_int2str(axis_type_map, axis_type);
 }
 
 int
-axis_type_str2int(char *name)
+axis_type_str2int(const char *name)
 {
     return clicon_str2int(axis_type_map, name);
 }
 
 /*! Map from XPath_tree node name int to string
  */
-char*
+const char*
 xpath_tree_int2str(int nodetype)
 {
-    return (char*)clicon_int2str(xpath_tree_map, nodetype);
+    return clicon_int2str(xpath_tree_map, nodetype);
 }
 
 /*! Print XPath parse tree
@@ -1596,7 +1596,7 @@ xpath2xml_traverse(xpath_tree *xs,
  * @note xpath is restricted to absolute paths, and simple expressions, eg as "node-identifier"
  */
 int
-xpath2xml(char       *xpath,
+xpath2xml(const char *xpath,
           cvec       *nsc,
           cxobj      *xtop,
           yang_stmt  *ytop,

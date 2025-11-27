@@ -1108,11 +1108,11 @@ text_populate_list(cxobj *xn)
  * @note Parsing requires YANG, which means yb must be YB_MODULE/_NEXT
  */
 static int
-_text_syntax_parse(char      *str,
-                   yang_bind  yb,
-                   yang_stmt *yspec,
-                   cxobj     *xt,
-                   cxobj    **xerr)
+_text_syntax_parse(const char *str,
+                   yang_bind   yb,
+                   yang_stmt  *yspec,
+                   cxobj      *xt,
+                   cxobj     **xerr)
 {
     int                     retval = -1;
     clixon_text_syntax_yacc ts = {0,};
@@ -1212,11 +1212,11 @@ _text_syntax_parse(char      *str,
  * @see clixon_text_syntax_parse_file   From a file
  */
 int
-clixon_text_syntax_parse_string(char      *str,
-                                yang_bind  yb,
-                                yang_stmt *yspec,
-                                cxobj    **xt,
-                                cxobj    **xerr)
+clixon_text_syntax_parse_string(const char *str,
+                                yang_bind   yb,
+                                yang_stmt  *yspec,
+                                cxobj     **xt,
+                                cxobj     **xerr)
 {
     clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (xt==NULL){

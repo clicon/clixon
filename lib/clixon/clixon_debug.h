@@ -137,8 +137,8 @@
 /*
  * Prototypes
  */
-char *clixon_debug_key2str(int keyword);
-int clixon_debug_str2key(char *str);
+const char *clixon_debug_key2str(int keyword);
+int clixon_debug_str2key(const char *str);
 int clixon_debug_key_dump(FILE *f);
 int clixon_debug_init(clixon_handle h, int dbglevel);
 int clixon_debug_get(void);

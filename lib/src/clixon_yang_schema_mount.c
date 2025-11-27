@@ -214,7 +214,7 @@ xml_schema_mount_point(cxobj *x)
  */
 int
 yang_mount_get(yang_stmt  *ys,
-               char       *xpath,
+               const char *xpath,
                yang_stmt **yspecp)
 {
     int        retval = 1;
@@ -582,7 +582,7 @@ yang_mount_yspec2ymnt(yang_stmt *yspec,
  */
 static int
 yang_schema_mount_statedata_yanglib(clixon_handle h,
-                                    char         *xpath,
+                                    const char   *xpath,
                                     cvec         *nsc,
                                     cxobj       **xret,
                                     cxobj       **xerr)
@@ -650,7 +650,7 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
 int
 yang_schema_mount_statedata(clixon_handle h,
                             yang_stmt    *yspec,
-                            char         *xpath,
+                            const char   *xpath,
                             cvec         *nsc,
                             cxobj       **xret,
                             cxobj       **xerr)

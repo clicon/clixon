@@ -50,6 +50,6 @@ int xml_yang_validate_list_key_only(cxobj *xt, cxobj **xret);
 int xml_yang_validate_all(clixon_handle h, cxobj *xt, cxobj **xret);
 int xml_yang_validate_all_top(clixon_handle h, cxobj *xt, cxobj **xret);
 int xml_yang_validate_exit(clixon_handle h);
-int rpc_reply_check(clixon_handle h, char *rpcname, cbuf *cbret);
+int rpc_reply_check(clixon_handle h, const char *rpcname, cbuf *cbret);
 
 #endif  /* _CLIXON_VALIDATE_H_ */

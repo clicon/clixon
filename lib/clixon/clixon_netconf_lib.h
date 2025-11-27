@@ -176,33 +176,26 @@ typedef enum privcand_resolution privcand_resolution;
 /*
  * Prototypes
  */
-char *withdefaults_int2str(int keyword);
+const char *withdefaults_int2str(int keyword);
 int withdefaults_str2int(const char *str);
 int privcand_res_str2key(const char *str);
 int netconf_in_use(cbuf *cb, const char *type, const char *message);
 int netconf_invalid_value(cbuf *cb, const char *type, const char *message);
 int netconf_invalid_value_xml(cxobj **xret, const char *type, const char *message);
 int netconf_too_big(cbuf *cb, const char *type, const char *message);
-int netconf_missing_attribute(cbuf *cb, const char *type, const char *info,
-                              const char *message);
-int netconf_missing_attribute_xml(cxobj **xret, const char *type, const char *info,
-                                  const char *message);
-int netconf_bad_attribute(cbuf *cb, const char *type, const char *info,
-                          const char *message);
-int netconf_bad_attribute_xml(cxobj **xret, const char *type, const char *info,
-                              const char *message);
-int netconf_unknown_attribute(cbuf *cb, const char *type, const char *info,
-                              const char *message);
+int netconf_missing_attribute(cbuf *cb, const char *type, const char *info, const char *message);
+int netconf_missing_attribute_xml(cxobj **xret, const char *type, const char *info, const char *message);
+int netconf_bad_attribute(cbuf *cb, const char *type, const char *info, const char *message);
+int netconf_bad_attribute_xml(cxobj **xret, const char *type, const char *info, const char *message);
+int netconf_unknown_attribute(cbuf *cb, const char *type, const char *info, const char *message);
 int netconf_common_rpc_err(cbuf *cb, const char *ns, const char *type, const char *tag,
                            const char *info, const char *severity, const char *message);
 int netconf_common_rpc_err_xml(cxobj **xret, const char *ns, const char *type,
                                const char *tag, const char *severity,
                                const char *infotag, const char *info,
                                const char *message);
-int netconf_missing_element(cbuf *cb, const char *type, const char *element,
-                            const char *message);
-int netconf_missing_yang_xml(cxobj **xret, const char *path, const char *app_tag,
-                             const char *info, const char *message);
+int netconf_missing_element(cbuf *cb, const char *type, const char *element, const char *message);
+int netconf_missing_yang_xml(cxobj **xret, const char *path, const char *app_tag, const char *info, const char *message);
 int netconf_missing_element_xml(cxobj **xret, const char *type, const char *element, const char *message);
 int netconf_bad_element(cbuf *cb, const char *type, const char *info, const char *element);
 int netconf_bad_element_xml(cxobj **xret, const char *type, const char *info, const char *element);
@@ -218,8 +211,7 @@ int netconf_rollback_failed(cbuf *cb, const char *type, const char *message);
 int netconf_data_exists(cbuf *cb, const char *message);
 int netconf_data_missing(cbuf *cb, const char *message);
 int netconf_data_missing_xml(cxobj **xret, const char *message);
-int netconf_missing_choice_xml(cxobj **xret, cxobj *x, const char *missing_choice,
-                               const char *message);
+int netconf_missing_choice_xml(cxobj **xret, cxobj *x, const char *missing_choice, const char *message);
 int netconf_operation_not_supported_xml(cxobj **xret, const char *type, const char *message);
 int netconf_operation_not_supported(cbuf *cb, const char *type, const char *message);
 int netconf_operation_failed(cbuf *cb, const char *type, const char *message, ...) __attribute__ ((format (printf, 3, 4)));
@@ -241,8 +233,10 @@ int netconf_capabilites(clixon_handle h, cbuf *cb);
 int netconf_hello_server(clixon_handle h, cbuf *cb, uint32_t session_id);
 int netconf_hello_req(clixon_handle h, cbuf *cb);
 int clixon_netconf_internal_error(cxobj *xerr, const char *msg, const char *arg);
-int netconf_parse_uint32(const char *name, char *valstr, const char *defaultstr, uint32_t defaultval, cbuf *cbret, uint32_t *value);
-int netconf_parse_uint32_xml(const char *name, char *valstr, const char *defaultstr, uint32_t defaultval, cxobj **xerr, uint32_t *value);
+int netconf_parse_uint32(const char *name, char *valstr, const char *defaultstr, uint32_t defaultval,
+                         cbuf *cbret, uint32_t *value);
+int netconf_parse_uint32_xml(const char *name, char *valstr, const char *defaultstr, uint32_t defaultval,
+                             cxobj **xerr, uint32_t *value);
 int netconf_message_id_next(clixon_handle h);
 int netconf_framing_preamble(netconf_framing_type framing, cbuf *cb);
 int netconf_framing_postamble(netconf_framing_type framing, cbuf *cb);

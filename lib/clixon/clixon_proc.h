@@ -65,12 +65,12 @@ typedef int (proc_cb_t)(clixon_handle    h,
 /*
  * Prototypes
  */
-int clixon_proc_socket(clixon_handle h, char **argv, int sock_flags, pid_t *pid, int *sock, int *sockerr);
+int clixon_proc_socket(clixon_handle h, char *const argv[], int sock_flags, pid_t *pid, int *sock, int *sockerr);
 int clixon_proc_socket_close(pid_t pid, int sock);
 int clixon_process_pid(clixon_handle h, const char *name, pid_t *pid);
-int clixon_process_op_str2int(char *opstr);
+int clixon_process_op_str2int(const char *opstr);
 int clixon_process_argv_get(clixon_handle h, const char *name, char ***argv, int *argc);
-int clixon_process_register(clixon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, gid_t gid, int fdkeep, proc_cb_t *callback, char **argv, int argc);
+int clixon_process_register(clixon_handle h, const char *name, const char *descr, const char *netns, uid_t uid, gid_t gid, int fdkeep, proc_cb_t *callback, char *const argv[], int argc);
 int clixon_process_delete_all(clixon_handle h);
 int clixon_process_operation(clixon_handle h, const char *name, proc_operation op, const int wrapit);
 int clixon_process_status(clixon_handle h, const char *name, cbuf *cbret);

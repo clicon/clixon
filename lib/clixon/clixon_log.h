@@ -74,12 +74,12 @@ enum clixon_log_type{
 /*
  * Prototypes
  */
-char    *clixon_logdst_key2str(int keyword);
-int      clixon_logdst_str2key(char *str);
-int      clixon_log_init(clixon_handle h, char *ident, int upto, uint16_t flags);
+const char *clixon_logdst_key2str(int keyword);
+int      clixon_logdst_str2key(const char *str);
+int      clixon_log_init(clixon_handle h, const char *ident, int upto, uint16_t flags);
 int      clixon_log_exit(void);
 int      clixon_log_opt(char c);
-int      clixon_log_file(char *filename);
+int      clixon_log_file(const char *filename);
 int      clixon_log_string_limit_set(size_t sz);
 size_t   clixon_log_string_limit_get(void);
 uint16_t clixon_logflags_get(void);

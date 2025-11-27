@@ -862,8 +862,8 @@ yang_metadata_init(clixon_handle h)
 int
 yang_lib2yspec(clixon_handle h,
                cxobj        *xyanglib,
-               char         *mntpnt,
-               char         *domain,
+               const char   *mntpnt,
+               const char   *domain,
                yang_stmt    *yspec)
 {
     int        retval = -1;

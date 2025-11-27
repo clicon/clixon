@@ -51,7 +51,7 @@ int xml_bind_yang0(clixon_handle h, cxobj *xt, yang_bind yb, yang_stmt *yspec,
                    int jsonenc, cxobj **xerr);
 int xml_bind_yang_rpc_method(clixon_handle h, cxobj *xrpc, yang_stmt *yspec, cxobj **xerr);
 int xml_bind_yang_rpc(clixon_handle h, cxobj *xrpc, yang_stmt *yspec, cxobj **xerr);
-int xml_bind_yang_rpc_reply(clixon_handle h, cxobj *xrpc, char *name, yang_stmt *yspec, cxobj **xerr);
-int xml_bind_special(cxobj *xd, yang_stmt *yspec, char *schema_nodeid);
+int xml_bind_yang_rpc_reply(clixon_handle h, cxobj *xrpc, const char *name, yang_stmt *yspec, cxobj **xerr);
+int xml_bind_special(cxobj *xd, yang_stmt *yspec, const char *schema_nodeid);
 
 #endif  /* _CLIXON_XML_BIND_H_ */

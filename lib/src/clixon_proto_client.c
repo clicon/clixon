@@ -89,6 +89,14 @@
 #define PERSIST_XML_FMT "<persist>%s</persist>"
 #define TIMEOUT_XML_FMT "<confirm-timeout>%u</confirm-timeout>"
 
+/*! Create hello NETCONF message
+ *
+ * @param[in]     h            Clixon handle
+ * @param[in,out] cb           Write hello msg in this buffer, assumed created on entry
+ * @param[in]     transport0   Input transport, if NULL will be retreived from session data
+ * @param[in]     source_host0 Input host, if NULL will be retreived from session data
+ * @retval        0            OK
+ */
 static int
 create_hello(clixon_handle h,
              cbuf         *cb,

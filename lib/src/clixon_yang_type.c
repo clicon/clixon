@@ -312,7 +312,7 @@ ys_resolve_type(yang_stmt *ytype,
  * Return 0 if no match but set cv_type to CGV_ERR
  */
 int
-yang2cv_type(char         *ytype,
+yang2cv_type(const char   *ytype,
              enum cv_type *cv_type)
 {
     int                ret;
@@ -378,8 +378,8 @@ cv2yang_type(enum cv_type cv_type)
  * @note Thereis a kludge for handling direct translations of native cligen types
  */
 int
-clicon_type2cv(char         *origtype,
-               char         *restype,
+clicon_type2cv(const char   *origtype,
+               const char   *restype,
                yang_stmt    *ys,
                enum cv_type *cvtype)
 {
@@ -1155,8 +1155,8 @@ ys_typedef_up(yang_stmt *ys)
  * @see xml_find_identity
  */
 yang_stmt *
-yang_find_identity(yang_stmt *ys,
-                   char      *identity)
+yang_find_identity(yang_stmt  *ys,
+                   const char *identity)
 {
     char        *id = NULL;
     char        *prefix = NULL;
@@ -1208,9 +1208,9 @@ yang_find_identity(yang_stmt *ys,
  * @see xml_find_identity
  */
 yang_stmt *
-yang_find_identity_nsc(yang_stmt *yspec,
-                       char      *identity,
-                       cvec      *nsc)
+yang_find_identity_nsc(yang_stmt  *yspec,
+                       const char *identity,
+                       cvec       *nsc)
 {
     char        *id = NULL;
     char        *prefix = NULL;

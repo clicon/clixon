@@ -334,8 +334,8 @@ quit:
  * XXX This is probably faster with stdio?
  */
 int
-clicon_file_copy(char *src,
-                 char *target)
+clicon_file_copy(const char *src,
+                 const char *target)
 {
     int         retval = -1;
     int         inF = 0, ouF = 0;
@@ -381,8 +381,8 @@ clicon_file_copy(char *src,
  * @retval    -1       Error
  */
 int
-clicon_dir_copy(char *srcdir,
-                char *dstdir)
+clicon_dir_copy(const char *srcdir,
+                const char *dstdir)
 {
     int            retval = -1;
     struct dirent *dent = NULL;

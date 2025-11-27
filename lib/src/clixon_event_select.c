@@ -114,11 +114,11 @@ static int _ee_unreg = 0;
  * @see clixon_event_unreg_fd
  */
 int
-clixon_event_select_reg_fd_prio(int   fd,
-                                int (*fn)(int, void*),
-                                void *arg,
-                                char *str,
-                                int   prio)
+clixon_event_select_reg_fd_prio(int         fd,
+                                int       (*fn)(int, void*),
+                                void       *arg,
+                                const char *str,
+                                int         prio)
 {
     struct event_data *e;
 
@@ -199,7 +199,7 @@ int
 clixon_event_select_reg_timeout(struct timeval t,
                                 int          (*fn)(int, void*),
                                 void          *arg,
-                                char          *str)
+                                const char    *str)
 {
     int                 retval = -1;
     struct event_data  *e;

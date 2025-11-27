@@ -351,7 +351,7 @@ snmp_yang_type_get(yang_stmt  *ys,
     if (strcmp(restype, "union") == 0){
         is_same_subtypes_union(yrestype, &restype);
     }
-    if ((restype2 = clicon_str2str(yang_snmp_types, restype)) == NULL)
+    if ((restype2 = (char*)clicon_str2str(yang_snmp_types, restype)) == NULL)
         restype2 = restype;
     if (strcmp(restype2, "leafref")==0){
         if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL){
@@ -651,7 +651,7 @@ type_snmp2xml(yang_stmt                  *ys,
               char                      **valstr)
 {
     int          retval = -1;
-    char        *cvstr;
+    const char  *cvstr;
     enum cv_type cvtype;
     cg_var      *cv = NULL;
     char        *restype = NULL;         /* resolved type */
@@ -665,7 +665,7 @@ type_snmp2xml(yang_stmt                  *ys,
         clixon_err(OE_UNIX, EINVAL, "valstr is NULL");
         goto done;
     }
-    if ((cvstr = (char*)clicon_int2str(snmp_type_map, requestvb->type)) == NULL){
+    if ((cvstr = clicon_int2str(snmp_type_map, requestvb->type)) == NULL){
         clixon_err(OE_XML, 0, "No mapping for snmp type %d", requestvb->type);
         goto done;
     }

@@ -1108,7 +1108,7 @@ int
 xmldb_get(clixon_handle    h,
           const char      *db,
           cvec            *nsc,
-          char            *xpath,
+          const char      *xpath,
           cxobj          **xret)
 {
     return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 0, 0, xret, NULL, NULL);

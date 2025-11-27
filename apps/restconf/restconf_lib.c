@@ -222,7 +222,7 @@ static const map_str2int http_proto_map[] = {
 };
 
 int
-restconf_err2code(char *tag)
+restconf_err2code(const char *tag)
 {
     return clicon_str2int(netconf_restconf_map, tag);
 }
@@ -236,7 +236,7 @@ restconf_code2reason(int code)
 /*! One media to integer representation
  */
 const restconf_media
-restconf_media_str2int(char *media)
+restconf_media_str2int(const char *media)
 {
     return clicon_str2int(http_media_map, media);
 }
@@ -251,7 +251,7 @@ restconf_media_str2int(char *media)
  * @retval    -1     No registered media found
  */
 const restconf_media
-restconf_media_list_str2int(char *list)
+restconf_media_list_str2int(const char *list)
 {
     int     reti = -1;
     cg_var *cv;
@@ -283,8 +283,8 @@ restconf_media_list_str2int(char *list)
  * @retval    -1      Error
  */
 int
-restconf_media_in_list(char *media,
-                       char *list)
+restconf_media_in_list(const char *media,
+                       const char *list)
 {
     int     retval = -1;
     cg_var *cv;
@@ -316,7 +316,7 @@ restconf_media_int2str(restconf_media media)
 }
 
 int
-restconf_str2proto(char *str)
+restconf_str2proto(const char *str)
 {
     return clicon_str2int(http_proto_map, str);
 }
@@ -355,8 +355,8 @@ restconf_content_type(clixon_handle h)
  */
 int
 restconf_convert_hdr(clixon_handle h,
-                     char         *name,
-                     char         *val)
+                     const char   *name,
+                     const char   *val)
 {
     int           retval = -1;
     cbuf         *cb = NULL;
@@ -398,9 +398,9 @@ restconf_convert_hdr(clixon_handle h,
  * @retval    -1          Error
  */
 int
-get_user_cookie(char  *cookiestr,
-                char  *attribute,
-                char **val)
+get_user_cookie(const char *cookiestr,
+                const char *attribute,
+                char      **val)
 {
     int    retval = -1;
     cvec  *cvv = NULL;

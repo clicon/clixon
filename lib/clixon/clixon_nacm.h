@@ -57,14 +57,15 @@ enum nacm_access{
  * Prototypes
  */
 int nacm_proxyuser_add(clixon_handle h, const char *user);
-int nacm_rpc(char *rpc, char *module, char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_datanode_read1(clixon_handle h, cxobj *xt, char *username, cxobj *nacm_xtree);
+int nacm_rpc(const char *rpc, const char *module, const char *username, cxobj *xnacm, cbuf *cbret);
+int nacm_datanode_read1(clixon_handle h, cxobj *xt, const char *username, cxobj *nacm_xtree);
 int nacm_datanode_read_prune(clixon_handle h, cxobj *xt);
 int nacm_datanode_write(clixon_handle h, cxobj *xr, cxobj *xt,
                         enum nacm_access access,
-                        char *username, cxobj *xnacm, cbuf *cbret);
-int nacm_access_pre(clixon_handle h, char *peername, char *username, cxobj **xnacmp, cbuf *cbret);
-int verify_nacm_user(clixon_handle h, enum nacm_credentials_t cred, char *peername, char *nacmname, char *rpcname, cbuf *cbret);
+                        const char *username, cxobj *xnacm, cbuf *cbret);
+int nacm_access_pre(clixon_handle h, const char *peername, const char *username, cxobj **xnacmp, cbuf *cbret);
+int verify_nacm_user(clixon_handle h, enum nacm_credentials_t cred, const char *peername, const char *nacmname,
+                     const char *rpcname, cbuf *cbret);
 int nacm_init(clixon_handle h);
 int nacm_exit(clixon_handle h);
 

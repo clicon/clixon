@@ -41,18 +41,18 @@
 /*
  * Prototypes
  */
-int xml_cmp(cxobj *x1, cxobj *x2, int same, int skip1, char *expl);
+int xml_cmp(cxobj *x1, cxobj *x2, int same, int skip1, const char *expl);
 int xml_sort(cxobj *x);
 int xml_sort_by(cxobj *x, char *indexvar);
 int xml_sort_recurse(cxobj *xn);
-int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, char *key_val, cvec *nsckey);
+int xml_insert(cxobj *xp, cxobj *xc, enum insert_type ins, const char *key_val, cvec *nsckey);
 int xml_sort_verify(cxobj *x, void *arg);
 #ifdef XML_EXPLICIT_INDEX
-int xml_search_indexvar_binary_pos(cxobj *xp, char *indexvar, clixon_xvec *xvec,
+int xml_search_indexvar_binary_pos(cxobj *xp, const char *indexvar, clixon_xvec *xvec,
                                    int low, int upper, int max, int *eq);
 #endif
 int match_base_child(cxobj *x0, cxobj *x1c, yang_stmt *yc, cxobj **x0cp);
-int clixon_xml_find_index(cxobj *xp, yang_stmt *yp, char *ns, char *name,
+int clixon_xml_find_index(cxobj *xp, yang_stmt *yp, const char *ns, const char *name,
                           cvec *cvk, clixon_xvec *xvec);
 int clixon_xml_find_pos(cxobj *xp, yang_stmt *yc, uint32_t pos, clixon_xvec *xvec);
 

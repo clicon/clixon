@@ -42,7 +42,7 @@
 
 struct clixon_json_yacc {
     int        jy_linenum;      /* Number of \n in parsed buffer */
-    char      *jy_parse_string; /* original (copy of) parse string */
+    const char *jy_parse_string; /* original (copy of) parse string */
     void      *jy_lexbuf;       /* internal parse buffer from lex */
     cxobj     *jy_xtop;         /* cxobj top element (fixed) */
     cxobj     *jy_current;      /* cxobj active element (changes with parse context) */

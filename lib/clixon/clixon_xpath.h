@@ -124,9 +124,9 @@ typedef struct xpath_tree xpath_tree;
 /*
  * Prototypes
  */
-char* axis_type_int2str(int axis_type);
-int   axis_type_str2int(char *name);
-char* xpath_tree_int2str(int nodetype);
+const char* axis_type_int2str(int axis_type);
+int   axis_type_str2int(const char *name);
+const char* xpath_tree_int2str(int nodetype);
 int   xpath_tree_print_cb(cbuf *cb, xpath_tree *xs);
 int   xpath_tree_print(FILE *f, xpath_tree *xs);
 int   xpath_tree2cbuf(xpath_tree *xs, cbuf *xpathcb);
@@ -155,7 +155,7 @@ int xpath2canonical1(const char *xpath0, cvec *nsc0, yang_stmt *yspec, int exprs
                      char **xpath1, cvec **nsc1, cbuf **cbreason);
 int xpath_count(cxobj *xcur, cvec *nsc, const char *xpath, uint32_t *count);
 int xml2xpath(cxobj *x, cvec *nsc, int spec, int apostrophe, char **xpath);
-int xpath2xml(char *xpath, cvec *nsc, cxobj *xtop, yang_stmt *ytop,
+int xpath2xml(const char *xpath, cvec *nsc, cxobj *xtop, yang_stmt *ytop,
               cxobj **xbotp, yang_stmt **ybotp, cxobj **xerr);
 
 #endif /* _CLIXON_XPATH_H */

@@ -235,8 +235,8 @@ fail:
  * For non-printable, \n, \t, \r see https://www.regular-expressions.info/nonprint.html
  */
 int
-regexp_xsd2posix(char  *xsd,
-                 char **posix)
+regexp_xsd2posix(const char *xsd,
+                 char      **posix)
 {
     int    retval = -1;
     cbuf  *cb = NULL;
@@ -398,7 +398,7 @@ regexp_xsd2posix(char  *xsd,
  */
 int
 regex_compile(clixon_handle h,
-              char         *regexp,
+              const char   *regexp,
               void        **recomp)
 {
     int              retval = -1;
@@ -435,7 +435,7 @@ regex_compile(clixon_handle h,
 int
 regex_exec(clixon_handle h,
            void         *recomp,
-           char         *string)
+           const char   *string)
 {
     int   retval = -1;
 

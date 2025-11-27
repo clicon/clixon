@@ -228,10 +228,10 @@ static const map_str2int xsmap[] = {
  * @param[in] type  Xml type
  * @retval    str   String keyword
  */
-char *
+const char *
 xml_type2str(enum cxobj_type type)
 {
-    return (char*)clicon_int2str(xsmap, type);
+    return clicon_int2str(xsmap, type);
 }
 
 /* Stats (too low-level to hang it on handle) */
@@ -1241,9 +1241,9 @@ xml_new(const char     *name,
  * Thanks mgsmith@netgate.com
  */
 cxobj *
-xml_new_body(char  *name,
-             cxobj *parent,
-             char  *val)
+xml_new_body(const char *name,
+             cxobj      *parent,
+             const char *val)
 {
     cxobj *new_node = NULL;
     cxobj *body_node;
@@ -1948,7 +1948,7 @@ xml_find_body(cxobj      *xt,
 cxobj *
 xml_find_body_obj(cxobj      *xt,
                   const char *name,
-                  char       *val)
+                  const char *val)
 {
     cxobj *x = NULL;
     char  *bstr;
@@ -2664,7 +2664,7 @@ xml_search_index_get(cxobj *x,
  */
 int
 xml_search_vector_get(cxobj        *xp,
-                      char         *name,
+                      const char   *name,
                       clixon_xvec **xvec)
 {
     struct search_index *si;
@@ -2782,10 +2782,10 @@ xml_search_child_rm(cxobj *xp,
  * If you need to delete a node you can do somethjing like:
  */
 cxobj *
-xml_child_index_each(cxobj           *xparent,
-                     char            *name,
-                     cxobj           *xprev,
-                     enum cxobj_type  type)
+xml_child_index_each(cxobj          *xparent,
+                     const char     *name,
+                     cxobj          *xprev,
+                     enum cxobj_type type)
 {
     cxobj        *xn = NULL;
     clixon_xvec  *xv = NULL;

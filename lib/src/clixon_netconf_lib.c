@@ -93,10 +93,10 @@ static const map_str2int wdmap[] = {
  * @param[in] int  Integer representation of withdefaults values
  * @retval    str  String representation of withdefaults values
  */
-char *
+const char *
 withdefaults_int2str(int keyword)
 {
-    return (char*)clicon_int2str(wdmap, keyword);
+    return clicon_int2str(wdmap, keyword);
 }
 
 /*! Map from with-defaults strings to ints

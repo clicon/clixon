@@ -93,10 +93,10 @@ clicon_data_get(clixon_handle h,
 {
     clicon_hash_t *cdat = clicon_data(h);
 
-    if (clicon_hash_lookup(cdat, (char*)name) == NULL)
+    if (clicon_hash_lookup(cdat, name) == NULL)
         return -1;
     if (val)
-        *val = clicon_hash_value(cdat, (char*)name, NULL);
+        *val = clicon_hash_value(cdat, name, NULL);
     return 0;
 }
 
@@ -112,11 +112,11 @@ clicon_data_get(clixon_handle h,
 int
 clicon_data_set(clixon_handle h,
                 const char   *name,
-                char         *val)
+                const char   *val)
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    return clicon_hash_add(cdat, (char*)name, val, strlen(val)+1)==NULL?-1:0;
+    return clicon_hash_add(cdat, name, val, strlen(val)+1)==NULL?-1:0;
 }
 
 /*! Delete generic clixon data
@@ -131,9 +131,9 @@ int
 clicon_data_del(clixon_handle h,
                 const char   *name)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
+    clicon_hash_t *cdat = clicon_data(h);
 
-    return clicon_hash_del(cdat, (char*)name);
+    return clicon_hash_del(cdat, name);
 }
 
 /*! Get generic clixon data on the form <name>=<ptr> where <ptr> is void*
@@ -154,10 +154,10 @@ clicon_ptr_get(clixon_handle h,
     void          *p;
     size_t         vlen;
 
-    if (clicon_hash_lookup(cdat, (char*)name) == NULL)
+    if (clicon_hash_lookup(cdat, name) == NULL)
         return -1;
     if (ptr){
-        p = clicon_hash_value(cdat, (char*)name, &vlen);
+        p = clicon_hash_value(cdat, name, &vlen);
         memcpy(ptr, p, vlen);
     }
     return 0;
@@ -179,7 +179,7 @@ clicon_ptr_set(clixon_handle h,
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    return clicon_hash_add(cdat, (char*)name, &ptr, sizeof(ptr))==NULL?-1:0;
+    return clicon_hash_add(cdat, name, &ptr, sizeof(ptr))==NULL?-1:0;
 }
 
 /*! Delete generic clixon data
@@ -196,7 +196,7 @@ clicon_ptr_del(clixon_handle h,
 {
     clicon_hash_t  *cdat = clicon_data(h);
 
-    return clicon_hash_del(cdat, (char*)name);
+    return clicon_hash_del(cdat, name);
 }
 
 /*! Get generic cligen variable vector (cvv) on the form <name>=<val> where <val> is cvv
@@ -274,9 +274,9 @@ clicon_data_int_get(clixon_handle h,
     clicon_hash_t *cdat = clicon_data(h);
     char          *s;
 
-    if (clicon_hash_lookup(cdat, (char*)name) == NULL)
+    if (clicon_hash_lookup(cdat, name) == NULL)
         return -1;
-    s = clicon_hash_value(cdat, (char*)name, NULL);
+    s = clicon_hash_value(cdat, name, NULL);
     return atoi(s);
 }
 
@@ -298,7 +298,7 @@ clicon_data_int_set(clixon_handle h,
 
     if (snprintf(s, sizeof(s)-1, "%u", val) < 0)
         return -1;
-    return clicon_hash_add(cdat, (char*)name, s, strlen(s)+1)==NULL?-1:0;
+    return clicon_hash_add(cdat, name, s, strlen(s)+1)==NULL?-1:0;
 }
 
 /*! Delete single int data via handle 
@@ -314,7 +314,7 @@ clicon_data_int_del(clixon_handle h,
 {
     clicon_hash_t *cdat = clicon_data(h);
 
-    return clicon_hash_del(cdat, (char*)name);
+    return clicon_hash_del(cdat, name);
 }
 
 /*! Get top-level yang mounts
@@ -833,7 +833,7 @@ int
 clicon_argv_set(clixon_handle h,
                 char         *prgm,
                 int           argc,
-                char        **argv)
+                char *const   argv[])
 {
     int             retval = -1;
     clicon_hash_t  *cdat = clicon_data(h);
@@ -894,7 +894,7 @@ clicon_session_id_del(clixon_handle h)
 {
     clicon_hash_t *cdat = clicon_data(h);
 
-    return clicon_hash_del(cdat, (char*)"session-id");
+    return clicon_hash_del(cdat, "session-id");
 }
 
 /*! Set session id

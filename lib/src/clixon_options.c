@@ -146,10 +146,10 @@ static const map_str2int _FORMATS[] = {
  * @param[in]  showas   Format value (see enum format_enum)
  * @retval     str      String value
  */
-char *
+const char *
 format_int2str(enum format_enum showas)
 {
-    return (char*)clicon_int2str(_FORMATS, showas);
+    return clicon_int2str(_FORMATS, showas);
 }
 
 /*! Translate from string to numeric format representation
@@ -158,7 +158,7 @@ format_int2str(enum format_enum showas)
  * @retval     enum      Format value (see enum format_enum)
  */
 int
-format_str2int(char *str)
+format_str2int(const char *str)
 {
     return clicon_str2int(_FORMATS, str);
 }
@@ -583,7 +583,7 @@ parse_configfile(clixon_handle  h,
 int
 clicon_option_add(clixon_handle h,
                   const char   *name,
-                  char         *value)
+                  const char   *value)
 {
     int            retval = -1;
     clicon_hash_t *copt = clicon_options(h);
@@ -767,7 +767,7 @@ int
 clixon_options_main_helper(clixon_handle h,
                            uint32_t      dbg,
                            uint32_t      logdst,
-                           char         *ident)
+                           const char   *ident)
 {
     int   retval = -1;
     int   relog = 0;
@@ -817,7 +817,7 @@ clicon_option_exists(clixon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return (clicon_hash_lookup(copt, (char*)name) != NULL);
+    return (clicon_hash_lookup(copt, name) != NULL);
 }
 
 /*! Get a single string option string via handle
@@ -836,9 +836,9 @@ clicon_option_str(clixon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    if (clicon_hash_lookup(copt, (char*)name) == NULL)
+    if (clicon_hash_lookup(copt, name) == NULL)
         return NULL;
-    return clicon_hash_value(copt, (char*)name, NULL);
+    return clicon_hash_value(copt, name, NULL);
 }
 
 /*! Set a single string option via handle 
@@ -852,11 +852,11 @@ clicon_option_str(clixon_handle h,
 int
 clicon_option_str_set(clixon_handle h,
                       const char   *name,
-                      char         *val)
+                      const char   *val)
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return clicon_hash_add(copt, (char*)name, val, strlen(val)+1)==NULL?-1:0;
+    return clicon_hash_add(copt, name, val, strlen(val)+1)==NULL?-1:0;
 }
 
 /*! Get options as integer but stored as string
@@ -971,7 +971,7 @@ clicon_option_del(clixon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return clicon_hash_del(copt, (char*)name);
+    return clicon_hash_del(copt, name);
 }
 
 /*-----------------------------------------------------------------

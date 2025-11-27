@@ -269,8 +269,8 @@ yang_argument_set(yang_stmt *ys,
  * @retval   -1    Error
  */
 int
-yang_argument_dup(yang_stmt *ys,
-                  char      *arg)
+yang_argument_dup(yang_stmt  *ys,
+                  const char *arg)
 {
     char *dup;
 
@@ -380,9 +380,9 @@ yang_cvec_set(yang_stmt *ys,
  * @retval    NULL  Error
  */
 cg_var *
-yang_cvec_add(yang_stmt    *ys,
+yang_cvec_add(yang_stmt   *ys,
               enum cv_type type,
-              char        *name)
+              const char  *name)
 {
     cg_var *cv;
     cvec   *cvv;
@@ -413,8 +413,8 @@ yang_cvec_add(yang_stmt    *ys,
  * @retval   -1     Error
  */
 int
-yang_cvec_rm(yang_stmt *ys,
-             char      *name)
+yang_cvec_rm(yang_stmt  *ys,
+             const char *name)
 {
     cvec   *cvv;
     cg_var *cv;
@@ -576,8 +576,8 @@ yang_when_set(clixon_handle h,
  */
 int
 yang_when_xpath_get(yang_stmt *ys,
-                    char      **xpath,
-                    cvec      **nsc)
+                    char     **xpath,
+                    cvec     **nsc)
 {
     int        retval = -1;
     yang_stmt *ywhen;
@@ -879,7 +879,7 @@ yang_stats(yang_stmt    *yt,
  */
 yang_stmt *
 yspec_new(clixon_handle h,
-          char         *name)
+          const char   *name)
 {
     return yspec_new1(h, YANG_DOMAIN_TOP, name);
 }
@@ -895,8 +895,8 @@ yspec_new(clixon_handle h,
  */
 yang_stmt *
 yspec_new1(clixon_handle h,
-           char         *domain,
-           char         *name)
+           const char   *domain,
+           const char   *name)
 {
     yang_stmt *ymounts;
     yang_stmt *ydomain;
@@ -933,9 +933,9 @@ yspec_new1(clixon_handle h,
  */
 yang_stmt *
 yspec_new_shared(clixon_handle h,
-                 char         *xpath,
-                 char         *domain,
-                 char         *name,
+                 const char   *xpath,
+                 const char   *domain,
+                 const char   *name,
                  yang_stmt    *yspec0)
 {
     yang_stmt *yspec1 = NULL;
@@ -966,7 +966,7 @@ yspec_new_shared(clixon_handle h,
  */
 yang_stmt *
 ydomain_new(clixon_handle h,
-            char         *domain)
+            const char   *domain)
 {
     yang_stmt *ymounts;
     yang_stmt *ydomain;
@@ -1714,8 +1714,8 @@ yang_find_datanode_ns(yang_stmt  *yn,
  * @see yang_abs_schema_nodeid  Top level function
  */
 yang_stmt *
-yang_find_schemanode(yang_stmt *yn,
-                     char      *argument)
+yang_find_schemanode(yang_stmt  *yn,
+                     const char *argument)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -1870,9 +1870,9 @@ yang_find_mynamespace(yang_stmt *ys)
  * @see yang_find_module_by_namespace
  */
 int
-yang_find_prefix_by_namespace(yang_stmt *ys,
-                              char      *ns,
-                              char     **prefix)
+yang_find_prefix_by_namespace(yang_stmt  *ys,
+                              const char *ns,
+                              char      **prefix)
 {
     int        retval = -1;
     yang_stmt *my_ymod; /* My module */
@@ -1941,9 +1941,9 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
  * @see yang_find_module_by_prefix
  */
 int
-yang_find_namespace_by_prefix(yang_stmt *ys,
-                              char      *prefix,
-                              char     **ns)
+yang_find_namespace_by_prefix(yang_stmt  *ys,
+                              const char *prefix,
+                              char      **ns)
 {
     int        retval = -1;
     yang_stmt *ym;
@@ -2192,10 +2192,10 @@ yang_order(yang_stmt *y)
  * @param[in] int  Integer representation of YANG keywords
  * @retval    str  String representation of YANG keywords
  */
-char *
+const char *
 yang_key2str(int keyword)
 {
-    return (char*)clicon_int2str(ykmap, keyword);
+    return clicon_int2str(ykmap, keyword);
 }
 
 /*! Map from yang keyword strings to ints
@@ -2465,7 +2465,7 @@ yang_print1(FILE      *f,
 {
     yang_stmt *yc;
     yang_stmt *yrev;
-    char      *keyw;
+    const char *keyw;
     int        spec;
     int        inext;
 
@@ -3369,8 +3369,8 @@ ys_populate_identity(clixon_handle h,
  */
 int
 if_feature(clixon_handle h,
-           char         *module,
-           char         *feature)
+           const char   *module,
+           const char   *feature)
 {
     yang_stmt *yspec;
     yang_stmt *ym; /* module */
@@ -4007,7 +4007,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
  */
 int
 yang_abs_schema_nodeid(yang_stmt  *yn,
-                       char       *schema_nodeid,
+                       const char *schema_nodeid,
                        yang_stmt **yres)
 {
     int           retval = -1;
@@ -4097,9 +4097,9 @@ yang_abs_schema_nodeid(yang_stmt  *yn,
  * @see yang_abs_schema_nodeid
  */
 int
-yang_desc_schema_nodeid(yang_stmt    *yn,
-                        char         *schema_nodeid,
-                        yang_stmt   **yres)
+yang_desc_schema_nodeid(yang_stmt  *yn,
+                        const char *schema_nodeid,
+                        yang_stmt **yres)
 {
     int           retval = -1;
     cvec         *nodeid_cvv = NULL;
@@ -4225,8 +4225,8 @@ yang_config_ancestor(yang_stmt *ys)
  * @note must free return value after use w cvec_free
  */
 cvec *
-yang_arg2cvec(yang_stmt *ys,
-              char      *delim)
+yang_arg2cvec(yang_stmt  *ys,
+              const char *delim)
 {
     char  **vec = NULL;
     int     i;
@@ -4266,9 +4266,9 @@ yang_arg2cvec(yang_stmt *ys,
  * @retval    -1       Error
  */
 int
-yang_key_match(yang_stmt *yn,
-               char      *name,
-               int       *lastkey)
+yang_key_match(yang_stmt  *yn,
+               const char *name,
+               int        *lastkey)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
@@ -4459,8 +4459,8 @@ yang_type_cache_free(yang_type_cache *ycache)
  * @see ysp_add
  */
 yang_stmt *
-yang_anydata_add(yang_stmt *yp,
-                 char      *name)
+yang_anydata_add(yang_stmt  *yp,
+                 const char *name)
 {
     yang_stmt *ys = NULL;
 
@@ -4498,11 +4498,11 @@ yang_anydata_add(yang_stmt *yp,
  * @see ys_populate_unknown  Called when parsing YANG
  */
 int
-yang_extension_value(yang_stmt *ys,
-                     char      *name,
-                     char      *ns,
-                     int       *exist,
-                     char     **value)
+yang_extension_value(yang_stmt  *ys,
+                     const char *name,
+                     const char *ns,
+                     int        *exist,
+                     char      **value)
 {
     int        retval = -1;
     yang_stmt *yext;

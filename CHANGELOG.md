@@ -23,6 +23,13 @@ Expected: February 2026
 
 * Add `-s` option to `clixon_cli` to disable output scrolling.
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Added const to multiple `char*` parameters
+  * In particular many callback input char* paraneters may need to be adjusted
+
 ### Corrected Bugs
 
 * Fixed: Error log at restconf exit

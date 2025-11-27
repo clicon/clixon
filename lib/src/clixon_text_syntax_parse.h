@@ -42,7 +42,7 @@
 /*! XML parser yacc handler struct 
  */
 struct clixon_text_syntax_parse_yacc {
-    char      *ts_parse_string; /* original (copy of) parse string */
+    const char *ts_parse_string; /* original (copy of) parse string */
     int        ts_linenum;      /* Number of \n in parsed buffer */
     void      *ts_lexbuf;       /* internal parse buffer from lex */
     cxobj     *ts_xtop;         /* Vector of created top-level nodes (to know which are created) */

@@ -43,34 +43,31 @@
 /*
  * Prototypes
  */
-int   clixon_xml2file1(FILE *f, cxobj *xn, int level, int pretty, char *prefix,
+int   clixon_xml2file1(FILE *f, cxobj *xn, int level, int pretty, const char *prefix,
                        clicon_output_cb *fn, int skiptop, int autocliext, withdefaults_type wdef,
                        int multi, int system_only);
-int   clixon_xml2file(FILE *f, cxobj *xn, int level, int pretty, char *prefix, clicon_output_cb *fn, int skiptop, int autocliext);
-int   clixon_xml2file_multi(clixon_handle h, const char *db, cxobj *xn, int level, int pretty,
-                            char *prefix, clicon_output_cb *fn, int skiptop, int autocliext,
-                            withdefaults_type wdef);
+int   clixon_xml2file(FILE *f, cxobj *xn, int level, int pretty, const char *prefix, clicon_output_cb *fn, int skiptop, int autocliext);
 int   xml_print(FILE *f, cxobj *xn);
 int   xml_print1(FILE *f, cxobj *xn);
 int   xml_dump(FILE  *f, cxobj *x);
-int   clixon_xml2cbuf1(cbuf *cb, cxobj *x, int level, int prettyprint, char *prefix,
+int   clixon_xml2cbuf1(cbuf *cb, cxobj *x, int level, int prettyprint, const char *prefix,
                        int32_t depth, int skiptop, withdefaults_type wdef);
 int   xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int   clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int   clixon_xml_parse_string1(clixon_handle h, const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int   clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr,
                         const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
-int   clixon_xml_attr_copy(cxobj *xin, cxobj *xout, char *name);
+int   clixon_xml_attr_copy(cxobj *xin, cxobj *xout, const char *name);
 int   clixon_xml_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1);
 
 static inline int
-clixon_xml2cbuf(cbuf   *cb,
-                cxobj  *xn,
-                int     level,
-                int     pretty,
-                char   *prefix,
-                int32_t depth,
-                int     skiptop)
+clixon_xml2cbuf(cbuf       *cb,
+                cxobj      *xn,
+                int         level,
+                int         pretty,
+                const char *prefix,
+                int32_t     depth,
+                int         skiptop)
 {
     return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, WITHDEFAULTS_REPORT_ALL);
 }

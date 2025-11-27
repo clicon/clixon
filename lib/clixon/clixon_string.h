@@ -60,10 +60,10 @@ static inline char * strdup4(char *str)
 /*
  * Prototypes
  */
-char **clixon_strsep1(char *string, const char *delim, int  *nvec0);
+char **clixon_strsep1(const char *string, const char *delim, int  *nvec0);
 int    clixon_strsep2(char *str, const char *delim1, const char *delim2, char ***vcp, int *nvec);
-char **clixon_strsep3(char *string, const char *delim, int  *nvec0);
-char  *clicon_strjoin (int argc, char **argv, const char *delim);
+char **clixon_strsep3(const char *string, const char *delim, int  *nvec0);
+char  *clicon_strjoin(int argc, char *const argv[], const char *delim);
 char  *clixon_string_del_join(char *str1, const char *del, const char *str2);
 int    clixon_strsplit(const char *nodeid, const int delim, char **prefix, char **id);
 int    uri_str2cvec(const char *string, const char delim1, const char delim2, int decode, cvec **cvp);
@@ -76,7 +76,7 @@ int    nodeid_split(const char *nodeid, char **prefix, char **id);
 char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, const char *trims);
 int    clicon_strcmp(const char *s1, const char *s2);
-int    clixon_unicode2utf8(char *ucstr, char *utfstr, size_t utflen);
+int    clixon_unicode2utf8(const char *ucstr, char *utfstr, size_t utflen);
 int    clixon_str_subst(char *str, cvec *cvv, cbuf *cb);
 
 #ifndef HAVE_STRNDUP

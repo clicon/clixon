@@ -110,9 +110,9 @@ autocli_cache_str2int(char *str)
  * Special rule: module-default=false and no operation=enable rules is disable
  */
 int
-autocli_module(clixon_handle    h,
-               char            *modname,
-               int             *enablep)
+autocli_module(clixon_handle h,
+               const char   *modname,
+               int          *enablep)
 {
     int    retval = -1;
     cxobj *xrule;
@@ -275,7 +275,7 @@ autocli_compress(clixon_handle h,
     char      *element;
     char      *nodeid;
     enum rfc_6020 keyw;
-    char      *keywstr;
+    const char *keywstr;
     int        match = 0;
     char      *body;
 
@@ -531,7 +531,7 @@ autocli_treeref_state(clixon_handle h,
  */
 int
 autocli_edit_mode(clixon_handle h,
-                  char         *keyw,
+                  const char   *keyw,
                   int          *flag)
 {
     int     retval = -1;

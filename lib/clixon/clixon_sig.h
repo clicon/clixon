@@ -57,8 +57,8 @@ void clicon_signal_block(int);
 void clicon_signal_unblock(int);
 
 int  pidfile_get_fd(FILE *f, pid_t *pid0);
-int  pidfile_get(char *pidfile, pid_t *pid0);
-int  pidfile_write(char *pidfile);
+int  pidfile_get(const char *pidfile, pid_t *pid0);
+int  pidfile_write(const char *pidfile);
 int  pidfile_zapold(pid_t pid);
 
 #endif  /* _CLIXON_SIG_H_ */

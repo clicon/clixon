@@ -654,9 +654,9 @@ api_path_fmt2api_path(const char *api_path_fmt,
  * "api-path" is "URI-encoded path expression" definition in RFC8040 3.5.3
  */
 int
-api_path_fmt2xpath(char  *api_path_fmt,
-                   cvec  *cvv,
-                   char **xpath)
+api_path_fmt2xpath(const char *api_path_fmt,
+                   cvec       *cvv,
+                   char      **xpath)
 {
     int     retval = -1;
     char    c;
@@ -992,11 +992,11 @@ api_path2xpath_cvv(cvec      *api_path,
  * @see api_path2xml  For api-path to xml translation (maybe could be combined?)
  */
 int
-api_path2xpath(char      *api_path,
-               yang_stmt *yspec,
-               char     **xpathp,
-               cvec     **nsc,
-               cxobj    **xerr)
+api_path2xpath(const char *api_path,
+               yang_stmt  *yspec,
+               char      **xpathp,
+               cvec      **nsc,
+               cxobj     **xerr)
 {
     int    retval = -1;
     cvec  *cvv = NULL; /* api-path vector */
@@ -1371,7 +1371,7 @@ api_path2xml_vec(char            **vec,
  * @note "Collections" should use strict = 0
  */
 int
-api_path2xml(char       *api_path,
+api_path2xml(const char *api_path,
              yang_stmt  *yspec,
              cxobj      *xtop,
              yang_class  nodeclass,
@@ -1407,7 +1407,7 @@ api_path2xml(char       *api_path,
  * @see api_path2xml
  */
 int
-api_path2xml_mnt(char             *api_path,
+api_path2xml_mnt(const char       *api_path,
                  yang_stmt        *yspec,
                  cxobj            *xtop,
                  yang_class        nodeclass,
