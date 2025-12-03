@@ -288,7 +288,7 @@ yang_mount_get_yspec_any(yang_stmt  *ys,
 int
 yang_mount_set(yang_stmt *y)
 {
-    yang_flag_set(y, YANG_FLAG_MOUNTPOINT); /* Cache value */
+    yang_flag_set(y, YANG_FLAG_MTPOINT); /* Cache value */
     return 0;
 }
 

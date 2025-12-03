@@ -86,12 +86,13 @@
                                       * Set by ys_populate2
                                       * Read by yang_schema_mount_point
                                       */
-#define YANG_FLAG_MOUNTPOINT   0x200 /* Mark node as ACTUAL populated mount-point
+#define YANG_FLAG_MTPOINT           0x200 /* Mark node as ACTUAL populated mount-point
                                       * Set by yang_mount_set
                                       * Read by ys_free1
                                       */
 #define YANG_FLAG_SPEC_MOUNT   0x400 /* Top-level spec is mounted by other top-level tree
                                       */
+
 #define YANG_FLAG_WHEN         0x800 /* Use external map to access when-info for
                                       * augment/grouping. Only orig object */
 #define YANG_FLAG_MYMODULE    0x1000 /* Use external map to access my-module for
