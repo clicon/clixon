@@ -48,6 +48,8 @@
  * @retval     0        OK
  * @retval    -1        Error
  */
+// Backward-compatible 7.6
+#define CLIXON_DISPATCHER_HANDLER_CONST
 typedef int (*handler_function)(void *handle, const char *path, void *userargs, void *arg);
 
 /*
