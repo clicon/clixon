@@ -545,12 +545,10 @@ yang_when_get(clixon_handle h,
 {
     map_ptr2ptr *mp = _yang_when_map;
     size_t       len = _yang_when_map_len;
-    yang_stmt   *ys2;
 
-    if ((ys2 = yang_orig_get(ys)) == NULL)
-        ys2 = ys;
-    if (yang_flag_get(ys2, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
-        return clixon_ptr2ptr(mp, len, ys2);
+    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
+        return clixon_ptr2ptr(mp, len, ys);
+
     return NULL;
 }
 
@@ -568,20 +566,12 @@ yang_when_set(clixon_handle h,
               yang_stmt    *ywhen)
 {
     int          retval = -1;
-    yang_stmt   *ys2;
-    map_ptr2ptr *mp = _yang_when_map;
-    size_t       len = _yang_when_map_len;
-
-    if ((ys2 = yang_orig_get(ys)) == NULL)
-        ys2 = ys;
-    if (clixon_ptr2ptr(mp, len, ys2) == NULL) {
-        assert(yang_flag_set(ys2, YANG_FLAG_WHEN)==0); // XXX
-        if (clixon_ptr2ptr_add(&_yang_when_map, &_yang_when_map_len, ys2, ywhen) < 0)
+    /* Attach to this node; copies inherit via ys_cp_one. */
+    if (clixon_ptr2ptr(_yang_when_map, _yang_when_map_len, ys) == NULL) {
+        if (clixon_ptr2ptr_add(&_yang_when_map, &_yang_when_map_len, ys, ywhen) < 0)
             goto done;
-        yang_flag_set(ys2, YANG_FLAG_WHEN);
+        yang_flag_set(ys, YANG_FLAG_WHEN);
     }
-    else
-        assert(yang_flag_set(ys2, YANG_FLAG_WHEN) == 0); // XXX
     retval = 0;
  done:
     return retval;
@@ -1294,7 +1284,6 @@ ys_cp_one(yang_stmt *ynew,
 
     sz = sizeof(*yold);
     memcpy(ynew, yold, sz);
-    yang_flag_reset(ynew, YANG_FLAG_WHEN); /* Dont inherit WHENs */
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
         if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
@@ -1340,6 +1329,8 @@ ys_cp_one(yang_stmt *ynew,
     default:
         break;
     }
+    if (yang_flag_get(ynew, YANG_FLAG_WHEN) != 0x0)
+        yang_when_set(NULL, ynew, yang_when_get(NULL, yold));
     if (yang_flag_get(yold, YANG_FLAG_MYMODULE) != 0x0)
         yang_mymodule_set(ynew, yang_mymodule_get(yold));
     retval = 0;
