@@ -646,6 +646,7 @@ main(int    argc,
         clixon_err(OE_CFG, errno, "FCGX_InitRequest");
         goto done;
     }
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     while (1) {
         finish = 1; /* If zero, dont finish request, initiate new */
 
@@ -729,6 +730,8 @@ main(int    argc,
  done:
     if (h){
         stream_child_freeall(h);
+        clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+        clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
         restconf_terminate(h);
     }
     return retval;

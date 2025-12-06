@@ -975,6 +975,7 @@ main(int    argc,
         if (clixon_event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
             goto done;
     }
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (clixon_event_loop(h) < 0)
         goto done;
  ok:

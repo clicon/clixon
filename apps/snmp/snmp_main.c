@@ -607,6 +607,7 @@ main(int    argc,
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
         goto done;
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     /* main event loop */
     if (clixon_event_loop(h) < 0)
         goto done;

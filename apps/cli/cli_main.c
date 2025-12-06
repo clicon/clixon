@@ -968,13 +968,18 @@ main(int    argc,
         if (rest_commands(h, restarg) < 0)
             goto done;
     }
-
-    /* Go into event-loop unless -1 command-line */
-    if (!once){
-        retval = cli_interactive(h);
+    { /* Make a syslog of cli start but do not log on stderr or stdout */
+        uint16_t flags = clixon_logflags_get();
+        clixon_log_init(h, __PROGRAM__, LOG_INFO,
+                        flags & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
+        clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+        clixon_log_init(h, __PROGRAM__, LOG_INFO, flags);
     }
-    else
+    /* Go into event-loop unless -1 command-line */
+    if (once)
         retval = 0;
+    else
+        retval = cli_interactive(h);
   done:
     if (restarg)
         free(restarg);
@@ -983,7 +988,6 @@ main(int    argc,
         clixon_log_init(h, __PROGRAM__, LOG_INFO,
                         clixon_logflags_get() & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
         clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
-
         cli_terminate(h);
     }
     return retval;

@@ -21,6 +21,7 @@ Expected: February 2026
 
 ### Features
 
+* Added syslog NOTICE to for all start and terminate of cli, backend, netconf and restconf, not just backend.
 * Add `-s` option to `clixon_cli` to disable output scrolling.
 * Changed cli cache to server-side instead of client-side
   * Add cache protocol for yang-domains and clispecs
