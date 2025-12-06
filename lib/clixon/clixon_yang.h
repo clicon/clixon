@@ -94,7 +94,8 @@
                                       */
 
 #define YANG_FLAG_WHEN         0x800 /* Use external map to access when-info for
-                                      * augment/grouping. Only orig object */
+                                      * augment/grouping. Stored on the concrete node; copies
+                                      * reattach via ys_cp_one */
 #define YANG_FLAG_MYMODULE    0x1000 /* Use external map to access my-module for
                                       * UNKNOWNS and augment/grouping */
 #define YANG_FLAG_REFINE      0x2000 /* In derived trees from grouping and augments, this node
