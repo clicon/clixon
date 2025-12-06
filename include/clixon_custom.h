@@ -307,3 +307,11 @@
 /*! CLI generation has YANG dependencies in post-processing
  */
 #define YANG2CLI_POST
+
+/*! Yang optimization making smaller yang-stmt struct for derived tree
+ *
+ * See uses_orig_ptr CLICON_YANG_USE_ORIGINAL YANG_FLAG_MINI
+ * _CV is sub-option for optimizing cv in yang_stmt
+ */
+#define YANG_MEM_OPT
+#define YANG_MEM_OPT_CV

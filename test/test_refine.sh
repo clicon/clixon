@@ -26,6 +26,7 @@ cat <<EOF > $cfg
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
   <CLICON_YANG_LIBRARY>true</CLICON_YANG_LIBRARY>
+
 </clixon-config>
 EOF
 
@@ -69,11 +70,14 @@ module clixon-example {
         refine "mykeystore/keystore/keystore-reference"
                    + "/dummy2" {
            default "bar2";
-           }
         }
-    }
+     }
+  }
+  container orig {
+     description "No refines";
+     uses ex:mygrouping;
+  }
 }
-
 EOF
 
 new "test params: -f $cfg"
@@ -95,8 +99,17 @@ wait_backend
 new "Set local-definition"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><certificate xmlns=\"urn:example:clixon\"><local-definition/></certificate></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "Set local-definition orig"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><orig xmlns=\"urn:example:clixon\"><local-definition/></orig></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 new "Get config expected foo2 refined default value (report-all)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><local-definition><dummy1>foo2</dummy1></local-definition></certificate>"
+
+new "Get config expected foo1 orig default value (report-all)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults></get-config></rpc>" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><local-definition><dummy1>foo2</dummy1></local-definition></certificate><orig xmlns=\"urn:example:clixon\"><local-definition><dummy1>foo1</dummy1></local-definition></orig>"
+
+new "Delete local-definition orig"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>none</default-operation><config><orig nc:operation=\"remove\" xmlns=\"urn:example:clixon\" xmlns:nc=\"${BASENS}\"><local-definition/></orig></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Get config expected foo2 refined default value"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><certificate xmlns=\"urn:example:clixon\"><local-definition/></certificate></data></rpc-reply>"

@@ -211,6 +211,7 @@ static int _yang_use_orig = 0;
 
 /* Forward static */
 static int yang_type_cache_free(yang_type_cache *ycache);
+static int uses_orig_ptr(enum rfc_6020 keyword);
 
 /* Access functions
  */
@@ -264,6 +265,15 @@ yang_keyword_get(yang_stmt *ys)
 char*
 yang_argument_get(yang_stmt *ys)
 {
+#ifdef YANG_MEM_OPT
+    yang_stmt *yorig;
+
+    if (yang_flag_get(ys, YANG_FLAG_MINI)){
+        yorig = yang_orig_get(ys);
+        assert(yorig != NULL);
+        ys = yorig;
+    }
+#endif
     return ys->ys_argument;
 }
 
@@ -278,6 +288,9 @@ int
 yang_argument_set(yang_stmt *ys,
                   char      *arg)
 {
+#ifdef YANG_MEM_OPT
+    assert(yang_flag_get(ys, YANG_FLAG_MINI) == 0x0);
+#endif
     ys->ys_argument = arg; /* not strdup/copied */
     return 0;
 }
@@ -299,6 +312,9 @@ yang_argument_dup(yang_stmt  *ys,
         clixon_err(OE_UNIX, errno, "strdup");
         return -1;
     }
+#ifdef YANG_MEM_OPT
+    assert(yang_flag_get(ys, YANG_FLAG_MINI) == 0x0);
+#endif
     ys->ys_argument = dup; /* not strdup/copied */
     return 0;
 }
@@ -343,6 +359,15 @@ yang_orig_set(yang_stmt *ys,
 cg_var*
 yang_cv_get(yang_stmt *ys)
 {
+#ifdef YANG_MEM_OPT_CV
+    yang_stmt *yorig;
+
+    if (yang_flag_get(ys, YANG_FLAG_MINI)){
+        yorig = yang_orig_get(ys);
+        assert(yorig != NULL);
+        ys = yorig;
+    }
+#endif
     return ys->ys_cv;
 }
 
@@ -357,6 +382,9 @@ int
 yang_cv_set(yang_stmt *ys,
             cg_var    *cv)
 {
+#ifdef YANG_MEM_OPT_CV
+    assert(yang_flag_get(ys, YANG_FLAG_MINI) == 0x0);
+#endif
     if (cv != NULL && ys->ys_cv != NULL)
         cv_free(ys->ys_cv);
     ys->ys_cv = cv;
@@ -372,6 +400,15 @@ yang_cv_set(yang_stmt *ys,
 cvec*
 yang_cvec_get(yang_stmt *ys)
 {
+#ifdef YANG_MEM_OPT
+    yang_stmt *yorig;
+
+    if (yang_flag_get(ys, YANG_FLAG_MINI)){
+        yorig = yang_orig_get(ys);
+        assert(yorig != NULL);
+        ys = yorig;
+    }
+#endif
     return ys->ys_cvec;
 }
 
@@ -386,6 +423,9 @@ int
 yang_cvec_set(yang_stmt *ys,
               cvec      *cvv)
 {
+#ifdef YANG_MEM_OPT
+    assert(yang_flag_get(ys, YANG_FLAG_MINI) == 0x0);
+#endif
     if (ys->ys_cvec)
         cvec_free(ys->ys_cvec);
     ys->ys_cvec = cvv;
@@ -804,12 +844,29 @@ yang_stats_one(yang_stmt *ys,
     size_t           sz = 0;
     yang_type_cache *yc;
 
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) != 0x0){
+        sz += sizeof(struct yang_stmt_mini);
+    }
+    else
+#endif
     sz += sizeof(struct yang_stmt);
     sz += ys->ys_len*sizeof(struct yang_stmt*);
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if (ys->ys_argument)
         sz += strlen(ys->ys_argument) + 1;
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if (ys->ys_cvec)
         sz += cvec_size(ys->ys_cvec);
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
+    if (ys->ys_cv)
+        sz += cv_size(ys->ys_cv);
     switch (ys->ys_keyword) {
     case Y_TYPE:
         if ((yc = yang_typecache_get(ys)) != NULL){
@@ -973,18 +1030,25 @@ ydomain_new(clixon_handle h,
  * @retval    ys    New yang-stmt. Free with ys_free()
  * @retval    NULL  Error
  */
-static yang_stmt *
+static void* // yang_stmt *
 ys_new_sz(enum rfc_6020 keyw,
           size_t        sz)
 {
-    yang_stmt *ys;
-
+#ifdef YANG_MEM_OPT
+    struct yang_stmt_mini *ys;
+#else
+    struct yang_stmt      *ys;
+#endif
     if ((ys = malloc(sz)) == NULL){
         clixon_err(OE_YANG, errno, "malloc");
         return NULL;
     }
     memset(ys, 0, sz);
+#ifdef YANG_MEM_OPT
+    ys->ym_keyword = keyw;
+#else
     ys->ys_keyword = keyw;
+#endif
     _stats_yang_nr++;
     return ys;
 }
@@ -1018,14 +1082,23 @@ ys_free1(yang_stmt *ys,
     cg_var         *cv;
     cvec           *cvv;
 
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if ((cv = ys->ys_cv) != NULL){
         ys->ys_cv = NULL;
         cv_free(cv);
     }
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if ((cvv = ys->ys_cvec) != NULL){
         ys->ys_cvec = NULL;
         cvec_free(cvv);
     }
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if (ys->ys_argument){
         free(ys->ys_argument);
         ys->ys_argument = NULL;
@@ -1146,7 +1219,7 @@ ys_prune_self(yang_stmt *ys)
  *
  * @param[in]  ys   Yang node to its children recursively
  */
-static int
+int
 ys_freechildren(yang_stmt *ys)
 {
     yang_stmt *yc;
@@ -1235,12 +1308,14 @@ uses_orig_ptr(enum rfc_6020 keyword)
         || keyword == Y_ERROR_APP_TAG
         || keyword == Y_ERROR_MESSAGE
         || keyword == Y_FRACTION_DIGITS
+        // || keyword == Y_IF_FEATURE // XXX refine
         // || keyword ==  Y_KEY // NO
         || keyword == Y_LENGTH // children
         || keyword == Y_MANDATORY // XXX refine
         || keyword == Y_MAX_ELEMENTS // XXX refine
         || keyword == Y_MIN_ELEMENTS // XXX refine
         || keyword == Y_MODIFIER
+        // || keyword == Y_MUST // XXX refine
         || keyword == Y_ORDERED_BY
         || keyword == Y_PATH
         || keyword == Y_PATTERN // children
@@ -1282,19 +1357,35 @@ ys_cp_one(yang_stmt *ynew,
     cg_var *cvo;
     size_t  sz;
 
-    sz = sizeof(*yold);
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ynew, YANG_FLAG_MINI) != 0x0)
+        sz = sizeof(struct yang_stmt_mini);
+    else
+#endif
+        sz = sizeof(*yold);
     memcpy(ynew, yold, sz);
+#ifdef YANG_MEM_OPT
+    if (sz == sizeof(struct yang_stmt_mini)) {
+        yang_flag_set(ynew, YANG_FLAG_MINI);
+    }
+#endif
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
         if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
             clixon_err(OE_YANG, errno, "calloc");
             goto done;
         }
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ynew, YANG_FLAG_MINI) == 0x0)
+#endif
     if (yold->ys_argument)
         if ((ynew->ys_argument = strdup(yold->ys_argument)) == NULL){
             clixon_err(OE_YANG, errno, "strdup");
             goto done;
         }
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ynew, YANG_FLAG_MINI) == 0x0)
+#endif
     if ((cvo = yold->ys_cv) != NULL){ // Note direct access to avoid wrappings
         yang_cv_set(ynew, NULL);
         if ((cvn = cv_dup(cvo)) == NULL){
@@ -1303,6 +1394,9 @@ ys_cp_one(yang_stmt *ynew,
         }
         yang_cv_set(ynew, cvn);
     }
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ynew, YANG_FLAG_MINI) == 0x0)
+#endif
     if ((cvv = yold->ys_cvec) != NULL){ // Note direct access to avoid wrappings
         ynew->ys_cvec = NULL; // Note direct access to avoid cvec_free
         if ((cvv = cvec_dup(cvv)) == NULL){
@@ -1342,6 +1436,8 @@ ys_cp_one(yang_stmt *ynew,
  *
  * @param[in] ynew  New empty (but created) yang statement (to)
  * @param[in] yold  Old existing yang statement (from)
+ * @param[in] orig  Set an orig pointer from the new object to the existing
+ * @param[in] mini  Create a reduced yang object relying on the orig-pointer
  * @retval    0     OK
  * @retval   -1     Error
  * @code
@@ -1351,9 +1447,11 @@ ys_cp_one(yang_stmt *ynew,
  * @endcode
  * @see ys_replace
  */
-int
+static int
 ys_cp(yang_stmt *ynew,
-      yang_stmt *yold)
+      yang_stmt *yold,
+      int        orig,
+      int        mini)
 {
     int        retval = -1;
     int        i;
@@ -1363,14 +1461,15 @@ ys_cp(yang_stmt *ynew,
 
     if (ys_cp_one(ynew, yold) < 0)
         goto done;
+    yang_orig_set(ynew, yold); /* 2: set pointer to original object */
     for (i=0,j=0; i<yold->ys_len; i++){
         yco = yold->ys_stmt[i];
-        if (_yang_use_orig &&
+        if (orig && /* 3: skip some sub-objects */
             uses_orig_ptr(yang_keyword_get(yco))) {
             ynew->ys_len--;
             continue;
         }
-        if ((ycn = ys_dup(yco)) == NULL)
+        if ((ycn = ys_dup(yco, orig, mini)) == NULL)
             goto done;
          ynew->ys_stmt[j++] = ycn;
         ycn->ys_parent = ynew;
@@ -1382,27 +1481,52 @@ ys_cp(yang_stmt *ynew,
 
 /*! Create a new yang node and copy the contents recursively from the original.  *
  *
- * @param[in] old  Old existing yang statement (from)
- * @retval    NULL Error
- * @retval    nw   New created yang statement
- * @retval    0     OK
- * @retval   -1     Error
+ * Also note a back-pointer is set to the original object, which means it is not a
+ * complete stand-alone new yang-object
+ * The orig + mini flags alter a regular duplication as follows:
+ * 1) mini: Allocate a reduced object: yang_stmt_mini and set YANG_FLAG_MINI flag
+ * 2) orig: Set back pointer to original object
+ * 3) orig: Skip some sub-objects as given by uses_orig_ptr()
+ * @param[in] old   Old existing yang statement (from)
+ * @param[in] orig  Set an orig pointer from the new object to the existing
+ * @param[in] mini  Create a reduced yang object relying on the orig-pointer
+ * @retval    nw    New created yang object
+ * @retval    NULL  Error
  * This may involve duplicating strings, etc.
  * The new yang tree needs to be freed by ys_free().
  * The parent of new is NULL, it needs to be explicitly inserted somewhere
+ *     orig + mini  (uses / augment)
+ *    orig + !mini (refine / deviate)
+ *   !orig + !mini (replace? but unsure this is used)
+ *   !orig + mini (does not make sense)
+ * @note Special case if leaf->default. Then do not allocate a mini object since leaf->cv stores default value, ie
+ *       if default is refined (non-mini), leaf also needs to be non-mini
  */
 yang_stmt *
-ys_dup(yang_stmt *old)
+ys_dup(yang_stmt *yold,
+       int        orig,
+       int        mini)
 {
-    yang_stmt *nw;
+    yang_stmt    *ynew;
+#ifdef YANG_MEM_OPT
+    enum rfc_6020 keyw = yang_keyword_get(yold);
+    int           special;
 
-    if ((nw = ys_new(old->ys_keyword)) == NULL)
+    /* Special case if leaf with default value */
+    special = (keyw == Y_LEAF || keyw == Y_LEAF_LIST) && yang_find(yold, Y_DEFAULT, NULL) != NULL;
+    if (orig && mini && !special) {  /* 1: Allocate reduced object */
+        ynew = ys_new_sz(keyw, sizeof(struct yang_stmt_mini));
+        yang_flag_set(ynew, YANG_FLAG_MINI);
+    }
+    else
+#endif
+    if ((ynew = ys_new(yold->ys_keyword)) == NULL)
         return NULL;
-    if (ys_cp(nw, old) < 0){
-        ys_free(nw);
+    if (ys_cp(ynew, yold, orig, mini) < 0){
+        ys_free(ynew);
         return NULL;
     }
-    return nw;
+    return ynew;
 }
 
 /*! Replace yold with ynew (insert ynew at the exact place of yold). Keep yold pointer as-is.
@@ -1429,7 +1553,7 @@ ys_replace(yang_stmt *yorig,
     /* Remove old yangs all children */
     ys_freechildren(yorig);
     ys_free1(yorig, 0); /* Remove all in yold except the actual object */
-    if (ys_cp(yorig, yfrom) < 0)
+    if (ys_cp(yorig, yfrom, 0, 0) < 0)
         goto done;
     yorig->ys_parent = yp;
     retval = 0;
@@ -1533,6 +1657,7 @@ yang_find(yang_stmt  *yn,
     yang_stmt *yspec;
     yang_stmt *ym;
     yang_stmt *yorig;
+    char      *arg;
 
     /* Recursion check */
     if (yang_flag_get(yn, YANG_FLAG_FIND) != 0x0)
@@ -1542,7 +1667,7 @@ yang_find(yang_stmt  *yn,
         ys = yn->ys_stmt[i];
         if (keyword == 0 || ys->ys_keyword == keyword){
             if (argument == NULL ||
-                (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)){
+                ((arg = yang_argument_get(ys)) != NULL && strcmp(arg, argument) == 0)) {
                 yret = ys;
                 break;
             }
@@ -1565,9 +1690,7 @@ yang_find(yang_stmt  *yn,
         }
     }
 
-    if (yret != NULL && yang_flag_get(yret, YANG_FLAG_REFINE))
-        ;
-    else {
+    if (yret == NULL || yang_flag_get(yret, YANG_FLAG_REFINE)==0x0){
         if (_yang_use_orig &&
             (yorig = yang_orig_get(yn)) != NULL &&
             uses_orig_ptr(keyword)){
@@ -1623,6 +1746,7 @@ yang_find_datanode_ns(yang_stmt  *yn,
     char      *ns;
     int        inext;
     int        inext2;
+    char      *arg;
 
     inext = 0;
     while ((ys = yn_iter(yn, &inext)) != NULL){
@@ -1633,7 +1757,7 @@ yang_find_datanode_ns(yang_stmt  *yn,
                     ysmatch = yang_find_datanode_ns(yc, argument, namespace);
                 else
                     if (yang_datanode(yc)){
-                        if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+                        if ((arg = yang_argument_get(yc)) != NULL && strcmp(arg, argument) == 0)
                             ysmatch = yc;
                     }
                 if (ysmatch)
@@ -1648,7 +1772,7 @@ yang_find_datanode_ns(yang_stmt  *yn,
         else if (yang_datanode(ys)){
             if (argument == NULL)
                 ysmatch = ys;
-            else if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
+            else if ((arg = yang_argument_get(ys)) != NULL && strcmp(arg, argument) == 0){
                 if (namespace == NULL)
                     ysmatch = ys;
                 else {
@@ -1698,13 +1822,15 @@ yang_find_schemanode(yang_stmt  *yn,
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
-    int        i, j;
+    char      *arg;
+    int        i;
+    int        j;
 
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
         if (yang_keyword_get(ys) == Y_CHOICE){
             /* First check choice itself */
-            if (ys->ys_argument && argument && strcmp(argument, ys->ys_argument) == 0){
+            if ((arg = yang_argument_get(ys)) != NULL && argument && strcmp(arg, argument) == 0){
                 ysmatch = ys;
                 goto match;
             }
@@ -1718,7 +1844,7 @@ yang_find_schemanode(yang_stmt  *yn,
                         if (argument == NULL)
                             ysmatch = yc;
                         else{
-                            if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+                            if ((arg = yang_argument_get(yc)) != NULL && strcmp(arg, argument) == 0)
                                 ysmatch = yc;
                         }
                     }
@@ -1735,7 +1861,7 @@ yang_find_schemanode(yang_stmt  *yn,
                 else if (strcmp(argument, "output") == 0 && yang_keyword_get(ys) == Y_OUTPUT)
                     ysmatch = ys;
                 else
-                    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+                    if ((arg = yang_argument_get(ys)) != NULL && strcmp(arg, argument) == 0)
                         ysmatch = ys;
                 if (ysmatch)
                     goto match;
@@ -2725,7 +2851,7 @@ yang_deviation(yang_stmt *ys,
                     }
                 }
                 /* Make a copy of deviate child and insert. */
-                if ((yc1 = ys_dup(yc)) == NULL)
+                if ((yc1 = ys_dup(yc, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
                     goto done;
                 /* Special case: resolve types in temporary old deviation context */
                 if (yn_insert(yd, yc1) < 0)
@@ -2770,7 +2896,7 @@ yang_deviation(yang_stmt *ys,
                         goto done;
                 }
                 /* Make a copy of deviate child and insert. */
-                if ((yc1 = ys_dup(yc)) == NULL)
+                if ((yc1 = ys_dup(yc, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
                     goto done;
                 /* Special case: resolve types in temporary old deviation context */
                 if (yn_insert(yd, yc1) < 0)
@@ -2905,6 +3031,9 @@ ys_populate_leaf2(clixon_handle h,
     uint8_t         fraction_digits = 0;
     int             options = 0x0;
     yang_stmt      *ytypedef; /* where type is define */
+#ifdef YANG_MEM_OPT_CV
+    yang_stmt      *ys_orig;
+#endif
     int             ret;
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
@@ -2966,6 +3095,20 @@ ys_populate_leaf2(clixon_handle h,
         if ((ret = yang_key_match(yparent, yang_argument_get(ys), NULL)) < 0)
             goto done;
     }
+#ifdef YANG_MEM_OPT_CV
+    if ((ys_orig = yang_orig_get(ys)) != NULL &&
+        (yang_flag_get(ys, YANG_FLAG_MINI)) != 0x0){
+        if (yang_cv_get(ys_orig) == NULL){
+            if (yang_cv_set(ys_orig, cv) < 0)
+                goto done;
+        }
+        else {
+            cv_free(cv);
+            cv = NULL;
+        }
+    }
+    else
+#endif
     yang_cv_set(ys, cv);
     retval = 0;
   done:

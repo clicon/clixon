@@ -1195,12 +1195,12 @@ xmldb_get(clixon_handle    h,
  *      <c><x>0</x></c>
  */
 int
-xmldb_get0(clixon_handle    h,
-           const char      *db,
-           int              notused0,
-           cvec            *nsc,
-           const char      *xpath,
-           int              notused1,
+xmldb_get0(clixon_handle     h,
+           const char       *db,
+           int               notused0,
+           cvec             *nsc,
+           const char       *xpath,
+           int               notused1,
            withdefaults_type wdef,
            cxobj           **xret,
            void             *notused2,

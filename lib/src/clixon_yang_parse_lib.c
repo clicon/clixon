@@ -205,6 +205,7 @@ ys_grouping_resolve(yang_stmt  *yuses,
     return retval;
 }
 
+#ifdef NOTUSED
 /*! Recursively add pointer from derived node to original grouping
  *
  * Cannot use yang_apply since one needs to traverse two trees simultaneously
@@ -224,7 +225,7 @@ ys_add_orig_ptr(yang_stmt *yp0,
 
     inext = 0;
     while ((y1 = yn_iter(yp1, &inext)) != NULL) {
-        if ((y0 = yang_find(yp0, yang_keyword_get(y1), yang_argument_get(y1))) == NULL)
+        if ((y0 = yang_find(yp0, yang_keyword_get(y1), yang_argument_get(y1))) == NULL) // XXX THIS CANT BE DONE,...
             continue;
         yang_orig_set(y1, y0);
         if (ys_add_orig_ptr(y0, y1) < 0)
@@ -234,6 +235,7 @@ ys_add_orig_ptr(yang_stmt *yp0,
  done:
     return retval;
 }
+#endif
 
 /*! This is an augment node, augment the original datamodel.
  *
@@ -410,7 +412,7 @@ yang_augment_node(clixon_handle h,
             break;
         }
         /* If expanded by uses / when */
-        if ((yc = ys_dup(yc0)) == NULL)
+        if ((yc = ys_dup(yc0, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
             goto done;
 #ifdef YANG_GROUPING_AUGMENT_SKIP
         /* cornercase: always expand uses under augment */
@@ -419,8 +421,10 @@ yang_augment_node(clixon_handle h,
         yang_mymodule_set(yc, ymod);
         /* Add backpointer to orig. */
         yang_orig_set(yc, yc0);
+#ifdef NOTUSED
         if (ys_add_orig_ptr(yc0, yc) < 0)
             goto done;
+#endif
         if (yn_insert(ytarget, yc) < 0)
             goto done;
         /* If there is an associated when statement, add a special when struct to the yang
@@ -457,18 +461,20 @@ yang_augment_node(clixon_handle h,
 
 /*! Given a refine node, perform the refinement action on the target refine node
  *
- * The RFC is somewhat complicate in the rules for refine.
+ * The RFC is somewhat complicated in the rules for refine.
  * Most nodes will be replaced, but some are added
- * @param[in]  yr   Refine node
- * @param[in]  yt   Refine target node (will be modified)
+ * @param[in]  h    Clixon handle
+ * @param[in]  yr   Refine node, ie the refine X statement
+ * @param[in]  yt   Refine target node (may be modified or replaced)
  * @retval     0    OK
  * @retval    -1    Error
  * @see RFC7950 Sec 7.13.2
  * There may be some missed cornercases
  */
 static int
-ys_do_refine(yang_stmt *yr,
-             yang_stmt *yt)
+ys_do_refine(clixon_handle h,
+             yang_stmt    *yr,
+             yang_stmt    *yt)
 {
     int           retval = -1;
     yang_stmt    *yrc; /* refine child */
@@ -493,7 +499,7 @@ ys_do_refine(yang_stmt *yr,
         case Y_PRESENCE:
         case Y_MIN_ELEMENTS:
         case Y_MAX_ELEMENTS:
-        case Y_EXTENSION:
+        case Y_EXTENSION: /* non-terminal */
             /* Remove old matching, dont increment due to prune in loop */
             for (i=0; i<yang_len_get(yt); ){
                 ytc = yt->ys_stmt[i];
@@ -505,7 +511,7 @@ ys_do_refine(yang_stmt *yr,
                 ys_free(ytc);
             }
             /* fall through and add if not found */
-        case Y_MUST:   /* keep old, add new */
+        case Y_MUST:   /* keep old, add new, non-terminal */
         case Y_IF_FEATURE:
             break;
         default:
@@ -517,7 +523,7 @@ ys_do_refine(yang_stmt *yr,
     while ((yrc = yn_iter(yr, &inext)) != NULL) {
         keyw = yang_keyword_get(yrc);
         /* Make copy */
-        if ((yrc1 = ys_dup(yrc)) == NULL)
+        if ((yrc1 = ys_dup(yrc, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 0)) == NULL)
             goto done;
         if (yn_insert(yt, yrc1) < 0)
             goto done;
@@ -654,7 +660,7 @@ yang_expand_uses_node(clixon_handle h,
 
         for (i=0; i<ygrouping2->ys_len; i++){
             yco = ygrouping->ys_stmt[i];
-            if ((ycn = ys_dup(yco)) == NULL)
+            if ((ycn = ys_dup(yco, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
                 goto done;
             ygrouping2->ys_stmt[i] = ycn;
             ycn->ys_parent = ygrouping2;
@@ -717,15 +723,17 @@ yang_expand_uses_node(clixon_handle h,
         if (yang_keyword_get(yrt) == Y_ANYDATA || yang_keyword_get(yrt) == Y_ANYXML)
             continue;
         /* Do the actual refinement */
-        if (ys_do_refine(yr, yrt) < 0)
+        if (ys_do_refine(h, yr, yrt) < 0)
             goto done;
     } /* while yr */
     /* Note: prune here to make dangling again after while loop */
     if (ys_prune_self(ygrouping2) < 0)
         goto done;
     /* Add backpointer to orig. */
+#ifdef NOTUSED
     if (ys_add_orig_ptr(ygrouping, ygrouping2) < 0)
         goto done;
+#endif
     /* Then copy and insert each child element from ygrouping2 to yn */
     k=0;
     for (j=0; j<yang_len_get(ygrouping2); j++){
@@ -1981,9 +1989,19 @@ ys_parse(yang_stmt   *ys,
     cg_var    *cv2 = NULL;
 
     if ((cv = yang_cv_get(ys)) != NULL){
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0){
         /* eg mandatory in uses is already set and then copied */
         cv_free(cv);
         yang_cv_set(ys, NULL);
+    }
+    else
+        goto ok;
+#else
+        /* eg mandatory in uses is already set and then copied */
+        cv_free(cv);
+        yang_cv_set(ys, NULL);
+#endif
     }
     if ((cv = cv_new(cvtype)) == NULL){
         clixon_err(OE_YANG, errno, "cv_new");
@@ -2004,7 +2022,17 @@ ys_parse(yang_stmt   *ys,
         }
         yang_cv_set(ys2, cv2);
     }
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ys, YANG_FLAG_MINI) != 0x0){
+        cv_free(cv);
+        cv = NULL;
+    }
+    else
+#endif
     yang_cv_set(ys, cv);
+#ifdef YANG_MEM_OPT_CV
+ ok:
+#endif
     /* cvret == 1 means parsing is OK */
   done:
     if (reason)
