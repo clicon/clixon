@@ -190,6 +190,7 @@ static int _yang_use_orig = 0;
 
 /* Forward static */
 static int yang_type_cache_free(yang_type_cache *ycache);
+static int uses_orig_ptr(enum rfc_6020 keyword);
 
 /* Access functions
  */
@@ -243,6 +244,15 @@ yang_keyword_get(yang_stmt *ys)
 char*
 yang_argument_get(yang_stmt *ys)
 {
+#ifdef YANG_MEM_OPT
+    yang_stmt *yorig;
+
+    if (yang_flag_get(ys, YANG_FLAG_MINI)){
+        yorig = yang_orig_get(ys);
+        assert(yorig != NULL);
+        ys = yorig;
+    }
+#endif
     return ys->ys_argument;
 }
 
@@ -257,6 +267,9 @@ int
 yang_argument_set(yang_stmt *ys,
                   char      *arg)
 {
+#ifdef YANG_MEM_OPT
+    assert(yang_flag_get(ys, YANG_FLAG_MINI) == 0x0);
+#endif
     ys->ys_argument = arg; /* not strdup/copied */
     return 0;
 }
@@ -278,6 +291,9 @@ yang_argument_dup(yang_stmt  *ys,
         clixon_err(OE_UNIX, errno, "strdup");
         return -1;
     }
+#ifdef YANG_MEM_OPT
+    assert(yang_flag_get(ys, YANG_FLAG_MINI) == 0x0);
+#endif
     ys->ys_argument = dup; /* not strdup/copied */
     return 0;
 }
@@ -795,6 +811,9 @@ yang_stats_one(yang_stmt *ys,
 
     sz += sizeof(struct yang_stmt);
     sz += ys->ys_len*sizeof(struct yang_stmt*);
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if (ys->ys_argument)
         sz += strlen(ys->ys_argument) + 1;
     if (ys->ys_cvec)
@@ -1015,6 +1034,9 @@ ys_free1(yang_stmt *ys,
         ys->ys_cvec = NULL;
         cvec_free(cvv);
     }
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0)
+#endif
     if (ys->ys_argument){
         free(ys->ys_argument);
         ys->ys_argument = NULL;
@@ -1272,14 +1294,31 @@ ys_cp_one(yang_stmt *ynew,
     size_t  sz;
 
     sz = sizeof(*yold);
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(ynew, YANG_FLAG_MINI) != 0x0)
+        sz = sizeof(struct yang_stmt_mini);
+    else
+#endif
+        sz = sizeof(*yold);
     memcpy(ynew, yold, sz);
     yang_flag_reset(ynew, YANG_FLAG_WHEN); /* Dont inherit WHENs */
+#if 1
+    yang_orig_set(ynew, yold);
+#endif
+#ifdef YANG_MEM_OPT
+    if (sz == sizeof(struct yang_stmt_mini)) {
+        yang_flag_set(ynew, YANG_FLAG_MINI);
+    }
+#endif
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
         if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
             clixon_err(OE_YANG, errno, "calloc");
             goto done;
         }
+#ifdef YANG_MEM_OPT
+    if (yang_flag_get(yold, YANG_FLAG_MINI) == 0x0)
+#endif
     if (yold->ys_argument)
         if ((ynew->ys_argument = strdup(yold->ys_argument)) == NULL){
             clixon_err(OE_YANG, errno, "strdup");
@@ -1354,7 +1393,7 @@ ys_cp(yang_stmt *ynew,
     for (i=0,j=0; i<yold->ys_len; i++){
         yco = yold->ys_stmt[i];
         if (_yang_use_orig &&
-            uses_orig_ptr(yang_keyword_get(yco))) {
+            uses_orig_ptr(yang_keyword_get(yco))) { // XXX I DOMT THINK ORIG_PTR IS SET HERE?
             ynew->ys_len--;
             continue;
         }
@@ -1380,17 +1419,29 @@ ys_cp(yang_stmt *ynew,
  * The parent of new is NULL, it needs to be explicitly inserted somewhere
  */
 yang_stmt *
-ys_dup(yang_stmt *old)
+ys_dup(yang_stmt *yold)
 {
-    yang_stmt *nw;
+    yang_stmt *ynew;
 
-    if ((nw = ys_new(old->ys_keyword)) == NULL)
+#ifdef YANG_MEM_OPT
+    enum rfc_6020 keyw = yang_keyword_get(yold);
+    if (_yang_use_orig &&
+        uses_orig_ptr(keyw)) {
+        ynew = ys_new_sz(keyw, sizeof(struct yang_stmt_mini));
+        yang_flag_set(ynew, YANG_FLAG_MINI);
+    }
+    else
+#endif
+    if ((ynew = ys_new(yold->ys_keyword)) == NULL)
         return NULL;
-    if (ys_cp(nw, old) < 0){
-        ys_free(nw);
+#if 0
+    yang_orig_set(ynew, yold);
+#endif
+    if (ys_cp(ynew, yold) < 0){
+        ys_free(ynew);
         return NULL;
     }
-    return nw;
+    return ynew;
 }
 
 /*! Replace yold with ynew (insert ynew at the exact place of yold). Keep yold pointer as-is.
@@ -1521,6 +1572,7 @@ yang_find(yang_stmt  *yn,
     yang_stmt *yspec;
     yang_stmt *ym;
     yang_stmt *yorig;
+    char      *arg;
 
     /* Recursion check */
     if (yang_flag_get(yn, YANG_FLAG_FIND) != 0x0)
@@ -1530,7 +1582,7 @@ yang_find(yang_stmt  *yn,
         ys = yn->ys_stmt[i];
         if (keyword == 0 || ys->ys_keyword == keyword){
             if (argument == NULL ||
-                (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)){
+                ((arg = yang_argument_get(ys)) != NULL && strcmp(arg, argument) == 0)) {
                 yret = ys;
                 break;
             }
@@ -1553,9 +1605,7 @@ yang_find(yang_stmt  *yn,
         }
     }
 
-    if (yret != NULL && yang_flag_get(yret, YANG_FLAG_REFINE))
-        ;
-    else {
+    if (yret == NULL || yang_flag_get(yret, YANG_FLAG_REFINE)==0x0){
         if (_yang_use_orig &&
             (yorig = yang_orig_get(yn)) != NULL &&
             uses_orig_ptr(keyword)){
@@ -1611,6 +1661,7 @@ yang_find_datanode_ns(yang_stmt  *yn,
     char      *ns;
     int        inext;
     int        inext2;
+    char      *arg;
 
     inext = 0;
     while ((ys = yn_iter(yn, &inext)) != NULL){
@@ -1621,7 +1672,7 @@ yang_find_datanode_ns(yang_stmt  *yn,
                     ysmatch = yang_find_datanode_ns(yc, argument, namespace);
                 else
                     if (yang_datanode(yc)){
-                        if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+                        if ((arg = yang_argument_get(yc)) != NULL && strcmp(arg, argument) == 0)
                             ysmatch = yc;
                     }
                 if (ysmatch)
@@ -1636,7 +1687,7 @@ yang_find_datanode_ns(yang_stmt  *yn,
         else if (yang_datanode(ys)){
             if (argument == NULL)
                 ysmatch = ys;
-            else if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0){
+            else if ((arg = yang_argument_get(ys)) != NULL && strcmp(arg, argument) == 0){
                 if (namespace == NULL)
                     ysmatch = ys;
                 else {
@@ -1686,13 +1737,15 @@ yang_find_schemanode(yang_stmt  *yn,
     yang_stmt *yspec;
     yang_stmt *ysmatch = NULL;
     char      *name;
-    int        i, j;
+    char      *arg;
+    int        i;
+    int        j;
 
     for (i=0; i<yn->ys_len; i++){
         ys = yn->ys_stmt[i];
         if (yang_keyword_get(ys) == Y_CHOICE){
             /* First check choice itself */
-            if (ys->ys_argument && argument && strcmp(argument, ys->ys_argument) == 0){
+            if ((arg = yang_argument_get(ys)) != NULL && argument && strcmp(arg, argument) == 0){
                 ysmatch = ys;
                 goto match;
             }
@@ -1706,7 +1759,7 @@ yang_find_schemanode(yang_stmt  *yn,
                         if (argument == NULL)
                             ysmatch = yc;
                         else{
-                            if (yc->ys_argument && strcmp(argument, yc->ys_argument) == 0)
+                            if ((arg = yc->ys_argument) != NULL && strcmp(arg, argument) == 0)
                                 ysmatch = yc;
                         }
                     }
@@ -1723,7 +1776,7 @@ yang_find_schemanode(yang_stmt  *yn,
                 else if (strcmp(argument, "output") == 0 && yang_keyword_get(ys) == Y_OUTPUT)
                     ysmatch = ys;
                 else
-                    if (ys->ys_argument && strcmp(argument, ys->ys_argument) == 0)
+                    if ((arg = yang_argument_get(ys)) != NULL && strcmp(arg, argument) == 0)
                         ysmatch = ys;
                 if (ysmatch)
                     goto match;

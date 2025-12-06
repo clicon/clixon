@@ -307,3 +307,5 @@
 /*! CLI generation has YANG dependencies in post-processing
  */
 #define YANG2CLI_POST
+
+#define YANG_MEM_OPT

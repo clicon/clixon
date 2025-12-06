@@ -52,7 +52,7 @@ struct yang_type_cache{
                              * available. See enum regexp_mode */
     uint8_t    yc_fraction; /* Fraction digits for decimal64 (if YANG_OPTIONS_FRACTION_DIGITS */
     cvec      *yc_cvv;      /* Range and length restriction. (if YANG_OPTION_
-                               LENGTH|RANGE. Can be a vector if multiple 
+                               LENGTH|RANGE. Can be a vector if multiple
                                ranges */
     cvec      *yc_patterns; /* List of regexp, if cvec_len() > 0 */
     cvec      *yc_regexps;  /* List of _compiled_ regexp, if cvec_len() > 0 */
@@ -60,27 +60,21 @@ struct yang_type_cache{
 };
 typedef struct yang_type_cache yang_type_cache;
 
-/*! yang statement 
- *
- * This is an internal type, not exposed in the API
- * @see yang_stmt  The external type defined in clixon_yang.h
- * @note  There is additional info in maps, yang_when_set and yang_mymodule_set
- */
-struct yang_stmt {
+#ifdef YANG_MEM_OPT
+struct yang_stmt_mini {
     /* On x86_64, the following three fields take 8 bytes */
     enum rfc_6020      ys_keyword:8; /* YANG keyword */
     uint8_t            ys_ref;       /* Reference count for free: 0 means
                                       * no sharing, 1: two references */
     uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
     uint32_t           ys_len;       /* Number of children */
+    yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
 #ifdef YANG_SPEC_LINENR
     /* Increases memory w 8 extra bytes on x86_64
      * XXX: can we enable this when needed for schema nodeid sub-parsing? */
     uint32_t           ys_linenum;   /* For debug/errors: line number (in ys_filename) */
 #endif
-    struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
     struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
-    char              *ys_argument;  /* String / argument depending on keyword */
     cg_var            *ys_cv;        /* cligen variable. See ys_populate()
                                         Following stmts have cv:s:
                                         Y_FEATURE: boolean true or false
@@ -97,7 +91,7 @@ struct yang_stmt {
                                         Y_UNKNOWN (optional argument)
                                         Y_ENUM: value
                                      */
-    cvec              *ys_cvec;      /* List of stmt-specific variables 
+    cvec              *ys_cvec;      /* List of stmt-specific variables
                                         Y_EXTENSION: vector of instantiated UNKNOWNS
                                         Y_IDENTITY: store all derived types as <module>:<id> list
                                         Y_LENGTH: length_min, length_max
@@ -108,7 +102,6 @@ struct yang_stmt {
                                         Y_UNIQUE: vector of descendant schema node ids
                                         Y_UNKNOWN: app-dep: yang-mount-points
                                      */
-    yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
     union {                          /* Depends on ys_keyword */
         rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
         char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
@@ -120,6 +113,70 @@ struct yang_stmt {
         cxobj           *ysu_nopres_cache; /* Y_CONTAINER: no-presence XML cache */
 #endif
     } u;
+};
+#endif
+
+/*! yang statement
+ *
+ * This is an internal type, not exposed in the API
+ * @see yang_stmt  The external type defined in clixon_yang.h
+ * @note  There is additional info in maps, yang_when_set and yang_mymodule_set
+ */
+struct yang_stmt {
+    /* On x86_64, the following three fields take 8 bytes */
+    enum rfc_6020      ys_keyword:8; /* YANG keyword */
+    uint8_t            ys_ref;       /* Reference count for free: 0 means
+                                      * no sharing, 1: two references */
+    uint16_t           ys_flags;     /* Flags according to YANG_FLAG_MARK and others */
+    uint32_t           ys_len;       /* Number of children */
+    yang_stmt         *ys_orig;      /* Pointer to original (for uses/augment copies) */
+#ifdef YANG_SPEC_LINENR
+    /* Increases memory w 8 extra bytes on x86_64
+     * XXX: can we enable this when needed for schema nodeid sub-parsing? */
+    uint32_t           ys_linenum;   /* For debug/errors: line number (in ys_filename) */
+#endif
+    struct yang_stmt  *ys_parent;    /* Backpointer to parent: yang-stmt or yang-spec */
+    cg_var            *ys_cv;        /* cligen variable. See ys_populate()
+                                        Following stmts have cv:s:
+                                        Y_FEATURE: boolean true or false
+                                        Y_CONFIG: boolean true or false
+                                        Y_LEAF: for default value
+                                        Y_LEAF_LIST,
+                                        Y_MAX_ELEMENTS:
+                                        Y_MIN_ELEMENTS: inte
+                                        Y_MANDATORY: boolean true or false
+                                        Y_REQUIRE_INSTANCE: true or false
+                                        Y_FRACTION_DIGITS for fraction-digits
+                                        Y_REVISION (uint32)
+                                        Y_REVISION_DATE (uint32)
+                                        Y_UNKNOWN (optional argument)
+                                        Y_ENUM: value
+                                     */
+    cvec              *ys_cvec;      /* List of stmt-specific variables
+                                        Y_EXTENSION: vector of instantiated UNKNOWNS
+                                        Y_IDENTITY: store all derived types as <module>:<id> list
+                                        Y_LENGTH: length_min, length_max
+                                        Y_LIST: vector of keys
+                                        Y_RANGE: range_min, range_max
+                                        Y_SPEC: shared mount-point xpaths
+                                        Y_TYPE: store all derived types as <module>:<id> list
+                                        Y_UNIQUE: vector of descendant schema node ids
+                                        Y_UNKNOWN: app-dep: yang-mount-points
+                                     */
+    union {                          /* Depends on ys_keyword */
+        rpc_callback_t  *ysu_action_cb; /* Y_ACTION: Action callback list*/
+        char            *ysu_filename;  /* Y_MODULE/Y_SUBMODULE: For debug/errors: filename */
+        yang_type_cache *ysu_typecache; /* Y_TYPE: cache all typedef data except unions */
+#ifdef OPTIMIZE_YSPEC_NAMESPACE
+        map_str2ptr     *ysu_nscache;   /* Y_SPEC: namespace to module cache */
+#endif
+#ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
+        cxobj           *ysu_nopres_cache; /* Y_CONTAINER: no-presence XML cache */
+#endif
+    } u;
+    char              *ys_argument;  /* String / argument depending on keyword */
+    /*-------------- To here: same as yang_stmt_derived ------------------*/
+    struct yang_stmt **ys_stmt;      /* Vector of children statement pointers */
 };
 
 /* Access macros */

@@ -205,6 +205,7 @@ ys_grouping_resolve(yang_stmt  *yuses,
     return retval;
 }
 
+#ifdef NOTUSED
 /*! Recursively add pointer from derived node to original grouping
  *
  * Cannot use yang_apply since one needs to traverse two trees simultaneously
@@ -224,7 +225,7 @@ ys_add_orig_ptr(yang_stmt *yp0,
 
     inext = 0;
     while ((y1 = yn_iter(yp1, &inext)) != NULL) {
-        if ((y0 = yang_find(yp0, yang_keyword_get(y1), yang_argument_get(y1))) == NULL)
+        if ((y0 = yang_find(yp0, yang_keyword_get(y1), yang_argument_get(y1))) == NULL) // XXX THIS CANT BE DONE,...
             continue;
         yang_orig_set(y1, y0);
         if (ys_add_orig_ptr(y0, y1) < 0)
@@ -234,6 +235,7 @@ ys_add_orig_ptr(yang_stmt *yp0,
  done:
     return retval;
 }
+#endif
 
 /*! This is an augment node, augment the original datamodel.
  *
@@ -419,8 +421,10 @@ yang_augment_node(clixon_handle h,
         yang_mymodule_set(yc, ymod);
         /* Add backpointer to orig. */
         yang_orig_set(yc, yc0);
+#ifdef NOTUSED
         if (ys_add_orig_ptr(yc0, yc) < 0)
             goto done;
+#endif
         if (yn_insert(ytarget, yc) < 0)
             goto done;
         /* If there is an associated when statement, add a special when struct to the yang
@@ -654,7 +658,7 @@ yang_expand_uses_node(clixon_handle h,
 
         for (i=0; i<ygrouping2->ys_len; i++){
             yco = ygrouping->ys_stmt[i];
-            if ((ycn = ys_dup(yco)) == NULL)
+            if ((ycn = ys_dup(yco)) == NULL) // XXX HERE CREATE YANG_MINI OBJECTS
                 goto done;
             ygrouping2->ys_stmt[i] = ycn;
             ycn->ys_parent = ygrouping2;
@@ -724,8 +728,10 @@ yang_expand_uses_node(clixon_handle h,
     if (ys_prune_self(ygrouping2) < 0)
         goto done;
     /* Add backpointer to orig. */
+#ifdef NOTUSED
     if (ys_add_orig_ptr(ygrouping, ygrouping2) < 0)
         goto done;
+#endif
     /* Then copy and insert each child element from ygrouping2 to yn */
     k=0;
     for (j=0; j<yang_len_get(ygrouping2); j++){

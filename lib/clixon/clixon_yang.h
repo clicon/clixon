@@ -62,6 +62,9 @@
                                * list elements using this index with binary search */
 #endif
 #define YANG_FLAG_STATE_LOCAL  0x10  /* Local inverted value of Y_CONFIG child */
+#ifdef YANG_MEM_OPT
+#define YANG_FLAG_MINI         0x20 /* Use mini-struct and orig-ptr to access all extra fields */
+#endif
 #define YANG_FLAG_DISABLED     0x40  /* Disabled due to if-feature evaluate to false
                                       * Transformed to ANYDATA but some code may need to check
                                       * why it is an ANYDATA
@@ -256,6 +259,9 @@ typedef enum validate_level_t validate_level;
  *       notification, anydata, and anyxml.
  */
 #define yang_schemanode(y) (yang_datanode(y) || yang_keyword_get(y) == Y_RPC || yang_keyword_get(y) == Y_CHOICE || yang_keyword_get(y) == Y_CASE || yang_keyword_get(y) == Y_INPUT || yang_keyword_get(y) == Y_OUTPUT || yang_keyword_get(y) == Y_NOTIFICATION || yang_keyword_get(y) == Y_ACTION)
+
+/*! Yang node with no children */
+#define yang_terminal(kw) (kw == Y_BASE || kw == Y_CONFIG || kw == Y_CONTACT || kw == Y_DEFAULT || kw == Y_DESCRIPTION || kw == Y_ERROR_APP_TAG || kw == Y_ERROR_MESSAGE || kw == Y_FRACTION_DIGITS || kw == Y_IF_FEATURE || kw == Y_KEY || kw == Y_MANDATORY || kw == Y_MAX_ELEMENTS || kw == Y_MIN_ELEMENTS || kw == Y_MODIFIER || kw == Y_NAMESPACE || kw == Y_ORDERED_BY || kw == Y_ORGANIZATION || kw == Y_PATH || kw == Y_POSITION || kw == Y_PREFIX || kw == Y_PRESENCE || kw == Y_REFERENCE || kw == Y_REFINE || kw == Y_REQUIRE_INSTANCE || kw == Y_REVISION_DATE || kw == Y_STATUS || kw == Y_UNIQUE || kw == Y_UNITS || kw == Y_UNKNOWN || kw == Y_VALUE || kw == Y_YANG_VERSION || kw == Y_YIN_ELEMENT)
 
 /*
  * Prototypes
