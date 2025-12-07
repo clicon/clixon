@@ -171,7 +171,8 @@ xp_yang_eval_step(xp_yang_ctx  *xy0,
                     if ((ys1 = yang_find_module_by_prefix_yspec(ys, prefix)) != NULL)
                         ys = ys1;
                 }
-                else if (yang_keyword_get(ys) == Y_MODULE){ /* This means top */
+                else if (yang_keyword_get(ys) == Y_MODULE ||
+                         yang_keyword_get(ys) == Y_SUBMODULE) { /* This means top */
                     if ((ys1 = yang_find_module_by_prefix(ys, prefix)) == NULL)
                         ys1 = yang_find_module_by_prefix_yspec(ys_spec(ys), prefix);
                     if (ys1 != NULL)
@@ -350,10 +351,15 @@ xp_yang_eval(xp_yang_ctx  *xy,
         goto ok;
         break;
     case XP_ABSPATH:
-        /* Set context node to top node, and nodeset to that node only */
+        /* Set context node to lexical top module/submodule of the initial node */
         if (yang_keyword_get(xy->xy_node) != Y_SPEC){
-            if (ys_real_module(xy->xy_node, &xy->xy_node) < 0)
-                goto done;
+            yang_stmt *ytop = NULL;
+            if (xy->xy_initial)
+                ytop = ys_module(xy->xy_initial);
+            else
+                ytop = ys_module(xy->xy_node);
+            if (ytop)
+                xy->xy_node = ytop;
         }
         break;
     case XP_PRED:

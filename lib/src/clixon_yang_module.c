@@ -517,6 +517,94 @@ clixon_module_upgrade(clixon_handle    h,
     goto done;
 }
 
+/*! Iterate over import statements in the lexical scope of a statement/module
+ *
+ * Start at the module/submodule that lexically owns the statement (ys or ys->ys_orig),
+ * then walk upwards to its belongs-to module. Sibling submodules are not visited.
+ *
+ * @param[in]  ys     Any statement in the scope (module, submodule, or descendant)
+ * @param[in]  yspec  Yang spec root
+ * @param[in]  cb     Callback invoked for each Y_IMPORT node
+ * @param[in]  arg    Callback argument
+ * @retval     0      OK (all callbacks returned 0)
+ * @retval    >0      Callback returned this value (early exit)
+ * @retval    -1      Error
+ */
+int
+yang_imports_foreach_scope(yang_stmt *ys,
+                           yang_stmt *yspec,
+                           int (*cb)(yang_stmt *yimport, void *arg),
+                           void *arg)
+{
+    int retval = -1;
+    int ret;
+    int inext;
+    yang_stmt *ymod;
+    yang_stmt *ycur;
+    yang_stmt *ybel;
+    char      *bname;
+
+    if (ys == NULL || yspec == NULL || cb == NULL)
+        goto done;
+    /* Use the lexical origin if present (eg, grouping definition) */
+    if (yang_orig_get(ys))
+        ys = yang_orig_get(ys);
+    if ((ymod = ys_module(ys)) == NULL)
+        goto done;
+
+    ycur = ymod;
+    while (ycur){
+        inext = 0;
+        while (1){
+            yang_stmt *yimp;
+            if ((yimp = yn_iter(ycur, &inext)) == NULL)
+                break;
+            if (yang_keyword_get(yimp) != Y_IMPORT)
+                continue;
+            if ((ret = cb(yimp, arg)) != 0){
+                retval = ret;
+                goto done;
+            }
+        }
+        if (yang_keyword_get(ycur) == Y_MODULE)
+            break;
+        /* Climb to belongs-to module */
+        if ((ybel = yang_find(ycur, Y_BELONGS_TO, NULL)) == NULL)
+            break;
+        if ((bname = yang_argument_get(ybel)) == NULL)
+            break;
+        if ((ycur = yang_find(yspec, Y_MODULE, bname)) == NULL)
+            break;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/* Context for matching an import by prefix and capturing its module */
+struct import_prefix_ctx {
+    const char *target;
+    yang_stmt *yspec;
+    yang_stmt *found;
+};
+
+/*! Callback used by yang_imports_foreach_scope: match import prefix and capture module */
+static int
+import_match_prefix_cb(yang_stmt *yimport, void *arg)
+{
+    struct import_prefix_ctx *c = arg;
+    yang_stmt *yprefix;
+
+    if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) == NULL)
+        return 0;
+    if (strcmp(yang_argument_get(yprefix), c->target) != 0)
+        return 0;
+    c->found = yang_find(c->yspec, Y_MODULE, yang_argument_get(yimport));
+    if (c->found == NULL)
+        return 0;
+    return 1; /* stop */
+}
+
 /*! Given a yang statement and a prefix, return yang module to that relative prefix
  *
  * Note, not the other module but the proxy import statement only
@@ -540,15 +628,20 @@ yang_find_module_by_prefix(yang_stmt  *ys,
     yang_stmt *yspec;
     char      *myprefix;
     int        inext;
+    yang_stmt *yscope; /* lexical origin */
+    yang_stmt *yinst;  /* instantiated node */
+    struct import_prefix_ctx ctx;
 
-    if ((yspec = ys_spec(ys)) == NULL){
+    yscope = yang_orig_get(ys) ? yang_orig_get(ys) : ys;
+    yinst = ys;
+    if ((yspec = ys_spec(yinst)) == NULL) {
         clixon_err(OE_YANG, 0, "My yang spec not found");
         goto done;
     }
     /* First try own module */
-    if ((my_ymod = ys_module(ys)) == NULL)
+    if ((my_ymod = ys_module(yinst)) == NULL)
         goto done;
-    myprefix = yang_find_myprefix(ys);
+    myprefix = yang_find_myprefix(yinst);
     if (myprefix && strcmp(myprefix, prefix) == 0){
         ymod = my_ymod;
         goto done;
@@ -570,6 +663,17 @@ yang_find_module_by_prefix(yang_stmt  *ys,
             yimport = NULL;
             goto done; /* unresolved */
         }
+    } else {
+        ctx.target = prefix;
+        ctx.yspec = yspec;
+        ctx.found = NULL;
+        /* Then search imports in lexical scope (module/submodule and parents) */
+        if (yang_imports_foreach_scope(yscope, yspec,
+                                       import_match_prefix_cb,
+                                       &ctx) < 0)
+            goto done;
+        if (ctx.found)
+            ymod = ctx.found;
     }
  done:
     return ymod;

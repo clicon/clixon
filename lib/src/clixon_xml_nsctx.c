@@ -73,6 +73,38 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
 
+/* Context for adding imports to a namespace context */
+struct nsctx_import_ctx {
+    cvec *nc;
+    yang_stmt *yspec;
+};
+
+/* Callback used by yang_imports_foreach_scope to add import prefix/ns to nsctx */
+static int
+nsctx_add_import_cb(yang_stmt *yimport, void *arg)
+{
+    struct nsctx_import_ctx *c = arg;
+    yang_stmt *yprefix;
+    yang_stmt *ym;
+    yang_stmt *yns;
+    char *prefix;
+    char *namespace;
+
+    if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) == NULL)
+        return 0;
+    if ((prefix = yang_argument_get(yprefix)) == NULL)
+        return 0;
+    if ((ym = yang_find(c->yspec, Y_MODULE, yang_argument_get(yimport))) == NULL)
+        return 0;
+    if ((yns = yang_find(ym, Y_NAMESPACE, NULL)) == NULL)
+        return 0;
+    if ((namespace = yang_argument_get(yns)) == NULL)
+        return 0;
+    if (xml_nsctx_add(c->nc, prefix, namespace) < 0)
+        return -1;
+    return 0;
+}
+
 /* Undefine if you want to ensure strict namespace assignment on all netconf
  * and XML statements according to the standard RFC 6241.
  * If defined, top-level rpc calls need not have namespaces (eg using xmlns=<ns>) 
@@ -331,30 +363,27 @@ xml_nsctx_yang(yang_stmt *yn,
     cvec      *nc = NULL;
     yang_stmt *yspec;
     yang_stmt *ymod;  /* yang main module/submodule node */
-    yang_stmt *yp;    /* yang prefix node */
-    yang_stmt *ym;    /* yang imported module */
-    yang_stmt *yns;   /* yang namespace */
-    yang_stmt *y;
-    char      *name;
-    char      *namespace;
-    char      *prefix;
     char      *mynamespace;
     char      *myprefix;
-    int        inext;
+    yang_stmt *yscope; /* lexical origin (grouping/augment) */
+    yang_stmt *yinst;  /* instantiated node */
+    struct nsctx_import_ctx ictx;
 
     if (yang_keyword_get(yn) == Y_SPEC){
         clixon_err(OE_YANG, EINVAL, "yang spec node is invalid argument");
         goto done;
     }
+    yscope = yang_orig_get(yn) ? yang_orig_get(yn) : yn;
+    yinst = yn; /* actual instantiated node lives in this module */
     if ((nc = cvec_new(0)) == NULL){
         clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
-    if ((myprefix = yang_find_myprefix(yn)) == NULL){
+    if ((myprefix = yang_find_myprefix(yinst)) == NULL) {
         clixon_err(OE_YANG, ENOENT, "My yang prefix not found");
         goto done;
     }
-    if ((mynamespace = yang_find_mynamespace(yn)) == NULL){
+    if ((mynamespace = yang_find_mynamespace(yinst)) == NULL) {
         clixon_err(OE_YANG, ENOENT, "My yang namespace not found");
         goto done;
     }
@@ -363,34 +392,18 @@ xml_nsctx_yang(yang_stmt *yn,
         goto done;
     if (xml_nsctx_add(nc, myprefix, mynamespace) < 0)
         goto done;
-    /* Find top-most module or sub-module and get prefixes from that */
-    if ((ymod = ys_module(yn)) == NULL){
+    /* Find lexical module or submodule (origin) and get prefixes from that */
+    if ((ymod = ys_module(yscope)) == NULL) {
         clixon_err(OE_YANG, ENOENT, "My yang module not found");
         goto done;
     }
     yspec = yang_parent_get(ymod); /* Assume yspec exists */
 
-    /* Iterate over module and register all import prefixes
-     */
-    inext = 0;
-    while ((y = yn_iter(ymod, &inext)) != NULL) {
-        if (yang_keyword_get(y) == Y_IMPORT){
-            if ((name = yang_argument_get(y)) == NULL)
-                continue; /* Just skip - shouldnt happen) */
-            if ((yp = yang_find(y, Y_PREFIX, NULL)) == NULL)
-                continue;
-            if ((prefix = yang_argument_get(yp)) == NULL)
-                continue;
-            if ((ym = yang_find(yspec, Y_MODULE, name)) == NULL)
-                continue;
-            if ((yns = yang_find(ym, Y_NAMESPACE, NULL)) == NULL)
-                continue;
-            if ((namespace = yang_argument_get(yns)) == NULL)
-                continue;
-            if (xml_nsctx_add(nc, prefix, namespace) < 0)
-                goto done;
-        }
-    }
+    /* Iterate over lexical module and its parents and register all import prefixes. */
+    ictx.nc = nc;
+    ictx.yspec = yspec;
+    if (yang_imports_foreach_scope(yscope, yspec, nsctx_add_import_cb, &ictx) < 0)
+        goto done;
     *ncp = nc;
     retval = 0;
  done:

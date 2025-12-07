@@ -81,5 +81,8 @@ yang_stmt *yang_find_module_by_name(yang_stmt *yspec, const char *name);
 int        yang_metadata_annotation_check(cxobj *x, yang_stmt *ymod, int *ismeta);
 int        yang_metadata_init(clixon_handle h);
 int        yang_lib2yspec(clixon_handle h, cxobj *yanglib, const char *mntpnt, const char *domain, yang_stmt *yspec);
+int        yang_imports_foreach_scope(yang_stmt *ys, yang_stmt *yspec,
+                                      int (*cb)(yang_stmt *yimport, void *arg),
+                                      void *arg);
 
 #endif  /* _CLIXON_YANG_MODULE_H_ */
