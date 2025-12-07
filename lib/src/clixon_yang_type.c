@@ -810,13 +810,33 @@ ys_cv_validate_leafref(clixon_handle h,
         clixon_err(OE_YANG, 0, "No argument for Y_PATH");
         goto done;
     }
-    if (yang_path_arg(ys, path_arg, &yref) < 0)
+    yang_stmt *yscope = yang_orig_get(ys) ? yang_orig_get(ys) : ys;
+    if (yang_path_arg(yscope, path_arg, &yref) < 0)
         goto done;
+    /* If lexical scope (eg grouping def) could not resolve a relative path,
+     * fall back to the instantiated tree to find the target.
+     */
+    if (yref == NULL && yscope != ys) {
+        if (yang_path_arg(ys, path_arg, &yref) < 0)
+            goto done;
+    }
     if (yref == NULL){
         clixon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", path_arg);
         goto done;
     }
     /* reparse cv with new type */
+    if (yang_cv_get(yref) == NULL) {
+        /* Grouping defs may lack cv; try the instantiated tree as fallback */
+        yang_stmt *yref2 = NULL;
+        if (yang_path_arg(ys, path_arg, &yref2) < 0)
+            goto done;
+        if (yref2 && yang_cv_get(yref2))
+            yref = yref2;
+        else {
+            clixon_err(OE_YANG, 0, "No cv template for leafref target %s", path_arg);
+            goto done;
+        }
+    }
     if ((cv = cv_dup(yang_cv_get(yref))) == NULL){
         clixon_err(OE_UNIX, errno, "cv_dup");
         goto done;
