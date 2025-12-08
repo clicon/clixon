@@ -336,7 +336,7 @@ edit table
 show config netconf
 EOF
 new "show config netconf"
-expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><parameter><name>a</name><value>4242</value></parameter>" "</config></edit-config></rpc>]]>]]>"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<rpc ${DEFAULTNS} ${LIBNS1} cl:username=\".*\"><edit-config><target><candidate/></target><config><parameter><name>a</name><value>4242</value></parameter>" "</config></edit-config></rpc>]]>]]>"
 
 # github actions: "717171" can match auto-generated host-name in prompt
 cat <<EOF > $fin

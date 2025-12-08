@@ -831,8 +831,12 @@ cli_show_common(clixon_handle    h,
                     break;
                 case FORMAT_NETCONF:
                     if (i==0){
-                        cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>",
+                        cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
                                       NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+                        cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+
+                        cligen_output(stdout, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+                        cligen_output(stdout, "><edit-config><target><candidate/></target><config>");
                         if (pretty)
                             cligen_output(stdout, "\n");
                     }
@@ -2160,7 +2164,10 @@ cli_show_statistics(clixon_handle h,
         if (cli)
             cligen_output(stdout, "\nBackend:\n========\n");
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
         cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+
         cprintf(cb, ">");
         cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
         if (detail)

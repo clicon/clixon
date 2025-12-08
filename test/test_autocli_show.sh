@@ -246,11 +246,11 @@ format=netconf
 
 # XXX netconf base capability 0, EOM framing
 new "cli check show config $format"
-X="<rpc ${DEFAULTNS}><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns=\"urn:example:clixon\"/></config></edit-config></rpc>]]>]]>"
+X="<rpc ${DEFAULTNS} ${LIBNS1} cl:username=\".*\"><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table><table2 xmlns=\"urn:example:clixon\"/></config></edit-config></rpc>]]>]]>"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config $format)" 0 "^$X$"
 
 new "cli check show auto $format table"
-X="<rpc ${DEFAULTNS}><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table></config></edit-config></rpc>]]>]]>"
+X="<rpc ${DEFAULTNS} ${LIBNS1} cl:username=\".*\"><edit-config><target><candidate/></target><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>1</value><array1>a</array1><array1>b</array1></parameter><parameter><name>y</name><value>2</value></parameter></table></config></edit-config></rpc>]]>]]>"
 expectpart "$($clixon_cli -1 -f $cfg -l o show auto $format table)" 0 "^$X$"
 
 # XXX rest does not print whole NETCONF path to root, eg does not include "table"

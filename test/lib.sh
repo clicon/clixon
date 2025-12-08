@@ -91,6 +91,7 @@ CONFNS='xmlns="http://clicon.org/config"'
 
 # Namespace: Clixon lib
 LIBNS='xmlns="http://clicon.org/lib"'
+LIBNS1='xmlns:cl="http://clicon.org/lib"'
 
 # Namespace: Clixon restconf
 RESTCONFNS='xmlns="http://clicon.org/restconf"'

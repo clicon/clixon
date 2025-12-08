@@ -214,7 +214,7 @@ new "wait backend 2"
 wait_backend
 
 new "clear cache"
-expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><clixon-cache $LIBNS><operation>clear</operation><type>autocli</type></clixon-cache></rpc>" "<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Autocli cache requires CLICON_AUTOCLI_CACHE_DIR to be set</error-message></rpc-error>"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><clixon-cache ${LIBNS}><operation>clear</operation><type>autocli</type></clixon-cache></rpc>" "<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Autocli cache requires CLICON_AUTOCLI_CACHE_DIR to be set</error-message></rpc-error>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

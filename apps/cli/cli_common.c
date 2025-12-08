@@ -1263,8 +1263,11 @@ save_config_file(clixon_handle h,
             goto done;
         break;
     case FORMAT_NETCONF:
-        fprintf(f, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target>",
-                NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+        fprintf(f, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+        fprintf(f, " %s", NETCONF_MESSAGE_ID_ATTR);
+        fprintf(f, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+        fprintf(f, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+        fprintf(f, "><edit-config><target><candidate/></target>");
         fprintf(f, "\n");
         if (clixon_xml2file(f, xt, 0, pretty, NULL, fprintf, 0, 1) < 0)
             goto done;

@@ -170,7 +170,7 @@ function check_db()
    <top xmlns="urn:example:clixon">
       <mylist>
          <name>x</name>
-         <root xmlns:cl="http://clicon.org/lib" cl:link="$subfile"/>
+         <root ${LIBNS1} cl:link="$subfile"/>
       </mylist>
    </top>
 </config>

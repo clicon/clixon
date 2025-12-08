@@ -106,7 +106,7 @@ function rpcstatus()
     jmax=10
     for j in $(seq 1 $jmax); do
         new "send rpc status"
-        rpc=$(chunked_framing "<rpc $DEFAULTNS><process-control $LIBNS><name>restconf</name><operation>status</operation></process-control></rpc>")
+        rpc=$(chunked_framing "<rpc $DEFAULTNS><process-control ${LIBNS}><name>restconf</name><operation>status</operation></process-control></rpc>")
         retx=$($clixon_netconf -qef $cfg<<EOF
 $DEFAULTHELLO$rpc
 EOF

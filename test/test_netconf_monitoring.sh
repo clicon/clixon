@@ -101,7 +101,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 # Session 2.1.4
 new "Retrieve Session"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions><session><session-id>[1-9][0-9]*</session-id><transport xmlns:cl=\"http://clicon.org/lib\">cl:netconf</transport><username>.*</username><login-time>.*</login-time><in-rpcs>[0-9][0-9]*</in-rpcs><in-bad-rpcs>[0-9][0-9]*</in-bad-rpcs><out-rpc-errors>[0-9][0-9]*</out-rpc-errors><out-notifications>[0-9][0-9]*</out-notifications></session>.*</sessions></netconf-state></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions><session><session-id>[1-9][0-9]*</session-id><transport ${LIBNS1}>cl:netconf</transport><username>.*</username><login-time>.*</login-time><in-rpcs>[0-9][0-9]*</in-rpcs><in-bad-rpcs>[0-9][0-9]*</in-bad-rpcs><out-rpc-errors>[0-9][0-9]*</out-rpc-errors><out-notifications>[0-9][0-9]*</out-notifications></session>.*</sessions></netconf-state></data></rpc-reply>"
 
 # Statistics 2.1.5
 new "Retrieve Statistics"
