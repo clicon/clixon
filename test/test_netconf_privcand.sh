@@ -610,47 +610,61 @@ rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn
 rpc $session_1 "<commit/>"
 
 puts "Spawn CLI session"
-global session_cli
 spawn {*}sudo -u $USER clixon_cli -f $CFG
-set session_cli $spawn_id
+set session_cli_1 $spawn_id
 
-proc cli { command { reply "" }} {
-    global session_cli
-    send -i $session_cli "$command\n"
+puts "Spawn second CLI session"
+spawn {*}sudo -u $USER clixon_cli -f $CFG
+set session_cli_2 $spawn_id
+
+# cli command function
+proc cli { session command { reply "" }} {
+    send -i $session "$command\n"
     expect {
-        -i $session_cli
-        -re "$command.*$reply.*\@.*\/> " {puts -nonewline "$expect_out(buffer)"}
+        -i $session
+        -re "$command.*$reply.*\@.*\/> " {puts -nonewline "$session: $expect_out(buffer)"; return $expect_out(buffer)}
 	    timeout { puts "\n\ntimeout"; exit 2 }
 	    eof { puts "\n\neof"; exit 3 }
     }
 }
 # wait for prompt
-cli ""
+cli $session_cli_1 ""
+cli $session_cli_2 ""
 
 # create private netconf candidate
 rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-conflict</l></config></edit-config>"
 
-cli "set l \"cli-ok\""
-cli "commit"
+cli $session_cli_1 "set l \"cli-ok\""
+cli $session_cli_1 "commit"
 rpc $session_1 "<get-config><source><running/></source></get-config>" "<l xmlns=\"urn:example:clixon\">cli-ok</l>"
 
 rpc $session_1 "<commit/>" "Conflict occured"
 rpc $session_1 "<discard-changes/>"
 rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 
-cli "set l \"cli-conflict\""
+cli $session_cli_1 "set l \"cli-conflict\""
 rpc $session_1 "<edit-config><target><candidate/></target><config><l xmlns=\"urn:example:clixon\">netconf-ok</l></config></edit-config>"
 rpc $session_1 "<commit/>"
-cli "commit" "Conflict occured"
+cli $session_cli_1 "commit" "Conflict occured"
 
-cli "discard"
-cli "update"
-cli "set l \"cli-retry\""
-cli "commit"
+cli $session_cli_1 "discard"
+cli $session_cli_1 "update"
+cli $session_cli_1 "set l \"cli-retry\""
+cli $session_cli_1 "commit"
 
+# Controller Issue: show compare private candidate #233
+cli $session_cli_1 "set l \"TEST9\""
+cli $session_cli_1 "commit"
+cli $session_cli_2 "show compare"
+cli $session_cli_1 "set l \"TEST10\""
+cli $session_cli_1 "commit"
+if {[string match *TEST* [cli $session_cli_2 "show compare"]]} {
+    puts "Controller Issue: show compare private candidate #233"
+    exit 4
+}
 puts "\nClose sessions"
-
-close $session_cli
+close $session_cli_1
+close $session_cli_2
 close $session_1
 close $session_2
 EOF
