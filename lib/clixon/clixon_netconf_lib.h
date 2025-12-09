@@ -152,9 +152,9 @@ typedef enum framing_type netconf_framing_type;
  * @see RFC 6243
  */
 enum withdefaults_type{
-    WITHDEFAULTS_REPORT_ALL = 0,   /* default behavior: <= Clixon 6.0 */
+    WITHDEFAULTS_REPORT_ALL = 0,   /* in cache */
     WITHDEFAULTS_TRIM,
-    WITHDEFAULTS_EXPLICIT,         /* default behavior: > Clixon 6.0 */
+    WITHDEFAULTS_EXPLICIT,         /* on file */
     WITHDEFAULTS_REPORT_ALL_TAGGED
 };
 typedef enum withdefaults_type withdefaults_type;

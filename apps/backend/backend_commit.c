@@ -1236,10 +1236,10 @@ from_client_restart_one(clixon_handle    h,
             goto done;
         goto fail;
     }
-    /* This is the state we are going from */
-    if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &td->td_src, NULL, NULL) < 0)
-        goto done;
 
+    /* This is the state we are going from */
+    if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, WITHDEFAULTS_EXPLICIT, &td->td_src, NULL, NULL) < 0)
+        goto done;
     /* 3. Compute differences */
     if (xml_diff(td->td_src,
                  td->td_target,
