@@ -1216,7 +1216,7 @@ from_client_get_config(clixon_handle h,
     char         *db;
     int           ret;
 
-    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, 0, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;

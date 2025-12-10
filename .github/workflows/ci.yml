@@ -5,7 +5,7 @@ on:
     branches:
        - master
        - test-actions
-       - clixon-cache
+       - privcand
   pull_request:
     branches: [ master ]
 

@@ -1108,7 +1108,7 @@ from_client_validate(clixon_handle h,
     int           ret;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
-    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, 1, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1471,6 +1471,7 @@ xmldb_find_create(clixon_handle h,
  * @param[in]  xn      Request: <rpc><xn></rpc>
  * @param[in]  name    Name of NETCONF reference to datastore (eg "target") (or NULL)
  * @param[in]  ce      Client entry
+ * @param[in]  create  if db is candidate and not exists: 0: use running, 1: create
  * @param[out] dep     Returned datastore-element
  * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @retval     1       OK, datastore element returned in dep
@@ -1482,19 +1483,39 @@ xmldb_netconf_name_find(clixon_handle h,
                         cxobj        *xn,
                         const char   *name,
                         client_entry *ce,
+                        int           create,
                         db_elmnt    **dep,
                         cbuf         *cbret)
 {
+    int   retval = -1;
     char *db;
 
     if ((db = netconf_db_find(xn, name)) == NULL){
         if (netconf_missing_element(cbret, "protocol", name, NULL) < 0)
-            return -1;
-        return 0;
+            goto done;
+        goto fail;
+    }
+    if (!create && strcmp(db, "candidate") == 0 && clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
+        /* if privcand does not exist, return running */
+        db_elmnt *de = NULL;
+        if (xmldb_candidate_find(h, "candidate", ce->ce_id, &de, NULL) < 0)
+            goto done;
+        if (de == NULL){
+            if ((de = xmldb_find(h, "running")) != NULL){
+                *dep = de;
+                goto ok;
+            }
+        }
     }
     if (xmldb_find_create(h, db, ce->ce_id, dep, NULL) < 0)
-        return -1;
-    return 1;
+        goto done;
+ ok:
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Create candidate datastore
