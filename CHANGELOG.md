@@ -42,6 +42,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [show compare private candidate](https://github.com/clicon/clixon-controller/issues/233)
 * Fixed: Error log at restconf exit
 
 ## 7.6.0

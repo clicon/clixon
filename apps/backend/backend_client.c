@@ -575,7 +575,7 @@ from_client_edit_config(clixon_handle h,
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, 1, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -839,12 +839,12 @@ from_client_copy_config(clixon_handle h,
     db_elmnt     *desrc = NULL;
     int           ret;
 
-    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &detarget, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, 1, &detarget, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
     target = xmldb_name_get(detarget);
-    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, &desrc, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "source", ce, 0, &desrc, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -933,7 +933,7 @@ from_client_delete_config(clixon_handle h,
     char         *db1 = NULL;
     int           ret;
 
-    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, 1, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1029,7 +1029,7 @@ from_client_lock(clixon_handle h,
     uint32_t      iddb;
     int           ret;
 
-    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, 1, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
@@ -1096,7 +1096,7 @@ from_client_unlock(clixon_handle h,
     db_elmnt     *de;
     int           ret;
 
-    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, &de, cbret)) < 0)
+    if ((ret = xmldb_netconf_name_find(h, xe, "target", ce, 1, &de, cbret)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
