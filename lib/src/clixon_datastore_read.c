@@ -861,15 +861,20 @@ xmldb_msdiff(clixon_handle    h,
     goto done;
 }
 
-/*! Get cache from datastore file if cache-miss
+/*! Get cache (reset) from datastore file, add defaults
  *
+ * Return the actual cache tree. With-default is report-all.
+ * @param[in]  h      Clixon handle
+ * @param[in]  de     Datastore
+ * @param[out] xtp    Top-level XML tree, direct cache pointer
+ * @param[out] xerr   XML error if retval is 0
  * @retval     1      OK
  * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
  * @retval    -1      Error
+ * @see xmldb_get_cache  If candidate copy from running, this resets also candidate from file
  */
 int
 xmldb_get_cache_from_file(clixon_handle     h,
-                          const char       *db,
                           db_elmnt         *de,
                           cxobj           **xtp,
                           cxobj           **xerr)
@@ -879,14 +884,15 @@ xmldb_get_cache_from_file(clixon_handle     h,
     yang_stmt       *yspec1 = NULL;
     cxobj           *xt = NULL;
     modstate_diff_t *msdiff = NULL;
+    char            *db;
     int              ret;
 
+    db = xmldb_name_get(de);
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
-
     /* If there is no xml x0 tree (in cache), then read it from file */
     /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
     if ((ret = xmldb_readfile(h, db, YB_NONE, yspec0, &xt, de, &msdiff, xerr)) < 0)
@@ -931,7 +937,8 @@ xmldb_get_cache_from_file(clixon_handle     h,
     /* Add default recursive values */
     if (xml_default_recurse(xt, 0, 0) < 0)
         goto done;
-    *xtp = xt;
+    if (xtp)
+        *xtp = xt;
     retval = 1;
  done:
     return retval;
@@ -952,6 +959,7 @@ xmldb_get_cache_from_file(clixon_handle     h,
  * @retval    -1      Error
  * @see xmldb_get_copy
  * @note Do not modify or free xtp
+ * @note If db is candidate, copy from running (dont read from file)
  */
 int
 xmldb_get_cache(clixon_handle     h,
@@ -974,7 +982,7 @@ xmldb_get_cache(clixon_handle     h,
             clixon_err(OE_DB, 0, "Candidate db cache is NULL");
             goto done;
         }
-        if ((ret = xmldb_get_cache_from_file(h, db, de, &xt, xerr)) < 0)
+        if ((ret = xmldb_get_cache_from_file(h, de, &xt, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
