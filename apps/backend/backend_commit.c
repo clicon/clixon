@@ -1402,7 +1402,7 @@ system_only_data_add(clixon_handle h,
     return retval;
 }
 
-/*! Find datastore given name, create if not exist and copy cache if candidate
+/*! Find datastore given name, create if not exist and copy cache from running if candidate
  *
  * @param[in]  h      Clixon handle
  * @param[in]  db     Name of datastore (or NULL)
@@ -1521,6 +1521,7 @@ xmldb_netconf_name_find(clixon_handle h,
 /*! Create candidate datastore
  *
  * If ce is given, a private candidate is created, if ceid=0 a shared is created
+ * Cache is created from running
  * @param[in]  h     Clixon handle
  * @param[in]  name  Name prefix, typically "candidate" (but could be eg "failsafe")
  * @param[in]  ceid  If set, assume private candidate and session-id

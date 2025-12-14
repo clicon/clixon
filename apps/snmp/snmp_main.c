@@ -439,7 +439,7 @@ main(int    argc,
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clixon_debug_init(h, dbg);
     /* This is netsnmplib debugging which is quite extensive + only if compiled w debug */
-    if (dbg > 1)
+    if (~dbg & CLIXON_DBG_SNMP|CLIXON_DBG_DETAIL == 0)
         snmp_set_do_debugging(1);
     /*
      * Register error category and error/log callbacks for netsnmp special error handling
