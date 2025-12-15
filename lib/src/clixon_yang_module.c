@@ -630,6 +630,8 @@ yang_find_module_by_prefix(yang_stmt  *ys,
     int        inext;
     yang_stmt *yscope; /* lexical origin */
     yang_stmt *yinst;  /* instantiated node */
+    yang_stmt *yscope_mod; /* lexical module/submodule */
+    char      *yscope_prefix;
     struct import_prefix_ctx ctx;
 
     yscope = yang_orig_get(ys) ? yang_orig_get(ys) : ys;
@@ -645,6 +647,15 @@ yang_find_module_by_prefix(yang_stmt  *ys,
     if (myprefix && strcmp(myprefix, prefix) == 0){
         ymod = my_ymod;
         goto done;
+    }
+    /* If the lexical origin lives in another module, honor its own prefix too */
+    yscope_mod = ys_module(yscope);
+    if (yscope_mod && yscope_mod != my_ymod){
+        yscope_prefix = yang_find_myprefix(yscope);
+        if (yscope_prefix && strcmp(yscope_prefix, prefix) == 0){
+            ymod = yscope_mod;
+            goto done;
+        }
     }
     /* If no match, try imported modules */
     inext = 0;
