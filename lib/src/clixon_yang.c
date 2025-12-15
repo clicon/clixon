@@ -1861,6 +1861,8 @@ yang_find_prefix_by_namespace(yang_stmt  *ys,
     int        inext;
     yang_stmt *yscope; /* lexical origin */
     yang_stmt *yinst;  /* instantiated node */
+    char      *scope_ns;
+    char      *scope_prefix;
     struct import_mod_ctx ctx;
 
     clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "namespace %s", ns);
@@ -1876,6 +1878,18 @@ yang_find_prefix_by_namespace(yang_stmt  *ys,
     if (strcmp(myns, ns) == 0){
         *prefix = yang_find_myprefix(yinst); /* or NULL? */
         goto found;
+    }
+    /* Then check lexical origin module (eg grouping from another module) */
+    if (yscope != yinst){
+        if ((scope_ns = yang_find_mynamespace(yscope)) == NULL)
+            goto done;
+        if (strcmp(scope_ns, ns) == 0){
+            scope_prefix = yang_find_myprefix(yscope);
+            if (scope_prefix == NULL)
+                goto done;
+            *prefix = scope_prefix;
+            goto found;
+        }
     }
     /* Next, find namespaces in imported modules */
     yspec = ys_spec(yscope);
