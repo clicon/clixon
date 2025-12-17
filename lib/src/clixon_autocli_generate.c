@@ -1495,7 +1495,16 @@ yang2cli_uses(clixon_handle h,
     if (ys_grouping_resolve(ys, prefix, argument, &ygrouping) < 0)
         goto done;
     if (ygrouping == NULL){
-        clixon_err(OE_YANG, 0, "grouping %s not found in \n", yang_argument_get(ys));
+        yang_stmt *yerrmod = ys_module(ys);
+        const char *modname = NULL;
+
+        if (yerrmod == NULL)
+            yerrmod = yang_mymodule_get(ys);
+        if (yerrmod)
+            modname = yang_argument_get(yerrmod);
+        clixon_err(OE_YANG, 0, "grouping %s not found in %s",
+                   yang_argument_get(ys),
+                   modname?modname:"<unknown>");
         goto done;
     }
     if ((cbtree = cbuf_new()) == NULL){

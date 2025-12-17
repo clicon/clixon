@@ -99,6 +99,7 @@ restconf_stream_data_new(restconf_conn *rc,
     memset(sd, 0, sizeof(restconf_stream_data));
     sd->sd_stream_id = stream_id;
     sd->sd_fd = -1;
+    sd->sd_freed = 0;
     if ((sd->sd_inbuf = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -153,6 +154,9 @@ restconf_stream_find(restconf_conn *rc,
 int
 restconf_stream_free(restconf_stream_data *sd)
 {
+    if (sd->sd_freed)
+        return 0;
+    sd->sd_freed = 1;
     if (sd->sd_fd != -1) {
         close(sd->sd_fd);
     }
@@ -197,6 +201,7 @@ restconf_conn_new(clixon_handle    h,
     memset(rc, 0, sizeof(restconf_conn));
     rc->rc_h = h;
     rc->rc_s = s;
+    rc->rc_closed = 0;
     rc->rc_callhome = rsock->rs_callhome;
     rc->rc_socket = rsock;
     INSQ(rc, rsock->rs_conns);
@@ -208,7 +213,7 @@ restconf_conn_new(clixon_handle    h,
  *
  * @param[in]  rc   restconf connection
  */
-static int
+static int __attribute__((unused))
 restconf_conn_free(restconf_conn *rc)
 {
     int                   retval = -1;
@@ -1109,6 +1114,12 @@ restconf_close_ssl_socket(restconf_conn *rc,
     int ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%s", callfn);
+    /* restconf_close_ssl_socket can be invoked along multiple error/close paths.
+     * If a connection is already being torn down, bail out to avoid double free.
+     */
+    if (rc->rc_closed)
+        return 0;
+    rc->rc_closed = 1;
     if (rc->rc_ssl != NULL){
         if (!dontshutdown &&
             (ret = SSL_shutdown(rc->rc_ssl)) < 0){
@@ -1137,8 +1148,6 @@ restconf_close_ssl_socket(restconf_conn *rc,
         rc->rc_ssl = NULL;
     }
     if (restconf_connection_close1(rc) < 0)
-        goto done;
-    if (restconf_conn_free(rc) < 0)
         goto done;
     retval = 0;
  done:

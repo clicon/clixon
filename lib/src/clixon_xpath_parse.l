@@ -128,7 +128,8 @@ ncname     {namestart}{namechar}*
 <TOKEN0>".."             { return DOUBLEDOT; }
 <TOKEN0>::               { BEGIN(TOKEN2); return DOUBLECOLON; /* axisname */ }
 <TOKEN0>[(\[]            { BEGIN(TOKEN2); return *yytext; }
-<TOKEN0>[)\]\.,/:|]      { return *yytext; }
+<TOKEN0>\/               { BEGIN(TOKEN2); return *yytext; }
+<TOKEN0>[)\]\.,:|]       { return *yytext; }
 <TOKEN0>and              { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
 <TOKEN0>or               { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
 <TOKEN0>div              { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
@@ -158,7 +159,8 @@ ncname     {namestart}{namechar}*
 <TOKEN2><<EOF>>          { return X_EOF; }
 <TOKEN2>".."             { BEGIN(TOKEN0); return DOUBLEDOT; }
 <TOKEN2>::               { BEGIN(TOKEN0); return DOUBLECOLON; /* axisname */ }
-<TOKEN2>[()\[\]\.,/:|]   { BEGIN(TOKEN0); return *yytext; }
+<TOKEN2>\/               { BEGIN(TOKEN2); return *yytext; }
+<TOKEN2>[()\[\]\.,:|]    { BEGIN(TOKEN0); return *yytext; }
 <TOKEN2>and              { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
 <TOKEN2>or               { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
 <TOKEN2>div              { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }

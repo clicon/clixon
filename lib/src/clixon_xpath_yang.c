@@ -339,6 +339,11 @@ xp_yang_eval(xp_yang_ctx  *xy,
                 (*xyr)->xy_node = (*xyr)->xy_initial;
                 goto ok;
                 break;
+            case XPATHFN_TRANSLATE:
+                if ((*xyr = xy_dup(xy)) == NULL)
+                    goto done;
+                goto ok;
+                break;
             default:
                 clixon_err(OE_XML, 0, "Function %s invalid for path-arg", xptree->xs_s0);
                 goto done;
