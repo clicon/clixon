@@ -1208,6 +1208,8 @@ yang2cli_leaf(clixon_handle h,
         if (hideext || yang_find(ys, Y_STATUS, "deprecated") != NULL){
             cprintf(cb, ", hide"); /* XXX ensure always { */
         }
+        if (!yang_config(ys))
+            cprintf(cb, ", ac-state");
         if (extralevel){
             if (callback){
                 if (cli_callback_generate(h, ys, cb) < 0)
@@ -1282,6 +1284,8 @@ yang2cli_container(clixon_handle h,
         if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL){
             cprintf(cb, ", hide");
         }
+        if (!yang_config(ys))
+            cprintf(cb, ", ac-state");
         cprintf(cb, ", act-container;{\n");
     }
     /* Is schema mount-point? */
@@ -1349,6 +1353,8 @@ yang2cli_list(clixon_handle h,
     if (exist || yang_find(ys, Y_STATUS, "deprecated") != NULL){
         cprintf(cb, ",hide");
     }
+    if (!yang_config(ys))
+        cprintf(cb, ", ac-state");
     /* Loop over all key variables */
     cvk = yang_cvec_get(ys); /* Use Y_LIST cache, see ys_populate_list() */
     cvi = NULL;
