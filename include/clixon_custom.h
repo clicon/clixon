@@ -304,10 +304,6 @@
  */
 #undef XMLDB_CANDIDATE_INMEM
 
-/*! CLI generation has YANG dependencies in post-processing
- */
-#define YANG2CLI_POST
-
 /*! Relax YANG validation for debugging
  *
  * Mainly for debugging but can be useful when bringing up new YANGs, use with care
@@ -319,3 +315,4 @@
  * Note that disabling these validation may make you accept invalid YANGs that may fail with other tools later.
  */
 #undef CLIXON_RELAX_VALIDATE
+
