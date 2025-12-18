@@ -5,6 +5,7 @@ on:
     branches:
        - master
        - test-actions
+       - clixon-cache
   pull_request:
     branches: [ master ]
 

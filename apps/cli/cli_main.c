@@ -388,9 +388,12 @@ autocli_trees_default(clixon_handle h)
 static int
 autocli_start(clixon_handle h)
 {
-    int           retval = -1;
-    yang_stmt    *yspec;
-    int           enable = 0;
+    int             retval = -1;
+    yang_stmt      *yspec;
+    int             enable = 0;
+    autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
+    cxobj          *xylib = NULL;
+    cxobj          *xmodset;
 
     clixon_debug(CLIXON_DBG_CLI, "");
     /* There is no single "enable-autocli" flag,
@@ -409,16 +412,38 @@ autocli_start(clixon_handle h)
     /* Init yang2cli */
     if (yang2cli_init(h) < 0)
         goto done;
-    yspec = clicon_dbspec_yang(h);
-    /* The actual generating call from yang to clispec for the complete yang spec, @basemodel */
-    if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME) < 0)
+    if (autocli_cache(h, &cache, NULL) < 0)
         goto done;
+    yspec = clicon_dbspec_yang(h);
+    switch (cache){
+    case AUTOCLI_CACHE_DISABLED: /* Generate locally */
+        /* The actual generating call from yang to clispec for the complete yang spec, @basemodel */
+        if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME) < 0)
+            goto done;
+        break;
+    case AUTOCLI_CACHE_READ: /* Query backend */
+        if ((xylib = clicon_modst_cache_get(h, 1)) == NULL){
+            if (yang_modules_state_get(h, yspec, NULL, NULL, 1, &xylib) < 0)
+                goto done;
+            if (xml_rootchild(xylib, 0, &xylib) < 0)
+                goto done;
+            xmodset = xml_find(xylib, "module-set");
+            xml_purge(xml_find(xmodset, "name"));
+            xml_new_body("name", xmodset, yang_argument_get(yang_parent_get(yspec)));
+            xml_sort(xmodset);
+        }
+        if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib, AUTOCLI_TREENAME) < 0)
+            goto done;
+        break;
+    }
     /* XXX Create pre-5.5 tree-refs for backward compatibility */
     if (autocli_trees_default(h) < 0)
         goto done;
  ok:
     retval = 0;
  done:
+    if (xylib)
+        xml_free(xylib);
     return retval;
 }
 

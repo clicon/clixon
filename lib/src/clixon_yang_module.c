@@ -194,7 +194,7 @@ yang_modules_revision(clixon_handle h)
  * @retval     0     OK
  * @retval    -1     Error
  * This assumes CLICON_YANG_LIBRARY is enabled
- * @see RFC8525 
+ * @see RFC8525
  */
 int
 yang_modules_state_build(clixon_handle    h,
@@ -288,7 +288,7 @@ yang_modules_state_build(clixon_handle    h,
     return retval;
 }
 
-/*! Get modules state according to RFC 7895
+/*! Get modules state according to RFC 8525
  *
  * @param[in]     h       Clixon handle
  * @param[in]     yspec   Yang spec
@@ -316,6 +316,7 @@ x            +--ro namespace           inet:uri
                +--ro name        yang:yang-identifier
                +--ro revision    union
                +--ro schema?     inet:uri
+ * Previously RFC 7895
  * @see netconf_hello_server
  */
 int
