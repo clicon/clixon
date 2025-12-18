@@ -160,15 +160,11 @@ cache_autocli_generate(clixon_handle h,
             goto done;
         goto fail;
     }
-    if ((yspec = yang_find(ydomain, Y_SPEC, spec)) == NULL
-#ifdef YANG2CLI_UNDETERMINISTIC_SPEC
-        && (yspec = yang_find(ydomain, Y_SPEC, NULL)) == NULL
-#endif
-        ){
-            if (netconf_operation_failed(cbret, "application", "Yspec %s/%s not found", domain, spec) < 0)
-                goto done;
-            goto fail;
-        }
+    if ((yspec = yang_find(ydomain, Y_SPEC, spec)) == NULL){
+        if (netconf_operation_failed(cbret, "application", "Yspec %s/%s not found", domain, spec) < 0)
+            goto done;
+        goto fail;
+    }
     if ((ymod = yang_find_module_by_name_revision(yspec, module, revision)) == NULL &&
         (ymod = yang_find_module_by_name(yspec, module)) == NULL){
         if (netconf_operation_failed(cbret, "application", "Module or submodule %s@%snot found", module, revision) < 0)

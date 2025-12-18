@@ -93,8 +93,6 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <assert.h>
-
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -342,7 +340,8 @@ yang2cli_client(clixon_handle h,
  * @retval     0         OK
  * @retval    -1         Error
  * @note Tie-break of same top-level symbol: prefix is NYI
- * @see yang2cli_grouping_wrap      which is the other place where clispecs are generated
+ * @see yang2cli_grouping_wrap  Generate grouping clispecs
+ * @see yang2cli_yanglib        Generate clispec from yang-lib instead independent of yang structures
  */
 int
 yang2cli_yspec(clixon_handle h,
@@ -359,7 +358,6 @@ yang2cli_yspec(clixon_handle h,
     cbuf           *cb = NULL;
     int             inext;
     char           *domain;
-    char           *module;
     char           *revision;
     const char     *keyword;
     char           *argument;
@@ -387,11 +385,10 @@ yang2cli_yspec(clixon_handle h,
         /* Filter module name according to cli_autocli.yang setting
          * Default is pass and ordering is significant
          */
-        module = yang_argument_get(ymod);
         revision = yrev?yang_argument_get(yrev):NULL;
         keyword = yang_key2str(yang_keyword_get(ymod));
         argument = yang_argument_get(ymod);
-        if (autocli_module(h, module, &enable) < 0)
+        if (autocli_module(h, argument, &enable) < 0)
             goto done;
         if (!enable)
             continue;
@@ -402,7 +399,7 @@ yang2cli_yspec(clixon_handle h,
                 goto done;
             break;
         case AUTOCLI_CACHE_READ: /* Query backend */
-            if (clixon_rpc_clixon_cache(h, "read", "autocli", domain, yang_argument_get(yspec), module, revision, keyword, argument, cb) < 0)
+            if (clixon_rpc_clixon_cache(h, "read", "autocli", domain, yang_argument_get(yspec), argument, revision, keyword, argument, cb) < 0)
                 goto done;
             break;
         }
@@ -410,12 +407,6 @@ yang2cli_yspec(clixon_handle h,
             continue;
         if (yang2cli_client(h, cbuf_get(cb), yang_filename_get(ymod), keyword, argument, &pt) < 0)
             goto done;
-        /* Post-processing, iterate over the generated cligen parse-tree with corresponding yang
-         * Note cannot do it inline in yang2cli above since:
-         * 1. labels cannot be set on "empty"
-         * 2. a; <a>, fn() cannot be set properly
-         */
-        //        pt_dump(stderr,pt); // XXX
         if (clicon_data_int_get(h, "autocli-print-debug") == 1){
             clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
                        __func__, treename, cbuf_get(cb));
@@ -442,12 +433,6 @@ yang2cli_yspec(clixon_handle h,
     if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
         goto done;
     pt0 = NULL;
-#if 0
-    if (clicon_data_int_get(h, "autocli-print-debug") == 1){
-        clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s", __func__, treename);
-        pt_print1(stderr, pt0, 0);
-    }
-#endif
     retval = 0;
  done:
     if (pt)
@@ -457,6 +442,171 @@ yang2cli_yspec(clixon_handle h,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+/*! Generate clispec for all modules given a yang modules-spec in XML
+ *
+ * @param[in]  h         Clixon handle
+ * @param[in]  spec      Name of yang-spec (could be digest of xyanglib)
+ * @param[in]  xyanglib  RFC8525 module-set yang-lib
+ * @param[in]  treename  Name of tree
+ * @retval     0         OK
+ * @retval    -1         Error
+ * @see yang2cli_yspec   Generate clispec from yang module instead
+ */
+int
+yang2cli_yanglib(clixon_handle h,
+                 const char   *spec,
+                 cxobj        *xyanglib,
+                 char         *treename)
+{
+    int             retval = -1;
+    parse_tree     *pt0 = NULL;
+    parse_tree     *pt = NULL;
+    cbuf           *cb = NULL;
+    autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
+    cxobj          *xymodset = NULL;
+    cxobj          *xy = NULL;
+    char           *domain;
+    char           *argument;
+    char           *revision;
+    char           *keyword;
+    int             enable;
+    //    char           *namespace;
+
+    if (autocli_cache(h, &cache, NULL) < 0)
+        goto done;
+    if (cache != AUTOCLI_CACHE_READ){
+        clixon_err(OE_CFG, 0, "Cache mode not READ");
+        goto done;
+    }
+    if ((pt0 = pt_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "pt_new");
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    xymodset = xml_find_type(xyanglib, NULL, "module-set", CX_ELMNT);
+    domain = xml_find_body(xymodset, "name");
+    while ((xy = xml_child_each(xymodset, xy, CX_ELMNT)) != NULL){
+        keyword = xml_name(xy);
+        if (strcmp(keyword, "submodule") == 0){ // XXX?
+            clixon_err(OE_YANG, 0, "Submodules NYI"); // XXX This is actually an error in the RFC 8525 generation code, why no submodules?
+            goto done;
+        }
+        if (strcmp(keyword, "module") != 0)
+            continue;
+        argument = xml_find_body(xy, "name");
+        revision = xml_find_body(xy, "revision");
+        if (autocli_module(h, argument, &enable) < 0)
+            goto done;
+        if (!enable)
+            continue;
+        //        namespace = xml_find_body(xy, "namespace");
+        cbuf_reset(cb);
+        if (clixon_rpc_clixon_cache(h, "read", "autocli", domain, spec, argument, revision, keyword, argument, cb) < 0)
+            goto done;
+        if (cbuf_len(cb) == 0)
+            continue;
+        if (yang2cli_client(h, cbuf_get(cb), argument, keyword, argument, &pt) < 0)
+            goto done;
+        if (clicon_data_int_get(h, "autocli-print-debug") == 1){
+            clixon_log(h, LOG_NOTICE, "%s: Top-level cli-spec %s:\n%s",
+                       __func__, treename, cbuf_get(cb));
+        }
+        else
+            clixon_debug(CLIXON_DBG_CLI | CLIXON_DBG_DETAIL, "Top-level cli-spec %s:\n%s",
+                         treename, cbuf_get(cb));
+        if (cligen_parsetree_merge(pt0, NULL, pt) < 0){
+            clixon_err(OE_YANG, errno, "cligen_parsetree_merge");
+            goto done;
+        }
+        pt_free(pt, 1);
+        pt = NULL;
+    } /* while xymodset */
+    /* Resolve the expand callback functions in the generated syntax.
+     * This "should" only be GENERATE_EXPAND_XMLDB
+     * handle=NULL for global namespace, this means expand callbacks must be in
+     * CLICON namespace, not in a cli frontend plugin.
+     */
+    if (cligen_expand_str2fn(pt0, (expand_str2fn_t*)clixon_str2fn, NULL) < 0)
+        goto done;
+    /* Append cligen tree and name it */
+    clixon_debug(CLIXON_DBG_CLI, "Add autocli parse-tree: %s", treename);
+    if (ph_add_set(cli_cligen(h), treename, pt0) < 0)
+        goto done;
+    pt0 = NULL;
+    retval = 0;
+ done:
+    if (pt)
+        pt_free(pt, 1);
+    if (pt0)
+        pt_free(pt0, 1);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! CLIgen wrap function for making treeref lookup: generate locally clispec tree from YANG
+ *
+ * This adds an indirection based on name and context
+ * If a yang and specific tree is created, the name of that tree is returned in namep,
+ * That tree is called something like mountpoint-<device-name>
+ * otherwise the generic name "mountpoint" is used.
+ * @param[in]  ch    CLIgen handle
+ * @param[in]  treename Base tree name
+ * @param[in]  cvt   Tokenized string: vector of tokens
+ * @param[in]  arg   Argument given when registering wrap function (maybe not needed?)
+ * @param[out] namep New (malloced) name, if changed
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see yang2cli_container  where @mountpoint is added as a generic treeref causing this call
+ * @see yang2cli_yspec      which is the other place where clispecs are generated
+ */
+static int
+yang2cli_grouping_wrap_local(clixon_handle h,
+                             const char   *domain,
+                             const char   *spec,
+                             const char   *module,
+                             const char   *argument,
+                             cbuf         *cb)
+{
+    int        retval = -1;
+    int        inext;
+    yang_stmt *yc;
+    yang_stmt *ymnt;
+    yang_stmt *ydomain;
+    yang_stmt *yspec;
+    yang_stmt *ymod;
+    yang_stmt *ys;
+
+    ymnt = clixon_yang_mounts_get(h);
+    if ((ydomain = yang_find(ymnt, Y_DOMAIN, domain)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no ydomain %s", domain);
+        goto done;
+    }
+    if ((yspec = yang_find(ydomain, Y_SPEC, spec)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no yspec %s", spec);
+        goto done;
+    }
+    if ((ymod = yang_find(yspec, 0, module)) == NULL){
+        clixon_err(OE_YANG, 0, "yang2cli cmd label no module %s", module);
+        goto done;
+    }
+    if ((ys = yang_find(ymod, Y_GROUPING, argument)) == NULL)
+        goto skip;
+    inext = 0;
+    while ((yc = yn_iter(ys, &inext)) != NULL)
+        if (yang2cli_stmt(h, yc, 1, cb) < 0)
+            goto done;
+    retval = 1;
+ done:
+    return retval;
+ skip:
+    retval = 0;
+    goto done;
 }
 
 /*! CLIgen wrap function for making treeref lookup: generate clispec tree from YANG
@@ -493,13 +643,7 @@ yang2cli_grouping_wrap(cligen_handle ch,
     cbuf           *cb = NULL;
     parse_tree     *pt = NULL;
     autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
-    int             inext;
-    yang_stmt      *yc;
-    yang_stmt      *ymnt;
-    yang_stmt      *ydomain;
-    yang_stmt      *yspec;
-    yang_stmt      *ymod;
-    yang_stmt      *ys;
+    int             ret;
 
     clixon_debug(CLIXON_DBG_CLI, "%s", treename);
     if (namep == NULL){
@@ -530,31 +674,12 @@ yang2cli_grouping_wrap(cligen_handle ch,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    ymnt = clixon_yang_mounts_get(h);
-    if ((ydomain = yang_find(ymnt, Y_DOMAIN, domain)) == NULL){
-        clixon_err(OE_YANG, 0, "yang2cli cmd label no ydomain %s", domain);
-        goto done;
-    }
-    if ((yspec = yang_find(ydomain, Y_SPEC, spec)) == NULL
-#ifdef YANG2CLI_UNDETERMINISTIC_SPEC
-        && (yspec = yang_find(ydomain, Y_SPEC, NULL)) == NULL
-#endif
-        ){
-        clixon_err(OE_YANG, 0, "yang2cli cmd label no yspec %s", spec);
-        goto done;
-    }
-    if ((ymod = yang_find(yspec, 0, module)) == NULL){
-        clixon_err(OE_YANG, 0, "yang2cli cmd label no module %s", module);
-        goto done;
-    }
-    if ((ys = yang_find(ymod, Y_GROUPING, argument)) == NULL)
-        goto ok;
     switch (cache){
         case AUTOCLI_CACHE_DISABLED: /* Generate locally */
-            inext = 0;
-            while ((yc = yn_iter(ys, &inext)) != NULL)
-                if (yang2cli_stmt(h, yc, 1, cb) < 0)
-                    goto done;
+            if ((ret = yang2cli_grouping_wrap_local(h, domain, spec, module, argument, cb)) < 0)
+                goto done;
+            if (ret == 0)
+                goto ok;
             break;
         case AUTOCLI_CACHE_READ: /* Query backend */
                 if (clixon_rpc_clixon_cache(h, "read", "autocli", domain, spec, module, revision, keyword, argument, cb) < 0)
