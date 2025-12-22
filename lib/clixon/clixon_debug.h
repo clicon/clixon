@@ -86,9 +86,12 @@
 #define CLIXON_DBG_SMASK	0x00ffffff	/* Subject mask */
 
 /* Misc */
-#define CLIXON_DBG_TRUNC	0x10000000	/* Explicit truncate debug message.
+#define CLIXON_DBG_TRUNC	0x10000000	/* Explicit truncate debug message to CLIXON_DBG_TRUNC_DEFAULT
                                                  * Note Implicit: log_string_limit overrides
                                                  */
+/* Explicit truncate length, override with: clixon_debug_explicit_trunc_set
+ */
+#define CLIXON_DBG_EXPLICIT_TRUNC_DEFAULT 160
 
 /*
  * Macros
@@ -137,6 +140,7 @@
 /*
  * Prototypes
  */
+int clixon_debug_explicit_trunc_set(size_t sz);
 const char *clixon_debug_key2str(int keyword);
 int clixon_debug_str2key(const char *str);
 int clixon_debug_key_dump(FILE *f);

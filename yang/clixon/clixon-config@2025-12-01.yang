@@ -1531,9 +1531,12 @@ module clixon-config {
             type uint32;
             default 0;
             description
-                "Length limitation of debug and log strings.
+                "Length limitation of all debug and log strings.
                  Especially useful for dynamic debug strings, such as packet dumps.
-                 0 means no limit";
+                 0 means no limit.
+                 Note, there is also a second (explicit) mechanism for limiting debug strings only, which is
+                 controlled by CLIXON_DBG_TRUNC and clixon_debug_explicit_trunc_set().
+                 If both apply, min is used";
         }
         /* Events */
         leaf CLICON_EVENT_SELECT {

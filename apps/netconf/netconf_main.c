@@ -92,7 +92,7 @@ static int _netconf_hello_nr = 0;
 
 /*! Copy attributes from incoming request to reply. Skip already present (dont overwrite)
  *
- * RFC 6241:
+ * RFC 6241 Section 4.1:
  * If additional attributes are present in an <rpc> element, a NETCONF
  * peer MUST return them unmodified in the <rpc-reply> element.  This
  * includes any "xmlns" attributes.

@@ -72,6 +72,10 @@
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+
 /*
  * Local Variables
  */
@@ -88,6 +92,9 @@ static clixon_handle _debug_clixon_h    = NULL;
  * tolerates NULL, in which case a cached handle is used.
  */
 static int _debug_level = 0;
+
+/* If explicitly called with CLIXON_DBG_TRUNC debug to this length, see also generic in clixon_log.[ch] */
+static int _debug_explicit_trunc = CLIXON_DBG_EXPLICIT_TRUNC_DEFAULT;
 
 /*! Mapping between Clixon debug symbolic names <--> bitfields
  *
@@ -123,6 +130,18 @@ static const map_str2int dbgmap[] = {
     {"detail3",   CLIXON_DBG_DETAIL3},
     {NULL,        -1}
 };
+
+/*! If explicitly tagged debug calls with  CLIXON_DBG_TRUNC, truncate message to this length
+ *
+ * @param[in] sz  Length of debug string
+ * @see  CLICON_LOG_STRING_LIMIT which applies to all debug/log messages. If both apply, use min
+ */
+int
+clixon_debug_explicit_trunc_set(size_t sz)
+{
+    _debug_explicit_trunc = sz;
+    return 0;
+}
 
 /*! Map from clixon debug (specific) bitmask to string
  *
@@ -255,10 +274,15 @@ clixon_debug_fn(clixon_handle h,
             goto done;
     }
     /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
+    trunc = clixon_log_string_limit_get(); /* Implicit, see CLICON_LOG_STRING_LIMIT*/
+    if (dbglevel & CLIXON_DBG_TRUNC){      /* Explicit truncation in clixon_dbg call */
+        if (trunc)
+            trunc = MIN(trunc, _debug_explicit_trunc);
+        else
+            trunc = _debug_explicit_trunc;
+    }
+    if (trunc && (trunc < cbuf_len(cb)))
         cbuf_trunc(cb, trunc);
-    else if ((dbglevel & CLIXON_DBG_TRUNC) && 80 < cbuf_len(cb))
-        cbuf_trunc(cb, 80);
     clixon_log_str(LOG_DEBUG, cbuf_get(cb));
  ok:
     retval = 0;

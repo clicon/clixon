@@ -75,6 +75,13 @@
 
 /*! Construct a client string description from client_entry information for logging
  *
+ * The fields in a description are:
+ *   u: Username of user creating the socket
+ *   t: Transport
+ *   a: Source host address
+ *   s: Session-id
+ *   m: Request message-id
+ *   r: RPC name
  * @param[in]  ce   Client entry struct
  * @param[out] cbp  Cligen buffer, deallocate with cbuf_free
  * @retval     0    OK 
@@ -99,9 +106,11 @@ ce_client_descr(client_entry *ce,
     if (ce->ce_transport){
         if (nodeid_split(ce->ce_transport, NULL, &id) < 0)
             goto done;
-        cprintf(cb, "%s:", id);
+        cprintf(cb, "t:%s ", id);
     }
-    cprintf(cb, "%u", ce->ce_id);
+    if (ce->ce_source_host)
+        cprintf(cb, "a:%s ", ce->ce_source_host);
+    cprintf(cb, "s:%u", ce->ce_id);
     *cbp = cb;
     retval = 0;
  done:
@@ -1987,6 +1996,7 @@ from_client_msg(clixon_handle h,
     char                *rpcname;
     char                *rpcprefix;
     char                *namespace = NULL;
+    char                *msg_id = NULL;
     int                  nr = 0;
     cbuf                *cbce = NULL;
     int                  ret;
@@ -2121,11 +2131,13 @@ from_client_msg(clixon_handle h,
     }
     ce->ce_in_rpcs++; /* Track all RPCs */
     netconf_monitoring_counter_inc(h, "in-rpcs");
+    /* Message-id for replies */
+    msg_id = xml_find_value(x, "message-id");
 
-    xe = NULL;
+    /* Username may be used by callbacks, etc */
     username = xml_find_value(x, "username");
-    /* May be used by callbacks, etc */
     clicon_username_set(h, username);
+    xe = NULL;
     while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
         rpc = xml_name(xe);
         if ((ye = xml_spec(xe)) == NULL){
@@ -2221,6 +2233,11 @@ from_client_msg(clixon_handle h,
        parse errors */
     if (ce_client_descr(ce, &cbce) < 0)
         goto done;
+    /* Add local rpc and msgid here */
+    if (rpc)
+        cprintf(cbce, " r:%s", rpc);
+    if (msg_id)
+        cprintf(cbce, " m:%s", msg_id);
     if (send_msg_reply(ce->ce_s, cbuf_get(cbce), cbuf_get(cbret), cbuf_len(cbret)+1) < 0){
         switch (errno){
         case EPIPE:
@@ -2290,7 +2307,7 @@ from_client(int   s,
     }
     if (ce_client_descr(ce, &cbce) < 0)
         goto done;
-    if (clixon_msg_rcv11(s, cbuf_get(cbce), 0, &cb, &eof) < 0) /* XXX why not descr here? */
+    if (clixon_msg_rcv11(s, cbuf_get(cbce), 0, &cb, &eof) < 0)
         goto done;
     if (eof){
         backend_client_rm(h, ce);

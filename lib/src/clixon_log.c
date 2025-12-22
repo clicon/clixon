@@ -252,7 +252,7 @@ clixon_logflags_set(uint16_t flags)
     return 0;
 }
 
-/*! Truncate log/debug string length
+/*! Truncate all log/debug string lengths
  *
  * @see  CLICON_LOG_STRING_LIMIT option
  */
@@ -263,7 +263,7 @@ clixon_log_string_limit_set(size_t sz)
     return 0;
 }
 
-/*! Get truncate log/debug string length
+/*! Get truncate all log/debug string length
  */
 size_t
 clixon_log_string_limit_get(void)
