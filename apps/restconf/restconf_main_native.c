@@ -1216,7 +1216,8 @@ main(int    argc,
                 else
                     dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
          case 'f': /* override config file */
             if (!strlen(optarg))
