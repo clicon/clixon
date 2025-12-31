@@ -448,6 +448,7 @@ restconf_terminate(clixon_handle h)
     xpath_optimize_exit();
     clixon_err_exit();
     clixon_debug(CLIXON_DBG_RESTCONF, "pid:%u done", getpid());
+    clixon_debug_exit();
     restconf_handle_exit(h);
     clixon_log_exit(); /* Must be after last clixon_debug */
     return 0;

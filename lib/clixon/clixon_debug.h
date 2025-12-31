@@ -61,7 +61,7 @@
 
 /* Subject area */
 #define CLIXON_DBG_DEFAULT	0x00000001	/* Default logs */
-#define CLIXON_DBG_MSG		0x00000002	/* In/out messages */
+#define CLIXON_DBG_MSG		0x00000002	/* In/out messages, hdr contains keys: session/transport/rpc/msgid */
 #define CLIXON_DBG_INIT 	0x00000004	/* Initialization */
 #define CLIXON_DBG_XML		0x00000008	/* XML processing */
 #define CLIXON_DBG_XPATH	0x00000010	/* XPath processing */
@@ -140,11 +140,13 @@
 /*
  * Prototypes
  */
-int clixon_debug_explicit_trunc_set(size_t sz);
 const char *clixon_debug_key2str(int keyword);
 int clixon_debug_str2key(const char *str);
+int clixon_debug_key_add(char *str, int key);
 int clixon_debug_key_dump(FILE *f);
+int clixon_debug_explicit_trunc_set(size_t sz);
 int clixon_debug_init(clixon_handle h, int dbglevel);
+int clixon_debug_exit(void);
 int clixon_debug_get(void);
 int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 6, 7)));
 

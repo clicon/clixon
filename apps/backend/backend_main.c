@@ -134,13 +134,14 @@ backend_terminate(clixon_handle h)
         unlink(sockpath);
     clixon_event_exit();
     clixon_debug(CLIXON_DBG_BACKEND, "done");
+
     clixon_err_exit();
     clixon_log_exit();
     stream_delete_all(h, 1);
     xmldb_delete_candidates(h);
     xmldb_disconnect(h);
+    clixon_debug_exit();
     backend_handle_exit(h); /* Cannot use h after this. */
-
     return 0;
 }
 
@@ -455,6 +456,7 @@ main(int    argc,
     size_t        cligen_buflen;
     size_t        cligen_bufthreshold;
     int           dbg;
+    uint32_t      dbgundef = 0;
     size_t        sz;
     int           config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
@@ -499,11 +501,15 @@ main(int    argc,
         case 'D' : /* debug */
             /* Try first symbolic, then numeric match
              * Cant use yang_bits_map, too early in bootstrap, there is no yang */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%u", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    dbgundef++;
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         case 'f': /* config file */
             if (!strlen(optarg))
@@ -773,6 +779,25 @@ main(int    argc,
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
         goto ok;
+    }
+    /* If any debug flags were undefined, try again after all plugins may have loaded */
+    if (dbgundef){
+        opterr = 0;
+        optind = 1;
+        while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1){
+            switch (c){
+            case 'D' :
+                /* May match extended debug flags not available previously */
+                if ((d = clixon_debug_str2key(optarg)) < 0){
+                    usage(h, argv[0]);
+                }
+                dbg |= d;
+                break;
+            default:
+                break;
+            }
+        }
+        clixon_debug_init(h, dbg);
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

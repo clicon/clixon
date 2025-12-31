@@ -1261,12 +1261,15 @@ yang_val2bitsstr(clixon_handle  h,
 
 /*! Map from bit string to integer bitfield given YANG mapping
  *
- * Given YANG node, schema-nodeid and a bits string, return a bitmap as u64
+ * Given YANG node, schema-nodeid and a bits string, return a bitmap as unsigned int
  * Example: "default app2" --> CLIXON_DBG_DEFAULT | CLIXON_DBG_APP2
  * @param[in]  yt     YANG node in tree (eg yspec)
  * @param[in]  str    String representation of Clixon debug bits, such as "msg app2"
  * @param[in]  nodeid Absolute schema node identifier to leaf of option
- * @param[out] u64    Bit representation
+ * @param[out] flags  Bit representation
+ * @retval     1      OK, value in flags
+ * @retval     0      No bit value match
+ * @retval    -1      Error
  */
 int
 yang_bits_map(yang_stmt  *yt,
@@ -1274,10 +1277,10 @@ yang_bits_map(yang_stmt  *yt,
               const char *nodeid,
               uint32_t   *flags)
 {
-    int            retval = -1;
-    yang_stmt     *yn = NULL;
-    yang_stmt     *yrestype;
-    int            ret;
+    int        retval = -1;
+    yang_stmt *yrestype;
+    int        ret;
+    yang_stmt *yn = NULL;
 
     if (yang_abs_schema_nodeid(yt, nodeid, &yn) < 0)
         goto done;
@@ -1290,14 +1293,15 @@ yang_bits_map(yang_stmt  *yt,
     if (yrestype != NULL) {
         if ((ret = yang_bitsstr2flags(yrestype, str, flags)) < 0)
             goto done;
-        if (ret == 0){
-            clixon_err(OE_YANG, 0, "Bit string invalid: %s", str);
-            goto done;
-        }
+        if (ret == 0)
+            goto fail;
     }
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get integer value from xml node from yang enumeration 

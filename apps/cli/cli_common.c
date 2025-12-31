@@ -651,11 +651,77 @@ cli_debug_show(clixon_handle h,
     return 0;
 }
 
+/*! Help function to setting debug levels from CLI using int, hex or symbolic value
+ *
+ * @param[in] h     Clixon handle
+ * @param[in] cvv   If variable "level" exists, its integer value is used
+ * @param[in] arg   debug nodeid
+ * @retval    0     OK
+ * @note multiple symbolic debug levels can nly be set via hex/numeric mask
+ */
+static int
+cli_debug_level(clixon_handle h,
+                cvec         *cvv,
+                cvec         *argv,
+                int          *levelp)
+{
+    int        retval = -1;
+    cg_var    *cv;
+    uint32_t   u32;
+    int        level = 0;
+    yang_stmt *yspec0;
+    yang_stmt *yn;
+    yang_stmt *ytype = NULL;
+    yang_stmt *yrestype = NULL;
+    char      *nodeid;
+
+    if ((cv = cvec_find_var(cvv, "level")) == NULL){
+        if (cvec_len(argv) != 1){
+            clixon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
+            goto done;
+        }
+        cv = cvec_i(argv, 0);
+    }
+    switch (cv_type_get(cv)){
+    case CGV_INT32:
+        level = cv_int32_get(cv);
+        break;
+    case CGV_UINT32:
+        level = cv_uint32_get(cv);
+        break;
+    case CGV_STRING:
+        if (argv == NULL)
+            break;
+        nodeid = cv_string_get(cvec_i(argv, 0));
+        yspec0 = clicon_config_yang(h); // Alt: clicon_dbspec_yang(h)
+        if (yang_abs_schema_nodeid(yspec0, nodeid, &yn) < 0)
+            goto done;
+        if (yang_type_get(yn, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+            goto done;
+        if (yang_type_resolve_bits(yn, ytype, &yrestype) < 0)
+            goto done;
+        u32 = 0;
+        if (yang_bitsstr2flags(yrestype, cv_string_get(cv), &u32) <= 0)
+            goto done;
+        level = u32;
+        break;
+    default:
+        clixon_err(OE_PLUGIN, EINVAL, "Level is not string or int");
+        goto done;
+        break;
+    }
+    if (levelp)
+        *levelp = level;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Set debug level on CLI client (not backend daemon)
  *
  * @param[in] h     Clixon handle
  * @param[in] cvv   If variable "level" exists, its integer value is used
- * @param[in] arg   Else use the integer value of argument
+ * @param[in] arg   debug nodeid
  * @retval    0     OK
  * @retval   -1     Error
  * @note The level is either what is specified in arg as int argument.
@@ -666,19 +732,11 @@ cli_debug_cli(clixon_handle h,
               cvec         *cvv,
               cvec         *argv)
 {
-    int     retval = -1;
-    cg_var *cv;
-    int     level;
+    int retval = -1;
+    int level;
 
-    if ((cv = cvec_find_var(cvv, "level")) == NULL){
-        if (cvec_len(argv) != 1){
-            clixon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
-            goto done;
-        }
-        cv = cvec_i(argv, 0);
-    }
-    level = cv_int32_get(cv);
-    /* cli */
+    if (cli_debug_level(h, cvv, argv, &level) < 0)
+        goto done;
     clixon_debug_init(h, level); /* 0: dont debug, 1:debug */
     retval = 0;
  done:
@@ -701,17 +759,10 @@ cli_debug_backend(clixon_handle h,
                   cvec         *argv)
 {
     int     retval = -1;
-    cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(cvv, "level")) == NULL){
-        if (cvec_len(argv) != 1){
-            clixon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
-            goto done;
-        }
-        cv = cvec_i(argv, 0);
-    }
-    level = cv_int32_get(cv);
+    if (cli_debug_level(h, cvv, argv, &level) < 0)
+        goto done;
     /* config daemon */
     retval = clicon_rpc_debug(h, level);
  done:
@@ -738,17 +789,10 @@ cli_debug_restconf(clixon_handle h,
                    cvec         *argv)
 {
     int     retval = -1;
-    cg_var *cv;
     int     level;
 
-    if ((cv = cvec_find_var(cvv, "level")) == NULL){
-        if (cvec_len(argv) != 1){
-            clixon_err(OE_PLUGIN, EINVAL, "Requires either label var or single arg: 0|1");
-            goto done;
-        }
-        cv = cvec_i(argv, 0);
-    }
-    level = cv_int32_get(cv);
+    if (cli_debug_level(h, cvv, argv, &level) < 0)
+        goto done;
     /* restconf daemon */
     retval = clicon_rpc_restconf_debug(h, level);
  done:

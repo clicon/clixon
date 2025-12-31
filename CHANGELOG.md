@@ -21,6 +21,12 @@ Expected: February 2026
 
 ### Features
 
+* New debug logs
+  * Extended debug levels for `-D` command-line options
+    * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags
+  * Use of symbolic names in CLI
+  * Configurable explicit truncation
+    * See https://clixon-docs.readthedocs.io/en/latest/errors.html#explicit-truncation
 * Added syslog NOTICE to for all start and terminate of cli, backend, netconf and restconf, not just backend.
 * Add `-s` option to `clixon_cli` to disable output scrolling.
 * Changed cli cache to server-side instead of client-side
@@ -42,6 +48,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Inconsistent log messages truncation](https://github.com/clicon/clixon/issues/625)
 * Fixed: [show compare private candidate](https://github.com/clicon/clixon-controller/issues/233)
 * Fixed: Error log at restconf exit
 

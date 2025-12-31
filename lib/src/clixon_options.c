@@ -769,28 +769,54 @@ clixon_options_main_helper(clixon_handle h,
                            uint32_t      logdst,
                            const char   *ident)
 {
-    int   retval = -1;
-    int   relog = 0;
-    char *dstr;
+    int        retval = -1;
+    int        relog = 0;
+    yang_stmt *yspec;
+    char      *dstr;
+    char      *reason = NULL;
+    int        ret;
 
     relog = 0;
+    yspec = clicon_config_yang(h);
     dstr = clicon_option_str(h, "CLICON_DEBUG");
     if (dbg == 0 && dstr && strlen(dstr)){
-        if (yang_bits_map(clicon_config_yang(h),
-                          dstr,
-                          "/cc:clixon-config/cc:CLICON_DEBUG",
-                          &dbg) < 0)
+        yang_stmt *ymod;
+        yang_stmt *ytype;
+        yang_stmt *ybits;
+
+        /* Direct access of clixon_debug_t type */
+        if ((ymod = yang_find(yspec, Y_MODULE, "clixon-lib")) == NULL ||
+            (ytype = yang_find(ymod, Y_TYPEDEF, "clixon_debug_t")) == NULL ||
+            (ybits = yang_find(ytype, Y_TYPE, "bits")) == NULL){
+            clixon_err(OE_YANG, 0, "clixon_debug_t not found in clixon-lib.yang");
             goto done;
+        }
+        if ((ret = yang_bitsstr2flags(ybits, dstr, &dbg)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((ret = parse_uint32(dstr, &dbg, &reason)) < 0){
+                clixon_err(OE_UNIX, errno, "error parsing dbg string:%s", dstr);
+                goto done;
+            }
+            if (ret == 0){
+                clixon_err(OE_YANG, EINVAL, "Bit string invalid: %s, no bit match or %s", dstr, reason);
+                goto done;
+            }
+        }
         relog++;
     }
     dstr = clicon_option_str(h, "CLICON_LOG_DESTINATION");
     if (logdst == 0 && dstr && strlen(dstr)){
         logdst = 0;
-        if (yang_bits_map(clicon_config_yang(h),
-                          dstr,
-                          "/cc:clixon-config/cc:CLICON_LOG_DESTINATION",
-                          &logdst) < 0)
+        if ((ret = yang_bits_map(yspec,
+                                 dstr,
+                                 "/cc:clixon-config/cc:CLICON_LOG_DESTINATION",
+                                 &logdst)) < 0)
             goto done;
+        if (ret == 0){
+            clixon_err(OE_YANG, EINVAL, "No match of log destination string %s", dstr);
+            goto done;
+        }
         relog++;
     }
     if (relog){
@@ -801,6 +827,8 @@ clixon_options_main_helper(clixon_handle h,
         clixon_log_file(dstr);
     retval = 0;
  done:
+    if (reason)
+        free(reason);
     return retval;
 }
 

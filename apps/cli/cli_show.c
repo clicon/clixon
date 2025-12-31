@@ -621,6 +621,84 @@ expand_yang_list(clixon_handle h,
     return retval;
 }
 
+/*! Completion callback of variable for yang enum type of bits
+ *
+ * Typical yang:
+ *   type bits {
+ *      bit default {
+ *         position 0;
+ *      }
+ *      bit msg {
+ *         position 1;
+ *      }
+ *      ...
+ *   }
+ * This function expands x to default, msg,...
+ * @param[in]   h        clicon handle
+ * @param[in]   name     Name of this function
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   argv     Arguments given at the callback:
+ *   <schemanode>        Absolute YANG schema-node (eg: /ctrl:services)
+ *   <modname>           true|false: Show with api-path module-name, eg moda:foo, modb:fie
+ * @param[out]  commands vector of function pointers to callback functions
+ * @param[out]  helptxt  vector of pointers to helptexts
+ * @retval      0        OK
+ * @retval     -1        Error
+ * @see expand_yang_list
+ */
+int
+expand_yang_bits(clixon_handle h,
+                 char         *name,
+                 cvec         *cvv,
+                 cvec         *argv,
+                 cvec         *commands,
+                 cvec         *helptexts)
+{
+    int        retval = -1;
+    int        argc = 0;
+    cg_var    *cv;
+    char      *schema_nodeid;
+    yang_stmt *yspec0;
+    yang_stmt *ytype = NULL;
+    yang_stmt *yn;
+    yang_stmt *ys;
+    yang_stmt *yrestype = NULL;
+    yang_stmt *ydesc;
+    int        inext;
+
+    if (argv == NULL || cvec_len(argv) != 1) {
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode>");
+        goto done;
+    }
+    if ((cv = cvec_i(argv, argc++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schemanode>");
+        goto done;
+    }
+    schema_nodeid = cv_string_get(cv);
+    yspec0 = clicon_config_yang(h); // Alt: clicon_dbspec_yang(h)
+    if (yang_abs_schema_nodeid(yspec0, schema_nodeid, &yn) < 0)
+        goto done;
+    if (yang_type_get(yn, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    if (yang_type_resolve_bits(yn, ytype, &yrestype) < 0)
+        goto done;
+    if (yrestype) {
+        inext = 0;
+        while ((ys = yn_iter(yrestype, &inext)) != NULL) {
+            if (yang_keyword_get(ys) != Y_BIT)
+                continue;
+            cvec_add_string(commands, NULL, yang_argument_get(ys));
+        if ((ydesc = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL)
+            cvec_add_string(helptexts, NULL, yang_argument_get(ydesc));
+        else
+            cvec_add_string(helptexts, NULL, "Bit");
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Completion callback of variable for file directory
  *
  * Returns an expand-type list of commands as used by cligen 'expand'

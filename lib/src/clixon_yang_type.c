@@ -570,9 +570,9 @@ outoflength(uint64_t    u64,
  * @param[in]  h       Clixon handle
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
  * @param[in]  cvtype  Resolved type of cv
- *                     string describing reason why validation failed. 
  * @param[in]  regexps Vector of compiled regexps
- * @param[out] reason  If given, and return value is 0, contains malloced str 
+ * @param[out] reason  If given, and return value is 0, contains malloced str
+ *                     string describing reason why validation failed.
  * @retval     1       Validation OK
  * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
  * @retval    -1       Error (fatal), with errno set to indicate error
@@ -1543,6 +1543,59 @@ yang_type_get(yang_stmt    *ys,
   done:
     if (type)
         free(type);
+    return retval;
+}
+
+/*! Resolve bits type across unions
+ *
+ * Given a yang node, resolve a bits type possibly via unions
+ * Could be enhanced to enums as well
+ * Example:
+ *   leaf node{ // yn
+ *     type union { // yt
+ *       type bits { // yres
+ *         bit a;
+ *         bit b;
+ *       }
+ *     }
+ * @param[in]  yn    yang-stmt, leaf or leaf-list
+ * @param[in]  yt    Yang type
+ * @param[out] yres  Yang bots type
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see yang_bitsstr2flags to get values from bits
+ */
+int
+yang_type_resolve_bits(yang_stmt  *yn,
+                       yang_stmt  *yt,
+                       yang_stmt **yres)
+{
+    int        retval = -1;
+    char      *type;
+    yang_stmt *ytype;
+    yang_stmt *ys;
+    int        inext;
+
+    if (yres == NULL){
+        clixon_err(OE_YANG, 0, "yres is NULL");
+        goto done;
+    }
+    type = yang_argument_get(yt);
+    if (strcmp("bits", type) == 0)
+        *yres = yt;
+    else if (strcmp("union", type) == 0){
+        inext = 0;
+        while ((ys = yn_iter(yt, &inext)) != NULL) {
+            if (yang_type_resolve(yn, yn, ys, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
+            if (yang_type_resolve_bits(yn, ytype, yres) < 0)
+                goto done;
+            if (*yres != NULL)
+                break;
+        }
+    }
+    retval = 0;
+ done:
     return retval;
 }
 

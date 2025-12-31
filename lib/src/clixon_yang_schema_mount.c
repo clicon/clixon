@@ -205,11 +205,10 @@ xml_schema_mount_point(cxobj *x)
 /*! Get yangspec mount-point and xpath
  *
  * @param[in]  h      Clixon handle
- * @param[in]  ys     Yang container/list containing unknown node
  * @param[in]  domain Yang domain, or NULL to iterate through all
- * @param[in]  xpath  Key for yspec on y (NULL matches first)
+ * @param[in]  spec   Yang spec name
  * @param[out] yspec  YANG stmt spec
- * @param[out] xpathp Xpath to mountpoint
+ * @param[out] xpathp XPath to mountpoint
  * @retval     0      OK
  * @retval    -1      Error
  * With domains it is assumed an xpath is unique across domains, which is true if the xpath
@@ -303,7 +302,6 @@ yang_mount_get(yang_stmt  *ys,
  done:
     return retval;
 }
-
 
 /*! Get any yspec of a mount-point, special function
  *
@@ -915,7 +913,7 @@ yang_schema_yanglib_get_mount_parse(clixon_handle h,
     cxobj     *xyanglib = NULL;
     int        ret;
 
-    clixon_debug(CLIXON_DBG_APP, "");
+    clixon_debug(CLIXON_DBG_APP | CLIXON_DBG_DETAIL, "");
     /* 1. Get modstate (xyanglib) of node: xyanglib, by querying backend state (via callback)
      *    XXX this xyanglib is not proper RFC8525, submodules appear as modules WHY?
      */

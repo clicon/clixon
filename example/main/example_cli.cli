@@ -63,9 +63,12 @@ commit("Commit the changes") {
 quit("Quit"), cli_quit();
 
 debug("Debugging parts of the system"){
-    cli("Set cli debug")	 <level:int32>("Set debug level (0..n)"), cli_debug_cli();
-    backend("Set backend debug") <level:int32>("Set debug level (0..n)"), cli_debug_backend();
-    restconf("Set restconf debug") <level:int32>("Set debug level (0..n)"), cli_debug_restconf();
+    cli("Set cli debug")	 (<level:uint32>("Set debug level")|
+                                  <level:string expand_yang_bits("/cc:clixon-config/cc:CLICON_DEBUG")>("Set debug level")), cli_debug_cli("/cc:clixon-config/cc:CLICON_DEBUG");
+    backend("Set backend debug") (<level:uint32>("Set debug level (0..n)")|
+                                  <level:string expand_yang_bits("/cc:clixon-config/cc:CLICON_DEBUG")>("Set debug level")), cli_debug_backend("/cc:clixon-config/cc:CLICON_DEBUG");
+    restconf("Set restconf debug") (<level:uint32>("Set debug level (0..n)")|
+                                    <level:string expand_yang_bits("/cc:clixon-config/cc:CLICON_DEBUG")>("Set debug level")), cli_debug_restconf("/cc:clixon-config/cc:CLICON_DEBUG");
 }
 clear("Clear system state") {
     autocli("Autocli file cache"), cli_cache_clear("autocli", "default"); # clixon-cache branch

@@ -353,9 +353,12 @@ main(int    argc,
             break;
         case 'D' : { /* debug */
             /* Try first symbolic, then numeric match */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    usage(h, argv[0]);
+                else
+                    dbg |= u;
             }
             dbg |= d;
             break;

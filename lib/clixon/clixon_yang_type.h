@@ -72,6 +72,7 @@ int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys,
                              yang_stmt **restype, int *options,
                              cvec **cvv, cvec *patterns, cvec *regexps,
                              uint8_t *fraction);
+int         yang_type_resolve_bits(yang_stmt  *yn, yang_stmt *yt, yang_stmt **yres);
 enum cv_type yang_type2cv(yang_stmt *ys);
 
 #endif  /* _CLIXON_YANG_TYPE_H_ */

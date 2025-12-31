@@ -131,6 +131,7 @@ snmp_terminate(clixon_handle h)
     xpath_optimize_exit();
     clixon_event_exit();
     clixon_handle_exit(h);
+    clixon_debug_exit();
     clixon_err_exit();
     clixon_log_exit();
     if (pidfile)
@@ -405,11 +406,15 @@ main(int    argc,
         case 'D' : { /* debug */
             int32_t d = 0;
             /* Try first symbolic, then numeric match */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    usage(h, argv[0]);
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         }
         case 'f': /* override config file */
