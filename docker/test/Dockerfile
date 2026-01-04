@@ -144,7 +144,7 @@ RUN adduser -D -H clicon
 
 COPY --from=0 /clixon/build/ /
 COPY --from=0 /usr/local/share/yang/ /usr/local/share/yang/
-COPY --from=0 /usr/local/share/openconfig/* /usr/local/share/openconfig/
+COPY --from=0 /usr/local/share/openconfig/ /usr/local/share/openconfig/
 COPY --from=0 /usr/local/share/mib-yangs/* /usr/local/share/mib-yangs/
 COPY --from=0 /clixon/build/mibs/* /usr/share/snmp/mibs/
 
