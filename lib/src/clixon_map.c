@@ -213,7 +213,7 @@ clicon_str2int_search(const map_str2int *mstab,
  * @retval    str   Output string
  * @retval    NULL  Error, not found
  */
-char*
+const char*
 clicon_str2str(const map_str2str *mstab,
                const char        *str)
 {

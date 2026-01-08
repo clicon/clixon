@@ -48,7 +48,7 @@
  */
 /* Generic clixon data API the form <name>=<val> where <val> is string */
 int clicon_data_get(clixon_handle h, const char *name, char **val);
-int clicon_data_set(clixon_handle h, const char *name, char *val);
+int clicon_data_set(clixon_handle h, const char *name, const char *val);
 int clicon_data_del(clixon_handle h, const char *name);
 
 /* Get generic clixon data on the form <name>=<ptr> where <ptr> is void* */
@@ -116,7 +116,7 @@ int clicon_xml_changelog_set(clixon_handle h, cxobj *xchlog);
 
 /* Set and get user command-line options (after --) */
 int clicon_argv_get(clixon_handle h, int *argc, char ***argv);
-int clicon_argv_set(clixon_handle h, char *argv0, int argc, char **argv);
+int clicon_argv_set(clixon_handle h, char *argv0, int argc, char *const argv[]);
 
 /* Set and get (client/backend) session id */
 int clicon_session_id_set(clixon_handle h, uint32_t id);

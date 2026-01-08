@@ -95,9 +95,9 @@
  * @endcode
  */
 int
-detect_endtag(char *tag,
-              char  ch,
-              int  *state)
+detect_endtag(const char *tag,
+              char        ch,
+              int        *state)
 {
     int retval = 0;
 
@@ -116,7 +116,7 @@ detect_endtag(char *tag,
 /*! Read from socket and append to cbuf
  *
  * @param[in]   s       Socket where input arrives. Read from this.
- * @param[in]   buf     Packet buffer
+ * @param[out]  buf     Packet buffer
  * @param[in]   buflen  Length of packet buffer
  * @param[out]  eof     Socket closed / eof?
  * @retval      n       length

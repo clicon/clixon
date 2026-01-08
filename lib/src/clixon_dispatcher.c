@@ -112,9 +112,9 @@
  * XXX consider using clixon_strsep1
  */
 static int
-split_path(char   *path,
-           char ***plist,
-           size_t *plist_len)
+split_path(const char *path,
+           char     ***plist,
+           size_t     *plist_len)
 {
     int    retval = -1;
     size_t allocated = PATH_CHUNKS;
@@ -298,7 +298,7 @@ add_child_node(dispatcher_entry_t *node,
  */
 static dispatcher_entry_t *
 get_entry(dispatcher_entry_t *root,
-          char               *path)
+          const char         *path)
 {
     char              **split_path_list = NULL;
     size_t              split_path_len = 0;
@@ -349,7 +349,7 @@ get_entry(dispatcher_entry_t *root,
 static int
 call_handler_helper(dispatcher_entry_t *entry,
                     void               *handle,
-                    char               *path,
+                    const char         *path,
                     void               *user_args)
 {
     int retval = -1;
@@ -448,7 +448,7 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
 int
 dispatcher_call_handlers(dispatcher_entry_t *root,
                          void               *handle,
-                         char               *path,
+                         const char         *path,
                          void               *user_args)
 {
     int                 retval = -1;
@@ -480,7 +480,7 @@ dispatcher_call_handlers(dispatcher_entry_t *root,
  */
 int
 dispatcher_match_exact(dispatcher_entry_t *root,
-                       char               *path)
+                       const char         *path)
 {
     int                 retval = -1;
     dispatcher_entry_t *ptr;

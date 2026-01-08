@@ -993,7 +993,7 @@ xml_bind_yang_rpc(clixon_handle h,
 int
 xml_bind_yang_rpc_reply(clixon_handle h,
                         cxobj        *xrpc,
-                        char         *name,
+                        const char   *name,
                         yang_stmt    *yspec,
                         cxobj       **xerr)
 {
@@ -1076,9 +1076,9 @@ xml_bind_yang_rpc_reply(clixon_handle h,
 /*! Special case explicit binding
  */
 int
-xml_bind_special(cxobj     *xd,
-                 yang_stmt *yspec,
-                 char      *schema_nodeid)
+xml_bind_special(cxobj      *xd,
+                 yang_stmt  *yspec,
+                 const char *schema_nodeid)
 {
     int        retval = -1;
     yang_stmt *yd;

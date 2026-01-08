@@ -38,39 +38,8 @@
 #define _CLI_GENERATE_H_
 
 /*
- * Constants
- */
-/* This is the default "virtual" callback function of the auto-cli. It should be overwritten by
- * a callback specified in a clispec, such as:
- * @code
- * set @datamodel, cli_set();
- * @endcode
- * where the virtual callback (overwrite_me) is overwritten by cli_set.
- */
-#define GENERATE_CALLBACK "overwrite_me"
-#define GROUPING_CALLBACK "prepend_me"
-#define MTPOINT_PREFIX    "mtpoint:"
-
-/* variable expand function */
-#define GENERATE_EXPAND_XMLDB "expand_dbvar"
-
-/* Name of autocli CLIgen treename */
-#define AUTOCLI_TREENAME "basemodel"
-
-/*! Delimiter when creating yang2cli grouping cmd label */
-#define AUTOCLI_CMD_DELIM "--"
-
-/*! Backward-compatible 7.5 CLIgen preferences for strings
- */
-#ifndef COV_PREF_STRING_REGEXP
-#define COV_PREF_STRING_REGEXP 7
-#endif
-
-/*
  * Prototypes
  */
-int yang2cli_cmd_encode(cbuf *cb, const char *delim, char *tag, char *domain, char *spec, char *modname, char *id);
-int yang2cli_cmd_decode(const char *cmd, const char *delim, char **tag, char **domain, char **spec, char **modname, char **id);
 int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, char *treename);
 int yang2cli_grouping_wrap(cligen_handle ch, const char *name, cvec *cvt, void *arg, char **namep);
 int yang2cli_init(clixon_handle h);

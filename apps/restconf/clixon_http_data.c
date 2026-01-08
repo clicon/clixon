@@ -290,7 +290,7 @@ api_http_data_file(clixon_handle h,
     long   fsize;
     char  *www_data_root = NULL;
     char  *suffix;
-    char  *media;
+    const char *media;
     char  *buf = NULL;
     size_t sz;
     char  *media_list = NULL;

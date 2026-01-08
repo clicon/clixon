@@ -72,6 +72,10 @@
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 
+#ifndef MIN
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+
 /*
  * Local Variables
  */
@@ -89,10 +93,14 @@ static clixon_handle _debug_clixon_h    = NULL;
  */
 static int _debug_level = 0;
 
+/* If explicitly called with CLIXON_DBG_TRUNC debug to this length, see also generic in clixon_log.[ch] */
+static int _debug_explicit_trunc = CLIXON_DBG_EXPLICIT_TRUNC_DEFAULT;
+
 /*! Mapping between Clixon debug symbolic names <--> bitfields
  *
  * Mapping between specific bitfields and symbolic names, note only perfect matches
- * @note yang_bits_map can be used as alternative but this still neeeded in bootstrapping
+ * @see clixon_debug_t in clixon-libyang
+ * @note yang_bits_map can be used as alternative but this still needed in bootstrapping
  */
 static const map_str2int dbgmap[] = {
     {"default",   CLIXON_DBG_DEFAULT},
@@ -124,26 +132,76 @@ static const map_str2int dbgmap[] = {
     {NULL,        -1}
 };
 
+/*! Extended key mappings, works only for command-line -D and clixon_debug calls (not CLICON_DEBUG option)
+ */
+static map_str2int *dbgmap_extended = NULL;
+
 /*! Map from clixon debug (specific) bitmask to string
  *
  * @param[in] int  Bitfield, see CLIXON_DBG_DEFAULT and others
  * @retval    str  String representation of bitfield
  */
-char *
+const char *
 clixon_debug_key2str(int keyword)
 {
-    return (char*)clicon_int2str(dbgmap, keyword);
+    return clicon_int2str(dbgmap, keyword);
 }
 
-/*! Map from clixon debug symbolic string to bitfield
+/*! Map from clixon debug symbolic string to bitfield, first static keys, then extended map
  *
  * @param[in] str  String representation of Clixon debug bit
  * @retval    int  Bit representation of bitfield
  */
 int
-clixon_debug_str2key(char *str)
+clixon_debug_str2key(const char *str)
 {
-    return clicon_str2int(dbgmap, str);
+    int key;
+
+    if ((key = clicon_str2int(dbgmap, str)) < 0 && dbgmap_extended)
+        key = clicon_str2int(dbgmap_extended, str);
+    return key;
+}
+
+/*! Register extra debug keys
+ *
+ * @param[in] str  String representation of bitfield
+ * @param[in] key  Bitfield, one of CLIXON_DBG_APP..APP3
+ */
+int
+clixon_debug_key_add(char *str,
+                     int   key)
+{
+    int                 retval = -1;
+    struct map_str2int *ms;
+    int                 i = 1;
+
+    if (dbgmap_extended == NULL){
+        if ((dbgmap_extended = calloc(i, sizeof(map_str2int))) == NULL){
+            clixon_err(OE_UNIX, errno, "calloc");
+            goto done;
+        }
+        ms = &dbgmap_extended[0];
+        ms->ms_int = -1;
+    }
+    for (ms = dbgmap_extended; ms->ms_str; ms++,i++){
+        if (strcmp(str, ms->ms_str) == 0){
+            clixon_err(OE_YANG, 0, "Already defined: %s", str);
+            goto done;
+        }
+    }
+    if ((dbgmap_extended = realloc(dbgmap_extended, (i+1)*sizeof(map_str2int))) == NULL){
+        clixon_err(OE_UNIX, errno, "realloc");
+        goto done;
+    }
+    ms = &dbgmap_extended[i-1];
+    ms->ms_str = str;
+    ms->ms_int = key;
+    ms = &dbgmap_extended[i];
+    ms->ms_str = NULL;
+    ms->ms_int = -1;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Dump the symbolic bitfield names
@@ -160,7 +218,23 @@ clixon_debug_key_dump(FILE *f)
             fprintf(f, ", ");
         fprintf(f, "%s", ms->ms_str);
     }
-    return -1;
+    if (dbgmap_extended)
+        for (ms = &dbgmap_extended[0]; ms->ms_str; ms++){
+            fprintf(f, ", %s", ms->ms_str);
+        }
+    return 0;
+}
+
+/*! If explicitly tagged debug calls with  CLIXON_DBG_TRUNC, truncate message to this length
+ *
+ * @param[in] sz  Length of debug string
+ * @see  CLICON_LOG_STRING_LIMIT which applies to all debug/log messages. If both apply, use min
+ */
+int
+clixon_debug_explicit_trunc_set(size_t sz)
+{
+    _debug_explicit_trunc = sz;
+    return 0;
 }
 
 /*! Initialize debug messages. Set debug level.
@@ -174,8 +248,7 @@ clixon_debug_key_dump(FILE *f)
  * debugging.
  *
  * @param[in] h         Clixon handle
- * @param[in] dbglevel  0 is show no debug messages, 1 is normal, 2.. is high debug. 
- *                      Note this is _not_ level from syslog(3)
+ * @param[in] dbglevel  Debug flags as defined CLIXON_DBG_DEFAULT and others
  * @param[in] f         Debug-file. Open file where debug messages are directed. 
  * @see clixon_log_file For specifying a debug-file
  */
@@ -185,6 +258,18 @@ clixon_debug_init(clixon_handle h,
 {
     _debug_clixon_h = h;
     _debug_level = dbglevel; /* Global variable */
+    return 0;
+}
+
+/*! Free all debug resources
+ *
+ * @param[in] h         Clixon handle
+ */
+int
+clixon_debug_exit(void)
+{
+    if (dbgmap_extended)
+        free(dbgmap_extended);
     return 0;
 }
 
@@ -255,10 +340,15 @@ clixon_debug_fn(clixon_handle h,
             goto done;
     }
     /* Truncate long debug strings */
-    if ((trunc = clixon_log_string_limit_get()) && trunc < cbuf_len(cb))
+    trunc = clixon_log_string_limit_get(); /* Implicit, see CLICON_LOG_STRING_LIMIT*/
+    if (dbglevel & CLIXON_DBG_TRUNC){      /* Explicit truncation in clixon_dbg call */
+        if (trunc)
+            trunc = MIN(trunc, _debug_explicit_trunc);
+        else
+            trunc = _debug_explicit_trunc;
+    }
+    if (trunc && (trunc < cbuf_len(cb)))
         cbuf_trunc(cb, trunc);
-    else if ((dbglevel & CLIXON_DBG_TRUNC) && 80 < cbuf_len(cb))
-        cbuf_trunc(cb, 80);
     clixon_log_str(LOG_DEBUG, cbuf_get(cb));
  ok:
     retval = 0;

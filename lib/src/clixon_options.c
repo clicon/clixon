@@ -146,10 +146,10 @@ static const map_str2int _FORMATS[] = {
  * @param[in]  showas   Format value (see enum format_enum)
  * @retval     str      String value
  */
-char *
+const char *
 format_int2str(enum format_enum showas)
 {
-    return (char*)clicon_int2str(_FORMATS, showas);
+    return clicon_int2str(_FORMATS, showas);
 }
 
 /*! Translate from string to numeric format representation
@@ -158,7 +158,7 @@ format_int2str(enum format_enum showas)
  * @retval     enum      Format value (see enum format_enum)
  */
 int
-format_str2int(char *str)
+format_str2int(const char *str)
 {
     return clicon_str2int(_FORMATS, str);
 }
@@ -583,7 +583,7 @@ parse_configfile(clixon_handle  h,
 int
 clicon_option_add(clixon_handle h,
                   const char   *name,
-                  char         *value)
+                  const char   *value)
 {
     int            retval = -1;
     clicon_hash_t *copt = clicon_options(h);
@@ -767,30 +767,56 @@ int
 clixon_options_main_helper(clixon_handle h,
                            uint32_t      dbg,
                            uint32_t      logdst,
-                           char         *ident)
+                           const char   *ident)
 {
-    int   retval = -1;
-    int   relog = 0;
-    char *dstr;
+    int        retval = -1;
+    int        relog = 0;
+    yang_stmt *yspec;
+    char      *dstr;
+    char      *reason = NULL;
+    int        ret;
 
     relog = 0;
+    yspec = clicon_config_yang(h);
     dstr = clicon_option_str(h, "CLICON_DEBUG");
     if (dbg == 0 && dstr && strlen(dstr)){
-        if (yang_bits_map(clicon_config_yang(h),
-                          dstr,
-                          "/cc:clixon-config/cc:CLICON_DEBUG",
-                          &dbg) < 0)
+        yang_stmt *ymod;
+        yang_stmt *ytype;
+        yang_stmt *ybits;
+
+        /* Direct access of clixon_debug_t type */
+        if ((ymod = yang_find(yspec, Y_MODULE, "clixon-lib")) == NULL ||
+            (ytype = yang_find(ymod, Y_TYPEDEF, "clixon_debug_t")) == NULL ||
+            (ybits = yang_find(ytype, Y_TYPE, "bits")) == NULL){
+            clixon_err(OE_YANG, 0, "clixon_debug_t not found in clixon-lib.yang");
             goto done;
+        }
+        if ((ret = yang_bitsstr2flags(ybits, dstr, &dbg)) < 0)
+            goto done;
+        if (ret == 0){
+            if ((ret = parse_uint32(dstr, &dbg, &reason)) < 0){
+                clixon_err(OE_UNIX, errno, "error parsing dbg string:%s", dstr);
+                goto done;
+            }
+            if (ret == 0){
+                clixon_err(OE_YANG, EINVAL, "Bit string invalid: %s, no bit match or %s", dstr, reason);
+                goto done;
+            }
+        }
         relog++;
     }
     dstr = clicon_option_str(h, "CLICON_LOG_DESTINATION");
     if (logdst == 0 && dstr && strlen(dstr)){
         logdst = 0;
-        if (yang_bits_map(clicon_config_yang(h),
-                          dstr,
-                          "/cc:clixon-config/cc:CLICON_LOG_DESTINATION",
-                          &logdst) < 0)
+        if ((ret = yang_bits_map(yspec,
+                                 dstr,
+                                 "/cc:clixon-config/cc:CLICON_LOG_DESTINATION",
+                                 &logdst)) < 0)
             goto done;
+        if (ret == 0){
+            clixon_err(OE_YANG, EINVAL, "No match of log destination string %s", dstr);
+            goto done;
+        }
         relog++;
     }
     if (relog){
@@ -801,6 +827,8 @@ clixon_options_main_helper(clixon_handle h,
         clixon_log_file(dstr);
     retval = 0;
  done:
+    if (reason)
+        free(reason);
     return retval;
 }
 
@@ -817,7 +845,7 @@ clicon_option_exists(clixon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return (clicon_hash_lookup(copt, (char*)name) != NULL);
+    return (clicon_hash_lookup(copt, name) != NULL);
 }
 
 /*! Get a single string option string via handle
@@ -836,9 +864,9 @@ clicon_option_str(clixon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    if (clicon_hash_lookup(copt, (char*)name) == NULL)
+    if (clicon_hash_lookup(copt, name) == NULL)
         return NULL;
-    return clicon_hash_value(copt, (char*)name, NULL);
+    return clicon_hash_value(copt, name, NULL);
 }
 
 /*! Set a single string option via handle 
@@ -852,11 +880,11 @@ clicon_option_str(clixon_handle h,
 int
 clicon_option_str_set(clixon_handle h,
                       const char   *name,
-                      char         *val)
+                      const char   *val)
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return clicon_hash_add(copt, (char*)name, val, strlen(val)+1)==NULL?-1:0;
+    return clicon_hash_add(copt, name, val, strlen(val)+1)==NULL?-1:0;
 }
 
 /*! Get options as integer but stored as string
@@ -971,7 +999,7 @@ clicon_option_del(clixon_handle h,
 {
     clicon_hash_t *copt = clicon_options(h);
 
-    return clicon_hash_del(copt, (char*)name);
+    return clicon_hash_del(copt, name);
 }
 
 /*-----------------------------------------------------------------

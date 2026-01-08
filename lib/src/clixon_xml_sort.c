@@ -200,11 +200,11 @@ xml_cv_cache_clear(cxobj *xt)
  *     - yang_order() is one
  */
 int
-xml_cmp(cxobj  *x1,
-        cxobj  *x2,
-        int     same,
-        int     skip1,
-        char   *indexvar)
+xml_cmp(cxobj      *x1,
+        cxobj      *x2,
+        int         same,
+        int         skip1,
+        const char *indexvar)
 {
     yang_stmt  *y1;
     yang_stmt  *y2;
@@ -682,7 +682,7 @@ search_multi_equals_xvec(clixon_xvec  *childvec,
  */
 int
 xml_search_indexvar_binary_pos(cxobj       *x1,
-                               char        *indexvar,
+                               const char  *indexvar,
                                clixon_xvec *ivec,
                                int          low,
                                int          upper,
@@ -939,7 +939,7 @@ xml_insert_userorder(cxobj           *xp,
                      yang_stmt       *yn,
                      int              mid,
                      enum insert_type ins,
-                     char            *key_val,
+                     const char      *key_val,
                      cvec            *nsc_key)
 {
     int        retval = -1;
@@ -1031,7 +1031,7 @@ xml_insert2(cxobj           *xp,
             int              yni,
             int              userorder,
             enum insert_type ins,
-            char            *key_val,
+            const char      *key_val,
             cvec            *nsc_key,
             int              low,
             int              upper)
@@ -1114,7 +1114,7 @@ int
 xml_insert(cxobj           *xp,
            cxobj           *xi,
            enum insert_type ins,
-           char            *key_val,
+           const char      *key_val,
            cvec            *nsc_key)
 {
     int        retval = -1;
@@ -1272,7 +1272,7 @@ match_base_child(cxobj     *x0,
 /*! API for search in XML child list with non-indexed variables
  */
 static int
-xml_find_noyang_cvk(char        *ns0,
+xml_find_noyang_cvk(const char  *ns0,
                     cxobj       *xc,
                     cvec        *cvk,
                     clixon_xvec *xvec)
@@ -1332,8 +1332,8 @@ xml_find_noyang_cvk(char        *ns0,
  */
 static int
 xml_find_noyang_name(cxobj       *xp,
-                     char        *ns0,
-                     char        *name,
+                     const char  *ns0,
+                     const char  *name,
                      cvec        *cvk,
                      clixon_xvec *xvec)
 
@@ -1571,8 +1571,8 @@ xml_find_index_yang(cxobj       *xp,
 int
 clixon_xml_find_index(cxobj        *xp,
                       yang_stmt    *yp,
-                      char         *ns,
-                      char         *name,
+                      const char   *ns,
+                      const char   *name,
                       cvec         *cvk,
                       clixon_xvec  *xvec)
 {

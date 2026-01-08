@@ -1209,11 +1209,15 @@ main(int    argc,
             break;
         case 'D' :  /* debug. Note this overrides any setting in the config */
             /* Try first symbolic, then numeric match */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    usage(h, argv[0]);
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
          case 'f': /* override config file */
             if (!strlen(optarg))
@@ -1405,7 +1409,7 @@ main(int    argc,
      * @see clicon_hello_req
      */
     clicon_data_set(h, "session-transport", "cl:restconf");
-
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     /* Main event loop */
     if (clixon_event_loop(h) < 0)
         goto done;
@@ -1416,6 +1420,8 @@ main(int    argc,
     if (xrestconf)
         xml_free(xrestconf);
     if (h){
+        clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+        clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
         restconf_native_terminate(h);
         restconf_terminate(h);
     }

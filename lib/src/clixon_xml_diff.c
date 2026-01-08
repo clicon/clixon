@@ -595,12 +595,12 @@ xml_merge1(cxobj              *x0,  /* the target */
                  * returns NULL.
                  * However the clixon_handle needed to check this option is not
                  * available here.
-                 * So check for the YANG_FLAG_MOUNTPOINT flag on y0 as an alternative.
+                 * So check for the YANG_FLAG_MTPOINT flag on y0 as an alternative.
                  * It will only have been set if CLICON_YANG_SCHEMA_MOUNT is enabled
                  * and it will be set for exactly those cases where the xml_spec()
                  * call is needed.
                  */
-                if (yang_flag_get(y0, YANG_FLAG_MOUNTPOINT))
+                if (yang_flag_get(y0, YANG_FLAG_MTPOINT))
                     yc = xml_spec(x1c);
             }
             if (yc == NULL) {
@@ -1765,7 +1765,7 @@ clixon_xml_diff2patch(cxobj   *x1,
 int
 clixon_xml_diff_nacm_read(clixon_handle h,
                           cxobj        *xt,
-                          char         *xpath)
+                          const char   *xpath)
 {
     int     retval = -1;
     cxobj  *xnacm;

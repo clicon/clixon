@@ -115,10 +115,10 @@ static const map_str2int logdstmap[] = {
  * @param[in] int  Bitfield, see CLIXON_LOG_SYSLOG and others
  * @retval    str  String representation of bitfield
  */
-char *
+const char *
 clixon_logdst_key2str(int keyword)
 {
-    return (char*)clicon_int2str(logdstmap, keyword);
+    return clicon_int2str(logdstmap, keyword);
 }
 
 /*! Map from clixon log destination symbolic string to bitfield
@@ -127,7 +127,7 @@ clixon_logdst_key2str(int keyword)
  * @retval    int  Bit representation of bitfield
  */
 int
-clixon_logdst_str2key(char *str)
+clixon_logdst_str2key(const char *str)
 {
     return clicon_str2int(logdstmap, str);
 }
@@ -149,7 +149,7 @@ clixon_logdst_str2key(char *str)
  */
 int
 clixon_log_init(clixon_handle h,
-                char         *ident,
+                const char   *ident,
                 int           upto,
                 uint16_t      flags)
 {
@@ -224,7 +224,7 @@ clixon_log_opt(char c)
  * @see clixon_debug_init where a strean
  */
 int
-clixon_log_file(char *filename)
+clixon_log_file(const char *filename)
 {
     if (_log_file)
         fclose(_log_file);
@@ -252,7 +252,7 @@ clixon_logflags_set(uint16_t flags)
     return 0;
 }
 
-/*! Truncate log/debug string length
+/*! Truncate all log/debug string lengths
  *
  * @see  CLICON_LOG_STRING_LIMIT option
  */
@@ -263,7 +263,7 @@ clixon_log_string_limit_set(size_t sz)
     return 0;
 }
 
-/*! Get truncate log/debug string length
+/*! Get truncate all log/debug string length
  */
 size_t
 clixon_log_string_limit_get(void)
@@ -343,13 +343,13 @@ slogtime(void)
 /*! Make a logging call to syslog (or stderr).
  *
  * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
- * @param[in]   msg   Message to print as argv.
+ * @param[in]   msg   Message to print as argv (may be modified)
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
  * @note syslog makes its own filtering, but if log to stderr we do it here
  * @see  clixon_debug
  */
 int
-clixon_log_str(int   level,
+clixon_log_str(int  level,
                char *msg)
 {
     /* Remove trailing CR if any */

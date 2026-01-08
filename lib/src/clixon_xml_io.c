@@ -220,7 +220,7 @@ xml2file_recurse(FILE                *f,
                  cxobj               *x,
                  int                  level,
                  int                  pretty,
-                 char                *prefix,
+                 const char          *prefix,
                  clicon_output_cb    *fn,
                  int                  autocliext,
                  withdefaults_type    wdef,
@@ -425,7 +425,7 @@ clixon_xml2file1(FILE                *f,
                  cxobj               *xn,
                  int                  level,
                  int                  pretty,
-                 char                *prefix,
+                 const char          *prefix,
                  clicon_output_cb    *fn,
                  int                  skiptop,
                  int                  autocliext,
@@ -476,7 +476,7 @@ clixon_xml2file(FILE             *f,
                 cxobj            *xn,
                 int               level,
                 int               pretty,
-                char             *prefix,
+                const char       *prefix,
                 clicon_output_cb *fn,
                 int               skiptop,
                 int               autocliext)
@@ -606,7 +606,7 @@ xml2cbuf_recurse(cbuf             *cb,
                  cxobj            *x,
                  int               level,
                  int               pretty,
-                 char             *prefix,
+                 const char       *prefix,
                  int32_t           depth,
                  withdefaults_type wdef)
 {
@@ -768,7 +768,7 @@ clixon_xml2cbuf1(cbuf             *cb,
                  cxobj            *xn,
                  int               level,
                  int               pretty,
-                 char             *prefix,
+                 const char       *prefix,
                  int32_t           depth,
                  int               skiptop,
                  withdefaults_type wdef)
@@ -1210,9 +1210,9 @@ clixon_xml_parse_va(yang_bind   yb,
  * @endcode
  */
 int
-clixon_xml_attr_copy(cxobj *xin,
-                     cxobj *xout,
-                     char  *name)
+clixon_xml_attr_copy(cxobj      *xin,
+                     cxobj      *xout,
+                     const char *name)
 {
     int    retval = -1;
     char  *msgid;

@@ -1457,7 +1457,7 @@ json_xmlns_translate(yang_stmt *yspec,
  */
 static int
 _json_parse(clixon_handle h,
-            char         *str,
+            const char   *str,
             int           jsonenc,
             yang_bind     yb,
             yang_stmt    *yspec,
@@ -1611,7 +1611,7 @@ _json_parse(clixon_handle h,
  */
 int
 clixon_json_parse_string(clixon_handle h,
-                         char         *str,
+                         const char   *str,
                          int           jsonenc,
                          yang_bind     yb,
                          yang_stmt    *yspec,

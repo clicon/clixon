@@ -51,15 +51,17 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <pwd.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+
+#include <assert.h> // XXX
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -69,7 +71,6 @@
 
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
-#include "cli_autocli.h"
 #include "cli_common.h" /* internal functions */
 
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)
@@ -344,10 +345,10 @@ expand_dbvar(clixon_handle h,
     cbuf            *cbxpath = NULL;
     yang_stmt       *ypath;
     yang_stmt       *ytype;
-    char            *mtpoint = NULL;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     yang_stmt       *yspec0 = NULL;
     cvec            *nsc0 = NULL;
-    char            *str;
     int              grouping_treeref;
     cvec            *callback_cvv;
     int              argc = 0;
@@ -394,18 +395,17 @@ expand_dbvar(clixon_handle h,
     api_path_fmt = cbuf_get(api_path_fmt_cb);
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
         goto done;
-    str = NULL;
     cv = cvec_i(argv, argc++);
-    str = cv_string_get(cv);
-    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
-        mtpoint = str + strlen("mtpoint:");
+    if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
+        goto done;
+    if (mtdomain != NULL) {
         /* Get and combined api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
         if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
-    else{
+    else {
         if (api_path_fmt2api_path(api_path_fmt, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
     }
@@ -440,7 +440,7 @@ expand_dbvar(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (mtpoint){
+    if (mtdomain){
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
             goto done;
         cv = NULL;      /* Append nsc0 to nsc */
@@ -501,6 +501,10 @@ expand_dbvar(clixon_handle h,
  ok:
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (cvv2)
         cvec_free(cvv2);
     if (nsc0)
@@ -614,6 +618,84 @@ expand_yang_list(clixon_handle h,
  done:
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Completion callback of variable for yang enum type of bits
+ *
+ * Typical yang:
+ *   type bits {
+ *      bit default {
+ *         position 0;
+ *      }
+ *      bit msg {
+ *         position 1;
+ *      }
+ *      ...
+ *   }
+ * This function expands x to default, msg,...
+ * @param[in]   h        clicon handle
+ * @param[in]   name     Name of this function
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   argv     Arguments given at the callback:
+ *   <schemanode>        Absolute YANG schema-node (eg: /ctrl:services)
+ *   <modname>           true|false: Show with api-path module-name, eg moda:foo, modb:fie
+ * @param[out]  commands vector of function pointers to callback functions
+ * @param[out]  helptxt  vector of pointers to helptexts
+ * @retval      0        OK
+ * @retval     -1        Error
+ * @see expand_yang_list
+ */
+int
+expand_yang_bits(clixon_handle h,
+                 char         *name,
+                 cvec         *cvv,
+                 cvec         *argv,
+                 cvec         *commands,
+                 cvec         *helptexts)
+{
+    int        retval = -1;
+    int        argc = 0;
+    cg_var    *cv;
+    char      *schema_nodeid;
+    yang_stmt *yspec0;
+    yang_stmt *ytype = NULL;
+    yang_stmt *yn;
+    yang_stmt *ys;
+    yang_stmt *yrestype = NULL;
+    yang_stmt *ydesc;
+    int        inext;
+
+    if (argv == NULL || cvec_len(argv) != 1) {
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <schemanode>");
+        goto done;
+    }
+    if ((cv = cvec_i(argv, argc++)) == NULL){
+        clixon_err(OE_PLUGIN, 0, "Error when accessing argument <schemanode>");
+        goto done;
+    }
+    schema_nodeid = cv_string_get(cv);
+    yspec0 = clicon_config_yang(h); // Alt: clicon_dbspec_yang(h)
+    if (yang_abs_schema_nodeid(yspec0, schema_nodeid, &yn) < 0)
+        goto done;
+    if (yang_type_get(yn, NULL, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    if (yang_type_resolve_bits(yn, ytype, &yrestype) < 0)
+        goto done;
+    if (yrestype) {
+        inext = 0;
+        while ((ys = yn_iter(yrestype, &inext)) != NULL) {
+            if (yang_keyword_get(ys) != Y_BIT)
+                continue;
+            cvec_add_string(commands, NULL, yang_argument_get(ys));
+        if ((ydesc = yang_find(ys, Y_DESCRIPTION, NULL)) != NULL)
+            cvec_add_string(helptexts, NULL, yang_argument_get(ydesc));
+        else
+            cvec_add_string(helptexts, NULL, "Bit");
+        }
+    }
+    retval = 0;
+ done:
     return retval;
 }
 
@@ -827,8 +909,12 @@ cli_show_common(clixon_handle    h,
                     break;
                 case FORMAT_NETCONF:
                     if (i==0){
-                        cligen_output(stdout, "<rpc xmlns=\"%s\" %s><edit-config><target><candidate/></target><config>",
+                        cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
                                       NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+                        cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+
+                        cligen_output(stdout, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+                        cligen_output(stdout, "><edit-config><target><candidate/></target><config>");
                         if (pretty)
                             cligen_output(stdout, "\n");
                     }
@@ -1212,8 +1298,8 @@ cli_show_auto(clixon_handle h,
     cg_var          *cv;
     char            *api_path_fmt;  /* xml key format */
     char            *api_path_fmt01 = NULL;
-    char            *str;
-    char            *mtpoint = NULL;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     int              fromroot = 0;
     cbuf            *api_path_fmt_cb = NULL;
 
@@ -1235,13 +1321,16 @@ cli_show_auto(clixon_handle h,
     }
     cprintf(api_path_fmt_cb, "%s", cv_string_get(cv));
     api_path_fmt = cbuf_get(api_path_fmt_cb);
-    str = cv_string_get(cvec_i(argv, argc++));
-    if (str && strncmp(str, "mtpoint:", strlen("mtpoint:")) == 0){
-        mtpoint = str + strlen("mtpoint:");
-        dbname = cv_string_get(cvec_i(argv, argc++));
+    cv = cvec_i(argv, argc++);
+    if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
+        goto done;
+    if (mtdomain){
+        cv = cvec_i(argv, argc++);
+        dbname = cv_string_get(cv);
     }
-    else
-        dbname = str;
+    else{
+        dbname = cv_string_get(cv);
+    }
     if (cvec_len(argv) > argc)
         if (cli_show_option_format(h, argv, argc++, &format) < 0)
             goto done;
@@ -1268,9 +1357,9 @@ cli_show_auto(clixon_handle h,
     }
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
         goto done;
-    if (mtpoint){
+    if (mtdomain){
         /* Get and combined api-path01 */
-        if (mtpoint_paths(yspec0, mtpoint, api_path_fmt, &api_path_fmt01) < 0)
+        if (mtpoint_paths(h, yspec0, mtdomain, mtspec, api_path_fmt, &api_path_fmt01) < 0)
             goto done;
         if (api_path_fmt2api_path(api_path_fmt01, cvv2, yspec0, &api_path, &cvvi) < 0)
             goto done;
@@ -1291,6 +1380,10 @@ cli_show_auto(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (api_path_fmt_cb)
         cbuf_free(api_path_fmt_cb);
     if (cvv2)
@@ -1357,9 +1450,12 @@ cli_show_auto_mode(clixon_handle h,
     int              argc = 0;
     int              skiptop = 0;
     char            *xpath = NULL;
+    char            *mtxpath = NULL;
     yang_stmt       *yspec0;
     yang_stmt       *yspec;
     char            *api_path = NULL;
+    char            *mtdomain = NULL;
+    char            *mtspec = NULL;
     char            *mtpoint = NULL;
     yang_stmt       *yu;
     cbuf            *cbxpath = NULL;
@@ -1402,9 +1498,13 @@ cli_show_auto_mode(clixon_handle h,
     else
         api_path = "/";
     if (clicon_data_get(h, "cli-edit-mtpoint", &mtpoint) == 0 && strlen(mtpoint)){
-        if (yang_path_arg(yspec0, mtpoint, &yu) < 0)
+        if (mtpoint_decode(mtpoint, ":", &mtdomain, &mtspec) < 0)
             goto done;
-        if (yang_mount_get(yu, mtpoint, &yspec) < 0)
+        if (yang_mount_get_xpath(h, mtdomain, mtspec, NULL, &mtxpath) < 0)
+            goto done;
+        if (yang_path_arg(yspec0, mtxpath, &yu) < 0)
+            goto done;
+        if (yang_mount_get(yu, mtxpath, &yspec) < 0)
             goto done;
     }
     yspec = yspec0;
@@ -1418,7 +1518,7 @@ cli_show_auto_mode(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (mtpoint){
+    if (mtxpath){
         /*
          * XXX disabled the line below, because otherwise the path up to the
          * mount point would be added twice to cbxpath. This is because the
@@ -1440,6 +1540,10 @@ cli_show_auto_mode(clixon_handle h,
         goto done;
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (nsc0)
         cvec_free(nsc0);
     if (cbxpath)
@@ -2012,7 +2116,8 @@ cli_show_statistics(clixon_handle h,
     uint64_t    nr;
     uint64_t    tnr0;
     uint64_t    tnr = 0;
-    size_t      sz;
+    uint64_t    sz;
+    size_t      esz;
     size_t      tsz0;
     size_t      tsz = 0;
     yang_stmt  *ymounts;
@@ -2075,17 +2180,17 @@ cli_show_statistics(clixon_handle h,
             inext2 = 0;
             while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
                 name = yang_argument_get(yspec);
-                nr = 0; sz = 0;
-                if (yang_stats(yspec, 0, &nr, &sz) < 0)
+                nr = 0; esz = 0;
+                if (yang_stats(yspec, 0, &nr, &esz) < 0)
                     goto done;
                 tnr += nr;
-                tsz += sz;
+                tsz += esz;
                 if (detail) {
-                    cligen_output(stdout, "YANG-%s-%s-size: %" PRIu64 "\n", domain, name, sz);
+                    cligen_output(stdout, "YANG-%s-%s-size: %zu\n", domain, name, esz);
                     cligen_output(stdout, "YANG-%s-%s-nr: %" PRIu64 "\n", domain, name, nr);
                 }
                 else{
-                    translatenumber(sz, &u64, &unit);
+                    translatenumber(esz, &u64, &unit);
                     cprintf(cb, "%s/%s", domain, name);
                     cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", cbuf_get(cb), u64, unit);
                     cbuf_reset(cb);
@@ -2093,7 +2198,7 @@ cli_show_statistics(clixon_handle h,
             }
         }
         if (detail){
-            cligen_output(stdout, "YANG-total-size: %" PRIu64 "\n", tsz);
+            cligen_output(stdout, "YANG-total-size: %zu\n", tsz);
             cligen_output(stdout, "YANG-total-nr: %" PRIu64 "\n", tnr);
         }
         else {
@@ -2111,19 +2216,19 @@ cli_show_statistics(clixon_handle h,
         while ((ph = cligen_ph_each(cli_cligen(h), ph)) != NULL) {
             if ((pt = cligen_ph_parsetree_get(ph)) == NULL)
                 continue;
-            nr = 0; sz = 0;
-            pt_stats(pt, &nr, &sz);
+            nr = 0; esz = 0;
+            pt_stats(pt, &nr, &esz);
             tnr += nr;
-            tsz += sz;
+            tsz += esz;
             if (detail){
-                cligen_output(stdout, "CLIspec-%s-size: %" PRIu64 "\n", cligen_ph_name_get(ph), sz);
+                cligen_output(stdout, "CLIspec-%s-size: %zu\n", cligen_ph_name_get(ph), esz);
                 cligen_output(stdout, "CLIspec-%s-nr: %" PRIu64 "\n", cligen_ph_name_get(ph), nr);
             }
         }
         if (detail){
-            cligen_output(stdout, "CLIspec-total-size: %" PRIu64 "\n", tsz);
+            cligen_output(stdout, "CLIspec-total-size: %zu\n", tsz);
             cligen_output(stdout, "CLIspec-total-nr: %" PRIu64 "\n", tnr);
-            cligen_output(stdout, "Mem-Total-size: %" PRIu64 "\n", tsz0+tsz);
+            cligen_output(stdout, "Mem-Total-size: %zu\n", tsz0+tsz);
             cligen_output(stdout, "Mem-Total-nr: %" PRIu64 "\n", tnr0+tnr);
         }
         else {
@@ -2137,7 +2242,10 @@ cli_show_statistics(clixon_handle h,
         if (cli)
             cligen_output(stdout, "\nBackend:\n========\n");
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
         cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+
         cprintf(cb, ">");
         cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
         if (detail)

@@ -156,7 +156,7 @@ restconf_param_get(clixon_handle h,
 int
 restconf_param_set(clixon_handle h,
                    const char   *param,
-                   char         *val)
+                   const char   *val)
 {
     struct restconf_handle *rh = handle(h);
 
@@ -307,7 +307,7 @@ restconf_fcgi_socket_get(clixon_handle h)
  */
 int
 restconf_fcgi_socket_set(clixon_handle h,
-                         char         *socketpath)
+                         const char   *socketpath)
 {
     struct restconf_handle *rh = handle(h);
 

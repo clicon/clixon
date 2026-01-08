@@ -91,6 +91,27 @@
 #include "clixon_yang_schema_mount.h"
 #include "clixon_yang_internal.h" /* internal included by this file only, not API */
 
+/* Context for matching an import by module name and capturing its prefix */
+struct import_mod_ctx {
+    const char *modname;
+    const char *prefix;
+};
+
+/* Callback for yang_imports_foreach_scope: match import by module name and capture prefix */
+static int
+import_match_module_cb(yang_stmt *yimport, void *arg)
+{
+    struct import_mod_ctx *c = arg;
+    yang_stmt *yprefix;
+
+    if (strcmp(c->modname, yang_argument_get(yimport)) != 0)
+        return 0;
+    if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) == NULL)
+        return 0;
+    c->prefix = yang_argument_get(yprefix);
+    return 1; /* stop */
+}
+
 #ifdef XML_EXPLICIT_INDEX
 static int yang_search_index_extension(clixon_handle h, yang_stmt *yext, yang_stmt *ys);
 #endif
@@ -269,8 +290,8 @@ yang_argument_set(yang_stmt *ys,
  * @retval   -1    Error
  */
 int
-yang_argument_dup(yang_stmt *ys,
-                  char      *arg)
+yang_argument_dup(yang_stmt  *ys,
+                  const char *arg)
 {
     char *dup;
 
@@ -380,9 +401,9 @@ yang_cvec_set(yang_stmt *ys,
  * @retval    NULL  Error
  */
 cg_var *
-yang_cvec_add(yang_stmt    *ys,
+yang_cvec_add(yang_stmt   *ys,
               enum cv_type type,
-              char        *name)
+              const char  *name)
 {
     cg_var *cv;
     cvec   *cvv;
@@ -413,8 +434,8 @@ yang_cvec_add(yang_stmt    *ys,
  * @retval   -1     Error
  */
 int
-yang_cvec_rm(yang_stmt *ys,
-             char      *name)
+yang_cvec_rm(yang_stmt  *ys,
+             const char *name)
 {
     cvec   *cvv;
     cg_var *cv;
@@ -524,12 +545,10 @@ yang_when_get(clixon_handle h,
 {
     map_ptr2ptr *mp = _yang_when_map;
     size_t       len = _yang_when_map_len;
-    yang_stmt   *ys2;
 
-    if ((ys2 = yang_orig_get(ys)) == NULL)
-        ys2 = ys;
-    if (yang_flag_get(ys2, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
-        return clixon_ptr2ptr(mp, len, ys2);
+    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0 && mp != NULL)
+        return clixon_ptr2ptr(mp, len, ys);
+
     return NULL;
 }
 
@@ -547,20 +566,12 @@ yang_when_set(clixon_handle h,
               yang_stmt    *ywhen)
 {
     int          retval = -1;
-    yang_stmt   *ys2;
-    map_ptr2ptr *mp = _yang_when_map;
-    size_t       len = _yang_when_map_len;
-
-    if ((ys2 = yang_orig_get(ys)) == NULL)
-        ys2 = ys;
-    if (clixon_ptr2ptr(mp, len, ys2) == NULL) {
-        assert(yang_flag_set(ys2, YANG_FLAG_WHEN)==0); // XXX
-        if (clixon_ptr2ptr_add(&_yang_when_map, &_yang_when_map_len, ys2, ywhen) < 0)
+    /* Attach to this node; copies inherit via ys_cp_one. */
+    if (clixon_ptr2ptr(_yang_when_map, _yang_when_map_len, ys) == NULL) {
+        if (clixon_ptr2ptr_add(&_yang_when_map, &_yang_when_map_len, ys, ywhen) < 0)
             goto done;
-        yang_flag_set(ys2, YANG_FLAG_WHEN);
+        yang_flag_set(ys, YANG_FLAG_WHEN);
     }
-    else
-        assert(yang_flag_set(ys2, YANG_FLAG_WHEN) == 0); // XXX
     retval = 0;
  done:
     return retval;
@@ -576,8 +587,8 @@ yang_when_set(clixon_handle h,
  */
 int
 yang_when_xpath_get(yang_stmt *ys,
-                    char      **xpath,
-                    cvec      **nsc)
+                    char     **xpath,
+                    cvec     **nsc)
 {
     int        retval = -1;
     yang_stmt *ywhen;
@@ -879,12 +890,12 @@ yang_stats(yang_stmt    *yt,
  */
 yang_stmt *
 yspec_new(clixon_handle h,
-          char         *name)
+          const char   *name)
 {
     return yspec_new1(h, YANG_DOMAIN_TOP, name);
 }
 
-/*! Create new yang specification, addd as child to top-level yang_mounts
+/*! Create new yang specification, add as child to top-level yang_mounts
  *
  * @param[in] h      Clixon handle
  * @param[in] domain Yang domain
@@ -895,8 +906,8 @@ yspec_new(clixon_handle h,
  */
 yang_stmt *
 yspec_new1(clixon_handle h,
-           char         *domain,
-           char         *name)
+           const char   *domain,
+           const char   *name)
 {
     yang_stmt *ymounts;
     yang_stmt *ydomain;
@@ -921,42 +932,6 @@ yspec_new1(clixon_handle h,
     return NULL;
 }
 
-/*! Create or add a shared yspec
- *
- * @param[in]   h       Clixon handle
- * @param[in]   xpath   Mount xpath, saved in cvec
- * @param[in]   domain  YANG domain
- * @param[in]   yspec0  Input NULL if no previous shared exist, otherwise a shared yspec but new name
- * @retval      yspec1  New or (previously shared)
- * @retval      NULL    Error
- * @note yspec name used by concatenating domain and a unique number.
- */
-yang_stmt *
-yspec_new_shared(clixon_handle h,
-                 char         *xpath,
-                 char         *domain,
-                 char         *name,
-                 yang_stmt    *yspec0)
-{
-    yang_stmt *yspec1 = NULL;
-
-    if (yspec0 != NULL){ /* shared */
-        yspec1 = yspec0;
-    }
-    else {
-        if ((yspec1 = yspec_new1(h, domain, name)) == NULL)
-            goto done;
-        yang_flag_set(yspec1, YANG_FLAG_SPEC_MOUNT);
-        clixon_debug(CLIXON_DBG_YANG, "new yang-spec: %p", yspec1);
-    }
-    if (yang_cvec_add(yspec1, CGV_STRING, xpath) == NULL){
-        yspec1 = NULL;
-        goto done;
-    }
- done:
-    return yspec1;
-}
-
 /*! Create new yang domain
  *
  * @param[in] h       Clixon handle
@@ -966,7 +941,7 @@ yspec_new_shared(clixon_handle h,
  */
 yang_stmt *
 ydomain_new(clixon_handle h,
-            char         *domain)
+            const char   *domain)
 {
     yang_stmt *ymounts;
     yang_stmt *ydomain;
@@ -1309,7 +1284,6 @@ ys_cp_one(yang_stmt *ynew,
 
     sz = sizeof(*yold);
     memcpy(ynew, yold, sz);
-    yang_flag_reset(ynew, YANG_FLAG_WHEN); /* Dont inherit WHENs */
     ynew->ys_parent = NULL;
     if (yold->ys_stmt)
         if ((ynew->ys_stmt = calloc(yold->ys_len, sizeof(yang_stmt *))) == NULL){
@@ -1355,6 +1329,8 @@ ys_cp_one(yang_stmt *ynew,
     default:
         break;
     }
+    if (yang_flag_get(ynew, YANG_FLAG_WHEN) != 0x0)
+        yang_when_set(NULL, ynew, yang_when_get(NULL, yold));
     if (yang_flag_get(yold, YANG_FLAG_MYMODULE) != 0x0)
         yang_mymodule_set(ynew, yang_mymodule_get(yold));
     retval = 0;
@@ -1714,8 +1690,8 @@ yang_find_datanode_ns(yang_stmt  *yn,
  * @see yang_abs_schema_nodeid  Top level function
  */
 yang_stmt *
-yang_find_schemanode(yang_stmt *yn,
-                     char      *argument)
+yang_find_schemanode(yang_stmt  *yn,
+                     const char *argument)
 {
     yang_stmt *ys = NULL;
     yang_stmt *yc = NULL;
@@ -1870,9 +1846,9 @@ yang_find_mynamespace(yang_stmt *ys)
  * @see yang_find_module_by_namespace
  */
 int
-yang_find_prefix_by_namespace(yang_stmt *ys,
-                              char      *ns,
-                              char     **prefix)
+yang_find_prefix_by_namespace(yang_stmt  *ys,
+                              const char *ns,
+                              char      **prefix)
 {
     int        retval = -1;
     yang_stmt *my_ymod; /* My module */
@@ -1883,25 +1859,44 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
     yang_stmt *yimport;
     yang_stmt *yprefix;
     int        inext;
+    yang_stmt *yscope; /* lexical origin */
+    yang_stmt *yinst;  /* instantiated node */
+    char      *scope_ns;
+    char      *scope_prefix;
+    struct import_mod_ctx ctx;
 
     clixon_debug(CLIXON_DBG_YANG | CLIXON_DBG_DETAIL, "namespace %s", ns);
     if (prefix == NULL){
         clixon_err(OE_YANG, EINVAL, "prefix is NULL");
         goto done;
     }
-    /* First check if namespace is my own module */
-    if ((myns = yang_find_mynamespace(ys)) == NULL)
+    yscope = yang_orig_get(ys) ? yang_orig_get(ys) : ys;
+    yinst = ys;
+    /* First check if namespace is my own module (instantiated) */
+    if ((myns = yang_find_mynamespace(yinst)) == NULL)
         goto done;
     if (strcmp(myns, ns) == 0){
-        *prefix = yang_find_myprefix(ys); /* or NULL? */
+        *prefix = yang_find_myprefix(yinst); /* or NULL? */
         goto found;
     }
+    /* Then check lexical origin module (eg grouping from another module) */
+    if (yscope != yinst){
+        if ((scope_ns = yang_find_mynamespace(yscope)) == NULL)
+            goto done;
+        if (strcmp(scope_ns, ns) == 0){
+            scope_prefix = yang_find_myprefix(yscope);
+            if (scope_prefix == NULL)
+                goto done;
+            *prefix = scope_prefix;
+            goto found;
+        }
+    }
     /* Next, find namespaces in imported modules */
-    yspec = ys_spec(ys);
+    yspec = ys_spec(yscope);
     if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL)
         goto notfound;
     modname = yang_argument_get(ymod);
-    my_ymod = ys_module(ys);
+    my_ymod = ys_module(yinst);
     /* Loop through import statements to find a match with ymod */
     inext = 0;
     while ((yimport = yn_iter(my_ymod, &inext)) != NULL) {
@@ -1911,6 +1906,17 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
             *prefix = yang_argument_get(yprefix);
             goto found;
         }
+    }
+    /* If not found, also check lexical module/import scope upwards */
+    ctx.modname = modname;
+    ctx.prefix = NULL;
+    if (yang_imports_foreach_scope(yscope, yspec,
+                                   import_match_module_cb,
+                                   &ctx) < 0)
+        goto done;
+    if (ctx.prefix){
+        *prefix = (char*)ctx.prefix;
+        goto found;
     }
  notfound:
     retval = 0; /* not found */
@@ -1941,9 +1947,9 @@ yang_find_prefix_by_namespace(yang_stmt *ys,
  * @see yang_find_module_by_prefix
  */
 int
-yang_find_namespace_by_prefix(yang_stmt *ys,
-                              char      *prefix,
-                              char     **ns)
+yang_find_namespace_by_prefix(yang_stmt  *ys,
+                              const char *prefix,
+                              char      **ns)
 {
     int        retval = -1;
     yang_stmt *ym;
@@ -2192,10 +2198,10 @@ yang_order(yang_stmt *y)
  * @param[in] int  Integer representation of YANG keywords
  * @retval    str  String representation of YANG keywords
  */
-char *
+const char *
 yang_key2str(int keyword)
 {
-    return (char*)clicon_int2str(ykmap, keyword);
+    return clicon_int2str(ykmap, keyword);
 }
 
 /*! Map from yang keyword strings to ints
@@ -2465,7 +2471,7 @@ yang_print1(FILE      *f,
 {
     yang_stmt *yc;
     yang_stmt *yrev;
-    char      *keyw;
+    const char *keyw;
     int        spec;
     int        inext;
 
@@ -3369,8 +3375,8 @@ ys_populate_identity(clixon_handle h,
  */
 int
 if_feature(clixon_handle h,
-           char         *module,
-           char         *feature)
+           const char   *module,
+           const char   *feature)
 {
     yang_stmt *yspec;
     yang_stmt *ym; /* module */
@@ -4007,7 +4013,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
  */
 int
 yang_abs_schema_nodeid(yang_stmt  *yn,
-                       char       *schema_nodeid,
+                       const char *schema_nodeid,
                        yang_stmt **yres)
 {
     int           retval = -1;
@@ -4097,9 +4103,9 @@ yang_abs_schema_nodeid(yang_stmt  *yn,
  * @see yang_abs_schema_nodeid
  */
 int
-yang_desc_schema_nodeid(yang_stmt    *yn,
-                        char         *schema_nodeid,
-                        yang_stmt   **yres)
+yang_desc_schema_nodeid(yang_stmt  *yn,
+                        const char *schema_nodeid,
+                        yang_stmt **yres)
 {
     int           retval = -1;
     cvec         *nodeid_cvv = NULL;
@@ -4225,8 +4231,8 @@ yang_config_ancestor(yang_stmt *ys)
  * @note must free return value after use w cvec_free
  */
 cvec *
-yang_arg2cvec(yang_stmt *ys,
-              char      *delim)
+yang_arg2cvec(yang_stmt  *ys,
+              const char *delim)
 {
     char  **vec = NULL;
     int     i;
@@ -4266,9 +4272,9 @@ yang_arg2cvec(yang_stmt *ys,
  * @retval    -1       Error
  */
 int
-yang_key_match(yang_stmt *yn,
-               char      *name,
-               int       *lastkey)
+yang_key_match(yang_stmt  *yn,
+               const char *name,
+               int        *lastkey)
 {
     int        retval = -1;
     yang_stmt *ys = NULL;
@@ -4459,8 +4465,8 @@ yang_type_cache_free(yang_type_cache *ycache)
  * @see ysp_add
  */
 yang_stmt *
-yang_anydata_add(yang_stmt *yp,
-                 char      *name)
+yang_anydata_add(yang_stmt  *yp,
+                 const char *name)
 {
     yang_stmt *ys = NULL;
 
@@ -4498,11 +4504,11 @@ yang_anydata_add(yang_stmt *yp,
  * @see ys_populate_unknown  Called when parsing YANG
  */
 int
-yang_extension_value(yang_stmt *ys,
-                     char      *name,
-                     char      *ns,
-                     int       *exist,
-                     char     **value)
+yang_extension_value(yang_stmt  *ys,
+                     const char *name,
+                     const char *ns,
+                     int        *exist,
+                     char      **value)
 {
     int        retval = -1;
     yang_stmt *yext;

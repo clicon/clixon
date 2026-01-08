@@ -207,11 +207,11 @@ clicon_sig_ignore_get(void)
  * @see clixon_event_loop
  */
 int
-clixon_event_reg_fd_prio(int   fd,
-                         int (*fn)(int, void*),
-                         void *arg,
-                         char *str,
-                         int   prio)
+clixon_event_reg_fd_prio(int         fd,
+                         int       (*fn)(int, void*),
+                         void       *arg,
+                         const char *str,
+                         int         prio)
 {
     struct event_data *e;
 
@@ -247,10 +247,10 @@ clixon_event_reg_fd_prio(int   fd,
  * @see clixon_event_unreg_fd_prio
  */
 int
-clixon_event_reg_fd(int   fd,
-                    int (*fn)(int, void*),
-                    void *arg,
-                    char *str)
+clixon_event_reg_fd(int         fd,
+                    int       (*fn)(int, void*),
+                    void       *arg,
+                    const char *str)
 {
     return clixon_event_reg_fd_prio(fd, fn, arg, str, 0);
 }
@@ -335,7 +335,7 @@ int
 clixon_event_reg_timeout(struct timeval t,
                          int          (*fn)(int, void*),
                          void          *arg,
-                         char          *str)
+                         const char    *str)
 {
     int                 retval = -1;
     struct event_data  *e;

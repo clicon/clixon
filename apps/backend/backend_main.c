@@ -76,10 +76,11 @@
 #include "clixon_backend_commit.h"
 #include "backend_handle.h"
 #include "backend_startup.h"
+#include "backend_cache.h"
 #include "backend_plugin_restconf.h"
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:o:"
+#define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:Ao:"
 
 #define BACKEND_LOGFILE "/usr/local/var/clixon_backend.log"
 
@@ -133,12 +134,14 @@ backend_terminate(clixon_handle h)
         unlink(sockpath);
     clixon_event_exit();
     clixon_debug(CLIXON_DBG_BACKEND, "done");
+
     clixon_err_exit();
     clixon_log_exit();
     stream_delete_all(h, 1);
+    xmldb_delete_candidates(h);
     xmldb_disconnect(h);
+    clixon_debug_exit();
     backend_handle_exit(h); /* Cannot use h after this. */
-
     return 0;
 }
 
@@ -403,8 +406,8 @@ usage(clixon_handle h,
             "\t-q \t\tQuit startup directly after upgrading and print result on stdout\n"
             "\t-U <user>\tRun backend daemon as this user AND drop privileges permanently\n"
             "\t-g <group>\tClient membership required to this group (default: %s)\n"
-
             "\t-y <file>\tLoad yang spec file (override yang main module)\n"
+            "\t-A\t\tDo not clear autocli cache on startup\n\n"
             "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
             argv0,
             plgdir ? plgdir : "none",
@@ -453,11 +456,13 @@ main(int    argc,
     size_t        cligen_buflen;
     size_t        cligen_bufthreshold;
     int           dbg;
+    uint32_t      dbgundef = 0;
     size_t        sz;
     int           config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
     int           print_version = 0;
     int32_t       d;
+    int autocli_cache_clear = 1;
 
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
@@ -496,11 +501,15 @@ main(int    argc,
         case 'D' : /* debug */
             /* Try first symbolic, then numeric match
              * Cant use yang_bits_map, too early in bootstrap, there is no yang */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%u", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    dbgundef++;
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         case 'f': /* config file */
             if (!strlen(optarg))
@@ -635,6 +644,9 @@ main(int    argc,
             if (clicon_option_add(h, "CLICON_YANG_MAIN_FILE", optarg) < 0)
                 goto done;
             break;
+        case 'A': /* Do not clear autocli cache on startup */
+            autocli_cache_clear = 0;
+            break;
         case 'o':{ /* Configuration option */
             char          *val;
             if ((val = index(optarg, '=')) == NULL)
@@ -767,6 +779,25 @@ main(int    argc,
         if (clixon_plugin_version_all(h, stdout) < 0)
             goto done;
         goto ok;
+    }
+    /* If any debug flags were undefined, try again after all plugins may have loaded */
+    if (dbgundef){
+        opterr = 0;
+        optind = 1;
+        while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1){
+            switch (c){
+            case 'D' :
+                /* May match extended debug flags not available previously */
+                if ((d = clixon_debug_str2key(optarg)) < 0){
+                    usage(h, argv[0]);
+                }
+                dbg |= d;
+                break;
+            default:
+                break;
+            }
+        }
+        clixon_debug_init(h, dbg);
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -1026,7 +1057,10 @@ main(int    argc,
      * initializations */
     if (check_drop_priv(h, gid, yspec) < 0)
         goto done;
-
+    if (autocli_cache_clear){
+        if (backend_autocli_clear_cache(h) < 0)
+            goto done;
+    }
     /* Start session-id for clients */
     clicon_session_id_set(h, 1);
 #if 0 /* debug */

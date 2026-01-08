@@ -417,10 +417,10 @@ clispec_load(clixon_handle h)
             goto done;
         /* Load the syntax parse trees into cli_syntax stx structure */
         for (i = 0; i < ndp; i++) {
-            clixon_debug(CLIXON_DBG_CLI, "Loading clispec syntax: '%s/%s'",
-                         clispec_dir, dp[i].d_name);
             if (clispec_load_file(h, dp[i].d_name, clispec_dir, ptall, modes) < 0)
                 goto done;
+            clixon_debug(CLIXON_DBG_CLI, "Loaded clispec syntax: '%s/%s'",
+                         clispec_dir, dp[i].d_name);
         }
     }
     /* Were any syntax modes successfully loaded? If not, leave */

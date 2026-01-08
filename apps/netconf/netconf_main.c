@@ -92,7 +92,7 @@ static int _netconf_hello_nr = 0;
 
 /*! Copy attributes from incoming request to reply. Skip already present (dont overwrite)
  *
- * RFC 6241:
+ * RFC 6241 Section 4.1:
  * If additional attributes are present in an <rpc> element, a NETCONF
  * peer MUST return them unmodified in the <rpc-reply> element.  This
  * includes any "xmlns" attributes.
@@ -603,6 +603,7 @@ netconf_terminate(clixon_handle h)
     xpath_optimize_exit();
     clixon_event_exit();
     clixon_handle_exit(h);
+    clixon_debug_exit();
     clixon_err_exit();
     clixon_log_exit();
     return 0;
@@ -691,6 +692,7 @@ main(int    argc,
     size_t           cligen_buflen;
     size_t           cligen_bufthreshold;
     int              dbg = 0;
+    uint32_t         dbgundef = 0;
     size_t           sz;
     int              config_dump = 0;
     enum format_enum config_dump_format = FORMAT_XML;
@@ -723,11 +725,15 @@ main(int    argc,
             break;
         case 'D' :  /* debug */
             /* Try first symbolic, then numeric match */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%u", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    dbgundef++;
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         case 'f': /* override config file */
             if (!strlen(optarg))
@@ -898,6 +904,25 @@ main(int    argc,
             goto done;
         goto ok;
     }
+    /* If any debug flags were undefined, try again after all plugins may have loaded */
+    if (dbgundef){
+        opterr = 0;
+        optind = 1;
+        while ((c = getopt(argc, argv, NETCONF_OPTS)) != -1){
+            switch (c){
+            case 'D' :
+                /* May match extended debug flags not available previously */
+                if ((d = clixon_debug_str2key(optarg)) < 0){
+                    usage(h, argv[0]);
+                }
+                dbg |= d;
+                break;
+            default:
+                break;
+            }
+        }
+        clixon_debug_init(h, dbg);
+    }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
     if ((str = clicon_yang_main_file(h)) != NULL){
@@ -975,6 +1000,7 @@ main(int    argc,
         if (clixon_event_reg_timeout(t, timeout_fn, NULL, "timeout") < 0)
             goto done;
     }
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     if (clixon_event_loop(h) < 0)
         goto done;
  ok:

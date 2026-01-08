@@ -140,7 +140,7 @@ clixon_inet2sin(const char       *addrtype,
  */
 static int
 clixon_connect_unix(clixon_handle h,
-                    char         *sockpath)
+                    const char   *sockpath)
 {
     struct sockaddr_un addr;
     int retval = -1;
@@ -182,7 +182,7 @@ clixon_connect_unix(clixon_handle h,
  */
 int
 clixon_rpc_connect_unix(clixon_handle h,
-                        char         *sockpath,
+                        const char   *sockpath,
                         int          *sock0)
 {
     int         retval = -1;
@@ -223,7 +223,7 @@ clixon_rpc_connect_unix(clixon_handle h,
  */
 int
 clixon_rpc_connect_inet(clixon_handle h,
-                        char         *dst,
+                        const char   *dst,
                         uint16_t      port,
                         int          *sock0)
 {
@@ -721,7 +721,7 @@ clixon_rpc11(int         sock,
  *
  * @param[in]  s       Socket to communicate with client
  * @param[in]  descr   Description of peer for logging
- * @param[in]  data    Returned data as byte-string.
+ * @param[out] data    Returned data as byte-string.
  * @param[in]  datalen Length of returned data XXX  may be unecessary if always string?
  * @retval     0       OK
  * @retval    -1       Error

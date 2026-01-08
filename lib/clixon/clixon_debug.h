@@ -61,7 +61,7 @@
 
 /* Subject area */
 #define CLIXON_DBG_DEFAULT	0x00000001	/* Default logs */
-#define CLIXON_DBG_MSG		0x00000002	/* In/out messages */
+#define CLIXON_DBG_MSG		0x00000002	/* In/out messages, hdr contains keys: session/transport/rpc/msgid */
 #define CLIXON_DBG_INIT 	0x00000004	/* Initialization */
 #define CLIXON_DBG_XML		0x00000008	/* XML processing */
 #define CLIXON_DBG_XPATH	0x00000010	/* XPath processing */
@@ -86,9 +86,12 @@
 #define CLIXON_DBG_SMASK	0x00ffffff	/* Subject mask */
 
 /* Misc */
-#define CLIXON_DBG_TRUNC	0x10000000	/* Explicit truncate debug message.
+#define CLIXON_DBG_TRUNC	0x10000000	/* Explicit truncate debug message to CLIXON_DBG_TRUNC_DEFAULT
                                                  * Note Implicit: log_string_limit overrides
                                                  */
+/* Explicit truncate length, override with: clixon_debug_explicit_trunc_set
+ */
+#define CLIXON_DBG_EXPLICIT_TRUNC_DEFAULT 160
 
 /*
  * Macros
@@ -137,10 +140,13 @@
 /*
  * Prototypes
  */
-char *clixon_debug_key2str(int keyword);
-int clixon_debug_str2key(char *str);
+const char *clixon_debug_key2str(int keyword);
+int clixon_debug_str2key(const char *str);
+int clixon_debug_key_add(char *str, int key);
 int clixon_debug_key_dump(FILE *f);
+int clixon_debug_explicit_trunc_set(size_t sz);
 int clixon_debug_init(clixon_handle h, int dbglevel);
+int clixon_debug_exit(void);
 int clixon_debug_get(void);
 int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbglevel, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 6, 7)));
 

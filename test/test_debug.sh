@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Turn on debug on backend/cli/netconf
 # Also some log destination tests
+# CLI tests setting debug level via CLI, -o config option and -D command-line: hex, decimal, symbol
 # Note no restconf debug test
 
 # Magic line must be first in script (see README.md)
@@ -10,6 +11,7 @@ APPNAME=example
 
 cfg=$dir/conf.xml
 fyang=$dir/restconf.yang
+fin=$dir/in
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -84,21 +86,67 @@ wait_restconf
 new "Set backend debug using netconf"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><debug $LIBNS><level>1</level></debug></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-# Debug
-new "cli debug cli"
-expectpart "$($clixon_cli -1 -f $cfg -l o debug cli 1)" 0 "^$"
+# CLI: via cli
 
-new "cli debug, expect 0"
+new "cli debug initial 0"
 expectpart "$($clixon_cli -1 -f $cfg show debug cli)" 0 "CLI debug:0x0"
 
-new "cli debug -o single"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG=msg show debug cli)" 0 "CLI debug:0x2" --not-- "CLI debug:0x20"
+# Use APP2 debug level
+cat <<EOF > $fin
+debug cli 0x00200002
+show debug cli
+example 42
+EOF
+new "cli set debug via cli hex"
+expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "CLI debug:0x200002" "mycallback: 42" "This is a long debug message"
 
-new "cli debug -o multi"
+cat <<EOF > $fin
+debug cli 2097154
+show debug cli
+EOF
+new "cli set debug via cli decimal"
+expectpart "$(cat $fin | $clixon_cli -f $cfg)" 0 "CLI debug:0x200002"
+
+cat <<EOF > $fin
+debug cli app2
+show debug cli
+EOF
+new "cli set debug via cli symbol"
+expectpart "$(cat $fin | $clixon_cli -f $cfg)" 0 "CLI debug:0x200000"
+
+# CLI: via -o CLICON_DEBUG
+
+new "cli set debug via -o CLICON_DEBUG"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG=app2 show debug cli)" 0 "CLI debug:0x200000"
+
+new "cli example debug level via -o expect fail"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG=example show debug cli 2>&1)" 255 "Bit string invalid: example"
+
+new "cli debug several -o"
 expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG="msg app2" show debug cli)" 0 "CLI debug:0x200002"
 
-new "cli debug -D multi"
-expectpart "$($clixon_cli -1 -f $cfg -D msg -D app2 show debug cli)" 0
+new "cli set debug via -o hex"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG=0x200002 show debug cli)" 0 "CLI debug:0x200002"
+
+new "cli set debug via -o number"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_DEBUG=2097154 show debug cli)" 0 "CLI debug:0x200002"
+
+# CLI: via -D command-line
+
+new "cli debug several -D"
+expectpart "$($clixon_cli -1 -f $cfg -D msg -D example show debug cli)" 0 "CLI debug:0x200002"
+
+new "cli -D decimal"
+expectpart "$($clixon_cli -1 -f $cfg -D 2097154 show debug cli)" 0 "CLI debug:0x200002"
+
+new "cli -D hex"
+expectpart "$($clixon_cli -1 -f $cfg -D 0x200002 show debug cli)" 0 "CLI debug:0x200002"
+
+new "cli debug -D notexist"
+expectpart "$($clixon_cli -1 -f $cfg -D notexist show debug cli 2>&1)" 1 "usage:clixon_cli"
+
+new "cli debug extended and trunced"
+expectpart "$($clixon_cli -1 -f $cfg -D example example 42 2>&1)" 0 "mycallback: 42" "This is a long debug message" --not-- "invisible"
 
 # Log destination
 new "cli log -lf<file>"

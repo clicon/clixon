@@ -95,18 +95,18 @@ int stream_delete_all(clixon_handle h, int force);
 int stream_get_xml(clixon_handle h, int access, cbuf *cb);
 int stream_timer_setup(int fd, void *arg);
 /* Subscriptions */
-struct stream_subscription *stream_ss_add(clixon_handle h, char *stream,
-                  char *xpath, struct timeval *start, struct timeval *stop,
-                  stream_fn_t fn, void *arg);
+struct stream_subscription *stream_ss_add(clixon_handle h, const char *stream,
+                                          const char *xpath, struct timeval *start, struct timeval *stop,
+                                          stream_fn_t fn, void *arg);
 int stream_ss_rm(clixon_handle h, event_stream_t *es, struct stream_subscription *ss, int force);
-int stream_ss_rm_all(clixon_handle h, char *stream);
+int stream_ss_rm_all(clixon_handle h, const char *stream);
 struct stream_subscription *stream_ss_find(event_stream_t *es,
                                            stream_fn_t fn, void *arg);
 int stream_ss_delete_all(clixon_handle h, stream_fn_t fn, void *arg);
-int stream_ss_delete(clixon_handle h, char *name, stream_fn_t fn, void *arg);
+int stream_ss_delete(clixon_handle h, const char *name, stream_fn_t fn, void *arg);
 
-int stream_notify_xml(clixon_handle h, char *stream, cxobj *xml);
-int stream_notify(clixon_handle h, char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
+int stream_notify_xml(clixon_handle h, const char *stream, cxobj *xml);
+int stream_notify(clixon_handle h, const char *stream, const char *event, ...)  __attribute__ ((format (printf, 3, 4)));
 
 /* Replay */
 int stream_replay_add(event_stream_t *es, struct timeval *tv, cxobj *xv);

@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
-# Tests for autocli cache
-
+# Tests for autocli cache in backend
+# Matrix flag tests:
+#
+#  cache    | CLICON_AUTOCLI_CACHE_DIR  | result
+# ----------+---------------------------+---------
+#  disabled | -                         | local
+#  read     | null                      | error
+#  read     | dir                       | server
+#
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
@@ -11,7 +18,10 @@ cfd=$dir/conf_yang.d
 if [ ! -d $cfd ]; then
     mkdir $cfd
 fi
-cachedir=$dir/clispec
+cachedir=$dir/autocli
+if [ ! -d $cachedir ]; then
+    mkdir $cachedir
+fi
 cachefile=${cachedir}/top/clixon-example@2025-05-01.cli
 cachefile2=${cachedir}/top/clixon-example@2025-05-01-grouping-pg1.cli
 
@@ -53,6 +63,9 @@ delete("Delete a configuration item") {
       @datamodel, @add:leafref-no-refer, cli_auto_del();
       all("Delete whole candidate configuration"), delete_all("candidate");
 }
+clear("Clear system state") {
+    autocli("Autocli file cache"), cli_cache_clear("autocli", "default"); # clixon-cache branch
+}
 show("Show a particular state of the system"){
     configuration("Show configuration"), cli_show_auto_mode("candidate", "xml", false, false);
 }
@@ -90,32 +103,44 @@ module clixon-example {
 }
 EOF
 
-# Args:
-# 1: clispec-cache
-function testsetup()
-{
-    # Whether grouping treeref is enabled
-    cache=$1
-    rm -rf $cachedir
-    cat <<EOF > $cfd/autocli.xml
+cat <<EOF > $cfd/extra.xml
 <clixon-config xmlns="http://clicon.org/config">
-  <autocli>
-    <module-default>true</module-default>
-     <list-keyword-default>kw-nokey</list-keyword-default>
-     <grouping-treeref>true</grouping-treeref>
-     <clispec-cache>$cache</clispec-cache>
-     <clispec-cache-dir>$cachedir</clispec-cache-dir>
-  </autocli>
+  <CLICON_AUTOCLI_CACHE_DIR>$cachedir</CLICON_AUTOCLI_CACHE_DIR>
 </clixon-config>
 EOF
 
-    new "set top-level grouping"
-#    echo "$clixon_cli -f $cfg -1 set table parameter x index1 a"
-    expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a)" 0 ""
+new "cache = disabled"
+cache=disabled
+cat <<EOF > $cfd/autocli.xml
+<clixon-config xmlns="http://clicon.org/config">
+   <autocli>
+      <module-default>false</module-default>
+      <list-keyword-default>kw-nokey</list-keyword-default>
+      <grouping-treeref>true</grouping-treeref>
+      <treeref-state-default>false</treeref-state-default>
+      <rule>
+         <name>include example</name>
+         <operation>enable</operation>
+         <module-name>clixon-example*</module-name>
+      </rule>
+      <clispec-cache>$cache</clispec-cache>
+   </autocli>
+</clixon-config>
+EOF
 
-    new "show grouping"
-    expectpart "$($clixon_cli -f $cfg -1 show config)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>x</name><index1><i>a</i></index1></parameter></table>"
-}
+new "Remove $cachedir"
+sudo rm -rf $cachedir/*
+
+new "Add some to $cachedir"
+cat <<EOF > $cachedir/foo.cli
+Foo cli;
+EOF
+
+new "Check cache"
+ret=$(ls $cachedir)
+if [ "$ret" != "foo.cli" ]; then
+    err "foo.cli" "$res"
+fi
 
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
@@ -128,58 +153,115 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "wait backend"
+new "wait backend 1"
 wait_backend
 
-new "autocli disabled"
-testsetup disabled
+# Bootstrap: cannot clear cache from cli before use by autocli, must use netconf
+new "clear cache"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><clixon-cache $LIBNS><operation>clear</operation><type>autocli</type></clixon-cache></rpc>" "<ok/>"
 
-new "Check no cache"
-if [ -d ${cachedir} ]; then
-    err1 "Unexpected ${cachedir}"
+new "set top-level grouping"
+expectpart "$($clixon_cli -f $cfg -1 set table parameter x index1 a)" 0 ""
+
+new "Check cache empty"
+ret=$(ls $cachedir)
+if [ -n "$ret" ]; then
+    err "empty dir" "$res"
 fi
 
-# How should I test this?
-new "autocli read"
-testsetup read
-
-new "autocli write"
-testsetup write
-
-new "Check cache file"
-if [ ! ${cachefile} ]; then
-    err1 "Expected ${cachefile}"
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
-# cat "${cachefile}"
-new "Check cache content"
-content=$(cat ${cachefile})
-expected="table,overwrite_me(\"/clixon-example:table\"), act-container;{"
-match=$(echo "${content}" | grep --null -o "$expected")
-if [[ -z "${match}" ]]; then
-    err "$expected" "${content}"
+new "cache = read, dir = NULL"
+cache=read
+cat <<EOF > $cfd/autocli.xml
+<clixon-config xmlns="http://clicon.org/config">
+   <autocli>
+      <module-default>false</module-default>
+      <list-keyword-default>kw-nokey</list-keyword-default>
+      <grouping-treeref>true</grouping-treeref>
+      <treeref-state-default>false</treeref-state-default>
+      <rule>
+         <name>include example</name>
+         <operation>enable</operation>
+         <module-name>clixon-example*</module-name>
+      </rule>
+      <clispec-cache>$cache</clispec-cache>
+   </autocli>
+</clixon-config>
+EOF
+
+cat <<EOF > $cfd/extra.xml
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_AUTOCLI_CACHE_DIR></CLICON_AUTOCLI_CACHE_DIR>
+</clixon-config>
+EOF
+
+if [ $BE -ne 0 ]; then
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
 fi
 
-new "Check grouping cache file"
-if [ ! ${cachefile2} ]; then
-    err1 "Expected ${cachefile2}"
+new "wait backend 2"
+wait_backend
+
+new "clear cache"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><clixon-cache ${LIBNS}><operation>clear</operation><type>autocli</type></clixon-cache></rpc>" "<rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Autocli cache requires CLICON_AUTOCLI_CACHE_DIR to be set</error-message></rpc-error>"
+
+if [ $BE -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
-new "autocli readwrite"
-testsetup readwrite
+new "cache = read, dir = NULL"
+cache=read
+cat <<EOF > $cfd/autocli.xml
+<clixon-config xmlns="http://clicon.org/config">
+   <autocli>
+      <module-default>false</module-default>
+      <list-keyword-default>kw-nokey</list-keyword-default>
+      <grouping-treeref>true</grouping-treeref>
+      <treeref-state-default>false</treeref-state-default>
+      <rule>
+         <name>include example</name>
+         <operation>enable</operation>
+         <module-name>clixon-example*</module-name>
+      </rule>
+      <clispec-cache>$cache</clispec-cache>
+   </autocli>
+</clixon-config>
+EOF
 
-new "Check cache content"
-content=$(cat ${cachefile})
-expected="table,overwrite_me(\"/clixon-example:table\"), act-container;{"
-match=$(echo "${content}" | grep --null -o "$expected")
-if [[ -z "${match}" ]]; then
-    err "$expected" "${content}"
+cat <<EOF > $cfd/extra.xml
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_AUTOCLI_CACHE_DIR>$cachedir</CLICON_AUTOCLI_CACHE_DIR>
+</clixon-config>
+EOF
+
+if [ $BE -ne 0 ]; then
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
 fi
 
-new "Check grouping cache file"
-if [ ! ${cachefile2} ]; then
-    err1 "Expected ${cachefile2}"
-fi
+new "wait backend 3"
+wait_backend
+
+new "clear cache"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><clixon-cache $LIBNS><operation>clear</operation><type>autocli</type></clixon-cache></rpc>" "<ok/>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

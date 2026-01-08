@@ -48,7 +48,9 @@
  * @retval     0        OK
  * @retval    -1        Error
  */
-typedef int (*handler_function)(void *handle, char *path, void *userargs, void *arg);
+// Backward-compatible 7.6
+#define CLIXON_DISPATCHER_HANDLER_CONST
+typedef int (*handler_function)(void *handle, const char *path, void *userargs, void *arg);
 
 /*
  * this structure is used to map a handler to a path
@@ -106,8 +108,8 @@ struct _dispatcher_entry {
  * Prototypes
  */
 int dispatcher_register_handler(dispatcher_entry_t **root, dispatcher_definition *x);
-int dispatcher_call_handlers(dispatcher_entry_t *root, void *handle, char *path, void *user_args);
-int dispatcher_match_exact(dispatcher_entry_t *root, char *path);
+int dispatcher_call_handlers(dispatcher_entry_t *root, void *handle, const char *path, void *user_args);
+int dispatcher_match_exact(dispatcher_entry_t *root, const char *path);
 int dispatcher_free(dispatcher_entry_t *root);
 int dispatcher_print(FILE *f, int level, dispatcher_entry_t *root);
 

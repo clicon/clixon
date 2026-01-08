@@ -76,13 +76,15 @@ int xmldb_connect(clixon_handle h);
 int xmldb_disconnect(clixon_handle h);
 
 /* in clixon_datastore_read.[ch]: */
-int xmldb_get(clixon_handle h, const char *db, cvec *nsc, char *xpath, cxobj **xret);
+int xmldb_get(clixon_handle h, const char *db, cvec *nsc, const char *xpath, cxobj **xret);
 int xmldb_get0(clixon_handle h, const char *db, int yb,
                cvec *nsc, const char *xpath, int copy, withdefaults_type wdef,
                cxobj **xret, void *md, cxobj **xerr);
 int xmldb_get_cache(clixon_handle h, const char *db, cxobj **xtp, cxobj **xerr);
+int xmldb_get_cache_from_file(clixon_handle h, db_elmnt *de, cxobj **xtp, cxobj **xerr);
+
 /* in clixon_datastore_write.[ch]: */
-int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, char *username, cbuf *cbret);
+int xmldb_put(clixon_handle h, const char *db, enum operation_type op, cxobj *xt, const char *username, cbuf *cbret);
 int xmldb_dump(clixon_handle h, FILE *f, cxobj *xt, enum format_enum format, int pretty, withdefaults_type wdef, int multi, const char *multidb);
 int xmldb_write_cache2file(clixon_handle h, const char *db);
 

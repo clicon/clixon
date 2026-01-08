@@ -354,8 +354,8 @@ stream_timer_setup(int   fd,
  */
 struct stream_subscription *
 stream_ss_add(clixon_handle     h,
-              char             *stream,
-              char             *xpath,
+              const char       *stream,
+              const char       *xpath,
               struct timeval   *starttime,
               struct timeval   *stoptime,
               stream_fn_t       fn,
@@ -435,7 +435,7 @@ stream_ss_rm(clixon_handle               h,
  */
 int
 stream_ss_rm_all(clixon_handle h,
-                 char          *stream)
+                 const char   *stream)
 {
     int                        retval = -1;
     event_stream_t             *es;
@@ -520,10 +520,10 @@ stream_ss_delete_all(clixon_handle     h,
  * @see stream_ss_delete_all (merge with this?)
  */
 int
-stream_ss_delete(clixon_handle     h,
-                 char             *name,
-                 stream_fn_t       fn,
-                 void             *arg)
+stream_ss_delete(clixon_handle h,
+                 const char   *name,
+                 stream_fn_t   fn,
+                 void         *arg)
 {
     int                          retval = -1;
     event_stream_t              *es;
@@ -606,7 +606,7 @@ stream_notify1(clixon_handle   h,
  */
 int
 stream_notify(clixon_handle h,
-              char         *stream,
+              const char   *stream,
               const char   *event, ...)
 {
     int             retval = -1;
@@ -684,7 +684,7 @@ stream_notify(clixon_handle h,
  */
 int
 stream_notify_xml(clixon_handle h,
-                  char         *stream,
+                  const char   *stream,
                   cxobj        *xml)
 {
     int        retval = -1;

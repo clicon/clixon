@@ -279,8 +279,8 @@ clicon_hash_ptr_value(clicon_hash_t *hash,
 clicon_hash_t
 clicon_hash_add(clicon_hash_t *hash,
                 const char    *key,
-                void          *val,
-                size_t        vlen)
+                const void    *val,
+                size_t         vlen)
 {
     void         *newval = NULL;
     clicon_hash_t h;

@@ -123,10 +123,10 @@ ctx_dup(xp_ctx *xc0)
  * @param[in] str Prefix string in printout
  */
 int
-ctx_print_cb(cbuf   *cb,
-             xp_ctx *xc,
-             int     ind,
-             char   *str)
+ctx_print_cb(cbuf       *cb,
+             xp_ctx     *xc,
+             int         ind,
+             const char *str)
 {
     static int indent = 0;
     int        i;
@@ -137,7 +137,7 @@ ctx_print_cb(cbuf   *cb,
     if (ind>0)
         indent += ind;
     if (xc){
-        cprintf(cb, "%s: ", (char*)clicon_int2str(ctxmap, xc->xc_type));
+        cprintf(cb, "%s: ", clicon_int2str(ctxmap, xc->xc_type));
         switch (xc->xc_type){
         case XT_NODESET:
             for (i=0; i<xc->xc_size; i++)
@@ -166,9 +166,9 @@ ctx_print_cb(cbuf   *cb,
  * @retval   -1   Error
  */
 int
-ctx_print(FILE   *f,
-          xp_ctx *xc,
-          char   *str)
+ctx_print(FILE       *f,
+          xp_ctx     *xc,
+          const char *str)
 {
     int   retval = -1;
     cbuf *cb = NULL;

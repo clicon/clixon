@@ -146,7 +146,7 @@ static int
 plugin_module_struct_set(clixon_handle         h,
                          plugin_module_struct *ms)
 {
-    clicon_hash_t  *cdat = clicon_data(h);
+    clicon_hash_t *cdat = clicon_data(h);
 
     /* It is the pointer to ys that should be copied by hash,
        so we send a ptr to the ptr to indicate what to copy.
@@ -1015,7 +1015,7 @@ int
 clixon_plugin_system_only_all(clixon_handle   h,
                               yang_stmt      *yspec,
                               cvec           *nsc,
-                              char           *xpath,
+                               char          *xpath,
                               cxobj         **xret)
 {
     int              retval = -1;
@@ -1834,7 +1834,7 @@ static const map_str2int clixon_auth_type[] = {
 /*! Translate from string to auth-type
  */
 const int
-clixon_auth_type_str2int(char *auth_type)
+clixon_auth_type_str2int(const char *auth_type)
 {
     return clicon_str2int(clixon_auth_type, auth_type);
 }
@@ -2022,8 +2022,8 @@ clixon_plugin_report_err(clixon_handle h,
  */
 int
 clixon_plugin_report_err_xml(clixon_handle h,
-                             cxobj **xret,
-                             char *err,
+                             cxobj       **xret,
+                             const char   *err,
                              ...)
 {
     int ret = -1;

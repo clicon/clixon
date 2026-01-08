@@ -57,12 +57,12 @@ typedef struct yang_type_cache yang_type_cache;
  * Prototypes
  */
 int        ys_resolve_type(yang_stmt *ys, void *arg);
-int        yang2cv_type(char *ytype, enum cv_type *cv_type);
+int        yang2cv_type(const char *ytype, enum cv_type *cv_type);
 char      *cv2yang_type(enum cv_type cv_type);
-yang_stmt *yang_find_identity(yang_stmt *ys, char *identity);
-yang_stmt *yang_find_identity_nsc(yang_stmt *yspec, char *identity, cvec *nsc);
+yang_stmt *yang_find_identity(yang_stmt *ys, const char *identity);
+yang_stmt *yang_find_identity_nsc(yang_stmt *yspec, const char *identity, cvec *nsc);
 int        ys_cv_validate(clixon_handle h, cg_var *cv, yang_stmt *ys, yang_stmt **ysub, char **reason);
-int        clicon_type2cv(char *type, char *rtype, yang_stmt *ys, enum cv_type *cvtype);
+int        clicon_type2cv(const char *type, const char *rtype, yang_stmt *ys, enum cv_type *cvtype);
 int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype,
                          int *options, cvec **cvv,
                          cvec *patterns, cvec *regexps,
@@ -72,6 +72,7 @@ int        yang_type_resolve(yang_stmt *yorig, yang_stmt *ys,
                              yang_stmt **restype, int *options,
                              cvec **cvv, cvec *patterns, cvec *regexps,
                              uint8_t *fraction);
+int         yang_type_resolve_bits(yang_stmt  *yn, yang_stmt *yt, yang_stmt **yres);
 enum cv_type yang_type2cv(yang_stmt *ys);
 
 #endif  /* _CLIXON_YANG_TYPE_H_ */

@@ -42,8 +42,8 @@
 int clicon_file_dirent(const char *dir, struct dirent **ent,
                        const char *regexp, mode_t type);
 int clicon_files_recursive(const char *dir, const char *regexp, cvec *cvv);
-int clicon_file_copy(char *src, char *target);
-int clicon_dir_copy(char *src, char *target);
+int clicon_file_copy(const char *src, const char *target);
+int clicon_dir_copy(const char *src, const char *target);
 int clicon_file_cbuf(const char *filename, cbuf *cb);
 int clixon_dir_remove_files(const char *dir, const char *subdir, const char *pattern);
 

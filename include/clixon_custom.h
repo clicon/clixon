@@ -315,3 +315,6 @@
  * Note that disabling these validation may make you accept invalid YANGs that may fail with other tools later.
  */
 #define CLIXON_RELAX_VALIDATE
+/*! CLI generation has YANG dependencies in post-processing
+ */
+#define YANG2CLI_POST

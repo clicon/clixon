@@ -39,26 +39,6 @@
 #ifndef _CLIXON_CLI_API_H_
 #define _CLIXON_CLI_API_H_
 
-/*
- * Types
- */
-/*! Autocli list keyword type, see clixon-autocli.yang list-keyword-type
- *
- * Assume a YANG LIST: 
- *    list a {
- *       key x;
- *       leaf x;
- *       leaf y;
- *    }
- * Maybe this type should be in cli_autocli.h
- */
-enum autocli_listkw{
-    AUTOCLI_LISTKW_NONE,  /* No extra keywords, only <vars>: a <x> <y> */
-    AUTOCLI_LISTKW_NOKEY, /* Keywords on non-key variables: a <x> y <y> */
-    AUTOCLI_LISTKW_ALL,   /* Keywords on all variables: a x <x> y <y> */
-};
-typedef enum autocli_listkw autocli_listkw_t;
-
 /* 
  * Function Declarations 
  */
@@ -83,7 +63,8 @@ int cli_notification_register(clixon_handle h, char *stream, enum format_enum fo
 void cli_signal_block(clixon_handle h);
 void cli_signal_unblock(clixon_handle h);
 void cli_signal_flush(clixon_handle h);
-int mtpoint_paths(yang_stmt *yspec0, char *mtpoint, char *api_path_fmt1, char **api_path_fmt01);
+int mtpoint_paths(clixon_handle h, yang_stmt *yspec0, const char *domain, const char *spec,
+                  const char *api_path_fmt1, char **api_path_fmt01);
 int dbxml_body(cxobj *xbot, cvec *cvv);
 int identityref_add_ns(cxobj *x, void *arg);
 int cli_dbxml(clixon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
@@ -120,11 +101,14 @@ cvec *cvec_append(cvec *cvv0, cvec *cvv1);
 int   cvec_concat_cb(cvec *cvv, cbuf *cb);
 int cli_process_control(clixon_handle h, cvec *vars, cvec *argv);
 int cli_alias_cb(clixon_handle h, cvec *cvv, cvec *argv);
+int cli_cache_clear(clixon_handle h, cvec *cvv, cvec *argv);
 
 /* In cli_show.c */
 int expand_dbvar(void *h, char *name, cvec *cvv, cvec *argv,
                   cvec *commands, cvec *helptexts);
 int expand_yang_list(void *h, char *name, cvec *cvv, cvec *argv,
+                     cvec *commands, cvec *helptexts);
+int expand_yang_bits(void *h, char *name, cvec *cvv, cvec *argv,
                      cvec *commands, cvec *helptexts);
 int clixon_cli2file(clixon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
 int clixon_cli2cbuf(clixon_handle h, cbuf *cb, cxobj *xn, char *prepend, int skiptop);

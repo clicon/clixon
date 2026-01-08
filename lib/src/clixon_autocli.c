@@ -50,11 +50,18 @@
 /* cligen */
 #include <cligen/cligen.h>
 
-/* libclixon */
-#include <clixon/clixon.h>
-
-#include "clixon_cli_api.h"
-#include "cli_autocli.h"
+/* clixon */
+#include "clixon_queue.h"
+#include "clixon_hash.h"
+#include "clixon_handle.h"
+#include "clixon_string.h"
+#include "clixon_yang.h"
+#include "clixon_xml.h"
+#include "clixon_options.h"
+#include "clixon_data.h"
+#include "clixon_map.h"
+#include "clixon_err.h"
+#include "clixon_autocli.h"
 
 /* Mapping from YANG autocli-op to C enum */
 static const map_str2int autocli_op_map[] = {
@@ -76,8 +83,6 @@ static const map_str2int list_kw_map[] = {
 static const map_str2int autocli_cache_map[] = {
     {"disabled",  AUTOCLI_CACHE_DISABLED},
     {"read",      AUTOCLI_CACHE_READ},
-    {"write",     AUTOCLI_CACHE_WRITE},
-    {"readwrite", AUTOCLI_CACHE_READWRITE},
     {NULL,       -1}
 };
 
@@ -110,9 +115,9 @@ autocli_cache_str2int(char *str)
  * Special rule: module-default=false and no operation=enable rules is disable
  */
 int
-autocli_module(clixon_handle    h,
-               char            *modname,
-               int             *enablep)
+autocli_module(clixon_handle h,
+               const char   *modname,
+               int          *enablep)
 {
     int    retval = -1;
     cxobj *xrule;
@@ -275,7 +280,7 @@ autocli_compress(clixon_handle h,
     char      *element;
     char      *nodeid;
     enum rfc_6020 keyw;
-    char      *keywstr;
+    const char *keywstr;
     int        match = 0;
     char      *body;
 
@@ -531,7 +536,7 @@ autocli_treeref_state(clixon_handle h,
  */
 int
 autocli_edit_mode(clixon_handle h,
-                  char         *keyw,
+                  const char   *keyw,
                   int          *flag)
 {
     int     retval = -1;
@@ -574,7 +579,6 @@ autocli_edit_mode(clixon_handle h,
 /*! Return clispec cache setting
  *
  * @param[in]  h    Clixon handle
- * @param[out] type Cache type
  * @param[out] dir  Cache dir
  * @retval     0    OK
  * @retval    -1    Error
@@ -596,8 +600,10 @@ autocli_cache(clixon_handle    h,
         clixon_err(OE_XML, EINVAL, "No clispec-cache rule");
         goto done;
     }
-    *type = autocli_cache_str2int(str);
-    *dir = xml_find_body(xautocli, "clispec-cache-dir");
+    if (type)
+        *type = autocli_cache_str2int(str);
+    if (dir)
+        *dir = clicon_option_str(h, "CLICON_AUTOCLI_CACHE_DIR");
     retval = 0;
  done:
     return retval;

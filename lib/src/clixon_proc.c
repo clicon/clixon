@@ -197,7 +197,7 @@ clixon_proc_sigint(int sig)
  */
 int
 clixon_proc_socket(clixon_handle h,
-                   char        **argv,
+                   char *const   argv[],
                    int           sock_flags,
                    pid_t        *pid,
                    int          *sock,
@@ -482,7 +482,7 @@ static const map_str2int proc_operation_map[] = {
 static process_entry_t *_proc_entry_list = NULL;
 
 int
-clixon_process_op_str2int(char *opstr)
+clixon_process_op_str2int(const char *opstr)
 {
     return clicon_str2int(proc_operation_map, opstr);
 }
@@ -541,7 +541,7 @@ clixon_process_register(clixon_handle h,
                         const gid_t   gid,
                         const int     fdkeep,
                         proc_cb_t    *callback,
-                        char        **argv,
+                        char *const   argv[],
                         int           argc)
 {
     int              retval = -1;

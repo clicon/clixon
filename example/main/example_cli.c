@@ -59,6 +59,9 @@
 #include <clixon/clixon_cli.h>
 #include <clixon/cli_generate.h>
 
+/*! Define extended debug mask, use existing APP2 level (alt declare free mask) */
+#define CLIXON_DBG_EXAMPLE CLIXON_DBG_APP2
+
 /*! Error/log message callback
  *
  * Start cli with -- -e
@@ -90,6 +93,8 @@ mycallback(clixon_handle h,
     cg_var  *myvar;
     cvec    *nsc = NULL;
 
+    clixon_debug(CLIXON_DBG_EXAMPLE | CLIXON_DBG_TRUNC,
+                 "This is a long debug message but is trunced to 80 a point approximately here, this is invisible");
     /* Access cligen callback variables */
     myvar = cvec_find(cvv, "var"); /* get a cligen variable from vector */
     fprintf(stderr, "%s: %d\n", __func__, cv_int32_get(myvar)); /* get int value */
@@ -500,6 +505,11 @@ clixon_plugin_init(clixon_handle h)
         clixon_err(OE_PLUGIN, EINVAL, "Both -m and -M must be given for mounts");
         goto done;
     }
+    /* Register "example" as a extended debug key */
+    if (clixon_debug_key_add("example", CLIXON_DBG_EXAMPLE) < 0)
+        goto done;
+    /* And truncate explicit debugs to 80, see clixon_debug() call in mycallback() */
+    clixon_debug_explicit_trunc_set(80);
     /* XXX Not implemented: CLI completion for mountpoints, see clixon-controller
      */
     return &api;

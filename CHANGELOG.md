@@ -19,6 +19,39 @@
 ## 7.7.0
 Expected: February 2026
 
+### Features
+
+* New debug logs
+  * Extended debug levels for `-D` command-line options
+    * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags
+  * Use of symbolic names in CLI
+  * Configurable explicit truncation
+    * See https://clixon-docs.readthedocs.io/en/latest/errors.html#explicit-truncation
+* Added syslog NOTICE to for all start and terminate of cli, backend, netconf and restconf, not just backend.
+* Add `-s` option to `clixon_cli` to disable output scrolling.
+* Changed cli cache to server-side instead of client-side
+  * Add cache protocol for yang-domains and clispecs
+    * This includes read and clear operations between cli client and backend
+* New `clixon-config@2025-12-01.yang` revision
+   * Added `CLICON_AUTOCLI_CACHE_DIR`
+* New `clixon-lib@2025-12-01.yang` revision
+   * Added `rpc clixon-cache`
+* New `clixon-autocli@2025-12-01.yang` revision
+   * Deprecated `clispec-cache` and `clispec-cache-dir`
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Added const to multiple `char*` parameters
+  * In particular many callback input char* paraneters may need to be adjusted
+
+### Corrected Bugs
+
+* Fixed: [Inconsistent log messages truncation](https://github.com/clicon/clixon/issues/625)
+* Fixed: [show compare private candidate](https://github.com/clicon/clixon-controller/issues/233)
+* Fixed: Error log at restconf exit
+
 ## 7.6.0
 21 November 2025
 

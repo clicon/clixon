@@ -5,7 +5,6 @@ on:
     branches:
        - master
        - test-actions
-       - privcand
   pull_request:
     branches: [ master ]
 
@@ -82,7 +81,7 @@ jobs:
     - name: start container
       run: ./start.sh
     - name: run test a-m,p
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh test_h*.sh test_i*.sh test_j*.sh test_l*.sh test_m*.sh test_o*.sh test_x*.sh test_y*.sh" ./sum.sh'
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh test_g*.sh test_h*.sh test_i*.sh test_j*.sh test_l*.sh test_m*.sh test_o*.sh test_x*.sh test_y*.sh" ./sum.sh'
 
   docker-alpine-test-2:
     runs-on: ubuntu-latest

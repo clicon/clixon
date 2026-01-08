@@ -77,6 +77,6 @@ int            diff_rebase_exec(diff_rebase_t *dr);
 int            xml_rebase(clixon_handle h, cxobj *x0, cxobj *x1, cxobj *x2,
                           int *conflict, cbuf *cbret, diff_rebase_t *dr);
 int            clixon_xml_diff2patch(cxobj *x0, cxobj *x1, uint16_t flags, cxobj *xdiff);
-int            clixon_xml_diff_nacm_read(clixon_handle h, cxobj *xt, char *xpath);
+int            clixon_xml_diff_nacm_read(clixon_handle h, cxobj *xt, const char *xpath);
 
 #endif  /* _CLIXON_XML_DIFF_H_ */

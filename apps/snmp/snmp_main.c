@@ -131,6 +131,7 @@ snmp_terminate(clixon_handle h)
     xpath_optimize_exit();
     clixon_event_exit();
     clixon_handle_exit(h);
+    clixon_debug_exit();
     clixon_err_exit();
     clixon_log_exit();
     if (pidfile)
@@ -405,11 +406,15 @@ main(int    argc,
         case 'D' : { /* debug */
             int32_t d = 0;
             /* Try first symbolic, then numeric match */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    usage(h, argv[0]);
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         }
         case 'f': /* override config file */
@@ -439,7 +444,7 @@ main(int    argc,
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clixon_debug_init(h, dbg);
     /* This is netsnmplib debugging which is quite extensive + only if compiled w debug */
-    if (dbg > 1)
+    if ((~dbg & (CLIXON_DBG_SNMP|CLIXON_DBG_DETAIL)) == 0)
         snmp_set_do_debugging(1);
     /*
      * Register error category and error/log callbacks for netsnmp special error handling
@@ -607,6 +612,7 @@ main(int    argc,
     /* Write pid-file */
     if (pidfile_write(pidfile) <  0)
         goto done;
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     /* main event loop */
     if (clixon_event_loop(h) < 0)
         goto done;

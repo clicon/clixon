@@ -84,23 +84,23 @@
  * @see clixon_strsplit
  */
 char **
-clixon_strsep1(char       *string,
+clixon_strsep1(const char *string,
                const char *delim,
                int        *nvec0)
 {
     char **vec = NULL;
     char  *ptr;
     char  *p;
-    int   nvec = 1;
-    int   i;
+    int    nvec = 1;
+    int    i;
     size_t siz;
-    char *s;
-    char *d;
+    const char *s;
+    char  *d;
 
     if ((s = string)==NULL)
         goto done;
     while (*s){
-        if ((d = index(delim, *s)) != NULL)
+        if ((d = strchr(delim, *s)) != NULL)
             nvec++;
         s++;
     }
@@ -127,7 +127,7 @@ clixon_strsep1(char       *string,
  * where delim1="${" and delim2="}"
  * returns vec: "foo ", "NAME", "bar"
  * Both delim1 and delim2 must match
- * @param[in]  str
+ * @param[in]  str     Input string, can be modified
  * @param[in]  delim1  prefix delimiter string
  * @param[in]  delim2  postfix delimiter string
  * @param[out] cvp     Created cligen variable vector, deallocate w cvec_free
@@ -141,7 +141,7 @@ clixon_strsep2(char       *str,
                char     ***vcp,
                int        *nvec)
 {
-    int   retval = -1;
+    int    retval = -1;
     size_t sz;
     char **vec = NULL;
     char  *s1;
@@ -200,7 +200,7 @@ clixon_strsep2(char       *str,
  * @see clixon_strsplit
  */
 char **
-clixon_strsep3(char       *string,
+clixon_strsep3(const char *string,
                const char *delim,
                int        *nvec0)
 {
@@ -210,7 +210,7 @@ clixon_strsep3(char       *string,
     int    nvec = 1;
     int    i;
     size_t siz;
-    char  *s;
+    const char *s;
     char  *d;
     int    prev;
 
@@ -218,7 +218,7 @@ clixon_strsep3(char       *string,
         goto done;
     prev = 0;
     while (*s){
-        if ((d = index(delim, *s)) != NULL){
+        if ((d = strchr(delim, *s)) != NULL){
             if (!prev)
                 nvec++;
             prev = 1;
@@ -258,7 +258,7 @@ clixon_strsep3(char       *string,
  */
 char *
 clicon_strjoin(int         argc,
-               char      **argv,
+               char *const argv[],
                const char *delim)
 {
     int i;
@@ -792,7 +792,7 @@ xml_chardata_decode_ampersand(char *str,
     cbuf    *cb = NULL;
     int      ret;
 
-    if ((semi = index(str, ';')) == NULL)
+    if ((semi = strchr(str, ';')) == NULL)
         goto fail;
     *semi = '\0';
     len = strlen(str);
@@ -969,9 +969,9 @@ uri_str2cvec(const char *string,
          * |     |      |
          * s     val    snext
          */
-        if ((snext = index(s, delim1)) != NULL)
+        if ((snext = strchr(s, delim1)) != NULL)
             *(snext++) = '\0';
-        if ((val = index(s, delim2)) != NULL){
+        if ((val = strchr(s, delim2)) != NULL){
             *(val++) = '\0';
             if (decode){
                 if (uri_percent_decode(val, &valu) < 0)
@@ -1052,8 +1052,8 @@ nodeid_split(const char *nodeid,
  *
  * The function modifies the input string
  * The return value is a pointer into the existing string
- * @param[in]  str 
- * @retval     s   Pointer into existing str after trimming blanks
+ * @param[in]  str  May be modified
+ * @retval     s    Pointer into existing str after trimming blanks
  * @see clixon_trim2  generic trim characters
  */
 char *
@@ -1077,7 +1077,7 @@ clixon_trim(char *str)
  *
  * The function modifies the input string
  * The return value is a pointer into the existing string
- * @param[in]  str 
+ * @param[in]  str    Input string may be modified
  * @param[in]  trims  Characters to trim: a vector of characters
  * @retval     s      Pointer into existing str after trimming blanks
  */
@@ -1088,10 +1088,10 @@ clixon_trim2(char       *str,
     char *s = str;
     int   i;
 
-    while (strlen(s) && index(trims, s[0])) /* trim from front */
+    while (strlen(s) && strchr(trims, s[0])) /* trim from front */
         s++;
     for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
-        if (index(trims, s[i]))
+        if (strchr(trims, s[i]))
             s[i] = '\0';
         else
             break;
@@ -1168,9 +1168,9 @@ clixon_unicode2utf8_one(uint16_t uc16,
  * @retval    -1        Error
  */
 int
-clixon_unicode2utf8(char  *ucstr,
-                    char  *utfstr,
-                    size_t utflen)
+clixon_unicode2utf8(const char *ucstr,
+                    char       *utfstr,
+                    size_t      utflen)
 {
     int      retval = -1;
     size_t   len;
@@ -1212,7 +1212,7 @@ clixon_unicode2utf8(char  *ucstr,
 
 /*! Substitute ${var} in string with variables in cvv
  *
- * @param[in]  str  Input string
+ * @param[in]  str  Input string, can be modified
  * @param[in]  cvv  Variable name/value vector
  * @param[out] cb   Result buffer (assumed created on entry)
  * @retval     0    OK

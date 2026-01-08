@@ -600,7 +600,7 @@ text_modify(clixon_handle       h,
             cxobj              *x1t,
             yang_stmt          *y0,
             enum operation_type op,
-            char               *username,
+            const char         *username,
             cxobj              *xnacm,
             int                 permit,
             cbuf               *cbret)
@@ -1187,7 +1187,7 @@ text_modify_top(clixon_handle       h,
                 cxobj              *x1t,
                 yang_stmt          *yspec,
                 enum operation_type op,
-                char               *username,
+                const char         *username,
                 cxobj              *xnacm,
                 int                 permit,
                 cbuf               *cbret)
@@ -1408,7 +1408,7 @@ xmldb_put(clixon_handle       h,
           const char         *db,
           enum operation_type op,
           cxobj              *x1,
-          char               *username,
+          const char         *username,
           cbuf               *cbret)
 {
     int         retval = -1;

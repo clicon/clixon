@@ -60,6 +60,7 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_options.h"
+#include "clixon_data.h"
 #include "clixon_proc.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_netconf_lib.h"
@@ -457,6 +458,8 @@ clixon_client_get_xdata(clixon_handle h,
     cprintf(msg, " xmlns:%s=\"%s\"",
             NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(msg, " %s", NETCONF_MESSAGE_ID_ATTR);
+    cprintf(msg, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    cprintf(msg, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
     cprintf(msg, "><get-config><source><%s/></source>", db);
     if (xpath && strlen(xpath)){
         cprintf(msg, "<%s:filter %s:type=\"xpath\" xmlns=\"%s\" %s:select=\"%s\"",

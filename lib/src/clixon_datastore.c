@@ -489,11 +489,11 @@ xmldb_connect(clixon_handle h)
 int
 xmldb_disconnect(clixon_handle h)
 {
-    int       retval = -1;
-    char    **keys = NULL;
-    size_t    klen;
-    int       i;
-    db_elmnt *de;
+    int            retval = -1;
+    char         **keys = NULL;
+    size_t         klen;
+    int            i;
+    db_elmnt      *de;
     clicon_hash_t *cdat = clicon_db_elmnt(h);
 
     if (clicon_hash_keys(cdat, &keys, &klen) < 0)

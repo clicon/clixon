@@ -219,10 +219,10 @@ xml2cvec(cxobj      *xt,
  * @see cvec2xml   This does more but has an internal xml2cvec translation
 */
 int
-cvec2xml_1(cvec   *cvv,
-           char   *toptag,
-           cxobj  *xp,
-           cxobj **xt0)
+cvec2xml_1(cvec       *cvv,
+           const char *toptag,
+           cxobj      *xp,
+           cxobj     **xt0)
 {
     int               retval = -1;
     cxobj            *xt = NULL;
@@ -249,6 +249,7 @@ cvec2xml_1(cvec   *cvv,
             goto err;
         xml_parent_set(xn, xt);
         xml_child_i_set(xt, i++, xn);
+        xml_child_nr_set(xt, i);
         if ((xb = xml_new("body", xn, CX_BODY)) == NULL) /* this leaks */
             goto err;
         val = cv2str_dup(cv);
@@ -507,9 +508,9 @@ xml_tree_prune_flags1(cxobj *xt,
  * @param     -1      Error
  */
 int
-xml_namespace_change(cxobj *x,
-                     char  *ns,
-                     char  *prefix)
+xml_namespace_change(cxobj      *x,
+                     const char *ns,
+                     const char *prefix)
 {
     int    retval = -1;
     char  *ns0 = NULL;     /* existing namespace */
@@ -887,9 +888,9 @@ assign_namespace_body(cxobj *x0, /* source */
  * @retval    -1       Error
  */
 int
-yang_valstr2enum(yang_stmt *ytype,
-                 char      *valstr,
-                 char     **enumstr)
+yang_valstr2enum(yang_stmt  *ytype,
+                 const char *valstr,
+                 char      **enumstr)
 {
     int        retval = -1;
     yang_stmt *yenum;
@@ -926,9 +927,9 @@ yang_valstr2enum(yang_stmt *ytype,
  * @see yang_enum2int handles implicit values
  */
 int
-yang_enum2valstr(yang_stmt *ytype,
-                 char      *enumstr,
-                 char     **valstr)
+yang_enum2valstr(yang_stmt  *ytype,
+                 const char *enumstr,
+                 char      **valstr)
 {
     int        retval = -1;
     yang_stmt *yenum;
@@ -962,9 +963,9 @@ yang_enum2valstr(yang_stmt *ytype,
  * @retval    -1       Error
  */
 int
-yang_enum2int(yang_stmt *ytype,
-              char      *enumstr,
-              int32_t   *val)
+yang_enum2int(yang_stmt  *ytype,
+              const char *enumstr,
+              int32_t    *val)
 {
     int        retval = -1;
     yang_stmt *yenum;
@@ -1071,7 +1072,7 @@ yang_bits_pos(yang_stmt *ytype,
 int
 yang_bitsstr2val(clixon_handle   h,
                  yang_stmt      *ytype,
-                 char           *bitsstr,
+                 const char     *bitsstr,
                  unsigned char **outval,
                  size_t         *outlen)
 {
@@ -1141,9 +1142,9 @@ yang_bitsstr2val(clixon_handle   h,
  * @see yang_bitsstr2val for bit vector (snmp-like)
  */
 int
-yang_bitsstr2flags(yang_stmt *ytype,
-                   char      *bitsstr,
-                   uint32_t  *flags)
+yang_bitsstr2flags(yang_stmt  *ytype,
+                   const char *bitsstr,
+                   uint32_t   *flags)
 {
     int      retval = -1;
     int      i = 0;
@@ -1260,23 +1261,26 @@ yang_val2bitsstr(clixon_handle  h,
 
 /*! Map from bit string to integer bitfield given YANG mapping
  *
- * Given YANG node, schema-nodeid and a bits string, return a bitmap as u64
+ * Given YANG node, schema-nodeid and a bits string, return a bitmap as unsigned int
  * Example: "default app2" --> CLIXON_DBG_DEFAULT | CLIXON_DBG_APP2
  * @param[in]  yt     YANG node in tree (eg yspec)
  * @param[in]  str    String representation of Clixon debug bits, such as "msg app2"
  * @param[in]  nodeid Absolute schema node identifier to leaf of option
- * @param[out] u64    Bit representation
+ * @param[out] flags  Bit representation
+ * @retval     1      OK, value in flags
+ * @retval     0      No bit value match
+ * @retval    -1      Error
  */
 int
-yang_bits_map(yang_stmt *yt,
-              char      *str,
-              char      *nodeid,
-              uint32_t  *flags)
+yang_bits_map(yang_stmt  *yt,
+              const char *str,
+              const char *nodeid,
+              uint32_t   *flags)
 {
-    int            retval = -1;
-    yang_stmt     *yn = NULL;
-    yang_stmt     *yrestype;
-    int            ret;
+    int        retval = -1;
+    yang_stmt *yrestype;
+    int        ret;
+    yang_stmt *yn = NULL;
 
     if (yang_abs_schema_nodeid(yt, nodeid, &yn) < 0)
         goto done;
@@ -1289,14 +1293,15 @@ yang_bits_map(yang_stmt *yt,
     if (yrestype != NULL) {
         if ((ret = yang_bitsstr2flags(yrestype, str, flags)) < 0)
             goto done;
-        if (ret == 0){
-            clixon_err(OE_YANG, 0, "Bit string invalid: %s", str);
-            goto done;
-        }
+        if (ret == 0)
+            goto fail;
     }
-    retval = 0;
+    retval = 1;
  done:
     return retval;
+ fail:
+    retval = 0;
+    goto done;
 }
 
 /*! Get integer value from xml node from yang enumeration 
@@ -1675,11 +1680,11 @@ xml_find_action(cxobj  *xn,
  * @retval    -1        Error
  */
 int
-purge_tagged_nodes(cxobj *xn,
-                   char  *ns,
-                   char  *name,
-                   char  *value,
-                   int    keepnode)
+purge_tagged_nodes(cxobj      *xn,
+                   const char *ns,
+                   const char *name,
+                   const char *value,
+                   int         keepnode)
 {
     int    retval = -1;
     cxobj *x;

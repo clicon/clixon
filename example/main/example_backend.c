@@ -591,10 +591,10 @@ example_statedata(clixon_handle h,
  * @see example_statefile  where state is programmatically added
  */
 int
-example_statefile(clixon_handle     h,
-                  cvec             *nsc,
-                  char             *xpath,
-                  cxobj            *xstate)
+example_statefile(clixon_handle h,
+                  cvec         *nsc,
+                  char         *xpath,
+                  cxobj        *xstate)
 {
     int        retval = -1;
     cxobj    **xvec = NULL;
@@ -803,7 +803,7 @@ main_system_only_callback(clixon_handle h,
  */
 int
 example_pagination(void           *h0,
-                   char           *xpath,
+                   const char     *xpath,
                    pagination_data pd,
                    void           *arg)
 {

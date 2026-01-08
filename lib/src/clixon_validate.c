@@ -1942,7 +1942,7 @@ xml_yang_validate_exit(clixon_handle h)
  */
 int
 rpc_reply_check(clixon_handle h,
-                char         *rpcname,
+                const char   *rpcname,
                 cbuf         *cbret)
 {
     int        retval = -1;

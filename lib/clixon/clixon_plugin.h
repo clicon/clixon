@@ -573,7 +573,7 @@ int action_callback_call(clixon_handle h, cxobj *xe, cbuf *cbret, void *arg, voi
 int upgrade_callback_reg_fn(clixon_handle h, clicon_upgrade_cb cb, const char *strfn, const char *ns, void *arg);
 int upgrade_callback_call(clixon_handle h, cxobj *xt, char *ns, uint16_t op, uint32_t from, uint32_t to, cbuf *cbret);
 
-const int clixon_auth_type_str2int(char *auth_type);
+const int clixon_auth_type_str2int(const char *auth_type);
 const char *clixon_auth_type_int2str(clixon_auth_type_t auth_type);
 int              clixon_plugin_module_init(clixon_handle h);
 int              clixon_plugin_module_exit(clixon_handle h);
@@ -583,6 +583,6 @@ int clixon_plugin_rpc_err(clixon_handle h, const char *ns,
                           const char *severity, const char *fmt, ...);
 int clixon_plugin_rpc_err_set(clixon_handle h);
 int clixon_plugin_report_err(clixon_handle h, cbuf *cbret);
-int clixon_plugin_report_err_xml(clixon_handle h, cxobj **xreg, char *err, ...);
+int clixon_plugin_report_err_xml(clixon_handle h, cxobj **xreg, const char *err, ...);
 
 #endif  /* _CLIXON_PLUGIN_H_ */

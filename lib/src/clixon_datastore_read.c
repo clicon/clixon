@@ -861,7 +861,93 @@ xmldb_msdiff(clixon_handle    h,
     goto done;
 }
 
-/*! Get cache directly, read from datastore file if cache-miss
+/*! Get cache (reset) from datastore file, add defaults
+ *
+ * Return the actual cache tree. With-default is report-all.
+ * @param[in]  h      Clixon handle
+ * @param[in]  de     Datastore
+ * @param[out] xtp    Top-level XML tree, direct cache pointer
+ * @param[out] xerr   XML error if retval is 0
+ * @retval     1      OK
+ * @retval     0      Parse OK but yang assigment not made (or only partial) and xerr set
+ * @retval    -1      Error
+ * @see xmldb_get_cache  If candidate copy from running, this resets also candidate from file
+ */
+int
+xmldb_get_cache_from_file(clixon_handle     h,
+                          db_elmnt         *de,
+                          cxobj           **xtp,
+                          cxobj           **xerr)
+{
+    int              retval = -1;
+    yang_stmt       *yspec0;
+    yang_stmt       *yspec1 = NULL;
+    cxobj           *xt = NULL;
+    modstate_diff_t *msdiff = NULL;
+    char            *db;
+    int              ret;
+
+    db = xmldb_name_get(de);
+    clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "No yang spec");
+        goto done;
+    }
+    /* If there is no xml x0 tree (in cache), then read it from file */
+    /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
+    if ((ret = xmldb_readfile(h, db, YB_NONE, yspec0, &xt, de, &msdiff, xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    /* Should we validate file if read from disk?
+     * No, argument against: we may want to have a semantically wrong file and wish to edit?
+     */
+    xmldb_cache_set(de, xt);
+    if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
+        if (msdiff){
+            if ((ret = xmldb_msdiff(h, msdiff, yspec0, xerr, &yspec1)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        if ((ret = xmldb_upgrade(h, de, msdiff, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
+    else{
+        if ((ret = xmldb_upgrade(h, de, msdiff, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
+    if (xml_sort_recurse(xt) < 0)
+        goto done;
+    /* Add default global values (to make xpath below include defaults) */
+    if (xml_global_defaults(h, xt, NULL, "/", yspec0, 0) < 0)
+        goto done;
+    /* Add default recursive values */
+    if (xml_default_recurse(xt, 0, 0) < 0)
+        goto done;
+    if (xtp)
+        *xtp = xt;
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Get cache directly, read from datastore file if cache-miss, copy from running if candidate
  *
  * Return the actual cache tree. With-default is report-all.
  * @param[in]  h      Clixon handle
@@ -873,6 +959,7 @@ xmldb_msdiff(clixon_handle    h,
  * @retval    -1      Error
  * @see xmldb_get_copy
  * @note Do not modify or free xtp
+ * @note If db is candidate, copy from running (dont read from file)
  */
 int
 xmldb_get_cache(clixon_handle     h,
@@ -883,16 +970,9 @@ xmldb_get_cache(clixon_handle     h,
     int              retval = -1;
     cxobj           *xt = NULL; /* (cached) top of tree */
     db_elmnt        *de = NULL;
-    yang_stmt       *yspec0;
-    yang_stmt       *yspec1 = NULL;
-    modstate_diff_t *msdiff = NULL;
     int              ret;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
-    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
     if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
             goto done;
@@ -902,58 +982,14 @@ xmldb_get_cache(clixon_handle     h,
             clixon_err(OE_DB, 0, "Candidate db cache is NULL");
             goto done;
         }
-        else {
-            /* If there is no xml x0 tree (in cache), then read it from file */
-            /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
-            if ((ret = xmldb_readfile(h, db, YB_NONE, yspec0, &xt, de, &msdiff, xerr)) < 0)
-                goto done;
-            if (ret == 0)
-                goto fail;
-            /* Should we validate file if read from disk?
-             * No, argument against: we may want to have a semantically wrong file and wish to edit?
-             */
-            xmldb_cache_set(de, xt);
-            if (clicon_option_bool(h, "CLICON_XMLDB_UPGRADE_CHECKOLD")){
-                if (msdiff){
-                    if ((ret = xmldb_msdiff(h, msdiff, yspec0, xerr, &yspec1)) < 0)
-                        goto done;
-                    if (ret == 0)
-                        goto fail;
-                }
-                if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
-                    goto done;
-                if (ret == 0)
-                    goto fail;
-                if ((ret = xmldb_upgrade(h, de, msdiff, xerr)) < 0)
-                    goto done;
-                if (ret == 0)
-                    goto fail;
-            }
-            else{
-                if ((ret = xmldb_upgrade(h, de, msdiff, xerr)) < 0)
-                    goto done;
-                if (ret == 0)
-                    goto fail;
-                if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
-                    goto done;
-                if (ret == 0)
-                    goto fail;
-            }
-            if (xml_sort_recurse(xt) < 0)
-                goto done;
-        }
-        /* Add default global values (to make xpath below include defaults) */
-        if (xml_global_defaults(h, xt, NULL, "/", yspec0, 0) < 0)
+        if ((ret = xmldb_get_cache_from_file(h, de, &xt, xerr)) < 0)
             goto done;
-        /* Add default recursive values */
-        if (xml_default_recurse(xt, 0, 0) < 0)
-            goto done;
+        if (ret == 0)
+            goto fail;
     } /* xt == NULL */
     *xtp = xt;
     retval = 1;
  done:
-    if (msdiff)
-        modstate_diff_free(msdiff);
     return retval;
  fail:
     retval = 0;
@@ -1108,7 +1144,7 @@ int
 xmldb_get(clixon_handle    h,
           const char      *db,
           cvec            *nsc,
-          char            *xpath,
+          const char      *xpath,
           cxobj          **xret)
 {
     return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 0, 0, xret, NULL, NULL);

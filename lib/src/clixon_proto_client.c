@@ -89,6 +89,14 @@
 #define PERSIST_XML_FMT "<persist>%s</persist>"
 #define TIMEOUT_XML_FMT "<confirm-timeout>%u</confirm-timeout>"
 
+/*! Create hello NETCONF message
+ *
+ * @param[in]     h            Clixon handle
+ * @param[in,out] cb           Write hello msg in this buffer, assumed created on entry
+ * @param[in]     transport0   Input transport, if NULL will be retreived from session data
+ * @param[in]     source_host0 Input host, if NULL will be retreived from session data
+ * @retval        0            OK
+ */
 static int
 create_hello(clixon_handle h,
              cbuf         *cb,
@@ -1762,7 +1770,7 @@ clicon_rpc_update(clixon_handle h)
  */
 int
 clicon_rpc_debug(clixon_handle h,
-                int           level)
+                 int           level)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -1908,6 +1916,124 @@ clicon_hello_req(clixon_handle h,
  done:
     if (cb)
         cbuf_free(cb);
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
+/*! Make a clixon cache rpc call from client to backend server
+ *
+ * @param[in]     h        Clixon handle
+ * @param[in]     op       Operation: read, write, clear
+ * @param[in]     type     Cache type: autocli, yang-domain, xmldb
+ * @param[in]     domain   Domain string
+ * @param[in]     spec     Spec name
+ * @param[in]     module   Yang module
+ * @param[in]     revision Yang module revision
+ * @param[in]     keyword  Yang node keyword
+ * @param[in]     argument Yang argument name
+ * @param[out]    data     Cache data
+ * @retval        0        OK
+ * @retval       -1        Error and logged to syslog
+ * @see rpc clixon-cache in clixon-lib.yang
+ */
+int
+clixon_rpc_clixon_cache(clixon_handle h,
+                        const char   *op,
+                        const char   *type,
+                        const char   *domain,
+                        const char   *spec,
+                        const char   *module,
+                        const char   *revision,
+                        const char   *keyword,
+                        const char   *argument,
+                        cbuf         *cbdata)
+{
+    int        retval = -1;
+    cxobj     *xrpc = NULL;
+    cxobj     *xret = NULL;
+    cxobj     *xerr;
+    cxobj     *xreply;
+    char      *username;
+    uint32_t   session_id;
+    cbuf      *cb = NULL;
+    yang_stmt *yspec;
+    char      *str;
+    int        ret;
+
+    if (op == NULL || type == NULL){
+        clixon_err(OE_XML, EINVAL, "op or type not given");
+        goto done;
+    }
+    yspec = clicon_dbspec_yang(h);
+    if (session_id_check(h, &session_id) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cb, ">");
+    cprintf(cb, "<clixon-cache xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cb, "<operation>%s</operation>", op);
+    cprintf(cb, "<type>%s</type>", type);
+    if (domain)
+        cprintf(cb, "<domain>%s</domain>", domain);
+    if (spec)
+        cprintf(cb, "<spec>%s</spec>", spec);
+    if (module)
+        cprintf(cb, "<module>%s</module>", module);
+    if (revision)
+        cprintf(cb, "<revision>%s</revision>", revision);
+    if (keyword)
+        cprintf(cb, "<keyword>%s</keyword>", keyword);
+    if (argument)
+        cprintf(cb, "<argument>%s</argument>", argument);
+    cprintf(cb, "</clixon-cache>");
+    cprintf(cb, "</rpc>");
+    /* Create XML from cbuf */
+    if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec, &xrpc, &xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto done; // XXX
+    if (xml_rootchild(xrpc, 0, &xrpc) < 0)
+        goto done;
+    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Debug");
+        goto done;
+    }
+    if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) != NULL){
+        if ((ret = xml_bind_yang_rpc_reply(h, xreply, "clixon-cache", yspec, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ // XXX?
+            if (xret) {             /* Replace reply with error */
+                cxobj *xc;
+                if ((xc = xml_child_i(xret, 0)) != NULL)
+                    xml_purge(xc);
+                if (xml_addsub(xret, xerr) < 0)
+                    goto done;
+                xerr = NULL;
+            }
+        }
+        else{
+            if ((str = xml_find_body(xreply, "data")) != NULL)
+                cbuf_append_str(cbdata, str);
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xrpc)
+        xml_free(xrpc);
     if (xret)
         xml_free(xret);
     return retval;

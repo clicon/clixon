@@ -56,7 +56,7 @@ clicon_hash_t  clicon_hash_lookup (clicon_hash_t *head, const char *key);
 clicon_hash_t  clicon_hash_lookup_ptr (clicon_hash_t *head, void *key);
 void          *clicon_hash_value (clicon_hash_t *head, const char *key, size_t *vlen);
 void          *clicon_hash_ptr_value (clicon_hash_t *head, void *key);
-clicon_hash_t  clicon_hash_add (clicon_hash_t *head, const char *key, void *val, size_t vlen);
+clicon_hash_t  clicon_hash_add (clicon_hash_t *head, const char *key, const void *val, size_t vlen);
 clicon_hash_t  clicon_hash_add_ptr (clicon_hash_t *head, void *key, void *val);
 int            clicon_hash_del (clicon_hash_t *head, const char *key);
 int            clicon_hash_del_ptr (clicon_hash_t *head, void *key);

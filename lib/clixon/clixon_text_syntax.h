@@ -42,7 +42,7 @@
 int clixon_text2file(FILE *f, cxobj *xn, int level, clicon_output_cb *fn, int skiptop, int autocliext);
 int clixon_text2cbuf(cbuf *cb, cxobj *xn, int level, int skiptop, int autocliext);
 int clixon_text_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1);
-int clixon_text_syntax_parse_string(char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
+int clixon_text_syntax_parse_string(const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int clixon_text_syntax_parse_file(FILE *fp, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 
 #endif /* _CLIXON_TEXT_SYNTAX_H */

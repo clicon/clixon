@@ -353,11 +353,15 @@ main(int    argc,
             break;
         case 'D' : { /* debug */
             /* Try first symbolic, then numeric match */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    usage(h, argv[0]);
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         }
         case 'f': /* override config file */
@@ -646,6 +650,7 @@ main(int    argc,
         clixon_err(OE_CFG, errno, "FCGX_InitRequest");
         goto done;
     }
+    clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
     while (1) {
         finish = 1; /* If zero, dont finish request, initiate new */
 
@@ -729,6 +734,8 @@ main(int    argc,
  done:
     if (h){
         stream_child_freeall(h);
+        clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+        clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
         restconf_terminate(h);
     }
     return retval;

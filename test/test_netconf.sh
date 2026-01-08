@@ -259,7 +259,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 # These are clixon-lib attributes used by RESTCONF
 new "netonf edit-config with extra attributes on leaf"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"${BASENS}\"><edit-config><target><candidate/></target><default-operation>none</default-operation><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value nc:operation=\"replace\" xmlns:cl=\"http://clicon.org/lib\">99</value></parameter></table></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS xmlns:nc=\"${BASENS}\"><ok/></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS xmlns:nc=\"${BASENS}\"><edit-config><target><candidate/></target><default-operation>none</default-operation><config><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value nc:operation=\"replace\">99</value></parameter></table></config></edit-config></rpc>" "<rpc-reply $DEFAULTNS xmlns:nc=\"${BASENS}\"><ok/></rpc-reply>"
 
 new "netconf get-config"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc xmlns=\"${BASENS}\" message-id=\"42\"><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>99</value></parameter></table></data></rpc-reply>"

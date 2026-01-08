@@ -66,13 +66,14 @@
 #include "clixon_cli_api.h"
 
 #include "cli_plugin.h"
-#include "cli_autocli.h"
 #include "cli_generate.h"
 #include "cli_common.h"
 #include "cli_handle.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "+hVD:f:E:l:C:F:1a:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:o:"
+
+static char *_restarg = NULL; /* what remains after options XXX just to avoid mem-leakage, try to fix wo global var */
 
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  *
@@ -192,8 +193,11 @@ cli_terminate(clixon_handle h)
 
     cli_history_save(h);
     cli_handle_exit(h);
+    clixon_debug_exit();
     clixon_err_exit();
     clixon_log_exit();
+    if (_restarg)
+        free(_restarg);
     return 0;
 }
 
@@ -523,6 +527,7 @@ usage(clixon_handle h,
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-F <file> \tRead commands from file (default stdin)\n"
             "\t-1\t\tDo not enter interactive mode\n"
+            "\t-s\t\tDisable output scrolling\n"
             "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
             "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
             "\t-d <dir>\tSpecify plugin directory (default: %s)\n"
@@ -541,6 +546,7 @@ usage(clixon_handle h,
     fprintf(stderr, "Debug keys: ");
     clixon_debug_key_dump(stderr);
     fprintf(stderr, "\n");
+    cli_terminate(h);
     exit(1);
 }
 
@@ -559,7 +565,6 @@ main(int    argc,
     int            logclisyntax  = 0;
     int            help = 0;
     uint32_t       logdst = 0;
-    char          *restarg = NULL; /* what remains after options */
     yang_stmt     *yspec;
     struct passwd *pw;
     char          *str;
@@ -568,6 +573,7 @@ main(int    argc,
     size_t         cligen_buflen;
     size_t         cligen_bufthreshold;
     uint32_t       dbg=0;
+    uint32_t       dbgundef = 0;
     int            nr;
     int            config_dump;
     enum format_enum config_dump_format = FORMAT_XML;
@@ -622,11 +628,15 @@ main(int    argc,
         case 'D' :  /* debug, if set here overrides option CLICON_DEBUG */
             /* Try first symbolic, then numeric match
              * Cant use yang_bits_map, too early in bootstrap, there is no yang */
-            if ((d = clixon_debug_str2key(optarg)) < 0 &&
-                sscanf(optarg, "%d", &d) != 1){
-                usage(h, argv[0]);
+            if ((d = clixon_debug_str2key(optarg)) < 0){
+                uint32_t u;
+                if (parse_uint32(optarg, &u, NULL) <= 0)
+                    dbgundef++;
+                else
+                    dbg |= u;
             }
-            dbg |= d;
+            else
+                dbg |= d;
             break;
         case 'f': /* config file */
             if (!strlen(optarg))
@@ -692,6 +702,10 @@ main(int    argc,
             break;
         case '1' : /* Quit after reading database once - dont wait for events */
             once = 1;
+            break;
+        case 's' : /* Disable scrolling */
+            if (clicon_option_add(h, "CLICON_CLI_LINES_DEFAULT", "0") < 0)
+                goto done;
             break;
         case 'a': /* internal backend socket address family */
             if (clicon_option_add(h, "CLICON_SOCK_FAMILY", optarg) < 0)
@@ -770,8 +784,10 @@ main(int    argc,
     if (clixon_options_main_helper(h, dbg, logdst, __PROGRAM__) < 0)
         goto done;
     /* Split remaining argv/argc into <cmd> and <extra-options> */
-    if (options_split(h, argv0, argc, argv, &restarg) < 0)
+    if (options_split(h, argv0, argc, argv, &_restarg) < 0)
         goto done;
+    argc += optind;
+    argv -= optind;
 
     /* Init cligen buffers */
     cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
@@ -820,7 +836,6 @@ main(int    argc,
     if (clixon_plugin_module_init(h) < 0)
         goto done;
 
-#ifndef CLIXON_STATIC_PLUGINS
     {
         char *dir;
         /* Load cli .so plugins before yangs are loaded (eg extension callbacks) and
@@ -829,7 +844,25 @@ main(int    argc,
             clixon_plugins_load(h, CLIXON_PLUGIN_INIT, dir, NULL) < 0)
             goto done;
     }
-#endif
+    /* If any debug flags were undefined, try again after all plugins may have loaded */
+    if (dbgundef){
+        opterr = 0;
+        optind = 1;
+        while ((c = getopt(argc, argv, CLI_OPTS)) != -1){
+            switch (c){
+            case 'D' :
+                /* May match extended debug flags not available previously */
+                if ((d = clixon_debug_str2key(optarg)) < 0){
+                    usage(h, argv[0]);
+                }
+                dbg |= d;
+                break;
+            default:
+                break;
+            }
+        }
+        clixon_debug_init(h, dbg);
+    }
     /* Print version, customized variant must wait for plugins to load */
     if (print_version){
         if (clixon_plugin_version_all(h, stdout) < 0)
@@ -903,7 +936,7 @@ main(int    argc,
     if (clicon_option_exists(h, "CLICON_CLI_MODE"))
         if ((tmp = clicon_cli_mode(h)) != NULL)
             if (cli_set_syntax_mode(h, tmp) == 0) {
-                fprintf(stderr, "FATAL: Failed to set syntax mode '%s'\n", tmp);
+                fprintf(stderr, "FATAL: Failed to set syntax mode '%s' (not found)\n", tmp);
                 goto done;
             }
 
@@ -960,26 +993,28 @@ main(int    argc,
 
     /* Launch interfactive event loop,
      * unless options, in which case they are catched by clicon_argv_get/set */
-    if (restarg != NULL && strlen(restarg) && restarg[0] != '-'){
-        if (rest_commands(h, restarg) < 0)
+    if (_restarg != NULL && strlen(_restarg) && _restarg[0] != '-'){
+        if (rest_commands(h, _restarg) < 0)
             goto done;
     }
-
-    /* Go into event-loop unless -1 command-line */
-    if (!once){
-        retval = cli_interactive(h);
+    { /* Make a syslog of cli start but do not log on stderr or stdout */
+        uint16_t flags = clixon_logflags_get();
+        clixon_log_init(h, __PROGRAM__, LOG_INFO,
+                        flags & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
+        clixon_log(h, LOG_NOTICE, "%s: %u Started", __PROGRAM__, getpid());
+        clixon_log_init(h, __PROGRAM__, LOG_INFO, flags);
     }
-    else
+    /* Go into event-loop unless -1 command-line */
+    if (once)
         retval = 0;
+    else
+        retval = cli_interactive(h);
   done:
-    if (restarg)
-        free(restarg);
     if (h){
         /* Dont log terminate on stderr or stdout */
         clixon_log_init(h, __PROGRAM__, LOG_INFO,
                         clixon_logflags_get() & ~(CLIXON_LOG_STDERR|CLIXON_LOG_STDOUT));
         clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
-
         cli_terminate(h);
     }
     return retval;

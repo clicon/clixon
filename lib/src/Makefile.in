@@ -86,33 +86,34 @@ SRC     = clixon_sig.c clixon_uid.c clixon_log.c clixon_debug.c clixon_err.c \
           clixon_json.c clixon_proc.c \
 	  clixon_yang.c clixon_yang_type.c clixon_yang_module.c clixon_netconf_monitoring.c \
 	  clixon_yang_parse_lib.c clixon_yang_sub_parse.c \
-          clixon_yang_cardinality.c clixon_yang_schema_mount.c \
-          clixon_xml_changelog.c clixon_xml_nsctx.c \
+	  clixon_yang_cardinality.c clixon_yang_schema_mount.c \
+	  clixon_xml_changelog.c clixon_xml_nsctx.c \
 	  clixon_path.c clixon_validate.c clixon_validate_minmax.c \
 	  clixon_hash.c clixon_digest.c clixon_options.c clixon_data.c clixon_plugin.c \
 	  clixon_proto.c clixon_proto_client.c \
 	  clixon_xpath.c clixon_xpath_ctx.c clixon_xpath_eval.c clixon_xpath_function.c \
-          clixon_xpath_optimize.c clixon_xpath_yang.c \
+	  clixon_xpath_optimize.c clixon_xpath_yang.c \
 	  clixon_datastore.c clixon_datastore_write.c clixon_datastore_read.c \
 	  clixon_netconf_lib.c clixon_netconf_input.c clixon_stream.c \
-          clixon_nacm.c clixon_client.c clixon_netns.c \
-	  clixon_dispatcher.c clixon_text_syntax.c
+	  clixon_nacm.c clixon_client.c clixon_netns.c \
+	  clixon_dispatcher.c clixon_text_syntax.c \
+	  clixon_autocli.c clixon_autocli_generate.c
 
 YACCOBJS = lex.clixon_xml_parse.o clixon_xml_parse.tab.o \
-	    lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
-	    lex.clixon_json_parse.o  clixon_json_parse.tab.o \
-            lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o \
-            lex.clixon_api_path_parse.o clixon_api_path_parse.tab.o \
-            lex.clixon_instance_id_parse.o clixon_instance_id_parse.tab.o \
-            lex.clixon_text_syntax_parse.o clixon_text_syntax_parse.tab.o \
-            lex.clixon_yang_sub_parse.o clixon_yang_sub_parse.tab.o \
-            lex.clixon_yang_schemanode_parse.o clixon_yang_schemanode_parse.tab.o 
+	   lex.clixon_yang_parse.o  clixon_yang_parse.tab.o \
+	   lex.clixon_json_parse.o  clixon_json_parse.tab.o \
+	   lex.clixon_xpath_parse.o clixon_xpath_parse.tab.o \
+	   lex.clixon_api_path_parse.o clixon_api_path_parse.tab.o \
+	   lex.clixon_instance_id_parse.o clixon_instance_id_parse.tab.o \
+	   lex.clixon_text_syntax_parse.o clixon_text_syntax_parse.tab.o \
+	   lex.clixon_yang_sub_parse.o clixon_yang_sub_parse.tab.o \
+	   lex.clixon_yang_schemanode_parse.o clixon_yang_schemanode_parse.tab.o
 
-# Generated src 
-GENSRC  = build.c 
+# Generated src
+GENSRC  = build.c
 
-OBJS    = $(YACCOBJS) $(SRC:.c=.o) 
-GENOBJS  = $(GENSRC:.c=.o) 
+OBJS    = $(YACCOBJS) $(SRC:.c=.o)
+GENOBJS  = $(GENSRC:.c=.o)
 
 # Linker-name: libclixon.so
 # so-name: libclixon.so.2
@@ -298,13 +299,13 @@ prelib:
 # Compute the length of the date command (and add some extra with XXX)
 DATELEN = $(shell date +"%Y.%m.%d %H:%M by `whoami` on `hostname`XXXX"|wc -c)
 
-build.c:	
+build.c:
 	echo "/* This file is generated from the Clixon Makefile */" > $@;
 	date +"const char CLIXON_BUILDSTR[$(DATELEN)]=\"%Y.%m.%d %H:%M by `whoami` on `hostname`"\"\; >> $@;
 	echo "const char CLIXON_VERSION[64]=\"$(CLIXON_VERSION)\""\; >> $@;
 
 # Note: will always be remade since GENOBS is date dependent
-$(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS) 
+$(MYLIBDYNAMIC) : $(GENOBJS) $(OBJS)
 ifeq ($(HOST_VENDOR),apple)
 	$(CC) $(LDFLAGS) -shared -o $@ $(GENOBJS) $(OBJS) $(LIBS) -undefined dynamic_lookup -o $@
 else
@@ -314,7 +315,7 @@ endif
 # link-name is needed for application linking, eg for clixon_backend/clixon_cli
 $(MYLIBLINK) : $(MYLIBDYNAMIC)
 
-$(MYLIBSTATIC) :  $(GENOBJS) $(OBJS) 
+$(MYLIBSTATIC) :  $(GENOBJS) $(OBJS)
 	ar -crs $@  $(GENOBJS) $(OBJS)
 
 install: install-lib
@@ -333,7 +334,7 @@ install-lib: $(MYLIBSTATIC)
 	$(INSTALL_LIB) -m 0644 $(INSTALLFLAGS) $(MYLIBSTATIC) $(DESTDIR)$(libdir)
 endif
 
-uninstall: 
+uninstall:
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBLINK)*
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBDYNAMIC)
 	rm -f $(DESTDIR)$(libdir)/$(MYLIBSTATIC)

@@ -312,7 +312,7 @@ ys_resolve_type(yang_stmt *ytype,
  * Return 0 if no match but set cv_type to CGV_ERR
  */
 int
-yang2cv_type(char         *ytype,
+yang2cv_type(const char   *ytype,
              enum cv_type *cv_type)
 {
     int                ret;
@@ -378,8 +378,8 @@ cv2yang_type(enum cv_type cv_type)
  * @note Thereis a kludge for handling direct translations of native cligen types
  */
 int
-clicon_type2cv(char         *origtype,
-               char         *restype,
+clicon_type2cv(const char   *origtype,
+               const char   *restype,
                yang_stmt    *ys,
                enum cv_type *cvtype)
 {
@@ -570,9 +570,9 @@ outoflength(uint64_t    u64,
  * @param[in]  h       Clixon handle
  * @param[in]  cv      A cligen variable to validate. This is a correctly parsed cv.
  * @param[in]  cvtype  Resolved type of cv
- *                     string describing reason why validation failed. 
  * @param[in]  regexps Vector of compiled regexps
- * @param[out] reason  If given, and return value is 0, contains malloced str 
+ * @param[out] reason  If given, and return value is 0, contains malloced str
+ *                     string describing reason why validation failed.
  * @retval     1       Validation OK
  * @retval     0       Validation not OK, malloced reason is returned. Free reason with free()
  * @retval    -1       Error (fatal), with errno set to indicate error
@@ -810,13 +810,33 @@ ys_cv_validate_leafref(clixon_handle h,
         clixon_err(OE_YANG, 0, "No argument for Y_PATH");
         goto done;
     }
-    if (yang_path_arg(ys, path_arg, &yref) < 0)
+    yang_stmt *yscope = yang_orig_get(ys) ? yang_orig_get(ys) : ys;
+    if (yang_path_arg(yscope, path_arg, &yref) < 0)
         goto done;
+    /* If lexical scope (eg grouping def) could not resolve a relative path,
+     * fall back to the instantiated tree to find the target.
+     */
+    if (yref == NULL && yscope != ys) {
+        if (yang_path_arg(ys, path_arg, &yref) < 0)
+            goto done;
+    }
     if (yref == NULL){
         clixon_err(OE_YANG, 0, "No referred YANG node found for leafref path %s", path_arg);
         goto done;
     }
     /* reparse cv with new type */
+    if (yang_cv_get(yref) == NULL) {
+        /* Grouping defs may lack cv; try the instantiated tree as fallback */
+        yang_stmt *yref2 = NULL;
+        if (yang_path_arg(ys, path_arg, &yref2) < 0)
+            goto done;
+        if (yref2 && yang_cv_get(yref2))
+            yref = yref2;
+        else {
+            clixon_err(OE_YANG, 0, "No cv template for leafref target %s", path_arg);
+            goto done;
+        }
+    }
     if ((cv = cv_dup(yang_cv_get(yref))) == NULL){
         clixon_err(OE_UNIX, errno, "cv_dup");
         goto done;
@@ -1155,8 +1175,8 @@ ys_typedef_up(yang_stmt *ys)
  * @see xml_find_identity
  */
 yang_stmt *
-yang_find_identity(yang_stmt *ys,
-                   char      *identity)
+yang_find_identity(yang_stmt  *ys,
+                   const char *identity)
 {
     char        *id = NULL;
     char        *prefix = NULL;
@@ -1208,9 +1228,9 @@ yang_find_identity(yang_stmt *ys,
  * @see xml_find_identity
  */
 yang_stmt *
-yang_find_identity_nsc(yang_stmt *yspec,
-                       char      *identity,
-                       cvec      *nsc)
+yang_find_identity_nsc(yang_stmt  *yspec,
+                       const char *identity,
+                       cvec       *nsc)
 {
     char        *id = NULL;
     char        *prefix = NULL;
@@ -1523,6 +1543,59 @@ yang_type_get(yang_stmt    *ys,
   done:
     if (type)
         free(type);
+    return retval;
+}
+
+/*! Resolve bits type across unions
+ *
+ * Given a yang node, resolve a bits type possibly via unions
+ * Could be enhanced to enums as well
+ * Example:
+ *   leaf node{ // yn
+ *     type union { // yt
+ *       type bits { // yres
+ *         bit a;
+ *         bit b;
+ *       }
+ *     }
+ * @param[in]  yn    yang-stmt, leaf or leaf-list
+ * @param[in]  yt    Yang type
+ * @param[out] yres  Yang bots type
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see yang_bitsstr2flags to get values from bits
+ */
+int
+yang_type_resolve_bits(yang_stmt  *yn,
+                       yang_stmt  *yt,
+                       yang_stmt **yres)
+{
+    int        retval = -1;
+    char      *type;
+    yang_stmt *ytype;
+    yang_stmt *ys;
+    int        inext;
+
+    if (yres == NULL){
+        clixon_err(OE_YANG, 0, "yres is NULL");
+        goto done;
+    }
+    type = yang_argument_get(yt);
+    if (strcmp("bits", type) == 0)
+        *yres = yt;
+    else if (strcmp("union", type) == 0){
+        inext = 0;
+        while ((ys = yn_iter(yt, &inext)) != NULL) {
+            if (yang_type_resolve(yn, yn, ys, &ytype, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
+            if (yang_type_resolve_bits(yn, ytype, yres) < 0)
+                goto done;
+            if (*yres != NULL)
+                break;
+        }
+    }
+    retval = 0;
+ done:
     return retval;
 }
 

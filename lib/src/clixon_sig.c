@@ -233,8 +233,8 @@ pidfile_get_fd(FILE  *f,
  * @retval    0         OK. if pid > 0 old process exists w that pid
  */
 int
-pidfile_get(char  *pidfile,
-            pid_t *pid)
+pidfile_get(const char *pidfile,
+            pid_t      *pid)
 {
     FILE   *f;
 
@@ -285,7 +285,7 @@ pidfile_zapold(pid_t pid)
  * @retval   -1        Error
  */
 int
-pidfile_write(char *pidfile)
+pidfile_write(const char *pidfile)
 {
     int   retval = -1;
     FILE *f = NULL;

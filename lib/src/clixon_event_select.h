@@ -37,19 +37,19 @@
  * Event handling and loop
  */
 
-#ifndef _CLIXON_EVENT_H_
-#define _CLIXON_EVENT_H_
+#ifndef _CLIXON_EVENT_SELECT_H_
+#define _CLIXON_EVENT_SELECT_H_
 
 /*
  * Prototypes
  */
-int clixon_event_select_reg_fd_prio(int fd, int (*fn)(int, void*), void *arg, char *str, int prio);
+int clixon_event_select_reg_fd_prio(int fd, int (*fn)(int, void*), void *arg, const char *str, int prio);
 int clixon_event_select_unreg_fd(int s, int (*fn)(int, void*));
 int clixon_event_select_reg_timeout(struct timeval t,  int (*fn)(int, void*),
-                             void *arg, char *str);
+                             void *arg, const char *str);
 int clixon_event_select_unreg_timeout(int (*fn)(int, void*), void *arg);
 int clixon_event_select_poll(int fd);
 int clixon_event_select_loop(clixon_handle h);
 int clixon_event_select_exit(void);
 
-#endif  /* _CLIXON_EVENT_H_ */
+#endif  /* _CLIXON_EVENT_SELECT_H_ */
