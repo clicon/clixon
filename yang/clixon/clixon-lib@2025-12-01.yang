@@ -71,7 +71,9 @@ module clixon-lib {
 
     revision 2025-12-01 {
         description
-            "Added: rpc clixon-cache
+            "Added:
+                rpc clixon-cache
+                rpc translate-format
              Released in Clixon 7.7";
     }
     revision 2025-08-01 {
@@ -410,6 +412,25 @@ module clixon-lib {
              Limitations: only objects that are actually added or deleted.
              A sub-object will not be noted";
     }
+    grouping namespace-context {
+        description
+            "List of prefix/namespace pairs";
+        container namespace-context {
+            description
+                "List of prefix/namespace pairs";
+            list namespace {
+                description
+                    "prefix / namespace pair for XPath.";
+                key prefix;
+                leaf ns{
+                    type string;
+                }
+                leaf prefix{
+                    type string;
+                }
+            }
+        }
+    }
     rpc debug {
         description
             "Set debug flags of backend.
@@ -635,6 +656,88 @@ module clixon-lib {
         output {
             anydata data {
                 description "Get cache data";
+            }
+        }
+    }
+    rpc yang-api-path {
+        description
+            "Translate from RFC 8040 api-path to XML and XPath";
+        input{
+            leaf api-path {
+                type string;
+                description
+                    "RFC 8040 api-path";
+                mandatory true;
+            }
+            leaf leafref-refer {
+                description
+                    "If true, and the innermost xml is a leafref,
+                     the XPath is extended by appending the path of the leafref to the original XPath.
+                     If false, the XPath is not extended";
+                type boolean;
+                default true;
+            }
+            leaf body {
+                description
+                    "If innermost XML is leaf, add body";
+                type string;
+            }
+        }
+        output{
+            anydata xml{
+                description
+                    "Minimal XML corresponding to given path and YANG in server";
+            }
+            leaf xpath{
+                type string;
+                description
+                    "XPath corresponding to given api-path and YANG.
+                     Also, if last xml element is a leafref and if leafref-refer is true: append path to xpath.";
+            }
+            uses namespace-context;
+        }
+    }
+    rpc translate-format {
+        description
+            "Translate data from XML to other datastore formats";
+        input{
+            leaf format{
+                description
+                    "Translate input xml format to this output format";
+                type cl:datastore_format;
+                mandatory true;
+            }
+            leaf xpath{
+                description
+                    "If given, the XPath points to a point in the data tree where the XML is rooted,
+                     this could cross mount-points";
+                type string;
+            }
+            uses namespace-context;
+            anydata xml{
+                description
+                    "Input XML data, top-level, optionally sub-tree specified by XPath";
+            }
+            leaf pretty{
+                description
+                    "Set if output is pretty-printed";
+                type boolean;
+            }
+            leaf skiptop{
+                description
+                    "If set, Skip top-object, only children";
+                type boolean;
+            }
+            leaf prepend{
+                description
+                    "CLI prefix to prepend cli syntax, eg 'set '";
+                type string;
+            }
+        }
+        output{
+            anyxml data {
+                description
+                    "Contains the output format according to format setting.";
             }
         }
     }

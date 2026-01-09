@@ -2039,6 +2039,284 @@ clixon_rpc_clixon_cache(clixon_handle h,
     return retval;
 }
 
+/*! Make a clixon yang-api-path rpc call from client to backend server
+ *
+ * @param[in]     h             Clixon handle
+ * @param[in]     api_path      API path
+ * @param[in]     leafref_refer XPath is extended by appending the path of the leafref to the original XPath.
+ * @param[in]     body          If innermost XML is leaf, add body
+ * @param[out]    xtop          XML data
+ * @param[out]    xpath         XPath
+ * @param[out]    nsc           Namespace context of XPath
+ * @retval        0             OK
+ * @retval       -1             Error and logged to syslog
+ */
+int
+clixon_rpc_yang_api_path(clixon_handle h,
+                         const char   *api_path,
+                         int           leafref_refer,
+                         const char   *body,
+                         cxobj        *xtop,
+                         char        **xpath,
+                         cvec        **nsc)
+{
+    int        retval = -1;
+    yang_stmt *yspec0;
+    uint32_t   session_id;
+    char      *username;
+    cxobj     *xrpc = NULL;
+    cxobj     *xret = NULL;
+    cxobj     *xe;
+    cxobj     *xerr = NULL;
+    cxobj     *xreply;
+    cbuf      *cb = NULL;
+    int        ret;
+
+    yspec0 = clicon_dbspec_yang(h);
+    if (session_id_check(h, &session_id) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cb, ">");
+    cprintf(cb, "<yang-api-path xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cb, "<api-path>%s</api-path>", api_path);
+    cprintf(cb, "<leafref-refer>%s</leafref-refer>", leafref_refer?"true":"false");
+    if (body)
+        cprintf(cb, "<body>%s</body>", body);
+    cprintf(cb, "</yang-api-path>");
+    cprintf(cb, "</rpc>");
+    /* Create XML from cbuf */
+    if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec0, &xrpc, &xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto done;
+    if (xml_rootchild(xrpc, 0, &xrpc) < 0)
+        goto done;
+    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
+        goto done;
+    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Debug");
+        goto done;
+    }
+    if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) != NULL){
+        if ((ret = xml_bind_yang_rpc_reply(h, xreply, "yang-api-path", yspec0, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (xret) {             /* Replace reply with error */
+                cxobj *xc;
+                if ((xc = xml_child_i(xret, 0)) != NULL)
+                    xml_purge(xc);
+                if (xml_addsub(xret, xerr) < 0)
+                    goto done;
+                xerr = NULL;
+            }
+        }
+        else{
+            if (xtop){
+                cxobj *x;
+                cxobj *x0;
+                if ((x = xml_find(xreply, "xml")) != NULL &&
+                    (x0 = xml_child_i_type(x, 0, CX_ELMNT)) != NULL){
+                    xml_rm(x0);
+                    if (xml_addsub(xtop, x0) < 0)
+                        goto done;
+                }
+            }
+            if (xpath){
+                if ((*xpath = strdup(xml_find_body(xreply,"xpath"))) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+            if (nsc){
+                cxobj *xns;
+                cxobj *xn;
+                char  *prefix;
+                char  *ns;
+                cvec  *cvv;
+
+                if ((cvv = cvec_new(0)) == NULL){
+                    clixon_err(OE_XML, errno, "cvec_new");
+                    goto done;
+                }
+                if ((xns = xml_find(xreply, "namespace-context")) != NULL){
+                    xn = NULL;
+                    while ((xn = xml_child_each(xns, xn, CX_ELMNT)) != NULL) {
+                        ns = xml_find_body(xn, "ns");
+                        prefix = xml_find_body(xn, "prefix");
+                        if (ns){
+                            if (xml_nsctx_add(cvv, prefix, ns) < 0)
+                                goto done;
+                        }
+                    }
+                }
+                *nsc = cvv;
+            }
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xrpc)
+        xml_free(xrpc);
+    if (xret)
+        xml_free(xret);
+    if (xerr)
+        xml_free(xerr);
+    return retval;
+}
+
+/*! Make a clixon yang-api-path rpc call from client to backend server
+ *
+ * @param[in]   h        Clixon handle
+ * @param[in]   format   Output data format
+ * @param[in]   xpath    XPath to xml
+ * @param[in]   nsc      Namespace context for xpath
+ * @param[in]   xt       XML top-level object
+ * @param[in]   pretty   Set if output is pretty-printed
+ * @param[in]   skiptop  Skip top-object, only children
+ * @param[in]   prepend  CLI prefix to prepend cli syntax, eg "set "
+ * @param[out]  cbret    Formatted data
+ * @retval      0        OK
+ * @retval     -1        Error and logged to syslog
+ */
+int
+clixon_rpc_translate_format(clixon_handle    h,
+                            enum format_enum format,
+                            const char      *xpath,
+                            cvec            *nsc,
+                            cxobj           *xt,
+                            int              pretty,
+                            int              skiptop,
+                            const char      *prepend,
+                            cbuf            *cbret)
+{
+    int        retval = -1;
+    yang_stmt *yspec0;
+    uint32_t   session_id;
+    char      *username;
+    cbuf      *cb = NULL;
+    cxobj     *xrpc = NULL;
+    cxobj     *xret = NULL;
+    cxobj     *xe;
+    cxobj     *xn;
+    cxobj     *xerr = NULL;
+    cxobj     *xreply;
+    char      *str;
+    char      *strdec = NULL;
+    cg_var    *cv;
+    int        ret;
+
+    yspec0 = clicon_dbspec_yang(h);
+    if (session_id_check(h, &session_id) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
+    cprintf(cb, ">");
+    cprintf(cb, "<translate-format xmlns=\"%s\">", CLIXON_LIB_NS);
+    cprintf(cb, "<format>%s</format>", format_int2str(format));
+    cprintf(cb, "<pretty>%s</pretty>", pretty?"true":"false");
+    cprintf(cb, "<skiptop>%s</skiptop>", skiptop?"true":"false");
+    if (prepend)
+        cprintf(cb, "<prepend>%s</prepend>", prepend);
+    if (xpath)
+        cprintf(cb, "<xpath>%s</xpath>", xpath);
+    if (nsc && cvec_len(nsc)){
+        cprintf(cb, "<namespace-context>");
+        cv = NULL;
+        while ((cv = cvec_each(nsc, cv)) != NULL) {
+            cprintf(cb, "<namespace>");
+            cprintf(cb, "<ns>%s</ns>", cv_string_get(cv));
+            cprintf(cb, "<prefix>%s</prefix>", cv_name_get(cv)?cv_name_get(cv):"");
+            cprintf(cb, "</namespace>");
+        }
+        cprintf(cb, "</namespace-context>");
+    }
+    cprintf(cb, "<xml>");
+    xn = NULL;
+    while ((xn = xml_child_each(xt, xn, CX_ELMNT)) != NULL) {
+        if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+            goto done;
+    }
+    cprintf(cb, "</xml>");
+    cprintf(cb, "</translate-format>");
+    cprintf(cb, "</rpc>");
+    if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec0, &xrpc, &xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto done;
+    if (xml_rootchild(xrpc, 0, &xrpc) < 0)
+        goto done;
+    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
+        goto done;
+    if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Debug");
+        goto done;
+    }
+    if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) != NULL){
+        if ((ret = xml_bind_yang_rpc_reply(h, xreply, "translate-format", yspec0, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (xret) {             /* Replace reply with error */
+                cxobj *xc;
+                if ((xc = xml_child_i(xret, 0)) != NULL)
+                    xml_purge(xc);
+                if (xml_addsub(xret, xerr) < 0)
+                    goto done;
+                xerr = NULL;
+            }
+        }
+        else if ((str = xml_find_body(xreply, "data")) != NULL){
+            if (strncmp(str, "<![CDATA[", strlen("<![CDATA[")) == 0){
+                if (strncmp(&str[strlen(str)-strlen("]]>")], "]]>", strlen("]]>")) != 0){
+                    clixon_err(OE_XML, 0, "CDATA encoding but not CDATA trailer");
+                    goto done;
+                }
+                if ((strdec = strdup(str + strlen("<![CDATA["))) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+                strdec[strlen(strdec)-strlen("]]>")] = '\0';
+            }
+            else if (xml_chardata_decode(&strdec, "%s", str) < 0)
+                goto done;
+            cbuf_append_str(cbret, strdec); // XXX double copy
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (xrpc)
+        xml_free(xrpc);
+    if (xret)
+        xml_free(xret);
+    if (xerr)
+        xml_free(xerr);
+    if (strdec)
+        free(strdec);
+    return retval;
+}
+
 /*! Send a restart plugin request to backend server
  *
  * @param[in] h        Clixon handle

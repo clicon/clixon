@@ -543,7 +543,7 @@ backend_autocli_clear_cache(clixon_handle h)
  * @retval     0       OK
  * @retval    -1       Error
  */
-int
+static int
 from_client_clixon_cache(clixon_handle h,
                          cxobj        *xe,
                          cbuf         *cbret,
@@ -593,5 +593,24 @@ from_client_clixon_cache(clixon_handle h,
  done:
     if (cberr)
         cbuf_free(cberr);
+    return retval;
+}
+
+/*! Init clixon cache rpc:s
+ *
+ * @param[in]  h     Clixon handle
+ * @retval     0     OK
+ * @retval    -1     Error (fatal)
+ */
+int
+backend_clixon_cache_init(clixon_handle h)
+{
+    int retval = -1;
+
+    if (rpc_callback_register(h, from_client_clixon_cache, NULL,
+                              CLIXON_LIB_NS, "clixon-cache") < 0)
+        goto done;
+    retval = 0;
+ done:
     return retval;
 }

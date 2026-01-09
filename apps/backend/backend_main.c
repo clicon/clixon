@@ -77,6 +77,7 @@
 #include "backend_handle.h"
 #include "backend_startup.h"
 #include "backend_cache.h"
+#include "backend_clixon_lib.h"
 #include "backend_plugin_restconf.h"
 
 /* Command line options to be passed to getopt(3) */
@@ -843,8 +844,15 @@ main(int    argc,
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
         goto done;
 
-    /* Initialize server socket and save it to handle */
+    /* Set up standard netconf rpc callbacks */
     if (backend_rpc_init(h) < 0)
+        goto done;
+    /* Setup other rpc callbacks */
+    if (backend_commit_init(h) < 0)
+        goto done;
+    if (backend_clixon_lib_init(h) < 0)
+        goto done;
+    if (backend_clixon_cache_init(h) < 0)
         goto done;
 
     /* Must be after netconf_module_load, but before startup code */

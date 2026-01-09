@@ -81,7 +81,8 @@ struct nsctx_import_ctx {
 
 /* Callback used by yang_imports_foreach_scope to add import prefix/ns to nsctx */
 static int
-nsctx_add_import_cb(yang_stmt *yimport, void *arg)
+nsctx_add_import_cb(yang_stmt *yimport,
+                    void      *arg)
 {
     struct nsctx_import_ctx *c = arg;
     yang_stmt *yprefix;

@@ -1852,3 +1852,58 @@ xml_template_apply(cxobj *x,
         cbuf_free(cb);
     return retval;
 }
+
+/*! Special handling of identityref:s whose body may be: <namespace prefix>:<id>
+ *
+ * Callback function used in xml_apply
+ * Ensure the namespace is declared if it exists in YANG
+ * @param[in]  x
+ * @param[in]  arg
+ * @retval     0    OK
+ * @retval    -1    Error
+*/
+int
+identityref_add_ns(cxobj *x,
+                    void  *arg)
+{
+    int        retval = -1;
+    yang_stmt *yspec = (yang_stmt *)arg;
+    yang_stmt *y;
+    yang_stmt *yrestype;        /* resolved type */
+    char      *restype;         /* resolved type */
+    char      *origtype = NULL; /* original type */
+    char      *pf = NULL;
+    yang_stmt *yns;
+    char      *ns = NULL;
+    char      *b;
+
+    if ((y = xml_spec(x)) != NULL &&
+        yang_keyword_get(y) == Y_LEAF){
+        if (yang_type_get(y, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+            goto done;
+        restype = yrestype?yang_argument_get(yrestype):NULL;
+        if (strcmp(restype, "identityref") == 0 &&
+            (b = xml_body(x)) != NULL){
+            if (nodeid_split(b, &pf, NULL) < 0)
+                goto done;
+            // search if already defined
+            if (pf != NULL){
+                if (xml2ns(x, pf, &ns) < 0)
+                    goto done;
+                if (ns == NULL &&
+                    (yns = yang_find_module_by_prefix_yspec(yspec, pf)) != NULL){
+                    if ((ns = yang_find_mynamespace(yns)) != NULL)
+                        if (xmlns_set(x, pf, ns) < 0)
+                            goto done;
+                }
+            }
+        }
+    }
+    retval = 0;
+ done:
+    if (origtype)
+        free(origtype);
+    if (pf)
+        free(pf);
+    return retval;
+}

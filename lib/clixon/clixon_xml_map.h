@@ -88,5 +88,6 @@ int xml_find_action(cxobj *xn, int top, cxobj **xap);
 int purge_tagged_nodes(cxobj *xn, const char *ns, const char *name, const char *value, int keepnode);
 int clixon_compare_xmls(cxobj *xc1, cxobj *xc2, enum format_enum format);
 int xml_template_apply(cxobj *x, void *arg);
+int identityref_add_ns(cxobj *x, void *arg);
 
 #endif  /* _CLIXON_XML_MAP_H_ */

@@ -89,7 +89,7 @@
  * @retval      0       Validation failed (with cbret set)
  * @retval     -1       Error
  */
-static int
+int
 generic_validate(clixon_handle       h,
                  yang_stmt          *yspec,
                  transaction_data_t *td,
@@ -901,7 +901,7 @@ backend_update(clixon_handle h,
  *   If the RPC does bear another <confirmed/> element, that will be handled in phase two, from within the
  *   candidate_commit() method.
  */
-int
+static int
 from_client_commit(clixon_handle h,
                    cxobj        *xe,
                    cbuf         *cbret,
@@ -1005,7 +1005,7 @@ from_client_commit(clixon_handle h,
  * @retval    -1       Error
  * NACM: No datastore permissions are needed.
  */
-int
+static int
 from_client_discard_changes(clixon_handle h,
                             cxobj        *xe,
                             cbuf         *cbret,
@@ -1094,7 +1094,7 @@ from_client_discard_changes(clixon_handle h,
  *                     (eg invalid)
  * @retval    -1       Error
  */
-int
+static int
 from_client_validate(clixon_handle h,
                      cxobj        *xe,
                      cbuf         *cbret,
@@ -1135,7 +1135,7 @@ from_client_validate(clixon_handle h,
  * @see draft-ietf-netconf-privcand
  * XXX Merge dont work properly
  */
-int
+static int
 from_client_update(clixon_handle h,
                    cxobj        *xe,
                    cbuf         *cbret,
@@ -1185,127 +1185,6 @@ from_client_update(clixon_handle h,
     retval = 0;
  done:
     return retval;
-}
-
-/*! Restart specific backend plugins without full backend restart
- *
- * @note, depending on plugin callbacks, there may be other dependencies which may make this
- * difficult in the general case.
- */
-int
-from_client_restart_one(clixon_handle    h,
-                        clixon_plugin_t *cp,
-                        cbuf            *cbret)
-{
-    int                 retval = -1;
-    char               *db = "tmp";
-    transaction_data_t *td = NULL;
-    plgreset_t         *resetfn;          /* Plugin auth */
-    cxobj              *xerr = NULL;
-    yang_stmt          *yspec;
-    int                 i;
-    cxobj              *xn;
-    void               *wh = NULL;
-    int                 ret;
-
-    yspec = clicon_dbspec_yang(h);
-    if (xmldb_db_reset(h, db) < 0)
-        goto done;
-    /* Application may define extra xml in its reset function*/
-    if ((resetfn = clixon_plugin_api_get(cp)->ca_reset) != NULL){
-        wh = NULL;
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
-            goto done;
-        if ((retval = resetfn(h, db)) < 0) {
-            clixon_debug(CLIXON_DBG_BACKEND, "plugin_start() failed");
-            goto done;
-        }
-        if (clixon_resource_check(h, &wh, clixon_plugin_name_get(cp), __func__) < 0)
-            goto done;
-    }
-    /* 1. Start transaction */
-    if ((td = transaction_new()) == NULL)
-        goto done;
-    /* This is the state we are going to */
-    if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, &xerr)) < 0)
-        goto done;
-    if (ret == 1 && (ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
-        goto done;
-    if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
-            goto done;
-        goto fail;
-    }
-
-    /* This is the state we are going from */
-    if (xmldb_get0(h, db, YB_NONE, NULL, "/", 0, WITHDEFAULTS_EXPLICIT, &td->td_src, NULL, NULL) < 0)
-        goto done;
-    /* 3. Compute differences */
-    if (xml_diff(td->td_src,
-                 td->td_target,
-                 &td->td_dvec,      /* removed: only in running */
-                 &td->td_dlen,
-                 &td->td_avec,      /* added: only in candidate */
-                 &td->td_alen,
-                 &td->td_scvec,     /* changed: original values */
-                 &td->td_tcvec,     /* changed: wanted values */
-                 &td->td_clen) < 0)
-        goto done;
-
-    /* Mark as changed in tree */
-    for (i=0; i<td->td_dlen; i++){ /* Also down */
-        xn = td->td_dvec[i];
-        xml_flag_set(xn, XML_FLAG_DEL);
-        xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
-    for (i=0; i<td->td_alen; i++){ /* Also down */
-        xn = td->td_avec[i];
-        xml_flag_set(xn, XML_FLAG_ADD);
-        xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
-    for (i=0; i<td->td_clen; i++){ /* Also up */
-        xn = td->td_scvec[i];
-        xml_flag_set(xn, XML_FLAG_CHANGE);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-        xn = td->td_tcvec[i];
-        xml_flag_set(xn, XML_FLAG_CHANGE);
-        xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
-    }
-    /* Call plugin transaction start callbacks */
-    if (plugin_transaction_begin_one(cp, h, td) < 0)
-        goto fail;
-    /* Make generic validation on all new or changed data.
-       Note this is only call that uses 3-values */
-    if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
-        goto done;
-    if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
-            goto done;
-        goto fail;
-    }
-    /* Call validate callback in this plugin */
-    if (plugin_transaction_validate_one(cp, h, td) < 0)
-        goto fail;
-    if (plugin_transaction_complete_one(cp, h, td) < 0)
-        goto fail;
-    /* Call commit callback in this plugin */
-    if (plugin_transaction_commit_one(cp, h, td) < 0)
-        goto fail;
-    if (plugin_transaction_commit_done_one(cp, h, td) < 0)
-        goto fail;
-    /* Finalize */
-    if (plugin_transaction_end_one(cp, h, td) < 0)
-        goto fail;
-    retval = 1;
- done:
-    if (td)
-        transaction_free1(td, 1);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
 }
 
 /*! Reset running and start in failsafe mode. If no failsafe then quit.
@@ -1577,4 +1456,34 @@ xmldb_candidate_new(clixon_handle h,
     if (cb)
         cbuf_free(cb);
     return de;
+}
+
+/*! Init backend commit: Set up commit-related netconf rpc callbacks
+ *
+ * @param[in]  h     Clixon handle
+ * @retval     0     OK
+ * @retval    -1     Error (fatal)
+ */
+int
+backend_commit_init(clixon_handle h)
+{
+    int retval = -1;
+
+    if (rpc_callback_register(h, from_client_commit, NULL,
+                      NETCONF_BASE_NAMESPACE, "commit") < 0)
+        goto done;
+    if (rpc_callback_register(h, from_client_discard_changes, NULL,
+                      NETCONF_BASE_NAMESPACE, "discard-changes") < 0)
+        goto done;
+    /* if-feature validate */
+    if (rpc_callback_register(h, from_client_validate, NULL,
+                      NETCONF_BASE_NAMESPACE, "validate") < 0)
+        goto done;
+    /* draft-ietf-netconf-privcand */
+    if (rpc_callback_register(h, from_client_update, NULL,
+                              NETCONF_PRIVCAND_NAMESPACE, "update") < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
 }

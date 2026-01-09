@@ -375,84 +375,6 @@ backend_client_rm(clixon_handle h,
     return backend_client_delete(h, ce); /* actually purge it */
 }
 
-/*! Get clixon per datastore stats
- *
- * @param[in]     h       Clixon handle
- * @param[in]     dbname  Datastore name
- * @param[in,out] cb      Cligen buf
- * @retval        0       OK
- * @retval       -1       Error
- */
-static int
-clixon_stats_datastore_get(clixon_handle h,
-                           char         *dbname,
-                           cbuf         *cb)
-{
-    int       retval = -1;
-    cxobj    *xt = NULL; /* should not be freed */
-    uint64_t  nr = 0;
-    size_t    sz = 0;
-    cxobj    *xn = NULL;
-    db_elmnt *de;
-    int       ret;
-
-    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
-    /* This is the db cache */
-    if ((de = xmldb_find(h, dbname)) != NULL &&
-        (xt = xmldb_cache_get(de)) == NULL){
-        /* Trigger cache if no exist (trick to ensure cache is present) */
-        if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
-            //goto done;
-            goto ok;
-        if (ret == 0)
-            goto ok;
-        xt = xmldb_cache_get(de);
-    }
-    if (xt != NULL){
-        if (xml_stats(xt, &nr, &sz) < 0)
-            goto done;
-        cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
-                "<size>%zu</size></datastore>",
-                dbname, nr, sz);
-    }
- ok:
-    retval = 0;
- done:
-    if (xn)
-        xml_free(xn);
-    return retval;
-}
-
-/*! Get clixon per yang-spec stats
- *
- * @param[in]     h       Clixon handle
- * @param[in]     dbname  Datastore name
- * @param[in,out] cb      Cligen buf
- * @retval        0       OK
- * @retval       -1       Error
- */
-static int
-clixon_stats_yang_get(clixon_handle h,
-                      yang_stmt    *ys,
-                      cbuf         *cb)
-{
-    int       retval = -1;
-    uint64_t  nr = 0;
-    size_t    sz = 0;
-    cxobj    *xn = NULL;
-
-    if (ys == NULL)
-        return 0;
-    if (yang_stats(ys, 0, &nr, &sz) < 0)
-        goto done;
-    cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
-    retval = 0;
- done:
-    if (xn)
-        xml_free(xn);
-    return retval;
-}
-
 /*! Do lock checks and lock
 
  * @param[in]  h     Clixon handle
@@ -1681,245 +1603,6 @@ from_client_compare(clixon_handle h,
     return retval;
 }
 
-/*! Set debug level.
- *
- * @param[in]  h       Clixon handle
- * @param[in]  xe      Request: <rpc><xn></rpc>
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-from_client_debug(clixon_handle h,
-                  cxobj        *xe,
-                  cbuf         *cbret,
-                  void         *arg,
-                  void         *regarg)
-{
-    int      retval = -1;
-    uint32_t level;
-    char    *valstr;
-
-    if ((valstr = xml_find_body(xe, "level")) == NULL){
-        if (netconf_missing_element(cbret, "application", "level", NULL) < 0)
-            goto done;
-        goto ok;
-    }
-    level = atoi(valstr);
-
-    clixon_debug_init(h, level); /* 0: dont debug, 1:debug */
-    setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-    clixon_log(h, LOG_NOTICE, "%s debug:%d", __func__, clixon_debug_get());
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
- ok:
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Check liveness of backend daemon,  just send a reply
- *
- * @param[in]  h       Clixon handle
- * @param[in]  xe      Request: <rpc><xn></rpc>
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-from_client_ping(clixon_handle h,
-                 cxobj        *xe,
-                 cbuf         *cbret,
-                 void         *arg,
-                 void         *regarg)
-{
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
-    return 0;
-}
-
-/*! Check liveness of backend daemon,  just send a reply
- *
- * @param[in]  h       Clixon handle
- * @param[in]  xe      Request: <rpc><xn></rpc>
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-from_client_stats(clixon_handle h,
-                  cxobj        *xe,
-                  cbuf         *cbret,
-                  void         *arg,
-                  void         *regarg)
-{
-    int        retval = -1;
-    uint64_t   nr;
-    char      *str;
-    int        modules = 0;
-    yang_stmt *ymounts;
-    yang_stmt *ydomain;
-    yang_stmt *yspec;
-    yang_stmt *ymodule;
-    cxobj     *xt = NULL;
-    char      *domain;
-    int        inext;
-    int        inext2;
-    int        inext3;
-
-    if ((str = xml_find_body(xe, "modules")) != NULL)
-        modules = strcmp(str, "true") == 0;
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
-    cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
-    nr=0;
-    xml_stats_global(&nr);
-    cprintf(cbret, "<xmlnr>%" PRIu64 "</xmlnr>", nr);
-    nr=0;
-    yang_stats_global(&nr);
-    cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
-    cprintf(cbret, "</global>");
-    cprintf(cbret, "<datastores xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_stats_datastore_get(h, "running", cbret) < 0)
-        goto done;
-    if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
-        goto done;
-    if (if_feature(h, "ietf-netconf", "startup"))
-	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
-	    goto done;
-    cprintf(cbret, "</datastores>");
-    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
-        goto done;
-    }
-    cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
-    inext = 0;
-    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
-        domain = yang_argument_get(ydomain);
-        /* per module-set, first configuration, then main dbspec, then mountpoints */
-        inext2 = 0;
-        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
-            cprintf(cbret, "<module-set>");
-            cprintf(cbret, "<name>%s/%s</name>", domain, yang_argument_get(yspec));
-            if (clixon_stats_yang_get(h, yspec, cbret) < 0)
-                goto done;
-            if (modules){
-                inext3 = 0;
-                while ((ymodule = yn_iter(yspec, &inext3)) != NULL) {
-                    cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ymodule));
-                    if (clixon_stats_yang_get(h, ymodule, cbret) < 0)
-                        goto done;
-                    cprintf(cbret, "</module>");
-                }
-            }
-            cprintf(cbret, "</module-set>");
-        }
-    }
-    cprintf(cbret, "</module-sets>");
-    cprintf(cbret, "</rpc-reply>");
-    retval = 0;
- done:
-    if (xt)
-	xml_free(xt);
-    return retval;
-}
-
-/*! Request restart of specific plugins
- *
- * @param[in]  h       Clixon handle
- * @param[in]  xe      Request: <rpc><xn></rpc>
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-from_client_restart_plugin(clixon_handle h,
-                           cxobj        *xe,
-                           cbuf         *cbret,
-                           void         *arg,
-                           void         *regarg)
-{
-    int            retval = -1;
-    char          *name;
-    cxobj        **vec = NULL;
-    size_t         veclen;
-    int            i;
-    clixon_plugin_t *cp;
-    int            ret;
-
-    if (xpath_vec(xe, NULL, "plugin", &vec, &veclen) < 0)
-        goto done;
-    for (i=0; i<veclen; i++){
-        name = xml_body(vec[i]);
-        if ((cp = clixon_plugin_find(h, name)) == NULL){
-            if (netconf_bad_element(cbret, "application", "plugin", "No such plugin") < 0)
-                goto done;
-            goto ok;
-        }
-        if ((ret = from_client_restart_one(h, cp, cbret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto ok; /* cbret set */
-   }
-    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
- ok:
-    retval = 0;
- done:
-    if (vec)
-        free(vec);
-    return retval;
-}
-
-/*! Control a specific process or daemon: start/stop, etc
- *
- * @param[in]  h       Clixon handle
- * @param[in]  xe      Request: <rpc><xn></rpc>
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK
- * @retval    -1       Error
- */
-static int
-from_client_process_control(clixon_handle h,
-                            cxobj        *xe,
-                            cbuf         *cbret,
-                            void         *arg,
-                            void         *regarg)
-{
-    int            retval = -1;
-    cxobj         *x;
-    char          *name = NULL;
-    char          *opstr = NULL;
-    proc_operation op = PROC_OP_NONE;
-
-    if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
-        name = xml_body(x);
-    if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL){
-        opstr = xml_body(x);
-        op = clixon_process_op_str2int(opstr);
-    }
-    /* Make the actual process operation (with wrap function enabled) */
-    if (op == PROC_OP_STATUS){
-        if (clixon_process_status(h, name, cbret) < 0)
-            goto done;
-    }
-    else{
-        if (clixon_process_operation(h, name, op, 1) < 0)
-            goto done;
-        cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok xmlns=\"%s\"/></rpc-reply>",
-                NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS);
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Clixon hello to check liveness
  *
  * @param[in]  h       Clixon handle
@@ -2331,7 +2014,8 @@ from_client(int   s,
  * @retval     0     OK
  * @retval    -1     Error (fatal)
  * @see ietf-netconf@2011-06-01.yang 
- * @see rpc_callback_call  where invocation is made
+ * @see  rpc_callback_call  where invocation is made
+ * @see  backend_clixon_lib_init  where clixon-specific rpc:s are setup
  */
 int
 backend_rpc_init(clixon_handle h)
@@ -2372,20 +2056,9 @@ backend_rpc_init(clixon_handle h)
     if (rpc_callback_register(h, action_callback_call, NULL,
                       YANG_XML_NAMESPACE, "action") < 0)
         goto done;
-    /* In backend_commit.? */
-    if (rpc_callback_register(h, from_client_commit, NULL,
-                      NETCONF_BASE_NAMESPACE, "commit") < 0)
-        goto done;
-    if (rpc_callback_register(h, from_client_discard_changes, NULL,
-                      NETCONF_BASE_NAMESPACE, "discard-changes") < 0)
-        goto done;
     /* if-feature confirmed-commit */
     if (rpc_callback_register(h, from_client_cancel_commit, NULL,
                       NETCONF_BASE_NAMESPACE, "cancel-commit") < 0)
-        goto done;
-    /* if-feature validate */
-    if (rpc_callback_register(h, from_client_validate, NULL,
-                      NETCONF_BASE_NAMESPACE, "validate") < 0)
         goto done;
     /* In backend_client.? RPC from RFC 5277 */
     if (rpc_callback_register(h, from_client_create_subscription, NULL,
@@ -2398,29 +2071,6 @@ backend_rpc_init(clixon_handle h)
     /* RFC 9144: ietf-nmda-compare */
     if (rpc_callback_register(h, from_client_compare, NULL,
                       NETCONF_COMPARE_NAMESPACE, "compare") < 0)
-        goto done;
-    /* draft-ietf-netconf-privcand */
-    if (rpc_callback_register(h, from_client_update, NULL,
-                              NETCONF_PRIVCAND_NAMESPACE, "update") < 0)
-        goto done;
-    /* Clixon RPC */
-    if (rpc_callback_register(h, from_client_debug, NULL,
-                              CLIXON_LIB_NS, "debug") < 0)
-        goto done;
-    if (rpc_callback_register(h, from_client_ping, NULL,
-                              CLIXON_LIB_NS, "ping") < 0)
-        goto done;
-    if (rpc_callback_register(h, from_client_stats, NULL,
-                              CLIXON_LIB_NS, "stats") < 0)
-        goto done;
-    if (rpc_callback_register(h, from_client_restart_plugin, NULL,
-                              CLIXON_LIB_NS, "restart-plugin") < 0)
-        goto done;
-    if (rpc_callback_register(h, from_client_process_control, NULL,
-                              CLIXON_LIB_NS, "process-control") < 0)
-        goto done;
-    if (rpc_callback_register(h, from_client_clixon_cache, NULL,
-                              CLIXON_LIB_NS, "clixon-cache") < 0)
         goto done;
     retval =0;
  done:

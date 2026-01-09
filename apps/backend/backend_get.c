@@ -277,7 +277,7 @@ get_state_data(clixon_handle h,
             if ((ret = backend_monitoring_state_get(h, yspec, xpath, nsc, &x1, &xerr)) < 0)
                 goto done;
             if (ret == 0){
-                if (clixon_netconf_internal_error(xerr, " . Internal error, baenckend_monitoring_state_get returned invalid XML", NULL) < 0)
+                if (clixon_netconf_internal_error(xerr, " . Internal error, backend_monitoring_state_get returned invalid XML", NULL) < 0)
                     goto done;
                 if (*xret)
                     xml_free(*xret);

@@ -1520,7 +1520,22 @@ xpath2xml_traverse(xpath_tree *xs,
                 goto done;
             goto fail;
         }
-        if (yang_keyword_get(y0) == Y_SPEC){ /* top-node */
+        if ((ret = yang_schema_mount_point(y0)) < 0)
+            goto done;
+        if (ret == 1){
+            yang_stmt *yspec;
+            if (yang_mount_get_yspec_any(y0, &yspec) == 1){
+                if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
+                    cprintf(cberr, "No such yang module namespace");
+                    if (xerr &&
+                        netconf_unknown_element_xml(xerr, "application", namespace, cbuf_get(cberr)) < 0)
+                        goto done;
+                    goto fail;
+                }
+                y0 = ymod;
+            }
+        }
+        else if (yang_keyword_get(y0) == Y_SPEC){ /* top-node */
             if ((ymod = yang_find_module_by_namespace(y0, namespace)) == NULL){
                 cprintf(cberr, "No such yang module namespace");
                 if (xerr &&

@@ -1138,6 +1138,8 @@ xml_childvec_set(cxobj *x,
 }
 
 /*! Get the children of an XML node as an XML vector
+ *
+ * @param[in]  x   XML node
  */
 cxobj **
 xml_childvec_get(cxobj *x)

@@ -95,6 +95,7 @@ APPSRC += backend_get.c
 APPSRC += backend_plugin_restconf.c # Pseudo plugin for restconf daemon
 APPSRC += backend_startup.c
 APPSRC += backend_cache.c
+APPSRC += backend_clixon_lib.c
 APPOBJ  = $(APPSRC:.c=.o)
 
 # Accessible from plugin
@@ -134,7 +135,7 @@ distclean: clean
 # Put other executables in libexec/
 # Also create a libexec/ directory for writeable/temporary files.
 # Put config file in etc/
-install:	install-lib	$(APPL)
+install:	install-lib $(APPL)
 	install -d -m 0755 $(DESTDIR)$(sbindir)
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
 
@@ -210,4 +211,3 @@ depend:
 	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(LIBSRC) $(APPSRC) > .depend
 
 #include .depend
-
