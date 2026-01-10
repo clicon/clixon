@@ -83,6 +83,7 @@ int autocli_compress(clixon_handle h, yang_stmt *ys, int *compress);
 int autocli_treeref_state(clixon_handle h, int *treeref_state);
 int autocli_edit_mode(clixon_handle h, const char *keyw, int *flag);
 int autocli_cache(clixon_handle h, autocli_cache_t *type, char **dir);
-
+int clixon_cli2file(clixon_handle h, FILE *f, cxobj *xn, const char *prepend, clicon_output_cb *fn, int skiptop);
+int clixon_cli2cbuf(clixon_handle h, cbuf *cb, cxobj *xn, const char *prepend, int skiptop);
 
 #endif  /* _CLIXON_AUTOCLI_H_ */

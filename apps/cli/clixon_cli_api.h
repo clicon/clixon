@@ -66,7 +66,6 @@ void cli_signal_flush(clixon_handle h);
 int mtpoint_paths(clixon_handle h, yang_stmt *yspec0, const char *domain, const char *spec,
                   const char *api_path_fmt1, char **api_path_fmt01);
 int dbxml_body(cxobj *xbot, cvec *cvv);
-int identityref_add_ns(cxobj *x, void *arg);
 int cli_dbxml(clixon_handle h, cvec *vars, cvec *argv, enum operation_type op, cvec *nsctx);
 int cli_set(clixon_handle h, cvec *vars, cvec *argv);
 int cli_merge(clixon_handle h, cvec *vars, cvec *argv);
@@ -110,8 +109,6 @@ int expand_yang_list(void *h, char *name, cvec *cvv, cvec *argv,
                      cvec *commands, cvec *helptexts);
 int expand_yang_bits(void *h, char *name, cvec *cvv, cvec *argv,
                      cvec *commands, cvec *helptexts);
-int clixon_cli2file(clixon_handle h, FILE *f, cxobj *xn, char *prepend, clicon_output_cb *fn, int skiptop);
-int clixon_cli2cbuf(clixon_handle h, cbuf *cb, cxobj *xn, char *prepend, int skiptop);
 /* cli_show.c: CLIgen new vector arg callbacks */
 int cli_show_common(clixon_handle h, char *db, enum format_enum format, int pretty, int state, char *withdefault, char *extdefault, char *prepend, char *xpath, int fromroot, cvec *nsc, int skiptop);
 
