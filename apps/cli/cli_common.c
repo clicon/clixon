@@ -421,8 +421,11 @@ cli_dbxml(clixon_handle       h,
     if (xml_add_attr(xbot, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) == NULL)
         goto done;
     /* Add body last in case of leaf */
-    if (cvec_len(cvv) > 1 &&
-        (yang_keyword_get(y) == Y_LEAF)){
+    if (cvec_len(cvv) > 1
+#ifndef EXPAND_USE_SERVER_YANG
+        && (yang_keyword_get(y) == Y_LEAF)
+#endif
+        ){
         /* Add the body last if there is remaining element that was not used in the
          * earlier api-path transformation.
          * This is to handle differences between:

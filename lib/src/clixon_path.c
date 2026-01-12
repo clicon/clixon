@@ -103,9 +103,14 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_schema_mount.h"
+#include "clixon_proto_client.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 #include "clixon_instance_id_parse.h"
+
+#ifdef EXPAND_USE_SERVER_YANG1
+clixon_handle noyang_client_h = 0;
+#endif
 
 /*! Given api-path, parse it, and return a clixon-path struct
  *
@@ -1003,6 +1008,13 @@ api_path2xpath(const char *api_path,
     cbuf  *xpath = NULL; /* xpath as cbuf (sub-function uses that) */
     int    ret;
 
+#ifdef EXPAND_USE_SERVER_YANG1
+    if  (noyang_client_h){
+        if (clixon_rpc_yang_api_path(noyang_client_h, api_path, 0, NULL, xpathp, nsc) < 0)
+            goto done;
+        goto ok;
+    }
+#endif
     if (api_path == NULL){
         clixon_err(OE_XML, EINVAL, "api_path is NULL");
         goto done;
@@ -1031,6 +1043,9 @@ api_path2xpath(const char *api_path,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
+#ifdef EXPAND_USE_SERVER_YANG1
+ ok:
+#endif
     retval = 1;
  done:
     if (cvv)
@@ -1424,6 +1439,29 @@ api_path2xml_mnt(const char       *api_path,
     cxobj *xroot;
     cbuf  *cberr = NULL;
 
+#ifdef EXPAND_USE_SERVER_YANG1 // This is and experiment to automatically make an RPC to server instead of local call
+    if  (noyang_client_h){
+        char  *xpath = NULL;
+        cvec  *nsc = NULL;
+        cxobj *xbot = NULL;
+
+        if (clixon_rpc_yang_api_path(noyang_client_h, api_path, 0, xtop, &xpath, &nsc) < 0)
+            goto done;
+        if ((xbot = xpath_first(xtop, nsc, "%s", xpath)) == NULL){
+            clixon_err(OE_XML, 0, "No XML from XPath %s", xpath);
+            goto done;
+        }
+        if (xbotp)
+            *xbotp = xbot;
+        if (ybotp)
+            *ybotp = xml_spec(xbot);
+        if (xpath)
+            free(xpath);
+        if (nsc)
+            cvec_free(nsc);
+        goto ok;
+   }
+#endif
     clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "api_path:%s", api_path);
     if ((cberr = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -1453,11 +1491,14 @@ api_path2xml_mnt(const char       *api_path,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
     /* Fix namespace */
-    if (xbotp){
+    if (xbotp && (*xbotp != xtop)){
         xml_yang_root(*xbotp, &xroot);
         if (xmlns_assign(xroot) < 0)
             goto done;
     }
+#ifdef EXPAND_USE_SERVER_YANG1
+ ok:
+#endif
     retval = 1;
  done:
     if (cberr)

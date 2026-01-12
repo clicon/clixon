@@ -21,6 +21,9 @@ Expected: February 2026
 
 ### Features
 
+* YANG optimization
+  * Reduced yang-stmt struct for derived trees
+  * Make server calls instead of client for yang, api-path, xpath calls
 * New debug logs
   * Extended debug levels for `-D` command-line options
     * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags

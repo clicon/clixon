@@ -316,10 +316,30 @@
  */
 #undef CLIXON_RELAX_VALIDATE
 
+/*--------------------- YANG optimization for for 7.7 ------------------*/
 /*! Yang optimization making smaller yang-stmt struct for derived tree
  *
  * See uses_orig_ptr CLICON_YANG_USE_ORIGINAL YANG_FLAG_MINI
- * _CV is sub-option for optimizing cv in yang_stmt
  */
 #define YANG_MEM_OPT
-#define YANG_MEM_OPT_CV
+
+/*! sub-option of YANGMEM_OPT for optimizing cv in yang_stmt
+ *
+ * Some tests dont work: test_augment.sh, test_yang_deviation.sh
+ */
+#undef YANG_MEM_OPT_CV
+
+/*! Dont use yang in client-side expand
+ *
+ * Or more generally dont use yang from cli
+ * Defines global varibles: noyang_dont_bind,  noyang_dont_parse which should be removed in a proper commit
+ * Some autocli tests dont work
+ */
+#define EXPAND_USE_SERVER_YANG
+
+/*! Make server calls instead of client for api_path2xpath/xml calls
+ *
+ * Defines global variable: noyang_client_h
+ * Lots of tests dont work
+ */
+#undef EXPAND_USE_SERVER_YANG1

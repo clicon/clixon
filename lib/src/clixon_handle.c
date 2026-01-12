@@ -95,6 +95,9 @@ struct clixon_handle {
     event_stream_t   *ch_stream;   /* notification streams, see clixon_stream.[ch] */
 };
 
+#ifdef EXPAND_USE_SERVER_YANG1
+extern clixon_handle noyang_client_h;
+#endif
 /*! Internal call to allocate a CLICON handle. 
  *
  * @param[in] size Size of handle (internal) struct.
@@ -129,6 +132,9 @@ clixon_handle_init0(int size)
         goto done;
     }
     h = (clixon_handle)ch;
+#ifdef EXPAND_USE_SERVER_YANG1
+    noyang_client_h = h;
+#endif
   done:
     return h;
 }

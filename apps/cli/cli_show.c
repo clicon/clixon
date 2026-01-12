@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * 
+ *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -61,8 +61,6 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 
-#include <assert.h> // XXX
-
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -73,6 +71,11 @@
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
 
+#ifdef EXPAND_USE_SERVER_YANG
+extern int noyang_dont_bind;
+#endif
+
+#ifndef EXPAND_USE_SERVER_YANG
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)
  *
  * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
@@ -184,6 +187,7 @@ xpath_append(cbuf      *cb0,
     free(vec);
     return retval;
 }
+#endif /* EXPAND_USE_SERVER_YANG */
 
 /*! Insert (escaped) strings into expand commands
  *
@@ -337,14 +341,9 @@ expand_dbvar(clixon_handle h,
     size_t           xlen = 0;
     cg_var          *cv;
     cg_obj          *co;
-    cxobj           *xtop = NULL; /* xpath root */
-    cxobj           *xbot = NULL; /* xpath, NULL if datastore */
-    yang_stmt       *y = NULL; /* yang spec of xpath */
     cvec            *nsc = NULL;
     int              cvvi = 0;
     cbuf            *cbxpath = NULL;
-    yang_stmt       *ypath;
-    yang_stmt       *ytype;
     char            *mtdomain = NULL;
     char            *mtspec = NULL;
     yang_stmt       *yspec0 = NULL;
@@ -353,7 +352,16 @@ expand_dbvar(clixon_handle h,
     cvec            *callback_cvv;
     int              argc = 0;
     cvec            *cvv2 = NULL;
+#ifdef EXPAND_USE_SERVER_YANG
+    char            *ystr = NULL;
+#else
+    yang_stmt       *y = NULL; /* yang spec of xpath */
+    yang_stmt       *ytype;
+    yang_stmt       *ypath;
+        cxobj           *xtop = NULL; /* xpath root */
+    cxobj           *xbot = NULL; /* xpath, NULL if datastore */
     int              ret;
+#endif
 
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
@@ -411,14 +419,29 @@ expand_dbvar(clixon_handle h,
     }
     if (api_path == NULL)
         goto ok;
-    /* Create config top-of-tree */
-    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+    if ((cbxpath = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
-    xbot = xtop;
+    }
     /* This is primarily to get "y",
      * xpath2xml would have worked!!
      * XXX: but y is just the first in this list, there could be other y:s?
      */
+#ifdef EXPAND_USE_SERVER_YANG
+    if (clixon_rpc_yang_api_path(h, api_path,
+                                 cvec_find(co->co_cvec, "leafref-no-refer") == NULL,
+                                 NULL,
+                                 NULL, &xpath, &nsc) < 0)
+        goto done;
+    if (xpath == NULL){
+        clixon_err(OE_YANG, 0, "xpath is NULL");
+        goto done;
+    }
+#else
+    /* Create config top-of-tree */
+    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    xbot = xtop;
     if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
         goto done;
     if (ret == 0){
@@ -436,10 +459,7 @@ expand_dbvar(clixon_handle h,
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
         goto done;
     }
-    if ((cbxpath = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
-    }
+#endif
     if (mtdomain){
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
             goto done;
@@ -448,10 +468,10 @@ expand_dbvar(clixon_handle h,
             cvec_append_var(nsc, cv);
     }
     cprintf(cbxpath, "%s", xpath);
+#ifndef EXPAND_USE_SERVER_YANG
     if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
         strcmp(yang_argument_get(ytype), "leafref") == 0 &&
         cvec_find(co->co_cvec, "leafref-no-refer") == NULL){
-
         /* Special case for leafref. Detect leafref via Yang-type,
          * Get Yang path element, tentatively add the new syntax to the whole
          * tree and apply the path to that.
@@ -486,9 +506,20 @@ expand_dbvar(clixon_handle h,
         if (xpath_append(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
             goto done;
     }
+#endif
     /* Get configuration based on cbxpath */
+    /* Get configuration based on cbxpath */
+#ifdef EXPAND_USE_SERVER_YANG
+    noyang_dont_bind = 1;
+    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0){
+        noyang_dont_bind = 0;
+        goto done;
+    }
+    noyang_dont_bind = 0;
+#else
     if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
         goto done;
+#endif
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto ok;
@@ -501,6 +532,13 @@ expand_dbvar(clixon_handle h,
  ok:
     retval = 0;
  done:
+#ifdef EXPAND_USE_SERVER_YANG
+    if (ystr)
+        free(ystr);
+#else
+    if (xtop)
+        xml_free(xtop);
+#endif
     if (mtdomain)
         free(mtdomain);
     if (mtspec)
@@ -523,8 +561,6 @@ expand_dbvar(clixon_handle h,
         free(api_path);
     if (xvec)
         free(xvec);
-    if (xtop)
-        xml_free(xtop);
     if (xt)
         xml_free(xt);
     if (xpath)
@@ -832,21 +868,40 @@ cli_show_common(clixon_handle    h,
                 char            *xpath,
                 int              fromroot,
                 cvec            *nsc,
-                int              skiptop
-                )
+                int              skiptop)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
     cxobj **vec = NULL;
     size_t  veclen;
-    cxobj  *xp;
-    int     i;
     cxobj  *xerr;
+#ifdef EXPAND_USE_SERVER_YANG
+    cbuf   *cb = NULL;
+#else
+    int     i;
+    cxobj  *xp;
+#endif
 
     if (state && strcmp(db, "running") != 0){
         clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
         goto done;
     }
+#ifdef EXPAND_USE_SERVER_YANG
+    noyang_dont_bind = 1;
+    if (state == 0){     /* Get configuration-only from a database */
+        if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefault, &xt) < 0){
+            noyang_dont_bind = 0; // XXX
+            goto done;
+        }
+    }
+    else {               /* Get configuration and state from running */
+        if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefault, &xt) < 0){
+            noyang_dont_bind = 0; // XXX
+            goto done;
+        }
+    }
+   noyang_dont_bind = 0; // XXX
+#else
     if (state == 0){     /* Get configuration-only from a database */
         if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefault, &xt) < 0)
             goto done;
@@ -855,6 +910,7 @@ cli_show_common(clixon_handle    h,
         if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefault, &xt) < 0)
             goto done;
     }
+#endif
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
@@ -876,16 +932,35 @@ cli_show_common(clixon_handle    h,
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0)
         goto done;
     if (veclen){
+#ifdef EXPAND_USE_SERVER_YANG
+        // XXX vec not needed?
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (format == FORMAT_NETCONF){
+            if (clixon_rpc_translate_format(h, FORMAT_XML, xpath, nsc, xt, pretty, skiptop, prepend, cb) < 0)
+                goto done;
+            cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
+                          NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+            cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+            cligen_output(stdout, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+            cligen_output(stdout, "><edit-config><target><candidate/></target><config>");
+            if (pretty)
+                cligen_output(stdout, "\n");
+            cligen_output(stdout, "%s", cbuf_get(cb));
+            cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
+        }
+        else {
+            if (clixon_rpc_translate_format(h, format, xpath, nsc, xt, pretty, skiptop, prepend, cb) < 0)
+                goto done;
+            cligen_output(stdout, "%s", cbuf_get(cb));
+        }
+#else
         /* Special case LIST */
         if (format == FORMAT_JSON){
-            switch (format){
-            case FORMAT_JSON:
-                if (xml2json_vec(stdout, vec, veclen, pretty, cligen_output, skiptop) < 0)
-                    goto done;
-                break;
-            default:
-                break;
-            }
+            if (xml2json_vec(stdout, vec, veclen, pretty, cligen_output, skiptop) < 0)
+                goto done;
         }
         else    /* Default */
             for (i=0; i<veclen; i++){
@@ -927,11 +1002,16 @@ cli_show_common(clixon_handle    h,
                     break;
                 }
             }
+#endif
     }
     else if (format == FORMAT_JSON)
         cligen_output(stdout, "{}\n");
     retval = 0;
 done:
+#ifdef EXPAND_USE_SERVER_YANG
+    if (cb)
+        cbuf_free(cb);
+#endif
     if (vec)
         free(vec);
     if (xt)
@@ -1507,9 +1587,14 @@ cli_show_auto_mode(clixon_handle h,
         if (yang_mount_get(yu, mtxpath, &yspec) < 0)
             goto done;
     }
+#ifdef EXPAND_USE_SERVER_YANG // XXX yspec is not used can the call above be removed?
+    if (clixon_rpc_yang_api_path(h, api_path, 0, NULL, NULL, &xpath, &nsc) < 0)
+        goto done;
+#else
     yspec = yspec0;
     if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
         goto done;
+#endif
     if (xpath == NULL){
         clixon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
         goto done;

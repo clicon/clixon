@@ -86,6 +86,10 @@ typedef struct {
  */
 typedef int (api_path_mnt_cb_t)(clixon_handle h, cxobj *xmt, yang_stmt **yspec, cxobj **xerr);
 
+#ifdef EXPAND_USE_SERVER_YANG1
+extern clixon_handle noyang_client_h;
+#endif
+
 /*
  * Prototypes
  */

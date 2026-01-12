@@ -87,6 +87,10 @@
 static int _yang_unknown_anydata = 0;
 static int _netconf_message_id_optional = 0;
 
+#ifdef EXPAND_USE_SERVER_YANG
+int noyang_dont_bind = 0;
+#endif
+
 /*! Kludge to equate unknown XML with anydata
  *
  * The problem with this is that its global and should be bound to a handle
@@ -586,6 +590,10 @@ xml_bind_yang0_opt(clixon_handle h,
             goto done;
         if (ret == 0)
             goto ok;
+#ifdef EXPAND_USE_SERVER_YANG
+        if (noyang_dont_bind == 1)
+            goto ok;
+#endif
     }
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {

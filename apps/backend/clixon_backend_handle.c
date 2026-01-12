@@ -104,6 +104,9 @@ backend_handle_init(void)
     struct backend_handle *bh;
 
     bh = (struct backend_handle *)clixon_handle_init0(sizeof(struct backend_handle));
+#ifdef EXPAND_USE_SERVER_YANG1
+    noyang_client_h = NULL;
+#endif
     bh->bh_ce_nr = 1; /* To align with session-id */
     return (clixon_handle)bh;
 }

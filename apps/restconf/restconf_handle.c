@@ -106,6 +106,9 @@ restconf_handle_init(void)
     struct restconf_handle *rh;
 
     rh = clixon_handle_init0(sizeof(struct restconf_handle));
+#ifdef EXPAND_USE_SERVER_YANG1
+    noyang_client_h = NULL;
+#endif
     rh->rh_pretty = 1; /* clixon-restconf.yang : pretty is default true*/
     return rh;
 }
