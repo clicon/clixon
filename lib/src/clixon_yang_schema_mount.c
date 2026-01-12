@@ -124,6 +124,10 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_schema_mount.h"
 
+#ifdef EXPAND_USE_SERVER_YANG_0
+int noyang_dont_parse = 0;
+#endif
+
 /*! Check if YANG node is a RFC 8528 YANG schema mount
  *
  * Check if:
@@ -862,6 +866,9 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
         goto done;
     }
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
+#ifdef EXPAND_USE_SERVER_YANG_0
+    if (noyang_dont_parse==0)
+#endif
     if (new){ // XXX move ^
         /* Parse yang modules into yspec */
         if ((ret = yang_lib2yspec(h, xyanglib, xpath, domain, yspec1)) < 0)

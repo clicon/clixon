@@ -173,6 +173,26 @@ cat <<EOF > $nacmfile
              Allow get-config
          </comment>
        </rule>
+       <rule>
+         <name>permit-config-path-info</name>
+         <rpc-name>config-path-info</rpc-name>
+         <module-name>*</module-name>
+         <access-operations>exec</access-operations>
+         <action>permit</action>
+         <comment>
+             Allow config-path-info
+         </comment>
+       </rule>
+       <rule>
+         <name>permit-translate-format</name>
+         <rpc-name>translate-format</rpc-name>
+         <module-name>*</module-name>
+         <access-operations>exec</access-operations>
+         <action>permit</action>
+         <comment>
+             Allow translate-format
+         </comment>
+       </rule>
      </rule-list>
 
      $NADMIN

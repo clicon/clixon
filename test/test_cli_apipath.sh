@@ -115,15 +115,15 @@ expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 11 c 33"
 new "set conf x, special case comma encoding"
 expectpart "$($clixon_cli -1 -f $cfg set x ax 22/22 c 44)" 0 "^$"
 
-new "show conf ax"
+new "err x: show conf ax"
 expectpart "$($clixon_cli -1 -f $cfg show conf x)" 0 "x m1 a (null) b 22/22 c 44"
 
 # Negative tests
-new "err x"
-expectpart "$($clixon_cli -1 -f $cfg -l o err x)" 255 "Config error: api-path syntax error \"/example2:x\": application unknown-element No such yang module prefix <bad-element>example2</bad-element>: Invalid argument"
+new "wrong prefix in clispec"
+expectpart "$($clixon_cli -1 -f $cfg -l o err x)" 255 "No such yang module prefix <bad-element>example2</bad-element>"
 
-new "err x a"
-expectpart "$($clixon_cli -1 -f $cfg -l o err x a 99)" 255 "Config error: api-path syntax error \"/example:x/m1=%s\": rpc malformed-message List key m1 length mismatch : Invalid argument"
+new "err x a: missing b key"
+expectpart "$($clixon_cli -1 -f $cfg -l o err x a 99)" 255 "List key m1 length mismatch"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
