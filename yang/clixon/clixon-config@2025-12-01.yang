@@ -54,6 +54,8 @@ module clixon-config {
         description
             "Added options:
                 CLICON_AUTOCLI_CACHE_DIR
+             Changed default value
+                CLICON_YANG_USE_ORIGINAL: true
              Released in Clixon 7.7";
     }
     revision 2025-08-01 {
@@ -682,7 +684,7 @@ module clixon-config {
         }
         leaf CLICON_YANG_USE_ORIGINAL{
             type boolean;
-            default false;
+            default true;
             description
                 "YANG memory optimization.
                  If set, for a selected set of YANG nodes, (see uses_orig_ptr()):

@@ -1952,9 +1952,19 @@ ys_parse(yang_stmt   *ys,
     cg_var    *cv2 = NULL;
 
     if ((cv = yang_cv_get(ys)) != NULL){
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ys, YANG_FLAG_MINI) == 0x0){
         /* eg mandatory in uses is already set and then copied */
         cv_free(cv);
         yang_cv_set(ys, NULL);
+    }
+    else
+        goto ok;
+#else
+        /* eg mandatory in uses is already set and then copied */
+        cv_free(cv);
+        yang_cv_set(ys, NULL);
+#endif
     }
     if ((cv = cv_new(cvtype)) == NULL){
         clixon_err(OE_YANG, errno, "cv_new");
@@ -1975,7 +1985,17 @@ ys_parse(yang_stmt   *ys,
         }
         yang_cv_set(ys2, cv2);
     }
+#ifdef YANG_MEM_OPT_CV
+    if (yang_flag_get(ys, YANG_FLAG_MINI) != 0x0){
+        cv_free(cv);
+        cv = NULL;
+    }
+    else
+#endif
     yang_cv_set(ys, cv);
+#ifdef YANG_MEM_OPT_CV
+ ok:
+#endif
     /* cvret == 1 means parsing is OK */
   done:
     if (reason)
