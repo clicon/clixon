@@ -229,11 +229,8 @@ cat <<EOF > $cfg
   </autocli>
 </clixon-config>
 EOF
-} # setconfig
 
-new "Set config before backend start"
-setconfig kw-nokey false false
-
+# Due to autocli cache in backend need to restart backend
 new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
@@ -248,8 +245,13 @@ fi
 new "wait backend"
 wait_backend
 
+} # setconfig
+
+new "Initial set config"
+setconfig kw-nokey false false
+
 # Simple run trying setting a config, then deleting it, and reloading it
-# Run setconfig first 
+# Run setconfig first
 # 1. listkw   - either none, vars, all
 # 2. compress -   surrounding container entities are removed from list nodes
 function testrun()
@@ -270,7 +272,7 @@ function testrun()
 
     new "set a"
     expectpart "$($clixon_cli -1 -f $cfg set$table parameter$name a value x)" 0 ""
-    
+
     new "set b"
     expectpart "$($clixon_cli -1 -f $cfg set$table parameter$name b value y)" 0 ""
 

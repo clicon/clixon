@@ -316,3 +316,10 @@
  */
 #undef CLIXON_RELAX_VALIDATE
 
+/*! Dont use yang in client-side expand
+ *
+ * Or more generally dont use yang from cli
+ * Defines global varibles: noyang_dont_bind,  noyang_dont_parse which should be removed in a proper commit
+ * Some autocli tests dont work
+ */
+#define EXPAND_USE_SERVER_YANG_0

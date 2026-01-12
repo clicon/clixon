@@ -103,6 +103,7 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_schema_mount.h"
+#include "clixon_proto_client.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 #include "clixon_instance_id_parse.h"
@@ -1453,7 +1454,7 @@ api_path2xml_mnt(const char       *api_path,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
     /* Fix namespace */
-    if (xbotp){
+    if (xbotp && (*xbotp != xtop)){
         xml_yang_root(*xbotp, &xroot);
         if (xmlns_assign(xroot) < 0)
             goto done;
