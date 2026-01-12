@@ -390,7 +390,7 @@ if [ "$BE" -ne 0 ]; then
         err
     fi
     new "start backend -s init -f $cfg -o CLICON_YANG_USE_ORIGINAL=true"
-    start_backend -s init -f "$cfg -o CLICON_YANG_USE_ORIGINAL=true"
+    start_backend -s init -f $cfg -o CLICON_YANG_USE_ORIGINAL=true
 fi
 
 # use-original optimization and two deviations with separate uses to same grouping

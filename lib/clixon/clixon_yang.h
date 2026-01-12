@@ -62,6 +62,9 @@
                                * list elements using this index with binary search */
 #endif
 #define YANG_FLAG_STATE_LOCAL  0x10  /* Local inverted value of Y_CONFIG child */
+#ifdef YANG_MEM_OPT
+#define YANG_FLAG_MINI         0x20 /* Use mini-struct and orig-ptr to access all extra fields */
+#endif
 #define YANG_FLAG_DISABLED     0x40  /* Disabled due to if-feature evaluate to false
                                       * Transformed to ANYDATA but some code may need to check
                                       * why it is an ANYDATA
@@ -310,8 +313,8 @@ int        ys_prune_self(yang_stmt *ys);
 int        ys_free1(yang_stmt *ys, int self);
 int        ys_free(yang_stmt *ys);
 int        ys_cp_one(yang_stmt *nw, yang_stmt *old);
-int        ys_cp(yang_stmt *nw, yang_stmt *old);
-yang_stmt *ys_dup(yang_stmt *old);
+yang_stmt *ys_dup(yang_stmt *old, int orig, int mini);
+int        ys_replace(yang_stmt *yorig, yang_stmt *yfrom);
 int        yn_insert(yang_stmt *ys_parent, yang_stmt *ys_child);
 int        yn_insert1(yang_stmt *ys_parent, yang_stmt *ys_child);
 yang_stmt *yn_iter(yang_stmt *yparent, int *inext);

@@ -598,7 +598,7 @@ restconf_main_extension_cb(clixon_handle h,
     clixon_debug(CLIXON_DBG_RESTCONF, "Enabled extension:%s:%s", modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
-    if ((yn = ys_dup(yc)) == NULL)
+    if ((yn = ys_dup(yc, 0, 0)) == NULL)
         goto done;
     /* yang-data extension: The list-stmt is not required to have a key-stmt defined.
      */

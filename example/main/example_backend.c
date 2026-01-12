@@ -962,7 +962,7 @@ example_extension(clixon_handle h,
     clixon_debug(CLIXON_DBG_DEFAULT, "Enabled extension:%s:%s", modname, extname);
     if ((yc = yang_find(ys, 0, NULL)) == NULL)
         goto ok;
-    if ((yn = ys_dup(yc)) == NULL)
+    if ((yn = ys_dup(yc, 0, 0)) == NULL)
         goto done;
     if (yn_insert(yang_parent_get(ys), yn) < 0)
         goto done;
