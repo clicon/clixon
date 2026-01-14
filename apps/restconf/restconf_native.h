@@ -92,6 +92,7 @@ typedef struct  {
     void                 *sd_req;       /* Lib-specific request */
     int                   sd_upgrade2;  /* Upgrade to http/2 */
     uint8_t              *sd_settings2; /* Settings for upgrade to http/2 request */
+    int                   sd_freed;     /* Guard against double free */
 } restconf_stream_data;
 
 typedef struct restconf_socket restconf_socket;
@@ -109,6 +110,7 @@ typedef struct restconf_conn {
     int                   rc_proto_d1;  /* parsed version digit 1 */
     int                   rc_proto_d2;  /* parsed version digit 2 */
     int                   rc_s;         /* Connection socket */
+    int                   rc_closed;    /* Set after close to avoid double free */
     clixon_handle         rc_h;         /* Clixon handle */
     SSL                  *rc_ssl;       /* Structure for SSL connection */
     restconf_stream_data *rc_streams;   /* List of http/2 session streams */

@@ -364,15 +364,40 @@ api_return_err0(clixon_handle  h,
 {
     int    retval = -1;
     cxobj *xe;
+    int    created_err = 0;
+    cxobj *xnew = NULL;
+    cbuf  *cb = NULL;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((xe = xml_find_type(xerr, NULL, "rpc-error", CX_ELMNT)) == NULL){
-        clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
-        goto done;
+        /* Log what we actually got to ease debugging */
+        if (xerr && (cb = cbuf_new()) != NULL){
+            /* Best effort dump of unexpected error payload */
+            clixon_xml2cbuf(cb, xerr, 0, pretty, NULL, -1, 0);
+            clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>.. Payload:\"%s\"",
+                       cbuf_get(cb));
+        }
+        else
+            clixon_err(OE_XML, EINVAL, "Expected xml on the form <rpc-error>..");
+        /* Fall back to a generic operation-failed rpc-error so we can return
+         * a proper RESTCONF error instead of aborting the connection.
+         */
+        if (netconf_operation_failed_xml(xerr ? &xerr : &xnew,
+                                         "application",
+                                         "restconf internal error: missing rpc-error") < 0)
+            goto done;
+        created_err = 1;
+        if ((xe = xml_find_type(xerr ? xerr : xnew, NULL, "rpc-error", CX_ELMNT)) == NULL)
+            goto done;
     }
     if (api_return_err(h, req, xe, pretty, media, code) < 0)
         goto done;
     retval = 0;
  done:
+    if (cb)
+        cbuf_free(cb);
+    /* Free synthesized container if caller did not supply one */
+    if (created_err && xerr == NULL && xnew)
+        xml_free(xnew);
     return retval;
 }
