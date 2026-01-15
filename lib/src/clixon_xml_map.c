@@ -1507,6 +1507,23 @@ yang_check_when_xpath(cxobj        *xn,
     if (x && xpath){
         if ((nr = xpath_vec_bool(x, nsc, "%s", xpath)) < 0)
             goto done;
+        if (nr == 0){
+            char *xpath_raw = NULL;
+            cvec *nsc_raw = NULL;
+            cxobj *xraw = NULL;
+
+            if (yang_when_xpath_get(yn, &xpath_raw, &nsc_raw) < 0)
+                goto done;
+            if (xpath_raw && nsc_raw){
+                xraw = xn ? xn : x;
+                if ((nr = xpath_vec_bool(xraw, nsc_raw, "%s", xpath_raw)) < 0){
+                    xml_nsctx_free(nsc_raw);
+                    goto done;
+                }
+            }
+            if (nsc_raw)
+                xml_nsctx_free(nsc_raw);
+        }
     }
     if (nrp)
         *nrp = nr;
