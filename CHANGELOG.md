@@ -34,6 +34,7 @@ Expected: February 2026
     * This includes read and clear operations between cli client and backend
 * New `clixon-config@2025-12-01.yang` revision
    * Added `CLICON_AUTOCLI_CACHE_DIR`
+   * Changed default value of `CLICON_CLI_TAB_MODE` to 0x08 (due to cligen change)
 * New `clixon-lib@2025-12-01.yang` revision
    * Added `rpc clixon-cache`
 * New `clixon-autocli@2025-12-01.yang` revision
