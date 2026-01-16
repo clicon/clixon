@@ -72,7 +72,9 @@ module clixon-lib {
     revision 2025-12-01 {
         description
             "Added:
+                extension error-message
                 rpc clixon-cache
+                rpc yang-api-path
                 rpc translate-format
              Released in Clixon 7.7";
     }
@@ -401,6 +403,14 @@ module clixon-lib {
              still needs to be valid XML wrt YANG.
              An example of an invalid marking would be a list key. Because if the list keys are
              removed, the remaining XML would no longer be valid wrt the YANG list";
+    }
+    extension error-message {
+        description
+            "In RFC 7950 error-message as described in Section 7.5.4.1 is defined for YANG must, and
+             type fields range, length and pattern.
+             This extension adds an error-message to other places in YANG than defined in RFC 7950.
+             Note: Only applicable to leafref and in effect only when instance-required = true";
+        argument message;
     }
     md:annotation creator {
         type string;

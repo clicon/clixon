@@ -21,6 +21,8 @@ Expected: February 2026
 
 ### Features
 
+* Customized error message for leafrefs
+  * See https://clixon-docs.readthedocs.io/en/latest/errors.html#error-message-extension
 * New debug logs
   * Extended debug levels for `-D` command-line options
     * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags
@@ -36,7 +38,11 @@ Expected: February 2026
    * Added `CLICON_AUTOCLI_CACHE_DIR`
    * Changed default value of `CLICON_CLI_TAB_MODE` to 0x08 (due to cligen change)
 * New `clixon-lib@2025-12-01.yang` revision
-   * Added `rpc clixon-cache`
+   * Added:
+     * extension error-message
+     * rpc clixon-cache
+     * rpc yang-api-path
+     * rpc translate-format
 * New `clixon-autocli@2025-12-01.yang` revision
    * Deprecated `clispec-cache` and `clispec-cache-dir`
 

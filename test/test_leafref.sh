@@ -36,6 +36,9 @@ module example{
     import ietf-ip {
       prefix ip;
     }
+    import clixon-lib {
+      prefix cl;
+    }
     identity eth {
         base if:interface-type;
     }
@@ -77,6 +80,14 @@ module example{
              type leafref {
                  path "/ip:interfaces/ip:interface/ip:name";
                  require-instance true;
+             }
+         }
+         leaf custom {
+             description "Customized error-message";
+             type leafref {
+                 path "/if:interfaces/if:interface/if:name";
+                 require-instance true;
+                 cl:error-message "The interface is not found";
              }
          }
     }
@@ -152,11 +163,11 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "leafref add non-existing ref"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><default-address xmlns=\"urn:example:clixon\"><absname>eth3</absname><address>10.0.4.6</address></default-address></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "leafref validate"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>instance-required</error-app-tag><error-path>/if:interfaces/if:interface/if:name</error-path><error-info><absname>eth3</absname></error-info><error-severity>error</error-severity>" ""
+new "leafref validate expect fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>instance-required</error-app-tag><error-path>/if:interfaces/if:interface/if:name</error-path><error-info><absname>eth3</absname></error-info><error-severity>error</error-severity>"
 
-#new "leafref wrong ref"
-#expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><default-address xmlns=\"urn:example:clixon\"><wrong>eth3</wrong><address>10.0.4.6</address></default-address></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+new "leafref wrong ref"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><default-address xmlns=\"urn:example:clixon\"><wrong>eth3</wrong><address>10.0.4.6</address></default-address></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "leafref discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
@@ -194,6 +205,15 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "leafref discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "leafref custom errmsg add non-existing ref"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><default-address xmlns=\"urn:example:clixon\"><custom>eth3</custom></default-address></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref validate expect custom errmsg"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>instance-required</error-app-tag><error-path>/if:interfaces/if:interface/if:name</error-path><error-info>eth3</error-info><error-severity>error</error-severity><error-message>The interface is not found</error-message></rpc-error></rpc-reply>"
+
+new "leafref discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 new "cli leafref lo"
 expectpart "$($clixon_cli -1f $cfg -l o set default-address absname lo)" 0 "^$"
 
@@ -205,6 +225,12 @@ expectpart "$($clixon_cli -1f $cfg -l o set sender a)" 0 "^$"
 
 new "cli sender template"
 expectpart "$($clixon_cli -1f $cfg -l o set sender b template a)" 0 "^$"
+
+new "cli custom error"
+expectpart "$($clixon_cli -1f $cfg -l o set default-address custom eth3)" 0 "^$"
+
+new "cli leafref validate expect custom errmsg"
+expectpart "$($clixon_cli -1f $cfg -l o validate)" 255 "The interface is not found eth3: instance-required : /if:interfaces/if:interface/if:name"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

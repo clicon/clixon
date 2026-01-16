@@ -162,6 +162,7 @@ validate_errmsg(cbuf     **cbp,
  * @param[in]  xpath error-path
  * @param[in]  xt    Derive info, like: <ref>value</ref>
  * @param[in]  yt    Yang spec of xt
+ * @param[in]  ytype Type of leafref (if available)
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     0     OK
  * @retval    -1     Error
@@ -170,20 +171,36 @@ static int
 validate_leafref_err(char      *xpath,
                      cxobj     *xt,
                      yang_stmt *yt,
+                     yang_stmt *ytype,
                      cxobj    **xret)
 {
     int   retval = -1;
     cbuf *cbi = NULL;
     cbuf *cbm = NULL;
+    int   exist = 0;
+    char *msg = NULL;
 
     if ((cbi = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cbi, "<%s>%s</%s>", xml_name(xt), xml_body(xt), xml_name(xt));
-    if (validate_errmsg(&cbm, xt, yt) < 0)
+    if (ytype && yang_extension_value(ytype, "error-message", CLIXON_LIB_NS, &exist, &msg) < 0)
         goto done;
-    if (xret && netconf_missing_yang_xml(xret, xpath, "instance-required", cbuf_get(cbi), cbuf_get(cbm)) < 0)
+    /* Custom-error message if extension cl:error-message is set */
+    if (exist && msg){
+        if ((cbm = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cbm, "%s", msg);
+        cprintf(cbi, "%s", xml_body(xt));
+    }
+    else{
+        if (validate_errmsg(&cbm, xt, yt) < 0)
+            goto done;
+        cprintf(cbi, "<%s>%s</%s>", xml_name(xt), xml_body(xt), xml_name(xt));
+    }
+    if (xret && netconf_missing_yang_xml(xret, xpath, "instance-required",   cbuf_get(cbi), cbuf_get(cbm)) < 0)
         goto done;
     retval = 0;
  done:
@@ -424,16 +441,18 @@ match_leafref_child_list(cxobj     *x0,
  * @param[in]  xpath  leafref xpath
  * @param[in]  body   Body to search for
  * @param[in]  x0     Cached x0
+ * @param[in]  ytype  leafref type for errmsg
  * @param[out] xret   Matched object
  * @retval     1      Validation OK
  * @retval     0      Validation failed
  * @retval    -1      Error
  */
 static int
-leafref_opt_search(char   *xpath,
-                   cxobj  *xt,
-                   cxobj  *x0,
-                   cxobj **xret)
+leafref_opt_search(char      *xpath,
+                   cxobj     *xt,
+                   cxobj     *x0,
+                   yang_stmt *ytype,
+                   cxobj    **xret)
 {
     int        retval = -1;
     cxobj     *x0p;
@@ -471,7 +490,7 @@ leafref_opt_search(char   *xpath,
             goto done;
     }
     if (myx == NULL){
-        if (validate_leafref_err(xpath, xt, xml_spec(xt), xret) < 0)
+        if (validate_leafref_err(xpath, xt, xml_spec(xt), ytype, xret) < 0)
             goto done;
         goto fail;
     }
@@ -615,7 +634,7 @@ validate_leafref(cxobj     *xt,
             goto done;
     }
     if (leafref_opt.lc_bin_search){
-        if ((ret = leafref_opt_search(xpath, xt, leafref_opt.lc_bin_x0, xret)) < 0)
+        if ((ret = leafref_opt_search(xpath, xt, leafref_opt.lc_bin_x0, ytype, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -631,7 +650,7 @@ validate_leafref(cxobj     *xt,
                     break;
             }
             if (i==xlen){
-                if (validate_leafref_err(xpath, xt, yt, xret) < 0)
+                if (validate_leafref_err(xpath, xt, yt, ytype, xret) < 0)
                     goto done;
                 goto fail;
             }
