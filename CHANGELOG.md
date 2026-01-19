@@ -39,10 +39,8 @@ Expected: February 2026
    * Changed default value of `CLICON_CLI_TAB_MODE` to 0x08 (due to cligen change)
 * New `clixon-lib@2025-12-01.yang` revision
    * Added:
-     * extension error-message
-     * rpc clixon-cache
-     * rpc yang-api-path
-     * rpc translate-format
+     * extension: error-message
+     * rpcs: clixon-cache, config-path-info, translate-format
 * New `clixon-autocli@2025-12-01.yang` revision
    * Deprecated `clispec-cache` and `clispec-cache-dir`
 

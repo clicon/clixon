@@ -612,9 +612,9 @@ done:
  */
 static char *
 cli_prompt_get(clixon_handle h,
-               char         *fmt)
+               const char   *fmt)
 {
-    char   *s = fmt;
+    const char *s = fmt;
     char    hname[1024];
     char    tty[32];
     char   *tmp;
@@ -623,6 +623,10 @@ cli_prompt_get(clixon_handle h,
     char   *promptstr = NULL;
     char   *str0;
 
+    if (fmt == NULL){
+        clixon_err(OE_UNIX, EINVAL, "fmt is NULL");
+        goto done;
+    }
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;

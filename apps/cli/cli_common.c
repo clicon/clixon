@@ -354,16 +354,13 @@ cli_dbxml(clixon_handle       h,
     char      *api_path = NULL;
     cbuf      *cb = NULL;
     cxobj     *xbot = NULL;     /* xpath, NULL if datastore */
-    yang_stmt *y = NULL;        /* yang spec of xpath */
     cxobj     *xtop = NULL;     /* xpath root */
-    cxobj     *xerr = NULL;
     cg_var    *cv;
     int        cvvi = 0;
     char      *mtdomain = NULL;
     char      *mtspec = NULL;
     yang_stmt *yspec0 = NULL;
     int        argc = 0;
-    int        ret;
 
     /* Top-level yspec */
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -410,43 +407,30 @@ cli_dbxml(clixon_handle       h,
         goto done;
     xbot = xtop;
     if (api_path){
-        clixon_debug(CLIXON_DBG_XPATH, "api_path:%s", api_path);
-        if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 1, &xbot, &y, &xerr)) < 0)
+        size_t len;
+        char  *body = NULL;
+        char  *xpath = NULL;
+        cvec  *nsc = NULL;
+
+        if ((len = cvec_len(cvv)) > 1 && cvvi != len){
+            cv = cvec_i(cvv, len-1);
+            if ((body = cv2str_dup(cv)) == NULL){
+                clixon_err(OE_UNIX, errno, "cv2str_dup");
+                goto done;
+            }
+        }
+        if (clixon_rpc_api_path2xml(h, api_path, body, xtop, &xpath, &nsc) < 0)
             goto done;
-        if (ret == 0){
-            clixon_err_netconf(h, OE_CFG, EINVAL, xerr, "api-path syntax error \"%s\"", api_path_fmt);
+        if ((xbot = xpath_first(xtop, nsc, "%s", xpath)) == NULL){
+            clixon_err(OE_XML, 0, "No XML from XPath %s", xpath);
             goto done;
         }
+        if (xpath)
+            free(xpath);
+        if (nsc)
+            cvec_free(nsc);
     }
     if (xml_add_attr(xbot, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) == NULL)
-        goto done;
-    /* Add body last in case of leaf */
-    if (cvec_len(cvv) > 1 &&
-        (yang_keyword_get(y) == Y_LEAF)){
-        /* Add the body last if there is remaining element that was not used in the
-         * earlier api-path transformation.
-         * This is to handle differences between:
-         * DELETE <foo>bar</foo> and DELETE <foo/>
-         * i.e., (1) deletion of a specific leaf entry vs (2) deletion of any entry
-         * Discussion: one can claim (1) is "bad" usage but one could see cases where
-         * you would want to delete a value if it has a specific value but not otherwise
-         */
-        if (cvvi != cvec_len(cvv))
-            if (dbxml_body(xbot, cvv) < 0)
-                goto done;
-        /* Loop over namespace context and add them to this leaf node */
-        cv = NULL;
-        while ((cv = cvec_each(nsctx, cv)) != NULL){
-            char *ns = cv_string_get(cv);
-            char *pf = cv_name_get(cv);
-            if (ns && pf && xmlns_set(xbot, pf, ns) < 0)
-                goto done;
-        }
-    }
-    /* Special handling of identityref:s whose body may be: <namespace prefix>:<id>
-     * Ensure the namespace is declared if it exists in YANG
-     */
-    if ((ret = xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec0)) < 0)
         goto done;
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -466,8 +450,6 @@ cli_dbxml(clixon_handle       h,
         cbuf_free(api_path_fmt_cb);
     if (api_path_fmt01)
         free(api_path_fmt01);
-    if (xerr)
-        xml_free(xerr);
     if (cb)
         cbuf_free(cb);
     if (api_path)
