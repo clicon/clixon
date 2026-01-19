@@ -71,9 +71,13 @@ int clicon_rpc_debug(clixon_handle h, int level);
 int clicon_rpc_restconf_debug(clixon_handle h, int level);
 int clicon_hello_req(clixon_handle h, char *transport, char *source_host, uint32_t *id);
 int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, const char *domain, const char *spec, const char *module, const char *revision, const char *keyword, const char *argument, cbuf *data);
-int clixon_rpc_yang_api_path(clixon_handle h, const char *api_path, int leafref_refer, const char *body, cxobj *xtop, char **xpath, cvec **nsc);
+int clixon_rpc_config_path_info(clixon_handle h, const char *api_path, int strict, const char *xpath, cvec *nsc0,
+                                int leafref_refer, const char *body, cxobj *xtop,
+                                char **api_path1, char **xpath1, cvec **nsc1,
+                                char **symbol, char **prefix, char **ns, char **module, char **filename);
+int clixon_rpc_api_path2xml(clixon_handle h, const char *api_path, const char *body, cxobj *xtop, char **xpath, cvec **nsc);
 int clixon_rpc_translate_format(clixon_handle h, enum format_enum format, const char *xpath, cvec *nsc,
-                                cxobj *xt, int pretty, int skiptop, const char *prepend, cbuf *cb);
+                                cxobj *xt, int pretty, int skiptop, int cli_aware, const char *prepend, cbuf *cb);
 int clicon_rpc_restart_plugin(clixon_handle h, char *plugin);
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */

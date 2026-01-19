@@ -72,10 +72,8 @@ module clixon-lib {
     revision 2025-12-01 {
         description
             "Added:
-                extension error-message
-                rpc clixon-cache
-                rpc yang-api-path
-                rpc translate-format
+                extension: error-message
+                rpcs: clixon-cache, config-path-info, translate-format
              Released in Clixon 7.7";
     }
     revision 2025-08-01 {
@@ -432,10 +430,12 @@ module clixon-lib {
                 description
                     "prefix / namespace pair for XPath.";
                 key prefix;
-                leaf ns{
+                leaf prefix{
+                    description "Local prefix";
                     type string;
                 }
-                leaf prefix{
+                leaf ns{
+                    description "Namespace";
                     type string;
                 }
             }
@@ -669,14 +669,37 @@ module clixon-lib {
             }
         }
     }
-    rpc yang-api-path {
+    rpc config-path-info {
         description
-            "Translate from RFC 8040 api-path to XML and XPath";
+            "Get detailed information of configuration path: XPath or RFC 8040 api-path";
         input{
-            leaf api-path {
-                type string;
-                description
-                    "RFC 8040 api-path";
+            choice path {
+                case api-path {
+                    leaf api-path {
+                        type string;
+                        description
+                            "RFC 8040 api-path";
+                    }
+                    leaf strict{
+                        type boolean;
+                        default false;
+                        description
+                            "If false, accept incomplete api-paths, such as incomplete lists,
+                             this is necessary when completing keys for example";
+                    }
+                }
+                case xpath {
+                    leaf xpath {
+                        type string;
+                        description
+                            "XPath 1.0 according to https://www.w3.org/TR/xpath-10";
+                    }
+                    uses namespace-context{
+                        description
+                            "If given, use these prefix/namespace bindings.
+                             If not given, use implicit canonical YANG module prefix/namespace binding";
+                    }
+                }
                 mandatory true;
             }
             leaf leafref-refer {
@@ -685,11 +708,11 @@ module clixon-lib {
                      the XPath is extended by appending the path of the leafref to the original XPath.
                      If false, the XPath is not extended";
                 type boolean;
-                default true;
+                default false;
             }
             leaf body {
                 description
-                    "If innermost XML is leaf, add body";
+                    "If innermost XML is leaf, add body to xml output";
                 type string;
             }
         }
@@ -698,13 +721,42 @@ module clixon-lib {
                 description
                     "Minimal XML corresponding to given path and YANG in server";
             }
+            leaf api-path{
+                type string;
+                description
+                    "XPath corresponding to given api-path and YANG.
+                     Also, if last xml element is a leafref and if leafref-refer is true: append path to xpath.";
+            }
             leaf xpath{
                 type string;
                 description
                     "XPath corresponding to given api-path and YANG.
                      Also, if last xml element is a leafref and if leafref-refer is true: append path to xpath.";
             }
-            uses namespace-context;
+            uses namespace-context{
+                description
+                    "Prefix/namespace binding for xpath using canonical namespaces";
+            }
+            leaf symbol {
+                description "Yang statement of innermost XML symbol";
+                type string;
+            }
+            leaf prefix{
+                description "Local prefix of symbol";
+                type string;
+            }
+            leaf ns{
+                description "Namespace of symbol";
+                type string;
+            }
+            leaf module {
+                description "Yang module of symbol";
+                type string;
+            }
+            leaf filename {
+                description "File path of module";
+                type string;
+            }
         }
     }
     rpc translate-format {
@@ -737,6 +789,14 @@ module clixon-lib {
                 description
                     "If set, Skip top-object, only children";
                 type boolean;
+            }
+            leaf cli-aware {
+                type boolean;
+                default false;
+                description
+                    "Autocli extensions awareness: false: ignore true: follow.
+                     This applies when displaying config, eg there is a hide-show extension that
+                     hides sub-parts of the tree if this flag is true";
             }
             leaf prepend{
                 description

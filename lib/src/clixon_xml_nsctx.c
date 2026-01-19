@@ -776,3 +776,48 @@ xml_add_namespace(cxobj      *x,
  done:
     return retval;
 }
+
+/*! Parse nsctx in XML form into nsctx cvv
+ *
+ * Namespace in XML form, see grouping namespace-context in clixon-lib.yang
+ * @param[in]   xnsc  Namespace context in XML form
+ * @param[out]  cvv   Namespace context as cvv
+ * retval       0     OK
+ * retval      -1     Error
+ */
+int
+xml_nsctx_parse(cxobj *xnsc,
+                cvec **nsc)
+{
+    int    retval = -1;
+    cxobj *xns;
+    cxobj *xn;
+    char  *prefix;
+    char  *ns;
+    cvec  *cvv;
+
+    if ((cvv = cvec_new(0)) == NULL){
+        clixon_err(OE_XML, errno, "cvec_new");
+        goto done;
+    }
+    if ((xns = xml_find(xnsc, "namespace-context")) != NULL){
+        xn = NULL;
+        while ((xn = xml_child_each(xns, xn, CX_ELMNT)) != NULL) {
+            ns = xml_find_body(xn, "ns");
+            prefix = xml_find_body(xn, "prefix");
+            if (ns){
+                if (xml_nsctx_add(cvv, prefix, ns) < 0)
+                    goto done;
+            }
+        }
+    }
+    if (nsc){
+        *nsc = cvv;
+        cvv = NULL;
+    }
+    retval = 0;
+ done:
+    if (cvv)
+        cvec_free(cvv);
+    return retval;
+}

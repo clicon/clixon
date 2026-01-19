@@ -157,5 +157,6 @@ int xpath_count(cxobj *xcur, cvec *nsc, const char *xpath, uint32_t *count);
 int xml2xpath(cxobj *x, cvec *nsc, int spec, int apostrophe, char **xpath);
 int xpath2xml(const char *xpath, cvec *nsc, cxobj *xtop, yang_stmt *ytop,
               cxobj **xbotp, yang_stmt **ybotp, cxobj **xerr);
+int xpath2api_path(const char *xpath, cvec *nsc, yang_stmt *yspec, char **api_path, cxobj **xerr);
 
 #endif /* _CLIXON_XPATH_H */

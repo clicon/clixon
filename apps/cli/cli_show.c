@@ -297,7 +297,7 @@ expand_dbvar_insert(clixon_handle h,
  * functionality.
  *
  * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -542,7 +542,7 @@ expand_dbvar(clixon_handle h,
  *     augment foo fie;
  * This function expands foo to: bar, fie...
  * Or (if <module> is true): modA:bar, modB:fie...
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -634,7 +634,7 @@ expand_yang_list(clixon_handle h,
  *      ...
  *   }
  * This function expands x to default, msg,...
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -705,7 +705,7 @@ expand_yang_bits(clixon_handle h,
  * functionality.
  *
  * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -2158,5 +2158,143 @@ cli_show_sessions(clixon_handle h,
         xml_free(xdbs);
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Given mount-point and api_path_fmt, find api_path
+ *
+ * @param[in]  h            Clixon handle
+ * @param[in]  cvv          Vector of cli string and instantiated variable
+ * @param[in]  mtpoint      Moint-point on the form: <domain>:<spec>
+ * @param[in]  api_path_fmt API-path meta-format
+ * @param[in]  cvv_i        Index into cvv of last cvv entry used.
+ * @param[out] api_path     Deallocate with free
+ * @retval     0            OK
+ * @retval    -1            Error
+ */
+int
+cli_apipath(clixon_handle h,
+            cvec         *cvv,
+            const char   *domain,
+            const char   *spec,
+            const char   *api_path_fmt,
+            int          *cvvi,
+            char        **api_path)
+{
+    int        retval = -1;
+    char      *api_path_fmt01 = NULL;
+    yang_stmt *yspec0;
+
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
+    }
+    if (domain){
+        /* Get and combined api-path01 */
+        if (mtpoint_paths(h, yspec0, domain, spec, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, api_path, cvvi) < 0)
+            goto done;
+    }
+    else{
+        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, api_path, cvvi) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
+    return retval;
+}
+
+/*! Show details about a configured node: yang, namespaces, etc"
+ *
+ * @param[in]   h        Clixon handle
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   argv     Arguments given at the callback
+ * @retval      0        OK
+ * @retval     -1        Error
+ */
+int
+cli_show_config_info(clixon_handle h,
+                     cvec         *cvv,
+                     cvec         *argv)
+{
+    int        retval = -1;
+    cbuf      *api_path_fmt_cb = NULL;    /* xml key format */
+    char      *api_path_fmt = NULL;
+    char      *api_path = NULL;
+    cxobj     *xtop = NULL;     /* xpath root */
+    cvec      *nsc = NULL;
+    char      *xpath = NULL;
+    cg_var    *cv;
+    char      *str;
+    char      *mtdomain = NULL;
+    char      *mtspec = NULL;
+    char      *symbol = NULL;
+    char      *prefix = NULL;
+    char      *ns = NULL;
+    char      *module = NULL;
+    char      *filename = NULL;
+    int        i;
+
+    if ((api_path_fmt_cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    /* Concatenate all argv strings to a single string
+     * Variant of cvec_concat_cb() where api-path-fmt may be interleaved with mtpoint,
+     * eg /api-path-fmt2 mtpoint /api-path-fmt1 /api-path-fmt0
+     * Note loop is reverse and concat is done only for xpaths starting with "/"
+     */
+    for (i=cvec_len(argv)-1; i>=0; i--){
+        cv = cvec_i(argv, i);
+        if ((str = cv_string_get(cv)) == NULL)
+            continue;
+        if (strncmp(str, MTPOINT_PREFIX, strlen(MTPOINT_PREFIX)) == 0){
+            if (mtpoint_decode(str, ":", &mtdomain, &mtspec) < 0)
+                goto done;
+            continue;
+        }
+        if (str[0] != '/')
+            continue;
+        cprintf(api_path_fmt_cb, "%s", str);
+    }
+    api_path_fmt = cbuf_get(api_path_fmt_cb);
+    if (cli_apipath(h, cvv, mtdomain, mtspec, api_path_fmt, NULL, &api_path) < 0)
+        goto done;
+    if (clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL,
+                                    0, NULL, xtop, NULL, &xpath, &nsc,
+                                    &symbol, &prefix, &ns, &module, &filename) < 0)
+        goto done;
+    cligen_output(stdout, "Symbol:     %s\n", symbol);
+    cligen_output(stdout, "Module:     %s\n", module);
+    cligen_output(stdout, "File:       %s\n", filename);
+    cligen_output(stdout, "Namespace:  %s\n", ns);
+    cligen_output(stdout, "Prefix:     %s\n", prefix);
+    cligen_output(stdout, "XPath:      %s\n", xpath);
+    cligen_output(stdout, "APIpath:    %s\n", api_path);
+    retval = 0;
+ done:
+    if (xtop)
+        xml_free(xtop);
+    if (api_path_fmt_cb)
+        cbuf_free(api_path_fmt_cb);
+    if (api_path)
+        free(api_path);
+    if (xpath)
+        free(xpath);
+    if (nsc)
+        cvec_free(nsc);
+    if (symbol)
+        free(symbol);
+    if (prefix)
+        free(prefix);
+    if (ns)
+        free(ns);
+    if (module)
+        free(module);
+    if (filename)
+        free(filename);
     return retval;
 }
