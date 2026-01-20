@@ -139,6 +139,20 @@ module clixon-example{
     leaf l {
         type string;
     }
+    container src-ip {
+        choice ip-choice {
+            case host {
+                leaf host {
+                 type string;
+                }
+            }
+            case source-any {
+                leaf any {
+                    type empty;
+                }
+            }
+        }
+    }
 }
 EOF
 
@@ -659,9 +673,20 @@ cli $session_cli_2 "show compare"
 cli $session_cli_1 "set l \"TEST10\""
 cli $session_cli_1 "commit"
 if {[string match *TEST* [cli $session_cli_2 "show compare"]]} {
-    puts "Controller Issue: show compare private candidate #233"
+    puts "Controller Issue #233: show compare private candidate"
     exit 4
 }
+
+# Issue #644 test case
+cli $session_cli_1 ""
+cli $session_cli_1 "set src-ip any"
+cli $session_cli_1 "commit"
+cli $session_cli_1 "set src-ip host \"1.2.3.4\""
+if {[string match *fail* [cli $session_cli_1 "commit"]]} {
+    puts "Issue #644: Private candidate commit fails when changing YANG choice case"
+    exit 5
+}
+
 puts "\nClose sessions"
 close $session_cli_1
 close $session_cli_2
