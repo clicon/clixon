@@ -247,7 +247,7 @@ startup_common(clixon_handle       h,
                            * See similar clause below
                            */
             }
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto fail;
         }
@@ -259,7 +259,7 @@ startup_common(clixon_handle       h,
         if ((ret = xmldb_get0(h, db, YB_NONE, NULL, "/", 0, 0, &xt, NULL, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto fail;
         }
@@ -312,7 +312,7 @@ startup_common(clixon_handle       h,
     if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec, 0, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -320,7 +320,7 @@ startup_common(clixon_handle       h,
     if ((ret = xml_non_config_data(xt, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -348,7 +348,7 @@ startup_common(clixon_handle       h,
     if ((ret = generic_validate(h, yspec, td, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail; /* STARTUP_INVALID */
     }
@@ -643,7 +643,7 @@ candidate_validate(clixon_handle h,
             clixon_err(OE_CFG, EINVAL, "xret is NULL");
             goto done;
         }
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         if (!cbuf_len(cbret) &&
             netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
@@ -730,7 +730,7 @@ candidate_commit(clixon_handle  h,
             goto done;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }

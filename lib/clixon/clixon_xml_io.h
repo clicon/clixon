@@ -51,7 +51,7 @@ int   xml_print(FILE *f, cxobj *xn);
 int   xml_print1(FILE *f, cxobj *xn);
 int   xml_dump(FILE  *f, cxobj *x);
 int   clixon_xml2cbuf1(cbuf *cb, cxobj *x, int level, int prettyprint, const char *prefix,
-                       int32_t depth, int skiptop, withdefaults_type wdef);
+                       int32_t depth, int skiptop, int autocliext, withdefaults_type wdef);
 int   xmltree2cbuf(cbuf *cb, cxobj *x, int level);
 int   clixon_xml_parse_file(FILE *f, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
 int   clixon_xml_parse_string1(clixon_handle h, const char *str, yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr);
@@ -69,7 +69,7 @@ clixon_xml2cbuf(cbuf       *cb,
                 int32_t     depth,
                 int         skiptop)
 {
-    return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, WITHDEFAULTS_REPORT_ALL);
+    return clixon_xml2cbuf1(cb, xn, level, pretty, prefix, depth, skiptop, 0, WITHDEFAULTS_REPORT_ALL);
 }
 
 /* 7.4 backward compatible */

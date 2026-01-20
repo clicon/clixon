@@ -388,7 +388,7 @@ from_client_restart_one(clixon_handle    h,
     if (ret == 1 && (ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -437,7 +437,7 @@ from_client_restart_one(clixon_handle    h,
     if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -745,7 +745,7 @@ from_client_yang_api_path(clixon_handle h,
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<xml xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, WITHDEFAULTS_REPORT_ALL) < 0)
+    if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     cprintf(cbret, "</xml>");
     cprintf(cbret, "<xpath xmlns=\"%s\">", CLIXON_LIB_NS);
@@ -801,6 +801,7 @@ from_client_translate_format(clixon_handle h,
     enum format_enum format = FORMAT_XML;
     int              pretty = 0;
     int              skiptop = 0;
+    int              cli_aware = 0;
     char            *b;
     char            *prepend = NULL;
     char            *xpath = NULL;
@@ -855,7 +856,7 @@ from_client_translate_format(clixon_handle h,
         if ((ret = xml_bind_yang(h, xdata, YB_MODULE, yspec0, 0, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, WITHDEFAULTS_EXPLICIT) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             goto ok;
         }
@@ -877,13 +878,13 @@ from_client_translate_format(clixon_handle h,
                 /* Print configuration according to format */
                 switch (format){
                 case FORMAT_XML:
-                    if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, WITHDEFAULTS_REPORT_ALL) < 0)
+                    if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
                         goto done;
                     if (!pretty && i == veclen-1)
                         cprintf(cb, "\n");
                     break;
                 case FORMAT_TEXT: /* XXX does not handle multiple leaf-list */
-                    if (clixon_text2cbuf(cb, xp, 0, skiptop, 1) < 0)
+                    if (clixon_text2cbuf(cb, xp, 0, skiptop, cli_aware) < 0)
                         goto done;
                     break;
                 case FORMAT_CLI:
@@ -901,7 +902,7 @@ from_client_translate_format(clixon_handle h,
                         if (pretty)
                             cprintf(cb, "\n");
                     }
-                    if (clixon_xml2cbuf1(cb, xp, 2, pretty, NULL, -1, skiptop, WITHDEFAULTS_REPORT_ALL) < 0)
+                    if (clixon_xml2cbuf1(cb, xp, 2, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
                         goto done;
                     if (i == veclen-1)
                         cprintf(cb, "</config></edit-config></rpc>]]>]]>\n");
