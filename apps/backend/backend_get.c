@@ -422,7 +422,7 @@ get_nacm_and_reply(clixon_handle     h,
         if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
             goto done;
         /* Top level is data, so add 1 to depth if significant */
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, depth>0?depth+1:depth, 0, wdef) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, depth>0?depth+1:depth, 0, 0, wdef) < 0)
             goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -557,7 +557,7 @@ get_pagination_state_partial(clixon_handle h,
                     clixon_err_reason());
             if (netconf_operation_failed_xml(&xerr, "application", cbuf_get(cberr)) < 0)
                 goto done;
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto fail;
         }
@@ -572,7 +572,7 @@ get_pagination_state_partial(clixon_handle h,
                                           ". Internal error, state callback returned invalid XML",
                                           NULL) < 0)
             goto done;
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -758,7 +758,7 @@ get_list_pagination(clixon_handle     h,
             goto ok;
         }
         if (ret == 0){
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto ok;
         }
@@ -782,7 +782,7 @@ get_list_pagination(clixon_handle     h,
             if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
                 goto done;
             if (ret == 0){ /* Error from callback (error in xret) */
-                if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                     goto done;
                 goto ok;
             }
@@ -1050,7 +1050,7 @@ get_common(clixon_handle   h,
             goto ok;
         }
         if (ret == 0){
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto ok;
         }
@@ -1070,7 +1070,7 @@ get_common(clixon_handle   h,
                 goto ok;
             }
             if (ret == 0){
-                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                     goto done;
                 goto ok;
             }
@@ -1088,7 +1088,7 @@ get_common(clixon_handle   h,
                 goto ok;
             }
             if (ret == 0){
-                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                     goto done;
                 goto ok;
             }
@@ -1110,7 +1110,7 @@ get_common(clixon_handle   h,
         if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
-            if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto ok;
         }
@@ -1140,7 +1140,7 @@ get_common(clixon_handle   h,
                                               ". Internal error, state callback returned invalid XML",
                                               NULL) < 0)
                 goto done;
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                 goto done;
             goto ok;
         }

@@ -367,7 +367,7 @@ api_data_post(clixon_handle h,
             CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0) < 0)
+    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clixon_debug(CLIXON_DBG_RESTCONF, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
@@ -950,7 +950,7 @@ api_operations_post(clixon_handle  h,
     cbuf_reset(cbret);
     switch (media_out){
     case YANG_DATA_XML:
-        if (clixon_xml2cbuf1(cbret, xoutput, 0, pretty, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xoutput, 0, pretty, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         /* xoutput should now look: <output xmlns="uri"><x>0</x></output> */
         break;

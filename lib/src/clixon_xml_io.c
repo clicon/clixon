@@ -591,6 +591,7 @@ xml_dump(FILE  *f,
  * @param[in]     pretty   Insert \n and spaces to make the xml more readable.
  * @param[in]     prefix   Add string to beginning of each line (if pretty)
  * @param[in]     depth    Limit levels of child resources: -1 is all, 0 is none, 1 is node itself
+ * @param[in]     cli_aware How to handle autocli extensions: 0: ignore 1: follow
  * @param[in]     wdef     With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
  * @retval        0        OK
  * @retval       -1        Error
@@ -608,6 +609,7 @@ xml2cbuf_recurse(cbuf             *cb,
                  int               pretty,
                  const char       *prefix,
                  int32_t           depth,
+                 int               cli_aware,
                  withdefaults_type wdef)
 {
     int        retval = -1;
@@ -625,6 +627,13 @@ xml2cbuf_recurse(cbuf             *cb,
     if (depth == 0)
         goto ok;
     if ((y = xml_spec(x)) != NULL){
+        if (cli_aware){
+            int exist = 0;
+            if (yang_extension_value(y, "hide-show", CLIXON_AUTOCLI_NS, &exist, NULL) < 0)
+                goto done;
+            if (exist)
+                goto ok;
+        }
         /* with-defaults: if object should be printed or not */
         if ((ret = xml2output_wdef(x, wdef, &tag)) < 0)
             goto done;
@@ -671,7 +680,7 @@ xml2cbuf_recurse(cbuf             *cb,
         while ((xc = xml_child_each(x, xc, -1)) != NULL)
             switch (xml_type(xc)){
             case CX_ATTR:
-                if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, -1, wdef) < 0)
+                if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, -1, cli_aware, wdef) < 0)
                     goto done;
                 break;
             case CX_BODY:
@@ -708,7 +717,7 @@ xml2cbuf_recurse(cbuf             *cb,
                             xa = xml_find_type(xc, IETF_NETCONF_WITH_DEFAULTS_ATTR_PREFIX, IETF_NETCONF_WITH_DEFAULTS_ATTR_NAMESPACE, CX_ATTR);
                         }
                     }
-                    if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, depth-1, wdef) < 0)
+                    if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, depth-1, cli_aware, wdef) < 0)
                         goto done;
                     if (xa){
                         if (xml_purge(xa) < 0)
@@ -750,6 +759,7 @@ xml2cbuf_recurse(cbuf             *cb,
  * @param[in]     prefix  Add string to beginning of each line (or NULL) (if pretty)
  * @param[in]     depth   Limit levels of child resources: -1: all, 0: none, 1: node itself
  * @param[in]     skiptop 0: Include top object 1: Skip top-object, only children,
+ * @param[in]     cli_aware How to handle autocli extensions: 0: ignore 1: follow
  * @param[in]     wdef    With-defaults parameter, default is WITHDEFAULTS_REPORT_ALL
  * @retval        0       OK
  * @retval       -1       Error
@@ -771,6 +781,7 @@ clixon_xml2cbuf1(cbuf             *cb,
                  const char       *prefix,
                  int32_t           depth,
                  int               skiptop,
+                 int               cli_aware,
                  withdefaults_type wdef)
 {
     int    retval = -1;
@@ -779,11 +790,11 @@ clixon_xml2cbuf1(cbuf             *cb,
     if (skiptop){
         xc = NULL;
         while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
-            if (xml2cbuf_recurse(cb, xc, level, pretty, prefix, depth, wdef) < 0)
+            if (xml2cbuf_recurse(cb, xc, level, pretty, prefix, depth, cli_aware, wdef) < 0)
                 goto done;
     }
     else {
-        if (xml2cbuf_recurse(cb, xn, level, pretty, prefix, depth, wdef) < 0)
+        if (xml2cbuf_recurse(cb, xn, level, pretty, prefix, depth, cli_aware, wdef) < 0)
             goto done;
     }
     retval = 0;
@@ -1504,7 +1515,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+            if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -1515,7 +1526,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+            if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
@@ -1538,7 +1549,7 @@ xml_diff2cbuf(cbuf  *cb,
                         xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                         nr++;
                     }
-                    if (clixon_xml2cbuf1(cb, xi, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                    if (clixon_xml2cbuf1(cb, xi, level+1, 1, "-", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                         goto done;
                 }
             }
@@ -1556,7 +1567,7 @@ xml_diff2cbuf(cbuf  *cb,
                         xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                         nr++;
                     }
-                    if (clixon_xml2cbuf1(cb, xj, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                    if (clixon_xml2cbuf1(cb, xj, level+1, 1, "+", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                         goto done;
                 }
             }
@@ -1571,7 +1582,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+            if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x0c = xml_child_each(x0, x0c, CX_ELMNT);
             continue;
@@ -1582,7 +1593,7 @@ xml_diff2cbuf(cbuf  *cb,
                 xml_diff_keys(cb, x1, y0, (level+1)*PRETTYPRINT_INDENT);
                 nr++;
             }
-            if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+            if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             x1c = xml_child_each(x1, x1c, CX_ELMNT);
             continue;
@@ -1597,9 +1608,9 @@ xml_diff2cbuf(cbuf  *cb,
                     xml_diff_keys(cb, x0, y0, (level+1)*PRETTYPRINT_INDENT);
                     nr++;
                 }
-                if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                if (clixon_xml2cbuf1(cb, x0c, level+1, 1, "-", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                     goto done;
-                if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                if (clixon_xml2cbuf1(cb, x1c, level+1, 1, "+", -1, 0, 0, WITHDEFAULTS_EXPLICIT) < 0)
                     goto done;
             }
             else if (y0c && yang_keyword_get(y0c) == Y_LEAF){

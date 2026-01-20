@@ -485,7 +485,7 @@ netconf_notification_cb(int   s,
         clixon_err(OE_PLUGIN, errno, "cbuf_new");
         goto done;
     }
-    if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, 0) < 0)
+    if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     /* Send it to listening client on stdout */
     if (netconf_output_encap(clicon_data_int_get(h, NETCONF_FRAMING_TYPE), cb) < 0){
@@ -662,7 +662,7 @@ netconf_application_rpc(clixon_handle h,
             if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
                 goto done;
             if (ret == 0){
-                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+                if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                     goto done;
                 clixon_log(h, LOG_WARNING, "Errors in output netconf %s", cbuf_get(cbret));
                 goto ok;

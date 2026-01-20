@@ -518,7 +518,7 @@ clicon_rpc_netconf_xml(clixon_handle  h,
         goto done;
     }
     rpcname = xml_name(xname); /* Store rpc name and use in yang binding after reply */
-    if (clixon_xml2cbuf1(cb, xml, 0, 0, NULL, -1, 0, 0) < 0)
+    if (clixon_xml2cbuf1(cb, xml, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
         goto done;
@@ -2254,7 +2254,7 @@ clixon_rpc_translate_format(clixon_handle    h,
     cprintf(cb, "<xml>");
     xn = NULL;
     while ((xn = xml_child_each(xt, xn, CX_ELMNT)) != NULL) {
-        if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+        if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
     }
     cprintf(cb, "</xml>");
