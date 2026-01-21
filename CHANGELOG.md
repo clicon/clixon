@@ -55,6 +55,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Private candidate commit fails when changing YANG choice case](https://github.com/clicon/clixon/issues/644)
 * Fixed: [Inconsistent log messages truncation](https://github.com/clicon/clixon/issues/625)
 * Fixed: [show compare private candidate](https://github.com/clicon/clixon-controller/issues/233)
 * Fixed: Error log at restconf exit

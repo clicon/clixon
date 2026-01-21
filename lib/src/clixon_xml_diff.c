@@ -924,9 +924,8 @@ diff_rebase_exec(diff_rebase_t *dr)
  *
  * @param[in]  x0   XML object 0
  * @param[in]  x1   XML object 1
- * @param[out] eq  0: equal, <0: x0 < x1, >0: x0 > x1
+ * @param[out] eq   0: equal, <0: x0 < x1, >0: x0 > x1
  * @retval     0    OK
- * @retval    -1    Error
  */
 static int
 xml_node_same(cxobj *x0,
@@ -959,12 +958,11 @@ xml_node_same(cxobj *x0,
     y1 = xml_spec(x1);
     if (y0 && y1 && y0 != y1){  /* choice */
         *eq = 1;
-        goto done;
+        goto ok;
     }
     *eq = 0;
  ok:
     retval = 0;
- done:
     return retval;
 }
 

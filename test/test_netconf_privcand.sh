@@ -60,6 +60,8 @@ cfg=$dir/conf_yang.xml
 dbdir=$dir/db
 fyang=$dir/clixon-example.yang
 test -d $dbdir || mkdir -p $dbdir
+# Debug early exit
+: ${early:=false}
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -254,6 +256,10 @@ new "4.5.3 RESTCONF Retrieve the Server Capability Information xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-netconf-monitoring:netconf-state/capabilities/capability)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml" \
 'Cache-Control: no-cache' \
 '<capability xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring">urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>'
+
+if ${early}; then
+    exit # for starting with devices and debug
+fi
 
 new "Spawn expect script to simulate two NETCONF sessions"
 # -d to debug matching info
