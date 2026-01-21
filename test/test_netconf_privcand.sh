@@ -155,6 +155,16 @@ module clixon-example{
             }
         }
     }
+    list issue648 {
+        key k;
+        leaf k {
+            type string;
+        }
+        leaf value {
+            type string;
+            mandatory true;
+        }
+    }
 }
 EOF
 
@@ -691,6 +701,15 @@ cli $session_cli_1 "set src-ip host \"1.2.3.4\""
 if {[string match *fail* [cli $session_cli_1 "commit"]]} {
     puts "Issue #644: Private candidate commit fails when changing YANG choice case"
     exit 5
+}
+
+# issue 648 test case
+cli $session_cli_1 "set issue648 \"k\""
+cli $session_cli_1 "set l \"issue648ok\""
+cli $session_cli_1 "commit"
+if {![string match *issue648ok* [cli $session_cli_1 "show compare"]]} {
+    puts "Controller Issue #648: Candidate database gets deleted on failed commit."
+    exit 6
 }
 
 puts "\nClose sessions"
