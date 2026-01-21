@@ -978,12 +978,15 @@ from_client_commit(clixon_handle h,
                 goto done;
         goto ok;
     }
-    if (xmldb_post_commit(h, ce->ce_id) < 0)
-        goto done;
-    if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
-        xmldb_unlock(h, db);
-    if (ret == 0)
+    if (ret == 1){
+        if (xmldb_post_commit(h, ce->ce_id) < 0)
+            goto done;
+        if (clicon_option_bool(h, "CLICON_AUTOLOCK"))
+            xmldb_unlock(h, db);
+    }
+    if (ret == 0){
         clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
+    }
     else
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
