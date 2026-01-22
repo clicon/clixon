@@ -324,7 +324,7 @@ expand_dbvar(clixon_handle h,
     /* Get configuration based on cbxpath */
 #ifdef EXPAND_USE_SERVER_YANG_0
     noyang_dont_bind = 1;
-    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0){
+    if (clixon_rpc_get_config1(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, YB_NONE, &xt) < 0){
         noyang_dont_bind = 0;
         goto done;
     }
@@ -691,13 +691,13 @@ cli_show_common(clixon_handle    h,
 #ifdef EXPAND_USE_SERVER_YANG_0
     noyang_dont_bind = 1;
     if (state == 0){     /* Get configuration-only from a database */
-        if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefault, &xt) < 0){
+        if (clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt) < 0){
             noyang_dont_bind = 0; // XXX
             goto done;
         }
     }
     else {               /* Get configuration and state from running */
-        if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefault, &xt) < 0){
+        if (clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt) < 0){
             noyang_dont_bind = 0; // XXX
             goto done;
         }
