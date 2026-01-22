@@ -76,7 +76,6 @@ int yang_bitsstr2val(clixon_handle h, yang_stmt *ytype, const char *bitsstr, uns
 int yang_bitsstr2flags(yang_stmt *ytype, const char *bitsstr, uint32_t *flags);
 int yang_val2bitsstr(clixon_handle h, yang_stmt *ytype, unsigned char *outval, size_t snmplen, cbuf *cb);
 int yang_bits_map(yang_stmt *yt, const char *str, const char *nodeid, uint32_t *flags);
-int yang_bits_map2(yang_stmt *yt, const char *str, const char *nodeid, uint32_t *flags);
 int yang_enum2valstr(yang_stmt *ytype, const char *enumstr, char **valstr);
 int yang_enum2int(yang_stmt *ytype, const char *enumstr, int32_t *val);
 int yang_enum_int_value(cxobj *node, int32_t *val);
