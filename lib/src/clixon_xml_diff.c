@@ -1382,7 +1382,7 @@ xml_diff2patch_create_delete(cxobj *xn,
         goto done;
     if (xml_addsub(xpatch, xedit) < 0)
         goto done;
-    if ((ret = xml_bind_yang0(NULL, xpatch, YB_PARENT, NULL, 0, NULL)) < 0)
+    if ((ret = xml_bind_yang0(NULL, xpatch, YB_PARENT, NULL, 0, 0, NULL)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_YANG, 0, "patch YANG Bind failed");
@@ -1460,7 +1460,7 @@ xml_diff2patch_change_leaf(cxobj *x1,
         goto done;
     if (xml_addsub(xpatch, xedit) < 0)
         goto done;
-    if ((ret = xml_bind_yang0(NULL, xpatch, YB_PARENT, NULL, 0, NULL)) < 0)
+    if ((ret = xml_bind_yang0(NULL, xpatch, YB_PARENT, NULL, 0, 0, NULL)) < 0)
         goto done;
     if (ret == 0){
         clixon_err(OE_YANG, 0, "patch YANG Bind failed");

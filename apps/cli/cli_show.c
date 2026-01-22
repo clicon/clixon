@@ -71,10 +71,6 @@
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
 
-#ifdef EXPAND_USE_SERVER_YANG_0
-extern int noyang_dont_bind;
-#endif
-
 /*! Insert (escaped) strings into expand commands
  *
  * Help function to expand_dbvar
@@ -238,6 +234,7 @@ expand_dbvar(clixon_handle h,
     cvec            *callback_cvv;
     int              argc = 0;
     cvec            *cvv2 = NULL;
+    int              ret;
 
     if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
         clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
@@ -321,18 +318,15 @@ expand_dbvar(clixon_handle h,
     }
     cprintf(cbxpath, "%s", xpath);
     /* Get configuration based on cbxpath */
-    /* Get configuration based on cbxpath */
-#ifdef EXPAND_USE_SERVER_YANG_0
-    noyang_dont_bind = 1;
-    if (clixon_rpc_get_config1(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, YB_NONE, &xt) < 0){
-        noyang_dont_bind = 0;
+    if (clixon_rpc_get_config1(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, YB_NONE, &xt) < 0)
         goto done;
+    if ((ret = xml_bind_yang_mnt(h, xt, YB_MODULE, yspec0, 0, 1, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if ((xe = xpath_first(xerr, NULL, "/rpc-error")) != NULL)
+            clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
     }
-    noyang_dont_bind = 0;
-#else
-    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
-        goto done;
-#endif
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto ok;
@@ -680,41 +674,40 @@ cli_show_common(clixon_handle    h,
     cxobj  *xt = NULL;
     cxobj **vec = NULL;
     size_t  veclen;
-    cxobj  *xerr;
+    cxobj  *xe;
+    cxobj  *xerr = NULL;
     int     cli_aware = 1;
     cbuf   *cb = NULL;
+    yang_stmt *yspec0 = NULL;
+    int        ret;
 
     if (state && strcmp(db, "running") != 0){
         clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
         goto done;
     }
-#ifdef EXPAND_USE_SERVER_YANG_0
-    noyang_dont_bind = 1;
     if (state == 0){     /* Get configuration-only from a database */
         if (clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt) < 0){
-            noyang_dont_bind = 0; // XXX
             goto done;
         }
     }
-    else {               /* Get configuration and state from running */
-        if (clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt) < 0){
-            noyang_dont_bind = 0; // XXX
-            goto done;
-        }
+    /* Get configuration and state from running */
+    else  if (clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt) < 0){
+        goto done;
     }
-   noyang_dont_bind = 0; // XXX
-#else
-    if (state == 0){     /* Get configuration-only from a database */
-        if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefault, &xt) < 0)
-            goto done;
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
     }
-    else {               /* Get configuration and state from running */
-        if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefault, &xt) < 0)
-            goto done;
+    if ((ret = xml_bind_yang_mnt(h, xt, YB_MODULE, yspec0, 0, 1, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        cxobj *xe;
+        if ((xe = xpath_first(xerr, NULL, "/rpc-error")) != NULL)
+            clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
     }
-#endif
-    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto done;
     }
     /* Special tagged modes: strip wd:default=true attribute and (optionally) nodes associated with it */
@@ -760,6 +753,7 @@ cli_show_common(clixon_handle    h,
     }
     else if (format == FORMAT_JSON)
         cligen_output(stdout, "{}\n");
+ ok:
     retval = 0;
 done:
     if (cb)
@@ -768,6 +762,8 @@ done:
         free(vec);
     if (xt)
         xml_free(xt);
+    if (xerr)
+        xml_free(xerr);
     return retval;
 }
 
