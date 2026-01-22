@@ -950,7 +950,7 @@ _xml_parse(clixon_handle h,
             /* xt:n         Has spec
              * x:   <a> <-- populate from parent
              */
-            if ((ret = xml_bind_yang0(h, x, YB_PARENT, NULL, 0, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, YB_PARENT, NULL, 0, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -965,7 +965,7 @@ _xml_parse(clixon_handle h,
             /* xt:<top>     nospec
              * x:   <a> <-- populate from modules
              */
-            if ((ret = xml_bind_yang0(h, x, YB_MODULE, yspec, 0, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, YB_MODULE, yspec, 0, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;

@@ -24,8 +24,8 @@ Expected: February 2026
 * Customized error message for leafrefs
   * See https://clixon-docs.readthedocs.io/en/latest/errors.html#error-message-extension
 * YANG optimization
-  * Reduced yang-stmt struct for derived trees
-  * Make server calls instead of client for yang, api-path, xpath calls
+  * Make CLI yang-independent: use server calls instead of local calls, in particular across mont-points
+  * See [CLI memory optimization](https://github.com/clicon/clixon-controller/issues/175)
 * New debug logs
   * Extended debug levels for `-D` command-line options
     * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags
@@ -51,11 +51,12 @@ Expected: February 2026
 
 Developers may need to change their code
 
+* Changed C-API
+* `xml_bind_yang0(..., xerr)` -> `xml_bind_yang0(..., 0, xerr)`
 * Added `cli_aware` parameter to `clixon_xml2cbuf1()` as pen-ultimate parameter
-  * Change example:
-      * `clixon_xml2cbuf1(...s, w)` -> `clixon_xml2cbuf1(...s, 0, w)`
+  * `clixon_xml2cbuf1(...s, w)` -> `clixon_xml2cbuf1(...s, 0, w)`
 * Added const to multiple `char*` parameters
-  * In particular many callback input char* paraneters may need to be adjusted
+  * In particular many callback input char* parameters may need to be adjusted
 
 ### Corrected Bugs
 

@@ -124,10 +124,6 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_schema_mount.h"
 
-#ifdef EXPAND_USE_SERVER_YANG_0
-int noyang_dont_parse = 0;
-#endif
-
 /*! Check if YANG node is a RFC 8528 YANG schema mount
  *
  * Check if:
@@ -638,7 +634,7 @@ yang_schema_mount_statedata_yanglib(clixon_handle h,
             goto done;
         if (yanglib == NULL)
             continue;
-        if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, 0, xerr)) < 0)
+        if ((ret = xml_bind_yang0(h, yanglib, YB_MODULE, yspec, 0, 0, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -808,6 +804,7 @@ xyanglib_digest(cxobj *xylib,
  * @param[in]  h        Clixon handle
  * @param[in]  xmnt     XML tree node
  * @param[in]  xyanglib XML yang-lib
+ * @param[in]  skip     If set, do not parse new yang on mount-point
  * @param[out] yspecp   Resulting mounted yang spec
  * @retval     1        OK
  * @retval     0        No yanglib or problem when parsing yanglib
@@ -817,6 +814,7 @@ int
 yang_schema_yanglib_mount_parse(clixon_handle h,
                                 cxobj        *xmnt,
                                 cxobj        *xyanglib,
+                                int           skip,
                                 yang_stmt   **yspecp)
 {
     int        retval = -1;
@@ -866,10 +864,7 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
         goto done;
     }
     /* Either yspec0 = NULL and yspec1 is new, or yspec0 == yspec1 != NULL (shared) */
-#ifdef EXPAND_USE_SERVER_YANG_0
-    if (noyang_dont_parse==0)
-#endif
-    if (new){ // XXX move ^
+    if (!skip && new){
         /* Parse yang modules into yspec */
         if ((ret = yang_lib2yspec(h, xyanglib, xpath, domain, yspec1)) < 0)
             goto done;
@@ -928,7 +923,7 @@ yang_schema_yanglib_get_mount_parse(clixon_handle h,
         goto done;
     if (xyanglib == NULL)
         goto anydata;
-    if ((ret = yang_schema_yanglib_mount_parse(h, xt, xyanglib, NULL)) < 0)
+    if ((ret = yang_schema_yanglib_mount_parse(h, xt, xyanglib, 0, NULL)) < 0)
         goto done;
     if (ret == 0)
         goto anydata;

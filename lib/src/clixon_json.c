@@ -1529,7 +1529,7 @@ _json_parse(clixon_handle h,
                 goto fail;
             break;
         case YB_MODULE:
-            if ((ret = xml_bind_yang0(h, x, yb, yspec, jsonenc, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, yb, yspec, jsonenc, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;
@@ -1541,7 +1541,7 @@ _json_parse(clixon_handle h,
                 failed++;
             break;
         case YB_PARENT:
-            if ((ret = xml_bind_yang0(h, x, yb, yspec, jsonenc, xerr)) < 0)
+            if ((ret = xml_bind_yang0(h, x, yb, yspec, jsonenc, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;

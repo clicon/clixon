@@ -969,7 +969,7 @@ restconf_apipath_mount_cb(clixon_handle h,
         goto fail;
     }
     if (xyanglib != NULL){
-        if ((ret = yang_schema_yanglib_mount_parse(h, xmt, xyanglib, yspec)) < 0)
+        if ((ret = yang_schema_yanglib_mount_parse(h, xmt, xyanglib, 0, yspec)) < 0)
             goto done;
     }
     retval = 1;
