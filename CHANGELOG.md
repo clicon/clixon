@@ -51,6 +51,9 @@ Expected: February 2026
 
 Developers may need to change their code
 
+* Added `cli_aware` parameter to `clixon_xml2cbuf1()` as pen-ultimate parameter
+  * Change example:
+      * `clixon_xml2cbuf1(...s, w)` -> `clixon_xml2cbuf1(...s, 0, w)`
 * Added const to multiple `char*` parameters
   * In particular many callback input char* paraneters may need to be adjusted
 

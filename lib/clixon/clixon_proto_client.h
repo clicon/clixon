@@ -46,15 +46,14 @@ int clicon_rpc_msg(clixon_handle h, cbuf *cbsend, cxobj **xret0);
 int clicon_rpc_msg_persistent(clixon_handle h, cbuf *cbsend, cxobj **xret0, int *sock0);
 int clicon_rpc_netconf(clixon_handle h, char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clixon_handle h, cxobj *xml, cxobj **xret, int *sp);
-int clicon_rpc_get_config(clixon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, cxobj **xret);
+int clixon_rpc_get_config1(clixon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, yang_bind yb ,cxobj **xret);
 int clicon_rpc_edit_config(clixon_handle h, char *db, enum operation_type op,
                            char *xml);
 int clicon_rpc_copy_config(clixon_handle h, char *db1, char *db2);
 int clicon_rpc_delete_config(clixon_handle h, char *db);
 int clicon_rpc_lock(clixon_handle h, char *db);
 int clicon_rpc_unlock(clixon_handle h, char *db);
-int clicon_rpc_get2(clixon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, int bind, cxobj **xret);
-int clicon_rpc_get(clixon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, cxobj **xret);
+int clixon_rpc_get1(clixon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, yang_bind yb, cxobj **xret);
 int clicon_rpc_get_pageable_list(clixon_handle h, char *datastore, char *xpath,
                                  cvec *nsc, netconf_content content, int32_t depth, char *defaults,
                                  uint32_t offset, uint32_t limit,
@@ -79,5 +78,30 @@ int clixon_rpc_api_path2xml(clixon_handle h, const char *api_path, const char *b
 int clixon_rpc_translate_format(clixon_handle h, enum format_enum format, const char *xpath, cvec *nsc,
                                 cxobj *xt, int pretty, int skiptop, int cli_aware, const char *prepend, cbuf *cb);
 int clicon_rpc_restart_plugin(clixon_handle h, char *plugin);
+
+/*-- Backward compatible 7.6 --*/
+static inline int
+clicon_rpc_get_config(clixon_handle h,
+                      char         *username,
+                      char         *db,
+                      char         *xpath,
+                      cvec         *nsc,
+                      char         *defaults,
+                      cxobj       **xt)
+{
+    return clixon_rpc_get_config1(h, username, db, xpath, nsc, defaults, YB_MODULE, xt);
+}
+
+static inline int
+clicon_rpc_get(clixon_handle   h,
+               char           *xpath,
+               cvec           *nsc,
+               netconf_content content,
+               int32_t         depth,
+               char           *defaults,
+               cxobj         **xt)
+{
+    return clixon_rpc_get1(h, xpath, nsc, content, depth, defaults, YB_MODULE, xt);
+}
 
 #endif  /* _CLIXON_PROTO_CLIENT_H_ */
