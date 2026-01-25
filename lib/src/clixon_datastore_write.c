@@ -191,6 +191,8 @@ check_body_namespace(cxobj     *x0,
     cxobj     *x;
     int        isroot;
     cbuf      *cberr = NULL;
+    yang_stmt *yspec = NULL;
+    yang_stmt *yns = NULL;
 
     /* XXX: need to identify root better than hiereustics and strcmp,... */
     isroot = xml_parent(x0p)==NULL &&
@@ -240,7 +242,21 @@ check_body_namespace(cxobj     *x0,
     else if (ns0 == NULL && ns1 != NULL){ /* namespace exists in x1 but not in x0: OK (but request is realy invalid */
     }
 #endif
-    else{ /* Namespace does not exist in x0: error */
+    else{ /* Namespace does not exist in x0 or x1: try YANG, else error */
+        if (y && (yspec = ys_spec(y)) != NULL &&
+            (yns = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL &&
+            (ns0 = yang_find_mynamespace(yns)) != NULL){
+            if (isroot)
+                x = x0;
+            else
+                x = x0p;
+            if (nscache_set(x, prefix, ns0) < 0)
+                goto done;
+            if (xml_add_attr(x, prefix, ns0, "xmlns", NULL) == NULL)
+                goto done;
+            xml_sort(x);
+            goto ok;
+        }
         if ((cberr = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
