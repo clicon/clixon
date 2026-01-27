@@ -45,7 +45,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <assert.h>
+#include <syslog.h>
 #include <sys/stat.h>
 
 /* cligen */
@@ -201,6 +201,7 @@ restconf_rpc_wrapper(clixon_handle    h,
         if (xt != NULL &&
             xpath_first(xt, NULL, "/restconf[enable='false']") != NULL) {
             *operation = PROC_OP_NONE;
+            clixon_log(h, LOG_NOTICE, "Unable to start restconf process: /restconf/enable is not set");
         }
         else{
             /* Get debug flag of restconf config, set the restconf start -D daemon flag according
@@ -307,7 +308,10 @@ restconf_pseudo_process_control(clixon_handle h)
     argv[i++] = "-l";
     argv[i++] = "s"; /* There is also log-destination in clixon-restconf.yang */
     argv[i++] = NULL;
-    assert(i==nr);
+    if (i != nr){
+        clixon_err(OE_RESTCONF, 0, "argv dont match (internal error)");
+        goto done;
+    }
     if (clixon_process_register(h, RESTCONF_PROCESS,
                                 "Clixon RESTCONF process",
                                 NULL /* XXX network namespace */,
