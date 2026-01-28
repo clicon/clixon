@@ -2046,6 +2046,8 @@ clixon_rpc_config_path_info(clixon_handle h,
     cxobj     *xe;
     cxobj     *xerr = NULL;
     cxobj     *xreply;
+    cxobj     *x;
+    cxobj     *x0;
     cbuf      *cb = NULL;
     cg_var    *cv;
     int        ret;
@@ -2129,8 +2131,6 @@ clixon_rpc_config_path_info(clixon_handle h,
         }
         else{
             if (xtop){
-                cxobj *x;
-                cxobj *x0;
                 if ((x = xml_find(xreply, "xml")) != NULL &&
                     (x0 = xml_child_i_type(x, 0, CX_ELMNT)) != NULL){
                     xml_rm(x0);
@@ -2150,8 +2150,9 @@ clixon_rpc_config_path_info(clixon_handle h,
                     goto done;
                 }
             }
-            if (xml_nsctx_parse(xreply, nsc1) < 0)
-                goto done;
+            if (nsc1)
+                if (xml_nsctx_parse(xreply, nsc1) < 0)
+                    goto done;
             if (symbol){
                 if ((*symbol = strdup(xml_find_body(xreply, "symbol"))) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");

@@ -111,13 +111,13 @@ expectpart "$($clixon_cli -1 -f $cfg validate)" 0 "^$"
 
 new "cli show info"
 echo "$clixon_cli -1 -f $cfg show info table parameter a extra foo"
-exit
-expectpart "$($clixon_cli -1 -f $cfg show info table parameter a extra foo)" 0 "Module: .* extra" "File: .* $dir/extra.yang" "Namespace: .* urn:example:extra" "Prefix: .* x" "XPath: .* /ex:table/ex:parameter\[ex:name='a'\]/x:extra" "APIpath: .*  /example:table/parameter=a/extra:extra"
+
+expectpart "$($clixon_cli -1 -f $cfg show info table parameter a extra foo)" 0 "Module: .* extra" "File: .* $dir/extra.yang" "Namespace: .* urn:example:extra" "Prefix: .* x" "XPath: .* /ex:table/ex:parameter\[ex:name='a'\]/x:extra" "XPath ns: .* xmlns:ex=\"urn:example:clixon\" xmlns:x=\"urn:example:extra\"" "APIpath: .*  /example:table/parameter=a/extra:extra"
 
 new "netconf show info no path expect error"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><config-path-info $LIBNS/></rpc>" "missing-choice"
 
-RET="<rpc-reply $DEFAULTNS><xml xmlns=\"http://clicon.org/lib\"><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><extra xmlns=\"urn:example:extra\"/></parameter></table></xml><api-path xmlns=\"http://clicon.org/lib\">/example:table/parameter=a/extra:extra</api-path><xpath xmlns=\"http://clicon.org/lib\">/ex:table/ex:parameter\[ex:name='a'\]/x:extra</xpath><namespace-context xmlns=\"http://clicon.org/lib\"><namespace><prefix>ex</prefix><ns>urn:example:clixon</ns></namespace><namespace><prefix>x</prefix><ns>urn:example:extra</ns></namespace></namespace-context><symbol xmlns=\"http://clicon.org/lib\">extra</symbol><prefix xmlns=\"http://clicon.org/lib\">x</prefix><ns xmlns=\"http://clicon.org/lib\">urn:example:extra</ns><module xmlns=\"http://clicon.org/lib\">extra</module><filename xmlns=\"http://clicon.org/lib\">$dir/extra.yang</filename></rpc-reply>"
+RET="<rpc-reply $DEFAULTNS><xml xmlns=\"http://clicon.org/lib\"><table xmlns=\"urn:example:clixon\"><parameter><name>a</name><extra xmlns=\"urn:example:extra\"/></parameter></table></xml><api-path xmlns=\"http://clicon.org/lib\">/example:table/parameter=a/extra:extra</api-path><xpath xmlns=\"http://clicon.org/lib\" xmlns:ex=\"urn:example:clixon\" xmlns:x=\"urn:example:extra\">/ex:table/ex:parameter\[ex:name='a'\]/x:extra</xpath><namespace-context xmlns=\"http://clicon.org/lib\"><namespace><prefix>ex</prefix><ns>urn:example:clixon</ns></namespace><namespace><prefix>x</prefix><ns>urn:example:extra</ns></namespace></namespace-context><symbol xmlns=\"http://clicon.org/lib\">extra</symbol><prefix xmlns=\"http://clicon.org/lib\">x</prefix><ns xmlns=\"http://clicon.org/lib\">urn:example:extra</ns><module xmlns=\"http://clicon.org/lib\">extra</module><filename xmlns=\"http://clicon.org/lib\">$dir/extra.yang</filename></rpc-reply>"
 
 new "netconf show info api-path"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><config-path-info $LIBNS><api-path>/example:table/parameter=a/extra:extra</api-path></config-path-info></rpc>" "$RET"

@@ -692,12 +692,15 @@ module clixon-lib {
                     leaf xpath {
                         type string;
                         description
-                            "XPath 1.0 according to https://www.w3.org/TR/xpath-10";
+                            "XPath 1.0 according to https://www.w3.org/TR/xpath-10
+                             If namespace binding is lacking, then they should be
+                             YANG module canonical namespace bindings.
+                             This binding is returned by the RPC.
+                             In this way this RPC can be used to query namespace bindings.";
                     }
                     uses namespace-context{
                         description
-                            "If given, use these prefix/namespace bindings.
-                             If not given, use implicit canonical YANG module prefix/namespace binding";
+                            "If given, use these prefix/namespace bindings for xpath.";
                     }
                 }
                 mandatory true;
@@ -731,6 +734,7 @@ module clixon-lib {
                 type string;
                 description
                     "XPath corresponding to given api-path and YANG.
+                     Includes XML namespace bindings in xmlns: form, also present in namespace-context.
                      Also, if last xml element is a leafref and if leafref-refer is true: append path to xpath.";
             }
             uses namespace-context{

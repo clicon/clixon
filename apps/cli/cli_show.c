@@ -2099,6 +2099,17 @@ cli_show_config_info(clixon_handle h,
     cligen_output(stdout, "Namespace:  %s\n", ns);
     cligen_output(stdout, "Prefix:     %s\n", prefix);
     cligen_output(stdout, "XPath:      %s\n", xpath);
+    if (cvec_len(nsc) > 0) {
+        cligen_output(stdout, "XPath ns:  ");
+        for (i=0; i<cvec_len(nsc); i++){
+            cv = cvec_i(nsc, i);
+            if (cv_name_get(cv))
+                cligen_output(stdout, " xmlns:%s=\"%s\"",
+                              cv_name_get(cv),
+                              cv_string_get(cv));
+        }
+        cligen_output(stdout, "\n");
+    }
     cligen_output(stdout, "APIpath:    %s\n", api_path);
     retval = 0;
  done:

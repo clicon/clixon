@@ -694,6 +694,7 @@ from_client_config_path_info(clixon_handle h,
     yang_stmt *yspec;
     yang_stmt *ymod = NULL;
     cxobj     *x;
+    cxobj     *xpt = NULL;
     cg_var    *cv;
     char      *prefix = NULL;
     char      *ns = NULL;
@@ -809,10 +810,16 @@ from_client_config_path_info(clixon_handle h,
     if (xml_chardata_cbuf_append(cbret, 0, api_path1) < 0)
         goto done;
     cprintf(cbret, "</api-path>");
-    cprintf(cbret, "<xpath xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (xml_chardata_cbuf_append(cbret, 0, cbuf_get(cbxpath)) < 0)
+    if ((xpt = xml_new_body("xpath", NULL, cbuf_get(cbxpath))) == NULL){
+        clixon_err(OE_UNIX, errno, "xml_new");
         goto done;
-    cprintf(cbret, "</xpath>");
+    }
+    if (xmlns_set(xpt, NULL, CLIXON_LIB_NS) < 0)
+        goto done;
+    if (xmlns_set_all(xpt, nsc1) < 0)
+        goto done;
+    if (clixon_xml2cbuf1(cbret, xpt, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+        goto done;
     if (nsc1){
         cprintf(cbret, "<namespace-context xmlns=\"%s\">", CLIXON_LIB_NS);
         cv = NULL;
@@ -854,6 +861,8 @@ from_client_config_path_info(clixon_handle h,
         xml_free(xerr);
     if (xtop)
         xml_free(xtop);
+    if (xpt)
+        xml_free(xpt);
     return retval;
 }
 
