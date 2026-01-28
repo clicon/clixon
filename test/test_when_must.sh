@@ -77,6 +77,11 @@ module $APPNAME{
      leaf ifMTU {
         type uint32;
      }
+     leaf ifMTU2 {
+        description "If given must be same as orig mtu";
+        type int64;
+        must '../ifMTU = current()';
+     }
      must 'ifType != "ethernet" or ifMTU = 1500' {
         error-message "An Ethernet MTU must be 1500";
      }
@@ -137,6 +142,21 @@ new "must: add eth interface"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><ifType>ethernet</ifType><ifMTU>989</ifMTU></interface></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "must: eth validate fail"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed MUST xpath"
+
+new "when: discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "must: add mtu + mtu2 same"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><ifType>ethernet</ifType><ifMTU>1500</ifMTU><ifMTU2>1500</ifMTU2></interface></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "must: validate ok"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "must: add mtu + mtu2 not equal"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><interface xmlns=\"urn:example:clixon\"><ifType>ethernet</ifType><ifMTU>1500</ifMTU><ifMTU2>95001500</ifMTU2></interface></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "must: validate fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-severity>error</error-severity><error-message>Failed MUST xpath"
 
 if [ $BE -ne 0 ]; then

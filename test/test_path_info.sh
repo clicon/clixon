@@ -110,8 +110,6 @@ new "cli validate OK"
 expectpart "$($clixon_cli -1 -f $cfg validate)" 0 "^$"
 
 new "cli show info"
-echo "$clixon_cli -1 -f $cfg show info table parameter a extra foo"
-
 expectpart "$($clixon_cli -1 -f $cfg show info table parameter a extra foo)" 0 "Module: .* extra" "File: .* $dir/extra.yang" "Namespace: .* urn:example:extra" "Prefix: .* x" "XPath: .* /ex:table/ex:parameter\[ex:name='a'\]/x:extra" "XPath ns: .* xmlns:ex=\"urn:example:clixon\" xmlns:x=\"urn:example:extra\"" "APIpath: .*  /example:table/parameter=a/extra:extra"
 
 new "netconf show info no path expect error"
