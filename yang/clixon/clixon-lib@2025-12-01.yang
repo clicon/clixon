@@ -728,7 +728,9 @@ module clixon-lib {
                 type string;
                 description
                     "XPath corresponding to given api-path and YANG.
-                     Also, if last xml element is a leafref and if leafref-refer is true: append path to xpath.";
+                     Also, if last xml element is a leafref and if leafref-refer is true: append path to xpath.
+                     Note that some XPaths may not correspond to a (single) api-path, the api-path is then not
+                     given.";
             }
             leaf xpath{
                 type string;

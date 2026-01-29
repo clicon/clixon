@@ -52,14 +52,18 @@ Expected: February 2026
 Developers may need to change their code
 
 * Changed C-API
-* `xml_bind_yang0(..., xerr)` -> `xml_bind_yang0(..., 0, xerr)`
-* Added `cli_aware` parameter to `clixon_xml2cbuf1()` as pen-ultimate parameter
-  * `clixon_xml2cbuf1(...s, w)` -> `clixon_xml2cbuf1(...s, 0, w)`
+  * Added `create` parameter to `xpath2xml()`:
+    * Example change: `xpath2xml(...,x,y,e)` --> `xpath2xml(...,0,x,y,e)`
+  * Added `skip_mnt` parameter to `xml_bind_yang0()`
+    * Example change: `xml_bind_yang0(..., xerr)` -> `xml_bind_yang0(..., 0, xerr)`
+  * Added `cli_aware` parameter to `clixon_xml2cbuf1()` as pen-ultimate parameter
+    * Example change: `clixon_xml2cbuf1(...s, w)` -> `clixon_xml2cbuf1(...s, 0, w)`
 * Added const to multiple `char*` parameters
   * In particular many callback input char* parameters may need to be adjusted
 
 ### Corrected Bugs
 
+* Fixed: ["show xpath" don't work over mount point](https://github.com/clicon/clixon-controller/issues/190)
 * Fixed: [Candidate database gets deleted on failed commit](https://github.com/clicon/clixon/issues/648)
 * Fixed: [Private candidate commit fails when changing YANG choice case](https://github.com/clicon/clixon/issues/644)
 * Fixed: [Inconsistent log messages truncation](https://github.com/clicon/clixon/issues/625)

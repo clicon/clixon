@@ -296,10 +296,7 @@ expand_dbvar(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    /* This is primarily to get "y",
-     * xpath2xml would have worked!!
-     * XXX: but y is just the first in this list, there could be other y:s?
-     */
+    /* Get XPath and namespace context from api_path */
     if (clixon_rpc_config_path_info(h, api_path, 0, NULL, NULL,
                                     cvec_find(co->co_cvec, "leafref-no-refer") == NULL, NULL, NULL,
                                     NULL, &xpath, &nsc,
@@ -686,13 +683,17 @@ cli_show_common(clixon_handle    h,
         goto done;
     }
     if (state == 0){     /* Get configuration-only from a database */
-        if (clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt) < 0){
+        if ((ret = clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt)) < 0){
             goto done;
         }
     }
     /* Get configuration and state from running */
-    else  if (clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt) < 0){
+    else  if ((ret = clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt)) < 0){
         goto done;
+    }
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -1012,8 +1013,10 @@ show_conf_xpath(clixon_handle h,
 {
     int              retval = -1;
     char            *dbname;
-    char            *xpath;
+    char            *xpath0;
+    char            *xpath = NULL;
     cg_var          *cv;
+    cvec            *nsc0 = NULL;
     cvec            *nsc = NULL;
     yang_stmt       *yspec;
     int              fromroot = 0;
@@ -1032,21 +1035,32 @@ show_conf_xpath(clixon_handle h,
         clixon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
         goto done;
     }
-    xpath = cv_string_get(cv);
-    /* Create canonical namespace */
-    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-        goto done;
-    /* Look for and add default namespace variable in command */
+    xpath0 = cv_string_get(cv);
+    /* Look for default namespace variable in command (Should probably be obsoleted with new path-info rpc) */
     if ((cv = cvec_find(cvv, "ns")) != NULL){
-        if (xml_nsctx_add(nsc, NULL, cv_string_get(cv)) < 0)
+        if ((nsc0 = cvec_new(0)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_new");
+            goto done;
+        }
+        if (xml_nsctx_add(nsc0, NULL, cv_string_get(cv)) < 0)
             goto done;
     }
+    /* Get XPath and namespace context from api_path */
+    if (clixon_rpc_config_path_info(h, NULL, 0, xpath0, nsc0,
+                                    0, NULL, NULL,
+                                    NULL, &xpath, &nsc,
+                                    NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
     if (cli_show_common(h, dbname, FORMAT_XML, 1, 0,
                         NULL, NULL,
                         NULL, xpath, fromroot, nsc, 0) < 0)
         goto done;
     retval = 0;
 done:
+    if (xpath)
+        free(xpath);
+    if (nsc0)
+        xml_nsctx_free(nsc0);
     if (nsc)
         xml_nsctx_free(nsc);
     return retval;

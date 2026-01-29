@@ -1500,7 +1500,7 @@ yn_insert1(yang_stmt *ys_parent,
  * @param[in] yparent   yang statement whose children are iterated
  * @param[in,out] inext Iterator, or 0 on init
  * @code
- *   yang_stmt *yprev;
+ *   yang_stmt *ynext;
  *   int inext = 0;
  *   while ((ynext = yn_iter(yparent, &inext)) != NULL) {
  *     ...ynext...

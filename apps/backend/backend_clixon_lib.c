@@ -698,7 +698,7 @@ from_client_config_path_info(clixon_handle h,
     cg_var    *cv;
     char      *prefix = NULL;
     char      *ns = NULL;
-    cxobj     *xns;
+    int        create = 0;
     int        ret;
 
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -744,23 +744,28 @@ from_client_config_path_info(clixon_handle h,
             goto done;
         }
         xpath0 = xml_body(x);
-        if ((xns = xml_find(xe, "namespace-context")) != NULL){
+        if (xml_find(xe, "namespace-context") != NULL){
             if (xml_nsctx_parse(xe, &nsc0) < 0)
                 goto done;
         }
-        if (nsc0 == NULL){
-            if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
+         if (nsc0 == NULL){
+            create = 1;
+            if ((nsc0 = cvec_new(0)) == NULL){
+                clixon_err(OE_UNIX, errno, "cvec_new");
                 goto done;
+            }
         }
-        if ((ret = xpath2xml(xpath0, nsc0, xtop, yspec0, &xbot, &ybot, &xerr)) < 0)
+        if ((ret = xpath2xml(xpath0, nsc0, xtop, yspec0, create, &xbot, &ybot, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             goto ok;
         }
-        if ((ret = xpath2api_path(xpath0, nsc0, yspec0, &api_path1, &xerr)) < 0)
-            goto done;
+        if ((ret = xpath2api_path(xpath0, nsc0, yspec0, &api_path1, &xerr)) < 0){
+            ; /* OK to fail create api-path from some xpaths, but could be nicer with a ret=0 */
+            // goto done;
+        }
         if (ret == 0){
             if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
@@ -815,10 +820,12 @@ from_client_config_path_info(clixon_handle h,
     if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     cprintf(cbret, "</xml>");
-    cprintf(cbret, "<api-path xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (xml_chardata_cbuf_append(cbret, 0, api_path1) < 0)
-        goto done;
-    cprintf(cbret, "</api-path>");
+    if (api_path1 != NULL){
+        cprintf(cbret, "<api-path xmlns=\"%s\">", CLIXON_LIB_NS);
+        if (xml_chardata_cbuf_append(cbret, 0, api_path1) < 0)
+            goto done;
+        cprintf(cbret, "</api-path>");
+    }
     if (clixon_xml2cbuf1(cbret, xpt, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     if (nsc1){

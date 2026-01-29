@@ -155,7 +155,7 @@ int xpath2canonical1(const char *xpath0, cvec *nsc0, yang_stmt *yspec, int exprs
                      char **xpath1, cvec **nsc1, cbuf **cbreason);
 int xpath_count(cxobj *xcur, cvec *nsc, const char *xpath, uint32_t *count);
 int xml2xpath(cxobj *x, cvec *nsc, int spec, int apostrophe, char **xpath);
-int xpath2xml(const char *xpath, cvec *nsc, cxobj *xtop, yang_stmt *ytop,
+int xpath2xml(const char *xpath, cvec *nsc, cxobj *xtop, yang_stmt *ytop, int create,
               cxobj **xbotp, yang_stmt **ybotp, cxobj **xerr);
 int xpath2api_path(const char *xpath, cvec *nsc, yang_stmt *yspec, char **api_path, cxobj **xerr);
 

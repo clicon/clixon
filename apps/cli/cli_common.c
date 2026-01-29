@@ -284,7 +284,7 @@ mtpoint_paths(clixon_handle h,
     xbot0 = xtop0;
     if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
         goto done;
-    if ((ret = xpath2xml(xpath, nsc0, xtop0, yspec0, &xbot0, &ybot0, NULL)) < 0)
+    if ((ret = xpath2xml(xpath, nsc0, xtop0, yspec0, 0, &xbot0, &ybot0, NULL)) < 0)
         goto done;
     if (xbot0 == NULL){
         clixon_err(OE_YANG, 0, "No xbot");

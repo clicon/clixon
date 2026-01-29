@@ -2050,6 +2050,7 @@ clixon_rpc_config_path_info(clixon_handle h,
     cxobj     *x0;
     cbuf      *cb = NULL;
     cg_var    *cv;
+    char      *str;
     int        ret;
 
     if ((api_path0 == NULL && xpath0 == NULL) ||
@@ -2138,14 +2139,14 @@ clixon_rpc_config_path_info(clixon_handle h,
                         goto done;
                 }
             }
-            if (api_path1){
-                if ((*api_path1 = strdup(xml_find_body(xreply, "api_path1"))) == NULL){
+            if (api_path1 && (str = xml_find_body(xreply, "api_path")) != NULL){
+                if ((*api_path1 = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
-            if (xpath1){
-                if ((*xpath1 = strdup(xml_find_body(xreply, "xpath"))) == NULL){
+            if (xpath1 && (str = xml_find_body(xreply, "xpath")) != NULL){
+                if ((*xpath1 = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
@@ -2153,32 +2154,32 @@ clixon_rpc_config_path_info(clixon_handle h,
             if (nsc1)
                 if (xml_nsctx_parse(xreply, nsc1) < 0)
                     goto done;
-            if (symbol){
-                if ((*symbol = strdup(xml_find_body(xreply, "symbol"))) == NULL){
+            if (symbol && (str = xml_find_body(xreply, "symbol")) != NULL) {
+                if ((*symbol = strdup(str)) == NULL) {
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
-            if (prefix){
-                if ((*prefix = strdup(xml_find_body(xreply, "prefix"))) == NULL){
+            if (prefix && (str = xml_find_body(xreply, "prefix")) != NULL){
+                if ((*prefix = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
-            if (ns){
-                if ((*ns = strdup(xml_find_body(xreply, "ns"))) == NULL){
+            if (ns && (str = xml_find_body(xreply, "ns")) != NULL){
+                if ((*ns = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
-            if (module){
-                if ((*module = strdup(xml_find_body(xreply, "module"))) == NULL){
+            if (module && (str = xml_find_body(xreply, "module")) != NULL){
+                if ((*module = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
-            if (filename){
-                if ((*filename = strdup(xml_find_body(xreply, "filename"))) == NULL){
+            if (filename && (str = xml_find_body(xreply, "filename")) != NULL){
+                if ((*filename = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
