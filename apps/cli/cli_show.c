@@ -2100,7 +2100,7 @@ cli_show_config_info(clixon_handle h,
     cligen_output(stdout, "Prefix:     %s\n", prefix);
     cligen_output(stdout, "XPath:      %s\n", xpath);
     if (cvec_len(nsc) > 0) {
-        cligen_output(stdout, "XPath ns:  ");
+        cligen_output(stdout, "XPath-ns:  ");
         for (i=0; i<cvec_len(nsc); i++){
             cv = cvec_i(nsc, i);
             if (cv_name_get(cv))

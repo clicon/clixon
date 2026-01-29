@@ -726,7 +726,7 @@ from_client_config_path_info(clixon_handle h,
                 goto done;
             goto ok;
         }
-        if ((ret = api_path2xpath(api_path0, yspec0, &xpath1, &nsc1, &xerr)) < 0)
+        if ((ret = api_path2xpath(api_path0, yspec0, &xpath1, &nsc1, &xerr)) < 0) // XXX
             goto done;
         if (ret == 0){
             if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
@@ -796,11 +796,20 @@ from_client_config_path_info(clixon_handle h,
         goto done;
     }
     cbuf_append_str(cbxpath, xpath1);
-    /* extend xpath if leafref, special case */
+    /* Extend xpath if leafref, special case */
     if (ybot && cbuf_len(cbxpath) && leafref_refer){
         if (leafref_append_path(ybot, nsc1, cbxpath) < 0)
             goto done;
     }
+    /* Fix namespaces in xpath */
+    if ((xpt = xml_new_body("xpath", NULL, cbuf_get(cbxpath))) == NULL){
+        clixon_err(OE_UNIX, errno, "xml_new");
+        goto done;
+    }
+    if (xmlns_set(xpt, NULL, CLIXON_LIB_NS) < 0)
+        goto done;
+    if (xmlns_set_all(xpt, nsc1) < 0)
+        goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<xml xmlns=\"%s\">", CLIXON_LIB_NS);
     if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
@@ -810,14 +819,6 @@ from_client_config_path_info(clixon_handle h,
     if (xml_chardata_cbuf_append(cbret, 0, api_path1) < 0)
         goto done;
     cprintf(cbret, "</api-path>");
-    if ((xpt = xml_new_body("xpath", NULL, cbuf_get(cbxpath))) == NULL){
-        clixon_err(OE_UNIX, errno, "xml_new");
-        goto done;
-    }
-    if (xmlns_set(xpt, NULL, CLIXON_LIB_NS) < 0)
-        goto done;
-    if (xmlns_set_all(xpt, nsc1) < 0)
-        goto done;
     if (clixon_xml2cbuf1(cbret, xpt, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     if (nsc1){

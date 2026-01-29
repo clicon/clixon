@@ -716,6 +716,7 @@ api_path_fmt2xpath(const char *api_path_fmt,
 
 /*! Translate from restconf api-path(cvv) to xml xpath(cbuf) and namespace context
  *
+ * Iterative function
  * @param[in]     api_path URI-encoded path expression" (RFC8040 3.5.3) as cvec
  * @param[in]     yspec    Yang spec
  * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
@@ -837,26 +838,15 @@ api_path2xpath_cvv(cvec      *api_path,
         /* If x/y is mountpoint, change y to new yspec */
         if ((ret = yang_schema_mount_point(y)) < 0)
             goto done;
-        if (ret == 1){
+        if (ret == 1)
             y1 = NULL;
-            if (nsc){
-                cvec_free(nsc);
-                nsc = NULL;
-            }
-            if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-                goto done;
-            /* cf xml_bind_yang0_opt/xml_yang_mount_get */
-        }
         /* Get XML/xpath prefix given namespace.
          * note different from api-path prefix
          */
         if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
             xprefix = yang_find_myprefix(y);
             clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "prefix not found add it %s", xprefix);
-            /* not found, add it to nsc
-             * XXX: do we always have to add it? It could be default?
-             */
-            //      if (xml2prefix(x1, namespace, &pexisting));
+            /* not found, add it to nsc */
             if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
                 goto done;
         }
