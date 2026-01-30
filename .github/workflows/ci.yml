@@ -80,7 +80,7 @@ jobs:
       run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
     - name: start container
       run: ./start.sh
-    - name: run test a-m,p
+    - name: run test a-m,o,x-y
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh test_g*.sh test_h*.sh test_i*.sh test_j*.sh test_l*.sh test_m*.sh test_o*.sh test_x*.sh test_y*.sh" ./sum.sh'
 
   docker-alpine-test-2:
@@ -111,7 +111,7 @@ jobs:
       run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
     - name: start container
       run: ./start.sh
-    - name: run test n-o
+    - name: run test n,p
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_n*.sh test_p*.sh" ./sum.sh'
 
   docker-alpine-test-3:
@@ -142,7 +142,7 @@ jobs:
       run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
     - name: start container
       run: ./start.sh
-    - name: run test r-y
+    - name: run test r-w
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh test_s*.sh test_t*.sh test_u*.sh test_w*.sh" ./sum.sh'
 
   docker-alpine-test-fcgi-r:
