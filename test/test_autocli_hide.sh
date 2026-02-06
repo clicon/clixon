@@ -128,15 +128,14 @@ EOF
 
     new "set table parameter hidden"
     expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "set table parameter x" "<table xmlns=\"urn:example:clixon\"></table>"
-    XML="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
 
+    XML="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
     new "check datastore using netconf"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:table/ex:parameter[ex:name='x']\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
     sudo chmod a+r $dir/candidate_db
     new "check datastore direct access"
     expectpart "$($clixon_util_datastore -d candidate -b $dir -y $fyang -Y ${YANG_INSTALLDIR} -Y $dir get /)" 0 "$XML"
-
 }
 
 function testvalue()
@@ -155,12 +154,12 @@ show config xml
 EOF
     new "set table parameter hidden leaf2"
     expectpart "$(cat $fin | $clixon_cli -f $cfg 2>&1)" 0 "<table xmlns=\"urn:example:clixon\"><parameter><name>x</name></parameter></table>"
-
     XML="<table xmlns=\"urn:example:clixon\"><parameter><name>x</name><value>42</value></parameter></table>"
 
     new "check datastore using netconf"
     expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source><filter type=\"xpath\" select=\"/ex:table/ex:parameter[ex:name='x']\" xmlns:ex=\"urn:example:clixon\" /></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$XML</data></rpc-reply>"
 
+    sudo chmod a+r $dir/candidate_db
     new "check datastore direct access"
     expectpart "$($clixon_util_datastore -d candidate -b $dir -y $fyang -Y ${YANG_INSTALLDIR} -Y $dir get /)" 0 "$XML"
 }
@@ -176,10 +175,8 @@ if [ $BE -ne 0 ]; then
     start_backend -s init -f $cfg
 fi
 
-new "wait backend"
+new "wait backend 1"
 wait_backend
-
-sudo chmod a+r $dir/candidate_db
 
 # INLINE MODE
 
@@ -219,6 +216,19 @@ module example {
    }
 }
 EOF
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend 2"
+wait_backend
 
 new "Test hidden parameter in table/param/value inline"
 testvalue
@@ -271,6 +281,19 @@ module example-augment {
 }
 EOF
 
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend 3"
+wait_backend
+
 new "Test hidden parameter in table/param augment"
 testparam
 
@@ -292,6 +315,19 @@ module example-augment {
    }
 }
 EOF
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend 4"
+wait_backend
 
 new "Test hidden parameter in table/param/value augment"
 testvalue
@@ -346,6 +382,19 @@ module example-augment {
    }
 }
 EOF
+
+if [ $BE -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -z -f $cfg
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend 5"
+wait_backend
 
 new "Test hidden parameter in imported module"
 testparam

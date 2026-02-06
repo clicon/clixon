@@ -1895,11 +1895,15 @@ identityref_add_ns(cxobj *x,
     char      *b;
 
     if ((y = xml_spec(x)) != NULL &&
-        yang_keyword_get(y) == Y_LEAF){
+        (yang_keyword_get(y) == Y_LEAF ||
+         yang_keyword_get(y) == Y_LEAF_LIST)){
+        if (yspec == NULL)
+            yspec = ys_spec(y);
         if (yang_type_get(y, &origtype, &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
             goto done;
         restype = yrestype?yang_argument_get(yrestype):NULL;
-        if (strcmp(restype, "identityref") == 0 &&
+        if (restype &&
+            strcmp(restype, "identityref") == 0 &&
             (b = xml_body(x)) != NULL){
             if (nodeid_split(b, &pf, NULL) < 0)
                 goto done;
@@ -1908,6 +1912,7 @@ identityref_add_ns(cxobj *x,
                 if (xml2ns(x, pf, &ns) < 0)
                     goto done;
                 if (ns == NULL &&
+                    yspec &&
                     (yns = yang_find_module_by_prefix_yspec(yspec, pf)) != NULL){
                     if ((ns = yang_find_mynamespace(yns)) != NULL)
                         if (xmlns_set(x, pf, ns) < 0)

@@ -518,7 +518,7 @@ clicon_rpc_netconf_xml(clixon_handle  h,
         goto done;
     }
     rpcname = xml_name(xname); /* Store rpc name and use in yang binding after reply */
-    if (clixon_xml2cbuf1(cb, xml, 0, 0, NULL, -1, 0, 0) < 0)
+    if (clixon_xml2cbuf1(cb, xml, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     if (clicon_rpc_netconf(h, cbuf_get(cb), xret, sp) < 0)
         goto done;
@@ -558,6 +558,7 @@ clicon_rpc_netconf_xml(clixon_handle  h,
  * @param[in]  xpath    XPath (or "")
  * @param[in]  nsc      Namespace context for filter
  * @param[in]  defaults Value of the with-defaults mode, rfc6243, or NULL
+ * @param[in]  yb       Automatic yang bind: YB_MODULE or none: YB_NONE
  * @param[out] xt       XML tree. Free with xml_free.
  *                      Either <config> or <rpc-reply><rpc-error>
  * @retval     0        OK
@@ -575,18 +576,19 @@ clicon_rpc_netconf_xml(clixon_handle  h,
  *  if (nsc)
  *     xml_nsctx_free(nsc);
  * @endcode
- * @see clicon_rpc_get
+ * @see clixon_rpc_get1
  * @note the netconf return message is yang populated, as well as the return data
  * XXX: why is this only rpc call with username parameter?
  */
 int
-clicon_rpc_get_config(clixon_handle h,
-                      char         *username,
-                      char         *db,
-                      char         *xpath,
-                      cvec         *nsc,
-                      char         *defaults,
-                      cxobj       **xt)
+clixon_rpc_get_config1(clixon_handle h,
+                       char         *username,
+                       char         *db,
+                       char         *xpath,
+                       cvec         *nsc,
+                       char         *defaults,
+                       yang_bind     yb,
+                       cxobj       **xt)
 {
     int        retval = -1;
     cbuf      *cb = NULL;
@@ -645,18 +647,20 @@ clicon_rpc_get_config(clixon_handle h,
     else{
         if (xml_bind_special(xd, yspec, "/nc:get-config/output/data") < 0)
             goto done;
-        if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, 0, &xerr)) < 0)
-            goto done;
-        if (ret == 0){
-            if (clixon_netconf_internal_error(xerr,
-                                              ". Internal error, backend returned invalid XML.",
-                                              NULL) < 0)
+        if (yb != YB_NONE){
+            if ((ret = xml_bind_yang(h, xd, yb, yspec, 0, &xerr)) < 0)
                 goto done;
-            xd = xerr;
-            xerr = NULL;
-            if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
-                clixon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
-                goto done;
+            if (ret == 0){
+                if (clixon_netconf_internal_error(xerr,
+                                                  ". Internal error, backend returned invalid XML.",
+                                                  NULL) < 0)
+                    goto done;
+                xd = xerr;
+                xerr = NULL;
+                if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+                    clixon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
+                    goto done;
+                }
             }
         }
     }
@@ -957,54 +961,6 @@ clicon_rpc_unlock(clixon_handle h,
     return retval;
 }
 
-/*! Get database configuration and state data
- *
- * @param[in]  h         Clixon handle
- * @param[in]  xpath     XPath in a filter stmt (or NULL/"" for no filter)
- * @param[in]  namespace Namespace associated w xpath
- * @param[in]  nsc       Namespace context for filter
- * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
- * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
- * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
- * @param[out] xt        XML tree. Free with xml_free.
- *                       Either <config> or <rpc-error>
- * @retval     0         OK
- * @retval    -1         Error, fatal or xml
- * @note if xpath is set but namespace is NULL, the default, netconf base
- *       namespace will be used which is most probably wrong.
- * @code
- *  cxobj *xt = NULL;
- *  cvec *nsc = NULL;
- *
- *  if ((nsc = xml_nsctx_init(NULL, "urn:example:hello")) == NULL)
- *     err;
- *  if (clicon_rpc_get(h, "/hello/world", nsc, CONTENT_ALL, -1, &xt) < 0)
- *     err;
- *  if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
- *     clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
- *     err;
- *  }
- *  if (xt)
- *     xml_free(xt);
- *  if (nsc)
- *     xml_nsctx_free(nsc);
- * @endcode
- * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
- * @see clixon_err_netconf
- * @note the netconf return message is yang populated, as well as the return data
- */
-int
-clicon_rpc_get(clixon_handle   h,
-               char           *xpath,
-               cvec           *nsc,
-               netconf_content content,
-               int32_t         depth,
-               char           *defaults,
-               cxobj         **xt)
-{
-    return clicon_rpc_get2(h, xpath, nsc, content, depth, defaults, 1, xt);
-}
-
 /*! Get database configuration and state data (please use instead of clicon_rpc_get)
  *
  * @param[in]  h         Clixon handle
@@ -1014,6 +970,7 @@ clicon_rpc_get(clixon_handle   h,
  * @param[in]  content   Clixon extension: all, config, noconfig. -1 means all
  * @param[in]  depth     Nr of XML levels to get, -1 is all, 0 is none
  * @param[in]  defaults  Value of the with-defaults mode, rfc6243, or NULL
+ * @param[in]  yb        Automatic yang bind: YB_MODULE or none: YB_NONE
  * @param[out] xt        XML tree. Free with xml_free.
  *                       Either <config> or <rpc-reply><rpc-error>.
  * @retval     0         OK
@@ -1037,18 +994,18 @@ clicon_rpc_get(clixon_handle   h,
  *  if (nsc)
  *     xml_nsctx_free(nsc);
  * @endcode
- * @see clicon_rpc_get_config which is almost the same as with content=config, but you can also select dbname
+ * @see clixon_rpc_get_config1 which is almost the same as with content=config, but you can also select dbname
  * @see clixon_err_netconf
  * @note the netconf return message is yang populated, as well as the return data
  */
 int
-clicon_rpc_get2(clixon_handle   h,
+clixon_rpc_get1(clixon_handle   h,
                 char           *xpath,
                 cvec           *nsc, /* namespace context for filter */
                 netconf_content content,
                 int32_t         depth,
                 char           *defaults,
-                int             bind,
+                yang_bind       yb,
                 cxobj         **xt)
 {
     int        retval = -1;
@@ -1123,8 +1080,8 @@ clicon_rpc_get2(clixon_handle   h,
     else{
         if (xml_bind_special(xd, yspec, "/nc:get/output/data") < 0)
             goto done;
-        if (bind){
-            if ((ret = xml_bind_yang(h, xd, YB_MODULE, yspec, 0, &xerr)) < 0)
+        if (yb != YB_NONE){
+            if ((ret = xml_bind_yang(h, xd, yb, yspec, 0, &xerr)) < 0)
                 goto done;
             if (ret == 0){
                 if (clixon_netconf_internal_error(xerr,
@@ -2039,26 +1996,46 @@ clixon_rpc_clixon_cache(clixon_handle h,
     return retval;
 }
 
-/*! Make a clixon yang-api-path rpc call from client to backend server
+/*! Make a clixon config-path-info rpc call from client to backend server
  *
+ * Note only one of xpath and api-path should be given
  * @param[in]     h             Clixon handle
- * @param[in]     api_path      API path
+ * @param[in]     api_path0     API path
+ * @param[in]     strict        Do not accept incomplete api-paths
+ * @param[in]     xpath0        XPath
+ * @param[in]     nsc0          Namespace-context of xpath
  * @param[in]     leafref_refer XPath is extended by appending the path of the leafref to the original XPath.
  * @param[in]     body          If innermost XML is leaf, add body
  * @param[out]    xtop          XML data
- * @param[out]    xpath         XPath
- * @param[out]    nsc           Namespace context of XPath
+ * @param[out]    api_path1     API path output
+ * @param[out]    xpath1        XPath output
+ * @param[out]    nsc1          Namespace context of XPath1
+ * @param[out]    symbol        Yang statement of innermost XML symbol";
+ * @param[out]    prefix        Local prefix of symbol
+ * @param[out]    ns            Namespace of symbol
+ * @param[out]    module        Yang module of symbol
+ * @param[out]    file          File path of module
  * @retval        0             OK
  * @retval       -1             Error and logged to syslog
+ * @see clixon_rpc_api_path2xml  Simplified signature for api-path only
  */
 int
-clixon_rpc_yang_api_path(clixon_handle h,
-                         const char   *api_path,
-                         int           leafref_refer,
-                         const char   *body,
-                         cxobj        *xtop,
-                         char        **xpath,
-                         cvec        **nsc)
+clixon_rpc_config_path_info(clixon_handle h,
+                            const char   *api_path0,
+                            int           strict,
+                            const char   *xpath0,
+                            cvec         *nsc0,
+                            int           leafref_refer,
+                            const char   *body,
+                            cxobj        *xtop,
+                            char        **api_path1,
+                            char        **xpath1,
+                            cvec        **nsc1,
+                            char        **symbol,
+                            char        **prefix,
+                            char        **ns,
+                            char        **module,
+                            char        **filename)
 {
     int        retval = -1;
     yang_stmt *yspec0;
@@ -2069,9 +2046,22 @@ clixon_rpc_yang_api_path(clixon_handle h,
     cxobj     *xe;
     cxobj     *xerr = NULL;
     cxobj     *xreply;
+    cxobj     *x;
+    cxobj     *x0;
     cbuf      *cb = NULL;
+    cg_var    *cv;
+    char      *str;
     int        ret;
 
+    if ((api_path0 == NULL && xpath0 == NULL) ||
+        (api_path0 != NULL && xpath0 != NULL)){
+        clixon_err(OE_XML, EINVAL, "Exactly one of xpath and api-path should be set");
+        goto done;
+    }
+    if (api_path0 && (strlen(api_path0)==0 || *api_path0 != '/')){
+        clixon_err(OE_XML, 0, "Invalid api-path: \"%s\" (must start with '/')", api_path0);
+        goto done;
+    }
     yspec0 = clicon_dbspec_yang(h);
     if (session_id_check(h, &session_id) < 0)
         goto done;
@@ -2087,12 +2077,32 @@ clixon_rpc_yang_api_path(clixon_handle h,
     }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
-    cprintf(cb, "<yang-api-path xmlns=\"%s\">", CLIXON_LIB_NS);
-    cprintf(cb, "<api-path>%s</api-path>", api_path);
+    cprintf(cb, "<config-path-info xmlns=\"%s\">", CLIXON_LIB_NS);
+    if (api_path0){
+        cprintf(cb, "<api-path>%s</api-path>", api_path0);
+        cprintf(cb, "<strict>%s</strict>", strict?"true":"false");
+    }
+    else if (xpath0){
+        cprintf(cb, "<xpath>%s</xpath>", xpath0);
+        if (nsc0){
+            cprintf(cb, "<namespace-context xmlns=\"%s\">", CLIXON_LIB_NS);
+            cv = NULL;
+            while ((cv = cvec_each(nsc0, cv)) != NULL) {
+                cprintf(cb, "<namespace>");
+                cprintf(cb, "<prefix>%s</prefix>", cv_name_get(cv)?cv_name_get(cv):"");
+                cprintf(cb, "<ns>%s</ns>", cv_string_get(cv));
+                cprintf(cb, "</namespace>");
+            }
+            cprintf(cb, "</namespace-context>");
+        }
+    }
     cprintf(cb, "<leafref-refer>%s</leafref-refer>", leafref_refer?"true":"false");
-    if (body)
-        cprintf(cb, "<body>%s</body>", body);
-    cprintf(cb, "</yang-api-path>");
+    if (body){
+        cprintf(cb, "<body>");
+        xml_chardata_cbuf_append(cb, 0, body);
+        cprintf(cb, "</body>");
+    }
+    cprintf(cb, "</config-path-info>");
     cprintf(cb, "</rpc>");
     /* Create XML from cbuf */
     if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec0, &xrpc, &xerr)) < 0)
@@ -2108,7 +2118,7 @@ clixon_rpc_yang_api_path(clixon_handle h,
         goto done;
     }
     if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) != NULL){
-        if ((ret = xml_bind_yang_rpc_reply(h, xreply, "yang-api-path", yspec0, &xerr)) < 0)
+        if ((ret = xml_bind_yang_rpc_reply(h, xreply, "config-path-info", yspec0, &xerr)) < 0)
             goto done;
         if (ret == 0){
             if (xret) {             /* Replace reply with error */
@@ -2122,8 +2132,6 @@ clixon_rpc_yang_api_path(clixon_handle h,
         }
         else{
             if (xtop){
-                cxobj *x;
-                cxobj *x0;
                 if ((x = xml_find(xreply, "xml")) != NULL &&
                     (x0 = xml_child_i_type(x, 0, CX_ELMNT)) != NULL){
                     xml_rm(x0);
@@ -2131,35 +2139,50 @@ clixon_rpc_yang_api_path(clixon_handle h,
                         goto done;
                 }
             }
-            if (xpath){
-                if ((*xpath = strdup(xml_find_body(xreply,"xpath"))) == NULL){
+            if (api_path1 && (str = xml_find_body(xreply, "api_path")) != NULL){
+                if ((*api_path1 = strdup(str)) == NULL){
                     clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
             }
-            if (nsc){
-                cxobj *xns;
-                cxobj *xn;
-                char  *prefix;
-                char  *ns;
-                cvec  *cvv;
-
-                if ((cvv = cvec_new(0)) == NULL){
-                    clixon_err(OE_XML, errno, "cvec_new");
+            if (xpath1 && (str = xml_find_body(xreply, "xpath")) != NULL){
+                if ((*xpath1 = strdup(str)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
                     goto done;
                 }
-                if ((xns = xml_find(xreply, "namespace-context")) != NULL){
-                    xn = NULL;
-                    while ((xn = xml_child_each(xns, xn, CX_ELMNT)) != NULL) {
-                        ns = xml_find_body(xn, "ns");
-                        prefix = xml_find_body(xn, "prefix");
-                        if (ns){
-                            if (xml_nsctx_add(cvv, prefix, ns) < 0)
-                                goto done;
-                        }
-                    }
+            }
+            if (nsc1)
+                if (xml_nsctx_parse(xreply, nsc1) < 0)
+                    goto done;
+            if (symbol && (str = xml_find_body(xreply, "symbol")) != NULL) {
+                if ((*symbol = strdup(str)) == NULL) {
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
                 }
-                *nsc = cvv;
+            }
+            if (prefix && (str = xml_find_body(xreply, "prefix")) != NULL){
+                if ((*prefix = strdup(str)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+            if (ns && (str = xml_find_body(xreply, "ns")) != NULL){
+                if ((*ns = strdup(str)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+            if (module && (str = xml_find_body(xreply, "module")) != NULL){
+                if ((*module = strdup(str)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+            if (filename && (str = xml_find_body(xreply, "filename")) != NULL){
+                if ((*filename = strdup(str)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
             }
         }
     }
@@ -2176,6 +2199,31 @@ clixon_rpc_yang_api_path(clixon_handle h,
     return retval;
 }
 
+/*! Shorthand of clixon_rpc_config_path_info for xpath and xml
+ *
+ * @param[in]     h          Clixon handle
+ * @param[in]     api_path   API path
+ * @param[in]     body       If innermost XML is leaf, add body
+ * @param[out]    xtop       XML data
+ * @param[out]    xpath      XPath output
+ * @param[out]    nsc        Namespace context of XPath1
+ * @retval        0          OK
+ * @retval       -1          Error and logged to syslog
+ * @see xpath2xpath  Local versions
+ * @see xpath2xml
+ */
+int
+clixon_rpc_api_path2xml(clixon_handle h,
+                        const char   *api_path,
+                        const char   *body,
+                        cxobj        *xtop,
+                        char        **xpath,
+                        cvec        **nsc)
+{
+    return clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL, 0, body, xtop, NULL, xpath, nsc,
+                                       NULL, NULL, NULL, NULL, NULL);
+}
+
 /*! Make a clixon yang-api-path rpc call from client to backend server
  *
  * @param[in]   h        Clixon handle
@@ -2185,6 +2233,7 @@ clixon_rpc_yang_api_path(clixon_handle h,
  * @param[in]   xt       XML top-level object
  * @param[in]   pretty   Set if output is pretty-printed
  * @param[in]   skiptop  Skip top-object, only children
+ * @param[in]   cli_aware Autocli extensions awareness. False: ignore true: follow.
  * @param[in]   prepend  CLI prefix to prepend cli syntax, eg "set "
  * @param[out]  cbret    Formatted data
  * @retval      0        OK
@@ -2198,6 +2247,7 @@ clixon_rpc_translate_format(clixon_handle    h,
                             cxobj           *xt,
                             int              pretty,
                             int              skiptop,
+                            int              cli_aware,
                             const char      *prepend,
                             cbuf            *cbret)
 {
@@ -2236,6 +2286,7 @@ clixon_rpc_translate_format(clixon_handle    h,
     cprintf(cb, "<format>%s</format>", format_int2str(format));
     cprintf(cb, "<pretty>%s</pretty>", pretty?"true":"false");
     cprintf(cb, "<skiptop>%s</skiptop>", skiptop?"true":"false");
+    cprintf(cb, "<cli-aware>%s</cli-aware>", cli_aware?"true":"false");
     if (prepend)
         cprintf(cb, "<prepend>%s</prepend>", prepend);
     if (xpath)
@@ -2254,7 +2305,7 @@ clixon_rpc_translate_format(clixon_handle    h,
     cprintf(cb, "<xml>");
     xn = NULL;
     while ((xn = xml_child_each(xt, xn, CX_ELMNT)) != NULL) {
-        if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+        if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
     }
     cprintf(cb, "</xml>");

@@ -462,6 +462,7 @@ translate_jsonenc_xml(cxobj     *x,
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
  * @param[in]   jsonenc JSON encoding according to RFC7951, prefixes are module-names
+ * @param[in]   skip_mnt If set, do not proceed binding across mount-points
  * @param[out]  xerr   Reason for failure, on the form <rpc-reply><rpc-error> or NULL,
  *                     free with xml_free()
  * @retval      1      OK yang assignment made
@@ -483,12 +484,13 @@ translate_jsonenc_xml(cxobj     *x,
  * @note For subs to anyxml nodes will not have spec set
  */
 int
-xml_bind_yang(clixon_handle h,
-              cxobj        *xt,
-              yang_bind     yb,
-              yang_stmt    *yspec,
-              int           jsonenc,
-              cxobj       **xerr)
+xml_bind_yang_mnt(clixon_handle h,
+                  cxobj        *xt,
+                  yang_bind     yb,
+                  yang_stmt    *yspec,
+                  int           jsonenc,
+                  int           skip_mnt,
+                  cxobj       **xerr)
 {
     int    retval = -1;
     cxobj *xc;         /* xml child */
@@ -503,7 +505,7 @@ xml_bind_yang(clixon_handle h,
     }
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-        if ((ret = xml_bind_yang0(h, xc, yb, yspec, jsonenc, xerr)) < 0)
+        if ((ret = xml_bind_yang0(h, xc, yb, yspec, jsonenc, skip_mnt, xerr)) < 0)
             goto done;
         if (ret == 0){
             clixon_debug(CLIXON_DBG_YANG, "Bind failed: %s", xml_name(xc));
@@ -526,6 +528,7 @@ xml_bind_yang(clixon_handle h,
  * @param[in]   yspec  Yang spec
  * @param[in]   xsibling
  * @param[in]   jsonenc JSON encoding according to RFC7951, prefixes are module-names
+ * @param[in]   skip_mnt If set, do not proceed binding across mount-points
  * @param[out]  xerr   Reason for failure, or NULL
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
@@ -538,6 +541,7 @@ xml_bind_yang0_opt(clixon_handle h,
                    yang_stmt    *yspec,
                    cxobj        *xsibling,
                    int           jsonenc,
+                   int           skip_mnt,
                    cxobj       **xerr)
 {
     int        retval = -1;
@@ -586,6 +590,8 @@ xml_bind_yang0_opt(clixon_handle h,
             goto done;
         if (ret == 0)
             goto ok;
+        if (skip_mnt)
+            goto ok;
     }
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
@@ -596,15 +602,15 @@ xml_bind_yang0_opt(clixon_handle h,
         if (yc0 != NULL &&
             clicon_strcmp(name0, name) == 0 &&
             clicon_strcmp(prefix0, prefix) == 0){
-            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xc0, jsonenc, xerr)) < 0)
+            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xc0, jsonenc, skip_mnt, xerr)) < 0)
                 goto done;
         }
         else if (xsibling &&
                  (xs = xml_find_type(xsibling, prefix, name, CX_ELMNT)) != NULL){
-            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xs, jsonenc, xerr)) < 0)
+            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xs, jsonenc, skip_mnt, xerr)) < 0)
                 goto done;
         }
-        else if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, NULL, jsonenc, xerr)) < 0)
+        else if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, NULL, jsonenc, skip_mnt, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -629,6 +635,7 @@ xml_bind_yang0_opt(clixon_handle h,
  * @param[in]   yb     How to bind yang to XML top-level when parsing
  * @param[in]   yspec  Yang spec
  * @param[in]   jsonenc JSON encoding according to RFC7951, prefixes are module-names
+ * @param[in]   skip_mnt If set, do not proceed binding across mount-points
  * @param[out]  xerr   Reason for failure, or NULL (call xml_free() after use)
  * @retval      1      OK yang assignment made
  * @retval      0      Partial or no yang assigment made (at least one failed) and xerr set
@@ -642,6 +649,7 @@ xml_bind_yang0(clixon_handle h,
                yang_bind     yb,
                yang_stmt    *yspec,
                int           jsonenc,
+               int           skip_mnt,
                cxobj       **xerr)
 {
     int        retval = -1;
@@ -689,7 +697,7 @@ xml_bind_yang0(clixon_handle h,
     }
     xc = NULL;     /* Apply on children */
     while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
-        if ((ret = xml_bind_yang0_opt(h, xc, YB_PARENT, yspec, NULL, jsonenc, xerr)) < 0)
+        if ((ret = xml_bind_yang0_opt(h, xc, YB_PARENT, yspec, NULL, jsonenc, skip_mnt, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

@@ -1158,7 +1158,7 @@ _text_syntax_parse(const char *str,
             /* xt:<top>     nospec
              * x:   <a> <-- populate from modules
              */
-            if ((ret = xml_bind_yang0(NULL, x, YB_MODULE, yspec, 0, xerr)) < 0)
+            if ((ret = xml_bind_yang0(NULL, x, YB_MODULE, yspec, 0, 0, xerr)) < 0)
                 goto done;
             if (ret == 0)
                 failed++;

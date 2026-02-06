@@ -63,5 +63,6 @@ int     xmlns_set(cxobj *x, const char *prefix, const char *ns);
 int     xmlns_set_all(cxobj *x, cvec *nsc);
 int     xml2prefix(cxobj *xn, const char *ns, char **prefixp);
 int     xml_add_namespace(cxobj *x, cxobj *xp, const char *prefix, const char *ns);
+int     xml_nsctx_parse(cxobj *xnsc, cvec **nsc);
 
 #endif /* _CLIXON_XML_NSCTX_H */

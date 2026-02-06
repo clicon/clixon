@@ -96,8 +96,10 @@
 #include "clixon_debug.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_netconf_lib.h"
+#include "clixon_data.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_schema_mount.h"
+#include "clixon_path.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
@@ -1471,11 +1473,12 @@ xml2xpath(cxobj *x,
     return retval;
 }
 
-/*! Create xml tree from XPath as xpath-tree
+/*! Create xml tree from XPath as xpath-tree, recursive function
  *
  * @param[in]  xs      Parsed XPath - xpath_tree
  * @param[in]  nsc     Namespace context for XPath
  * @param[in]  x0      XML tree so far
+ * @param[in]  create  If set create nsc
  * @param[out] xbotp   Resulting xml tree (end of XPath) (optional)
  * @param[out] xerr    Netconf error message (if retval=0)
  * @retval     1       OK
@@ -1488,6 +1491,7 @@ xpath2xml_traverse(xpath_tree *xs,
                    cvec       *nsc,
                    cxobj      *x0,
                    yang_stmt  *y0,
+                   int         create,
                    cxobj     **xbotp,
                    yang_stmt **ybotp,
                    cxobj     **xerr)
@@ -1499,10 +1503,16 @@ xpath2xml_traverse(xpath_tree *xs,
     char      *ns = NULL;
     cbuf      *cberr = NULL;
     cxobj     *xc;
+    yang_stmt *yspec;
     yang_stmt *ymod;
     yang_stmt *yc;
+    cxobj     *xb;
     int        ret;
 
+    if (xbotp == NULL || ybotp == NULL){
+        clixon_err(OE_UNIX, EINVAL, "xbotp or ybotp is NULL");
+        goto done;
+    }
     *xbotp = x0;
     *ybotp = y0;
     switch (xs->xs_type){
@@ -1510,21 +1520,29 @@ xpath2xml_traverse(xpath_tree *xs,
         prefix = xs->xs_s0;
         name = xs->xs_s1;
         if ((namespace = xml_nsctx_get(nsc, prefix)) == NULL){
-            if ((cberr = cbuf_new()) == NULL){
-                clixon_err(OE_UNIX, errno, "cbuf_new");
-                goto done;
+            if (!create){
+                if ((cberr = cbuf_new()) == NULL){
+                    clixon_err(OE_UNIX, errno, "cbuf_new");
+                    goto done;
+                }
+                cprintf(cberr, "No namespace found for prefix: %s", prefix);
+                if (xerr &&
+                    netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                    goto done;
+                goto fail;
             }
-            cprintf(cberr, "No namespace found for prefix: %s", prefix);
-            if (xerr &&
-                netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
-                goto done;
-            goto fail;
         }
         if ((ret = yang_schema_mount_point(y0)) < 0)
             goto done;
-        if (ret == 1){
-            yang_stmt *yspec;
+        if (ret == 1){ /* mnt-point */
             if (yang_mount_get_yspec_any(y0, &yspec) == 1){
+                if (namespace==NULL && create){
+                    if ((ymod = yang_find_module_by_prefix_yspec(yspec, prefix)) != NULL){
+                        namespace = yang_find_mynamespace(ymod);
+                        if (xml_nsctx_add(nsc, prefix, namespace) < 0)
+                            goto done;
+                    }
+                }
                 if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
                     cprintf(cberr, "No such yang module namespace");
                     if (xerr &&
@@ -1536,6 +1554,26 @@ xpath2xml_traverse(xpath_tree *xs,
             }
         }
         else if (yang_keyword_get(y0) == Y_SPEC){ /* top-node */
+            if (namespace==NULL && create){
+                if (prefix == NULL){
+                    int        inext = 0;
+                    yc = NULL;
+                    while ((ymod = yn_iter(y0, &inext)) != NULL) {
+                        if ((yc = yang_find_datanode(ymod, name)) != NULL)
+                            break;
+                    }
+                    if (yc != NULL){
+                        namespace = yang_find_mynamespace(ymod);
+                        if (xml_nsctx_add(nsc, prefix, namespace) < 0)
+                            goto done;
+                    }
+                }
+                else if ((ymod = yang_find_module_by_prefix_yspec(y0, prefix)) != NULL){
+                    namespace = yang_find_mynamespace(ymod);
+                    if (xml_nsctx_add(nsc, prefix, namespace) < 0)
+                        goto done;
+                }
+            }
             if ((ymod = yang_find_module_by_namespace(y0, namespace)) == NULL){
                 cprintf(cberr, "No such yang module namespace");
                 if (xerr &&
@@ -1553,19 +1591,37 @@ xpath2xml_traverse(xpath_tree *xs,
         }
         if ((xc = xml_new(name, x0, CX_ELMNT)) == NULL)
             goto done;
-        if (xml2ns(x0, prefix, &ns) < 0)
+        if (namespace == NULL && create){
+            if ((ymod = yang_find_module_by_prefix(yc, prefix)) != NULL){
+                namespace = yang_find_mynamespace(ymod);
+                if (xml_nsctx_add(nsc, prefix, namespace) < 0)
+                    goto done;
+            }
+        }
+        /* Try reusing existing NULL prefix for namespace, if not make new NULL / namespace binding */
+        if (xml2ns(x0, NULL, &ns) < 0) // Try existing NULL
             goto done;
-        if (ns == NULL)
+        if (namespace != NULL && (ns == NULL || strcmp(ns, namespace) != 0)){
             if (xmlns_set(xc, NULL, namespace) < 0)
                 goto done;
+        }
+        xml_spec_set(xc, yc);
         *xbotp = xc;
         *ybotp = yc;
+        break;
+    case XP_PRIME_STR:
+        if (xs->xs_s0 && y0 && yang_keyword_get(y0) == Y_LEAF){
+            if ((xb = xml_new("body", x0, CX_BODY)) == NULL)
+                goto done;
+            if (xml_value_set(xb, xs->xs_s0) < 0)
+                goto done;
+        }
         break;
     default:
         break;
     }
     if (xs->xs_c0){
-        if ((ret = xpath2xml_traverse(xs->xs_c0, nsc, x0, y0, xbotp, ybotp, xerr)) < 0)
+        if ((ret = xpath2xml_traverse(xs->xs_c0, nsc, x0, y0, create, xbotp, ybotp, xerr)) < 0)
             goto done;
         if (ret == 0){
             goto fail;
@@ -1574,7 +1630,7 @@ xpath2xml_traverse(xpath_tree *xs,
     if (xs->xs_c1){
         x0 = *xbotp;
         y0 = *ybotp;
-        if ((ret = xpath2xml_traverse(xs->xs_c1, nsc, x0, y0, xbotp, ybotp, xerr)) < 0)
+        if ((ret = xpath2xml_traverse(xs->xs_c1, nsc, x0, y0, create, xbotp, ybotp, xerr)) < 0)
             goto done;
         if (ret == 0){
             goto fail;
@@ -1597,9 +1653,10 @@ xpath2xml_traverse(xpath_tree *xs,
  *
  * Create an XML tree from "scratch" using XPath.
  * @param[in]     xpath   (Absolute) XPath
- * @param[in]     nsc     Namespace context for xpath
+ * @param[in]     nsc     Namespace context of xpath, if it is empty
  * @param[in,out] xtop    Incoming XML tree
  * @param[in]     yspec   Yang spec for xtop
+ * @param[in]     create  If set, accept empty nsc and create new namespace bindings
  * @param[out]    xbotp   Resulting xml tree (end of XPath) (optional)
  * @param[out]    ybotp   Yang spec matching xpathp
  * @param[out]    xerr    Netconf error message (if retval=0)
@@ -1615,6 +1672,7 @@ xpath2xml(const char *xpath,
           cvec       *nsc,
           cxobj      *xtop,
           yang_stmt  *ytop,
+          int         create,
           cxobj     **xbotp,
           yang_stmt **ybotp,
           cxobj     **xerr)
@@ -1637,13 +1695,73 @@ xpath2xml(const char *xpath,
     /* Parse input XPath into an xpath-tree */
     if (xpath_parse(xpath, &xpt) < 0)
         goto done;
-    if ((retval = xpath2xml_traverse(xpt, nsc, xtop, ytop, xbotp, ybotp, xerr)) < 1)
+    if ((retval = xpath2xml_traverse(xpt, nsc, xtop, ytop, create, xbotp, ybotp, xerr)) < 1)
         goto done;
  done:
     if (xpt)
         xpath_tree_free(xpt);
     if (cberr)
         cbuf_free(cberr);
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
+/*! Translate from xml absolute xpath to restconf api-path
+ *
+ * Note currently not "native" function, uses xpath2xml + xml2api_path
+ * @param[in]     xpath    (Absolute) XPath
+ * @param[in]     nsc      Namespace context of xpath
+ * @param[out]    api_path api-path (use free() to deallocate)
+ * @param[out]    xerr     Netconf error message (if retval=0)
+ * @retval        1        OK
+ * @retval        0        Invalid XPath
+ * @retval       -1        Fatal error, clixon_err called
+ * @see api_path2xpath
+ */
+int
+xpath2api_path(const char *xpath,
+               cvec       *nsc,
+               yang_stmt  *yspec0,
+               char      **api_path,
+               cxobj     **xerr)
+{
+    int        retval = -1;
+    cxobj     *xtop = NULL;
+    cxobj     *xbot;
+    yang_stmt *ybot = NULL;
+    cbuf      *cbapi_path = NULL;
+    int        ret;
+
+    if (xpath == NULL){
+        clixon_err(OE_XML, EINVAL, "xpath or apipath is NULL");
+        goto done;
+    }
+    if ((cbapi_path = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    xbot = xtop;
+    if ((ret = xpath2xml(xpath, nsc, xtop, yspec0, 0, &xbot, &ybot, xerr)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+    if (xml2api_path(xbot, 0x0, cbapi_path) < 0)
+        goto done;
+    if (api_path)
+        if ((*api_path = strdup(cbuf_get(cbapi_path))) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+    retval = 1;
+ done:
+    if (cbapi_path)
+        cbuf_free(cbapi_path);
+    if (xtop)
+        xml_free(xtop);
     return retval;
  fail:
     retval = 0;

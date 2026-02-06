@@ -103,6 +103,7 @@
 #include "clixon_xml_map.h"
 #include "clixon_yang_module.h"
 #include "clixon_yang_schema_mount.h"
+#include "clixon_proto_client.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 #include "clixon_instance_id_parse.h"
@@ -715,6 +716,7 @@ api_path_fmt2xpath(const char *api_path_fmt,
 
 /*! Translate from restconf api-path(cvv) to xml xpath(cbuf) and namespace context
  *
+ * Iterative function
  * @param[in]     api_path URI-encoded path expression" (RFC8040 3.5.3) as cvec
  * @param[in]     yspec    Yang spec
  * @param[in,out] xpath    The xpath as cbuf (must be created and may have content)
@@ -836,26 +838,15 @@ api_path2xpath_cvv(cvec      *api_path,
         /* If x/y is mountpoint, change y to new yspec */
         if ((ret = yang_schema_mount_point(y)) < 0)
             goto done;
-        if (ret == 1){
+        if (ret == 1)
             y1 = NULL;
-            if (nsc){
-                cvec_free(nsc);
-                nsc = NULL;
-            }
-            if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-                goto done;
-            /* cf xml_bind_yang0_opt/xml_yang_mount_get */
-        }
         /* Get XML/xpath prefix given namespace.
          * note different from api-path prefix
          */
         if (xml_nsctx_get_prefix(nsc, namespace, &xprefix) == 0){
             xprefix = yang_find_myprefix(y);
             clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "prefix not found add it %s", xprefix);
-            /* not found, add it to nsc
-             * XXX: do we always have to add it? It could be default?
-             */
-            //      if (xml2prefix(x1, namespace, &pexisting));
+            /* not found, add it to nsc */
             if (xml_nsctx_add(nsc, xprefix, namespace) < 0)
                 goto done;
         }
@@ -972,7 +963,7 @@ api_path2xpath_cvv(cvec      *api_path,
  *
  * @param[in]  api_path  URI-encoded path expression" (RFC8040 3.5.3)
  * @param[in]  yspec     Yang spec
- * @param[out] xpath     xpath (use free() to deallocate)
+ * @param[out] xpathp    xpath (use free() to deallocate)
  * @param[out] nsc       Namespace context of xpath (free w cvec_free)
  * @param[out] xerr      Netconf error message
  * @retval     1         OK
@@ -1453,7 +1444,7 @@ api_path2xml_mnt(const char       *api_path,
                                    xbotp, ybotp, xerr)) < 1)
         goto done;
     /* Fix namespace */
-    if (xbotp){
+    if (xbotp && (*xbotp != xtop)){
         xml_yang_root(*xbotp, &xroot);
         if (xmlns_assign(xroot) < 0)
             goto done;
@@ -1470,6 +1461,15 @@ api_path2xml_mnt(const char       *api_path,
     goto done;
 }
 
+/*! Local build api-path for single XML node
+ *
+ * @param[in]  x     XML node (need to be yang populated)
+ * @param[in]  root  If set, this is root
+ * @param[out] cb    api_path
+ * @retval     0     OK
+ * @retval    -1     Error
+ * @see xml2api_path  the whole recursive function
+ */
 static int
 xml2api_path1(cxobj *x,
               int    root,
@@ -1497,8 +1497,7 @@ xml2api_path1(cxobj *x,
     if (root)
         cprintf(cb, "%s:", yang_argument_get(ymod));
     cprintf(cb, "%s", xml_name(x));
-    keyword = yang_keyword_get(y);
-    switch (keyword){
+    switch (keyword = yang_keyword_get(y)){
     case Y_LEAF_LIST:
         b = xml_body(x);
         enc = NULL;
@@ -1598,6 +1597,8 @@ xml2api_path(cxobj   *x,
     int        retval = -1;
     cxobj     *xp;
     yang_stmt *y = NULL;
+    char      *ns;
+    char      *nsp;
     int        root;
     size_t     len;
 
@@ -1617,6 +1618,13 @@ xml2api_path(cxobj   *x,
         goto done;
     /* If parent did not add anything, this node is top */
     root = len == cbuf_len(cb);
+    /* Or if parent belongs to other namespace */
+    if (xml2ns(x, xml_prefix(x), &ns) < 0)
+        goto done;
+    if (xml2ns(xp, xml_prefix(xp), &nsp) < 0)
+        goto done;
+    if (ns && nsp && strcmp(ns, nsp) != 0)
+        root = 1;
     if (xml2api_path1(x, root, cb) < 0)
         goto done;
  ok:

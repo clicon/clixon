@@ -33,7 +33,7 @@
 
   ***** END LICENSE BLOCK *****
 
- * 
+ *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -61,8 +61,6 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 
-#include <assert.h> // XXX
-
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -72,118 +70,6 @@
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
-
-/*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)
- *
- * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
- * from y is used. Unless the element is .., .
- * @param[in,out] cb0     Result XPath as cbuf
- * @param[in]     xpath1  Input XPath
- * @param[in]     y       Yang of xpath1
- * @param[in,out] nsc     Namespace
- * @retval        0       OK
- * @retval       -1       Error
- *
- * XXX: Predicates not handled
- * The algorithm is not fool-proof, there are many cases it may not work
- * To make it more complete, maybe parse the xpath to a tree and put it
- * back to an xpath after modifcations, something like:
-   if (xpath_parse(yang_argument_get(ypath), &xpt) < 0)
-     goto done;
-   if (xpath_tree2cbuf(xpt, xcb) < 0)
-     goto done;
- */
-static int
-xpath_append(cbuf      *cb0,
-             char      *xpath1,
-             yang_stmt *y,
-             cvec      *nsc)
-{
-    int    retval = -1;
-    char **vec = NULL;
-    char  *v;
-    int    nvec;
-    int    i;
-    char  *myprefix;
-    char  *id = NULL;
-    char  *prefix = NULL;
-    int    initialups = 1; /* If starts with ../../.. */
-    char  *xpath0;
-    char  *ns;
-    int    j;
-    int    ret;
-
-    if (cb0 == NULL){
-        clixon_err(OE_XML, EINVAL, "cb0 is NULL");
-        goto done;
-    }
-    if (xpath1 == NULL || strlen(xpath1)==0)
-        goto ok;
-    if ((myprefix = yang_find_myprefix(y)) == NULL)
-        goto done;
-    if ((vec = clixon_strsep1(xpath1, "/", &nvec)) == NULL)
-        goto done;
-    if (xpath1[0] == '/')
-        cbuf_reset(cb0);
-    xpath0 = cbuf_get(cb0);
-    for (i=0; i<nvec; i++){
-        v = vec[i];
-        if (strlen(v) == 0)
-            continue;
-        if (nodeid_split(v, &prefix, &id) < 0)
-            goto done;
-        if (strcmp(id, ".") == 0)
-            initialups = 0;
-        else if (strcmp(id, "..") == 0){
-            if (initialups){
-                /* Subtract from xpath0 */
-                for (j=cbuf_len(cb0); j >= 0; j--){
-                    if (xpath0[j] != '/')
-                        continue;
-                    cbuf_trunc(cb0, j);
-                    break;
-                }
-            }
-            else{
-                initialups = 0;
-                cprintf(cb0, "/%s", id);
-            }
-        }
-        else{
-            initialups = 0;
-            /* If prefix is not in nsc, it needs to be added */
-            if (prefix && cvec_find(nsc, prefix) == NULL){
-                ns = NULL;
-                if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns)) < 0)
-                    goto done;
-                if (ret == 0){
-                    clixon_err(OE_DB, 0, "Prefix %s does not have an associated namespace", prefix);
-                    goto done;
-                }
-                if (xml_nsctx_add(nsc, prefix, ns) < 0)
-                    goto done;
-            }
-            cprintf(cb0, "/%s:%s", prefix?prefix:myprefix, id);
-        }
-        if (prefix){
-            free(prefix);
-            prefix = NULL;
-        }
-        if (id){
-            free(id);
-            id = NULL;
-        }
-    }
- ok:
-    retval = 0;
- done:
-    if (prefix)
-        free(prefix);
-    if (id)
-        free(id);
-    free(vec);
-    return retval;
-}
 
 /*! Insert (escaped) strings into expand commands
  *
@@ -297,7 +183,7 @@ expand_dbvar_insert(clixon_handle h,
  * functionality.
  *
  * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -337,14 +223,9 @@ expand_dbvar(clixon_handle h,
     size_t           xlen = 0;
     cg_var          *cv;
     cg_obj          *co;
-    cxobj           *xtop = NULL; /* xpath root */
-    cxobj           *xbot = NULL; /* xpath, NULL if datastore */
-    yang_stmt       *y = NULL; /* yang spec of xpath */
     cvec            *nsc = NULL;
     int              cvvi = 0;
     cbuf            *cbxpath = NULL;
-    yang_stmt       *ypath;
-    yang_stmt       *ytype;
     char            *mtdomain = NULL;
     char            *mtspec = NULL;
     yang_stmt       *yspec0 = NULL;
@@ -411,33 +292,18 @@ expand_dbvar(clixon_handle h,
     }
     if (api_path == NULL)
         goto ok;
-    /* Create config top-of-tree */
-    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-        goto done;
-    xbot = xtop;
-    /* This is primarily to get "y",
-     * xpath2xml would have worked!!
-     * XXX: but y is just the first in this list, there could be other y:s?
-     */
-    if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 0, &xbot, &y, &xerr)) < 0)
-        goto done;
-    if (ret == 0){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
-        goto done;
-    }
-    if (y == NULL){
-        clixon_err(OE_YANG, 0, "y is NULL");
-        goto done;
-    }
-    /* Transform api-path to xpath for netconf  */
-    if ((ret = api_path2xpath(api_path, yspec0, &xpath, &nsc, &xerr)) < 0)
-        goto done;
-    if (ret == 0){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
-        goto done;
-    }
     if ((cbxpath = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    /* Get XPath and namespace context from api_path */
+    if (clixon_rpc_config_path_info(h, api_path, 0, NULL, NULL,
+                                    cvec_find(co->co_cvec, "leafref-no-refer") == NULL, NULL, NULL,
+                                    NULL, &xpath, &nsc,
+                                    NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    if (xpath == NULL){
+        clixon_err(OE_YANG, 0, "xpath is NULL");
         goto done;
     }
     if (mtdomain){
@@ -448,47 +314,16 @@ expand_dbvar(clixon_handle h,
             cvec_append_var(nsc, cv);
     }
     cprintf(cbxpath, "%s", xpath);
-    if ((ytype = yang_find(y, Y_TYPE, NULL)) != NULL &&
-        strcmp(yang_argument_get(ytype), "leafref") == 0 &&
-        cvec_find(co->co_cvec, "leafref-no-refer") == NULL){
-
-        /* Special case for leafref. Detect leafref via Yang-type,
-         * Get Yang path element, tentatively add the new syntax to the whole
-         * tree and apply the path to that.
-         * Last, the reference point for the xpath code below is changed to
-         * the point of the tentative new xml.
-         * Here the whole syntax tree is loaded, and it would be better to offload
-         * such operations to the datastore by a generic xpath function.
-         */
-
-        /*
-         * The syntax for a path argument is a subset of the XPath abbreviated
-         * syntax.  Predicates are used only for constraining the values for the
-         * key nodes for list entries.  Each predicate consists of exactly one
-         * equality test per key, and multiple adjacent predicates MAY be
-         * present if a list has multiple keys.  The syntax is formally defined
-         * by the rule "path-arg" in Section 14.
-         * The "path" XPath expression is conceptually evaluated in the
-         * following context, in addition to the definition in Section 6.4.1:
-         *
-         * - If the "path" statement is defined within a typedef, the context
-         * node is the leaf or leaf-list node in the data tree that
-         * references the typedef.
-         * - Otherwise, the context node is the node in the data tree for which
-         * the "path" statement is defined.
-         */
-        if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-            clixon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
-            goto done;
-        }
-        /* Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
-         */
-        if (xpath_append(cbxpath, yang_argument_get(ypath), y, nsc) < 0)
-            goto done;
-    }
     /* Get configuration based on cbxpath */
-    if (clicon_rpc_get_config(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, &xt) < 0)
+    if (clixon_rpc_get_config1(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, YB_NONE, &xt) < 0)
         goto done;
+    if ((ret = xml_bind_yang_mnt(h, xt, YB_MODULE, yspec0, 0, 1, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if ((xe = xpath_first(xerr, NULL, "/rpc-error")) != NULL)
+            clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
+    }
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto ok;
@@ -523,8 +358,6 @@ expand_dbvar(clixon_handle h,
         free(api_path);
     if (xvec)
         free(xvec);
-    if (xtop)
-        xml_free(xtop);
     if (xt)
         xml_free(xt);
     if (xpath)
@@ -542,7 +375,7 @@ expand_dbvar(clixon_handle h,
  *     augment foo fie;
  * This function expands foo to: bar, fie...
  * Or (if <module> is true): modA:bar, modB:fie...
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -634,7 +467,7 @@ expand_yang_list(clixon_handle h,
  *      ...
  *   }
  * This function expands x to default, msg,...
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -705,7 +538,7 @@ expand_yang_bits(clixon_handle h,
  * functionality.
  *
  * Assume callback given in a cligen spec: a <x:int expand_dbvar("db" "<xmlkeyfmt>")
- * @param[in]   h        clicon handle
+ * @param[in]   h        Clixon handle
  * @param[in]   name     Name of this function (eg "expand_dbvar")
  * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
  * @param[in]   argv     Arguments given at the callback:
@@ -832,31 +665,50 @@ cli_show_common(clixon_handle    h,
                 char            *xpath,
                 int              fromroot,
                 cvec            *nsc,
-                int              skiptop
-                )
+                int              skiptop)
 {
     int     retval = -1;
     cxobj  *xt = NULL;
     cxobj **vec = NULL;
     size_t  veclen;
-    cxobj  *xp;
-    int     i;
-    cxobj  *xerr;
+    cxobj  *xe;
+    cxobj  *xerr = NULL;
+    int     cli_aware = 1;
+    cbuf   *cb = NULL;
+    yang_stmt *yspec0 = NULL;
+    int        ret;
 
     if (state && strcmp(db, "running") != 0){
         clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
         goto done;
     }
     if (state == 0){     /* Get configuration-only from a database */
-        if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, withdefault, &xt) < 0)
+        if ((ret = clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt)) < 0){
             goto done;
+        }
     }
-    else {               /* Get configuration and state from running */
-        if (clicon_rpc_get(h, xpath, nsc, CONTENT_ALL, -1, withdefault, &xt) < 0)
-            goto done;
+    /* Get configuration and state from running */
+    else  if ((ret = clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt)) < 0){
+        goto done;
     }
-    if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
+    }
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
+    }
+    if ((ret = xml_bind_yang_mnt(h, xt, YB_MODULE, yspec0, 0, 1, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        cxobj *xe;
+        if ((xe = xpath_first(xerr, NULL, "/rpc-error")) != NULL)
+            clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
+    }
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto done;
     }
     /* Special tagged modes: strip wd:default=true attribute and (optionally) nodes associated with it */
@@ -876,66 +728,43 @@ cli_show_common(clixon_handle    h,
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0)
         goto done;
     if (veclen){
-        /* Special case LIST */
-        if (format == FORMAT_JSON){
-            switch (format){
-            case FORMAT_JSON:
-                if (xml2json_vec(stdout, vec, veclen, pretty, cligen_output, skiptop) < 0)
-                    goto done;
-                break;
-            default:
-                break;
-            }
+        // XXX vec not needed?
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
         }
-        else    /* Default */
-            for (i=0; i<veclen; i++){
-                xp = vec[i];
-                /* Print configuration according to format */
-                switch (format){
-                case FORMAT_XML:
-                    if (clixon_xml2file(stdout, xp, 0, pretty, NULL, cligen_output, skiptop, 1) < 0)
-                        goto done;
-                    if (!pretty && i == veclen-1)
-                        cligen_output(stdout, "\n");
-                    break;
-                case FORMAT_TEXT: /* XXX does not handle multiple leaf-list */
-                    if (clixon_text2file(stdout, xp, 0, cligen_output, skiptop, 1) < 0)
-                        goto done;
-                    break;
-                case FORMAT_CLI:
-                    /* If xp is not bound, cli prints are skipped */
-                    if (clixon_cli2file(h, stdout, xp, prepend, cligen_output, skiptop) < 0) /* cli syntax */
-                        goto done;
-                    break;
-                case FORMAT_NETCONF:
-                    if (i==0){
-                        cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
-                                      NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
-                        cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-
-                        cligen_output(stdout, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
-                        cligen_output(stdout, "><edit-config><target><candidate/></target><config>");
-                        if (pretty)
-                            cligen_output(stdout, "\n");
-                    }
-                    if (clixon_xml2file(stdout, xp, 2, pretty, NULL, cligen_output, skiptop, 1) < 0)
-                        goto done;
-                    if (i == veclen-1)
-                        cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
-                    break;
-                default:
-                    break;
-                }
-            }
+        if (format == FORMAT_NETCONF){
+            if (clixon_rpc_translate_format(h, FORMAT_XML, xpath, nsc, xt, pretty, skiptop, cli_aware, prepend, cb) < 0)
+                goto done;
+            cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
+                          NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+            cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+            cligen_output(stdout, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+            cligen_output(stdout, "><edit-config><target><candidate/></target><config>");
+            if (pretty)
+                cligen_output(stdout, "\n");
+            cligen_output(stdout, "%s", cbuf_get(cb));
+            cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
+        }
+        else {
+            if (clixon_rpc_translate_format(h, format, xpath, nsc, xt, pretty, skiptop, cli_aware, prepend, cb) < 0)
+                goto done;
+            cligen_output(stdout, "%s", cbuf_get(cb));
+        }
     }
     else if (format == FORMAT_JSON)
         cligen_output(stdout, "{}\n");
+ ok:
     retval = 0;
 done:
+    if (cb)
+        cbuf_free(cb);
     if (vec)
         free(vec);
     if (xt)
         xml_free(xt);
+    if (xerr)
+        xml_free(xerr);
     return retval;
 }
 
@@ -1184,8 +1013,10 @@ show_conf_xpath(clixon_handle h,
 {
     int              retval = -1;
     char            *dbname;
-    char            *xpath;
+    char            *xpath0;
+    char            *xpath = NULL;
     cg_var          *cv;
+    cvec            *nsc0 = NULL;
     cvec            *nsc = NULL;
     yang_stmt       *yspec;
     int              fromroot = 0;
@@ -1204,21 +1035,32 @@ show_conf_xpath(clixon_handle h,
         clixon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <xpath>");
         goto done;
     }
-    xpath = cv_string_get(cv);
-    /* Create canonical namespace */
-    if (xml_nsctx_yangspec(yspec, &nsc) < 0)
-        goto done;
-    /* Look for and add default namespace variable in command */
+    xpath0 = cv_string_get(cv);
+    /* Look for default namespace variable in command (Should probably be obsoleted with new path-info rpc) */
     if ((cv = cvec_find(cvv, "ns")) != NULL){
-        if (xml_nsctx_add(nsc, NULL, cv_string_get(cv)) < 0)
+        if ((nsc0 = cvec_new(0)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_new");
+            goto done;
+        }
+        if (xml_nsctx_add(nsc0, NULL, cv_string_get(cv)) < 0)
             goto done;
     }
+    /* Get XPath and namespace context from api_path */
+    if (clixon_rpc_config_path_info(h, NULL, 0, xpath0, nsc0,
+                                    0, NULL, NULL,
+                                    NULL, &xpath, &nsc,
+                                    NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
     if (cli_show_common(h, dbname, FORMAT_XML, 1, 0,
                         NULL, NULL,
                         NULL, xpath, fromroot, nsc, 0) < 0)
         goto done;
     retval = 0;
 done:
+    if (xpath)
+        free(xpath);
+    if (nsc0)
+        xml_nsctx_free(nsc0);
     if (nsc)
         xml_nsctx_free(nsc);
     return retval;
@@ -1507,8 +1349,7 @@ cli_show_auto_mode(clixon_handle h,
         if (yang_mount_get(yu, mtxpath, &yspec) < 0)
             goto done;
     }
-    yspec = yspec0;
-    if (api_path2xpath(api_path, yspec, &xpath, &nsc, NULL) < 0)
+    if (clixon_rpc_api_path2xml(h, api_path, NULL, NULL, &xpath, &nsc) < 0)
         goto done;
     if (xpath == NULL){
         clixon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
@@ -2158,5 +1999,151 @@ cli_show_sessions(clixon_handle h,
         xml_free(xdbs);
     if (cb)
         cbuf_free(cb);
+    return retval;
+}
+
+/*! Given mount-point and api_path_fmt, find api_path
+ *
+ * @param[in]  h            Clixon handle
+ * @param[in]  cvv          Vector of cli string and instantiated variable
+ * @param[in]  mtpoint      Moint-point on the form: <domain>:<spec>
+ * @param[in]  api_path_fmt API-path meta-format
+ * @param[in]  cvv_i        Index into cvv of last cvv entry used.
+ * @param[out] api_path     Deallocate with free
+ * @retval     0            OK
+ * @retval    -1            Error
+ */
+int
+cli_apipath(clixon_handle h,
+            cvec         *cvv,
+            const char   *domain,
+            const char   *spec,
+            const char   *api_path_fmt,
+            int          *cvvi,
+            char        **api_path)
+{
+    int        retval = -1;
+    char      *api_path_fmt01 = NULL;
+    yang_stmt *yspec0;
+
+    if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
+        clixon_err(OE_FATAL, 0, "No DB_SPEC");
+        goto done;
+    }
+    if (domain){
+        /* Get and combined api-path01 */
+        if (mtpoint_paths(h, yspec0, domain, spec, api_path_fmt, &api_path_fmt01) < 0)
+            goto done;
+        if (api_path_fmt2api_path(api_path_fmt01, cvv, yspec0, api_path, cvvi) < 0)
+            goto done;
+    }
+    else{
+        if (api_path_fmt2api_path(api_path_fmt, cvv, yspec0, api_path, cvvi) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (api_path_fmt01)
+        free(api_path_fmt01);
+    return retval;
+}
+
+/*! Show details about a configured node: yang, namespaces, etc"
+ *
+ * @param[in]   h        Clixon handle
+ * @param[in]   cvv      The command so far. Eg: cvec [0]:"a 5 b"; [1]: x=5;
+ * @param[in]   argv     Arguments given at the callback
+ * @retval      0        OK
+ * @retval     -1        Error
+ */
+int
+cli_show_config_info(clixon_handle h,
+                     cvec         *cvv,
+                     cvec         *argv)
+{
+    int        retval = -1;
+    cbuf      *api_path_fmt_cb = NULL;    /* xml key format */
+    char      *api_path_fmt = NULL;
+    char      *api_path = NULL;
+    cvec      *nsc = NULL;
+    char      *xpath = NULL;
+    cg_var    *cv;
+    char      *str;
+    char      *mtdomain = NULL;
+    char      *mtspec = NULL;
+    char      *symbol = NULL;
+    char      *prefix = NULL;
+    char      *ns = NULL;
+    char      *module = NULL;
+    char      *filename = NULL;
+    int        i;
+
+    if ((api_path_fmt_cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    /* Concatenate all argv strings to a single string
+     * Variant of cvec_concat_cb() where api-path-fmt may be interleaved with mtpoint,
+     * eg /api-path-fmt2 mtpoint /api-path-fmt1 /api-path-fmt0
+     * Note loop is reverse and concat is done only for xpaths starting with "/"
+     */
+    for (i=cvec_len(argv)-1; i>=0; i--){
+        cv = cvec_i(argv, i);
+        if ((str = cv_string_get(cv)) == NULL)
+            continue;
+        if (strncmp(str, MTPOINT_PREFIX, strlen(MTPOINT_PREFIX)) == 0){
+            if (mtpoint_decode(str, ":", &mtdomain, &mtspec) < 0)
+                goto done;
+            continue;
+        }
+        if (str[0] != '/')
+            continue;
+        cprintf(api_path_fmt_cb, "%s", str);
+    }
+    api_path_fmt = cbuf_get(api_path_fmt_cb);
+    if (cli_apipath(h, cvv, mtdomain, mtspec, api_path_fmt, NULL, &api_path) < 0)
+        goto done;
+    if (clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL,
+                                    0, NULL, NULL, NULL, &xpath, &nsc,
+                                    &symbol, &prefix, &ns, &module, &filename) < 0)
+        goto done;
+    cligen_output(stdout, "Symbol:     %s\n", symbol);
+    cligen_output(stdout, "Module:     %s\n", module);
+    cligen_output(stdout, "File:       %s\n", filename);
+    cligen_output(stdout, "Namespace:  %s\n", ns);
+    cligen_output(stdout, "Prefix:     %s\n", prefix);
+    cligen_output(stdout, "XPath:      %s\n", xpath);
+    if (cvec_len(nsc) > 0) {
+        cligen_output(stdout, "XPath-ns:  ");
+        for (i=0; i<cvec_len(nsc); i++){
+            cv = cvec_i(nsc, i);
+            if (cv_name_get(cv))
+                cligen_output(stdout, " xmlns:%s=\"%s\"",
+                              cv_name_get(cv),
+                              cv_string_get(cv));
+        }
+        cligen_output(stdout, "\n");
+    }
+    cligen_output(stdout, "APIpath:    %s\n", api_path);
+    retval = 0;
+ done:
+    if (api_path_fmt_cb)
+        cbuf_free(api_path_fmt_cb);
+    if (api_path)
+        free(api_path);
+    if (xpath)
+        free(xpath);
+    if (nsc)
+        cvec_free(nsc);
+    if (symbol)
+        free(symbol);
+    if (prefix)
+        free(prefix);
+    if (ns)
+        free(ns);
+    if (module)
+        free(module);
+    if (filename)
+        free(filename);
     return retval;
 }

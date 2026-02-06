@@ -1250,8 +1250,8 @@ xml_new_body(const char *name,
     cxobj *new_node = NULL;
     cxobj *body_node;
 
-    if (!name || !parent || !val) {
-        clixon_err(OE_XML, EINVAL, "name, parent or val is NULL");
+    if (name == NULL || val == NULL) {
+        clixon_err(OE_XML, EINVAL, "name or val is NULL");
         return NULL;
     }
     if ((new_node = xml_new(name, parent, CX_ELMNT)) == NULL) {

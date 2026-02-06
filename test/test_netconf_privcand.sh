@@ -60,6 +60,8 @@ cfg=$dir/conf_yang.xml
 dbdir=$dir/db
 fyang=$dir/clixon-example.yang
 test -d $dbdir || mkdir -p $dbdir
+# Debug early exit
+: ${early:=false}
 
 # Define default restconfig config: RESTCONFIG
 RESTCONFIG=$(restconf_config none false)
@@ -138,6 +140,30 @@ module clixon-example{
     }
     leaf l {
         type string;
+    }
+    container src-ip {
+        choice ip-choice {
+            case host {
+                leaf host {
+                 type string;
+                }
+            }
+            case source-any {
+                leaf any {
+                    type empty;
+                }
+            }
+        }
+    }
+    list issue648 {
+        key k;
+        leaf k {
+            type string;
+        }
+        leaf value {
+            type string;
+            mandatory true;
+        }
     }
 }
 EOF
@@ -240,6 +266,10 @@ new "4.5.3 RESTCONF Retrieve the Server Capability Information xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-netconf-monitoring:netconf-state/capabilities/capability)" 0 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml" \
 'Cache-Control: no-cache' \
 '<capability xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring">urn:ietf:params:netconf:capability:private-candidate:1.0?supported-resolution-modes=revert-on-conflict</capability>'
+
+if ${early}; then
+    exit # for starting with devices and debug
+fi
 
 new "Spawn expect script to simulate two NETCONF sessions"
 # -d to debug matching info
@@ -553,17 +583,18 @@ rpc $session_1 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private
 rpc $session_1 "<discard-changes/>"
 rpc $session_1 "<commit/>"
 
-puts "Adhoc test 1: should fail, interface intf_one does not exist and mandatory type not included"
-rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Adhoc</description></interface></interfaces></config></edit-config>"
+puts "Adhoc test 1: should fail, interface intf_4 does not exist and mandatory type not included"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface nc:operation=\"create\"><name>intf_4</name><description>Adhoc</description></interface></interfaces></config></edit-config>"
 rpc $session_2 "<commit/>" "rpc-error"
+rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 
-puts "Adhoc test 2: interface intf_one without description"
-rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface  xmlns:ex=\"urn:example:clixon\"><name>intf_one</name><type>ex:eth</type></interface></interfaces></config></edit-config>"
+puts "Adhoc test 2: interface intf_4 without description"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface  xmlns:ex=\"urn:example:clixon\" nc:operation=\"create\"><name>intf_4</name><type>ex:eth</type></interface></interfaces></config></edit-config>"
 rpc $session_2 "<commit/>"
 
-puts "Adhoc test 3: interface intf_one description updated from both sessions"
-rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Session 1</description></interface></interfaces></config></edit-config>"
-rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_one</name><description>Session 2</description></interface></interfaces></config></edit-config>"
+puts "Adhoc test 3: interface intf_4 description updated from both sessions"
+rpc $session_1 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_4</name><description>Session 1</description></interface></interfaces></config></edit-config>"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\"><interface><name>intf_4</name><description>Session 2</description></interface></interfaces></config></edit-config>"
 puts "session 1 commit"
 rpc $session_1 "<commit/>"
 puts "session 2 commit"
@@ -659,9 +690,31 @@ cli $session_cli_2 "show compare"
 cli $session_cli_1 "set l \"TEST10\""
 cli $session_cli_1 "commit"
 if {[string match *TEST* [cli $session_cli_2 "show compare"]]} {
-    puts "Controller Issue: show compare private candidate #233"
+    puts "Controller Issue #233: show compare private candidate"
     exit 4
 }
+
+# Issue #644 test case
+cli $session_cli_1 ""
+cli $session_cli_1 "set src-ip any"
+cli $session_cli_1 "commit"
+cli $session_cli_1 "set src-ip host \"1.2.3.4\""
+if {[string match *fail* [cli $session_cli_1 "commit"]]} {
+    puts "Issue #644: Private candidate commit fails when changing YANG choice case"
+    exit 5
+}
+
+# issue 648 test case
+cli $session_cli_1 "set issue648 \"k\""
+cli $session_cli_1 "set l \"issue648ok\""
+cli $session_cli_1 "commit"
+if {![string match *issue648ok* [cli $session_cli_1 "show compare"]]} {
+    puts "Controller Issue #648: Candidate database gets deleted on failed commit."
+    exit 6
+}
+cli $session_cli_1 "update"
+cli $session_cli_1 "commit"
+
 puts "\nClose sessions"
 close $session_cli_1
 close $session_cli_2

@@ -23,6 +23,9 @@ Expected: February 2026
 
 * Customized error message for leafrefs
   * See https://clixon-docs.readthedocs.io/en/latest/errors.html#error-message-extension
+* YANG optimization
+  * Make CLI yang-independent: use server calls instead of local calls, in particular across mont-points
+  * See [CLI memory optimization](https://github.com/clicon/clixon-controller/issues/175)
 * New debug logs
   * Extended debug levels for `-D` command-line options
     * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags
@@ -39,10 +42,8 @@ Expected: February 2026
    * Changed default value of `CLICON_CLI_TAB_MODE` to 0x08 (due to cligen change)
 * New `clixon-lib@2025-12-01.yang` revision
    * Added:
-     * extension error-message
-     * rpc clixon-cache
-     * rpc yang-api-path
-     * rpc translate-format
+     * extension: error-message
+     * rpcs: clixon-cache, config-path-info, translate-format
 * New `clixon-autocli@2025-12-01.yang` revision
    * Deprecated `clispec-cache` and `clispec-cache-dir`
 
@@ -50,11 +51,21 @@ Expected: February 2026
 
 Developers may need to change their code
 
+* Changed C-API
+  * Added `create` parameter to `xpath2xml()`:
+    * Example change: `xpath2xml(...,x,y,e)` --> `xpath2xml(...,0,x,y,e)`
+  * Added `skip_mnt` parameter to `xml_bind_yang0()`
+    * Example change: `xml_bind_yang0(..., xerr)` -> `xml_bind_yang0(..., 0, xerr)`
+  * Added `cli_aware` parameter to `clixon_xml2cbuf1()` as pen-ultimate parameter
+    * Example change: `clixon_xml2cbuf1(...s, w)` -> `clixon_xml2cbuf1(...s, 0, w)`
 * Added const to multiple `char*` parameters
-  * In particular many callback input char* paraneters may need to be adjusted
+  * In particular many callback input char* parameters may need to be adjusted
 
 ### Corrected Bugs
 
+* Fixed: ["show xpath" don't work over mount point](https://github.com/clicon/clixon-controller/issues/190)
+* Fixed: [Candidate database gets deleted on failed commit](https://github.com/clicon/clixon/issues/648)
+* Fixed: [Private candidate commit fails when changing YANG choice case](https://github.com/clicon/clixon/issues/644)
 * Fixed: [Inconsistent log messages truncation](https://github.com/clicon/clixon/issues/625)
 * Fixed: [show compare private candidate](https://github.com/clicon/clixon-controller/issues/233)
 * Fixed: Error log at restconf exit

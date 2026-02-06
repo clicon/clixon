@@ -576,7 +576,7 @@ from_client_edit_config(clixon_handle h,
     if ((ret = xml_bind_yang(h, xc, YB_MODULE, yspec, 0, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto ok;
     }
@@ -584,7 +584,7 @@ from_client_edit_config(clixon_handle h,
     if ((ret = xml_non_config_data(xc, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto ok;
     }
@@ -598,7 +598,7 @@ from_client_edit_config(clixon_handle h,
     if ((ret = xml_yang_validate_minmax(xc, 1, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto ok;
     }
@@ -616,7 +616,7 @@ from_client_edit_config(clixon_handle h,
             goto done;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto ok;
     }
@@ -624,7 +624,7 @@ from_client_edit_config(clixon_handle h,
     if ((ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto ok;
     }
@@ -1702,7 +1702,7 @@ from_client_msg(clixon_handle h,
         goto reply;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto reply;
     }
@@ -1806,7 +1806,7 @@ from_client_msg(clixon_handle h,
         goto done;
     }
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         ce->ce_in_bad_rpcs++;
         netconf_monitoring_counter_inc(h, "in-bad-rpcs");

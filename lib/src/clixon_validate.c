@@ -1991,7 +1991,7 @@ rpc_reply_check(clixon_handle h,
     if (ret == 0){
         clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -2000,7 +2000,7 @@ rpc_reply_check(clixon_handle h,
     if (ret == 0){
         clixon_debug(CLIXON_DBG_DEFAULT, "failure when validating:%s", cbuf_get(cbret));
         cbuf_reset(cbret);
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }

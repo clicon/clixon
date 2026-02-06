@@ -546,7 +546,7 @@ api_data_write(clixon_handle h,
             CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0) < 0)
+    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
     clixon_debug(CLIXON_DBG_RESTCONF, "xml: %s api_path:%s", cbuf_get(cbx), api_path);
@@ -806,7 +806,7 @@ api_data_delete(clixon_handle h,
             CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
     cprintf(cbx, "><target><candidate /></target>");
     cprintf(cbx, "<default-operation>none</default-operation>");
-    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0) < 0)
+    if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     cprintf(cbx, "</edit-config></rpc>");
     if (clicon_rpc_netconf(h, cbuf_get(cbx), &xret, NULL) < 0)

@@ -388,7 +388,7 @@ from_client_restart_one(clixon_handle    h,
     if (ret == 1 && (ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -437,7 +437,7 @@ from_client_restart_one(clixon_handle    h,
     if ((ret = generic_validate(h, yspec, td, &xerr)) < 0)
         goto done;
     if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0) < 0)
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
         goto fail;
     }
@@ -656,7 +656,7 @@ leafref_append_path(yang_stmt *yn,
     return retval;
 }
 
-/*! Translate from RFC 8040 api-path to XML and XPath
+/*! Get detailed information of configuration path: XPath or RFC 8040 api-path
  *
  * @param[in]  h       Clixon handle
  * @param[in]  xe      Request: <rpc><xn></rpc>
@@ -667,14 +667,18 @@ leafref_append_path(yang_stmt *yn,
  * @retval    -1       Error
  */
 static int
-from_client_yang_api_path(clixon_handle h,
-                          cxobj        *xe,
-                          cbuf         *cbret,
-                          void         *arg,
-                          void         *regarg)
+from_client_config_path_info(clixon_handle h,
+                             cxobj        *xe,
+                             cbuf         *cbret,
+                             void         *arg,
+                             void         *regarg)
 {
     int        retval = -1;
-    char      *api_path;
+    char      *api_path0 = NULL;
+    int        strict = 0;
+    char      *xpath0 = NULL; /* Input */
+    char      *api_path1 = NULL;
+    char      *xpath1 = NULL; /* Output */
     cxobj     *xtop = NULL;
     cxobj     *xbot;
     char      *str;
@@ -682,36 +686,97 @@ from_client_yang_api_path(clixon_handle h,
     int        leafref_refer = 0;
     yang_stmt *ybot = NULL; /* yang spec of xpath */
     cxobj     *xerr = NULL;
-    cvec      *nsc = NULL;
-    char      *xpath = NULL;
+    cvec      *nsc0 = NULL;
+    cvec      *nsc1 = NULL;
     cbuf      *cbxpath = NULL;
+    cbuf      *cbapipath = NULL;
     yang_stmt *yspec0;
     yang_stmt *yspec;
+    yang_stmt *ymod = NULL;
     cxobj     *x;
+    cxobj     *xpt = NULL;
     cg_var    *cv;
+    char      *prefix = NULL;
+    char      *ns = NULL;
+    int        create = 0;
     int        ret;
 
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
-        goto done;
-    xbot = xtop;
-    if ((x = xml_find_type(xe, NULL, "api-path", CX_ELMNT)) == NULL){
-        clixon_err(OE_NETCONF, 0, "Mandatory api-path missing");
-        goto done;
-    }
-    api_path = xml_body(x);
     if ((str = xml_find_body(xe, "leafref-refer")) != NULL)
         leafref_refer = strcmp(str, "true") == 0;
     body = xml_find_body(xe, "body");
-    if ((ret = api_path2xml(api_path, yspec0, xtop, YC_DATANODE, 0, &xbot, &ybot, &xerr)) < 0)
+    if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
-    if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, WITHDEFAULTS_EXPLICIT) < 0)
+    xbot = xtop;
+    if ((x = xml_find_type(xe, NULL, "api-path", CX_ELMNT)) != NULL){
+        if (xml_find_type(xe, NULL, "xpath", CX_ELMNT) != NULL){
+            clixon_err(OE_NETCONF, 0, "Both xpath and api-path given, but are mutually exclusive");
             goto done;
-        goto ok;
+        }
+        api_path0 = xml_body(x);
+        if ((str = xml_find_body(xe, "strict")) != NULL)
+            strict = strcmp(str, "true") == 0;
+        if ((ret = api_path2xml(api_path0, yspec0, xtop, YC_DATANODE, strict, &xbot, &ybot, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                goto done;
+            goto ok;
+        }
+        if ((ret = api_path2xpath(api_path0, yspec0, &xpath1, &nsc1, &xerr)) < 0) // XXX
+            goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                goto done;
+            goto ok;
+        }
+        if ((api_path1 = strdup(api_path0)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+    }
+    else if ((x = xml_find_type(xe, NULL, "xpath", CX_ELMNT)) != NULL){
+        if (xml_find_type(xe, NULL, "api-path", CX_ELMNT) != NULL){
+            clixon_err(OE_NETCONF, 0, "Both xpath and api-path given, but are mutually exclusive");
+            goto done;
+        }
+        xpath0 = xml_body(x);
+        if (xml_find(xe, "namespace-context") != NULL){
+            if (xml_nsctx_parse(xe, &nsc0) < 0)
+                goto done;
+        }
+         if (nsc0 == NULL){
+            create = 1;
+            if ((nsc0 = cvec_new(0)) == NULL){
+                clixon_err(OE_UNIX, errno, "cvec_new");
+                goto done;
+            }
+        }
+        if ((ret = xpath2xml(xpath0, nsc0, xtop, yspec0, create, &xbot, &ybot, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                goto done;
+            goto ok;
+        }
+        if ((ret = xpath2api_path(xpath0, nsc0, yspec0, &api_path1, &xerr)) < 0){
+            ; /* OK to fail create api-path from some xpaths, but could be nicer with a ret=0 */
+            // goto done;
+        }
+        if (ret == 0){
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+                goto done;
+            goto ok;
+        }
+        if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, NULL)) < 0)
+            goto done;
+    }
+    else {
+        clixon_err(OE_NETCONF, 0, "Mandatory xpath or api-path missing");
+        goto done;
     }
     if (ybot && yang_keyword_get(ybot) && body){
         cxobj *xb;
@@ -726,36 +791,47 @@ from_client_yang_api_path(clixon_handle h,
         yspec = yspec0;
     if (xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec) < 0)
         goto done;
-    if ((ret = api_path2xpath(api_path, yspec0, &xpath, &nsc, &xerr)) < 0)
-         goto done;
-    if (ret == 0){
-        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, WITHDEFAULTS_EXPLICIT) < 0)
-            goto done;
-        goto ok;
+    if (ybot){
+        ns = yang_find_mynamespace(ybot);
+        prefix = yang_find_myprefix(ybot);
+        ymod = ys_module(ybot);
     }
     if ((cbxpath = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    cbuf_append_str(cbxpath, xpath);
-    /* extend xpath if leafref */
-    if (cbuf_len(cbxpath) && leafref_refer){
-        if (leafref_append_path(ybot, nsc, cbxpath) < 0)
+    cbuf_append_str(cbxpath, xpath1);
+    /* Extend xpath if leafref, special case */
+    if (ybot && cbuf_len(cbxpath) && leafref_refer){
+        if (leafref_append_path(ybot, nsc1, cbxpath) < 0)
             goto done;
     }
+    /* Fix namespaces in xpath */
+    if ((xpt = xml_new_body("xpath", NULL, cbuf_get(cbxpath))) == NULL){
+        clixon_err(OE_UNIX, errno, "xml_new");
+        goto done;
+    }
+    if (xmlns_set(xpt, NULL, CLIXON_LIB_NS) < 0)
+        goto done;
+    if (xmlns_set_all(xpt, nsc1) < 0)
+        goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<xml xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, WITHDEFAULTS_REPORT_ALL) < 0)
+    if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
     cprintf(cbret, "</xml>");
-    cprintf(cbret, "<xpath xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (xml_chardata_cbuf_append(cbret, 0, xpath) < 0)
+    if (api_path1 != NULL){
+        cprintf(cbret, "<api-path xmlns=\"%s\">", CLIXON_LIB_NS);
+        if (xml_chardata_cbuf_append(cbret, 0, api_path1) < 0)
+            goto done;
+        cprintf(cbret, "</api-path>");
+    }
+    if (clixon_xml2cbuf1(cbret, xpt, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
-    cprintf(cbret, "</xpath>");
-    if (nsc){
+    if (nsc1){
         cprintf(cbret, "<namespace-context xmlns=\"%s\">", CLIXON_LIB_NS);
         cv = NULL;
-        while ((cv = cvec_each(nsc, cv)) != NULL) {
+        while ((cv = cvec_each(nsc1, cv)) != NULL) {
             cprintf(cbret, "<namespace>");
             cprintf(cbret, "<prefix>%s</prefix>", cv_name_get(cv)?cv_name_get(cv):"");
             cprintf(cbret, "<ns>%s</ns>", cv_string_get(cv));
@@ -763,20 +839,38 @@ from_client_yang_api_path(clixon_handle h,
         }
         cprintf(cbret, "</namespace-context>");
     }
+    if (ybot)
+        cprintf(cbret, "<symbol xmlns=\"%s\">%s</symbol>", CLIXON_LIB_NS, yang_argument_get(ybot));
+    if (prefix)
+        cprintf(cbret, "<prefix xmlns=\"%s\">%s</prefix>", CLIXON_LIB_NS, prefix);
+    if (ns)
+        cprintf(cbret, "<ns xmlns=\"%s\">%s</ns>", CLIXON_LIB_NS, ns);
+    if (ymod){
+        cprintf(cbret, "<module xmlns=\"%s\">%s</module>", CLIXON_LIB_NS, yang_argument_get(ymod));
+        cprintf(cbret, "<filename xmlns=\"%s\">%s</filename>", CLIXON_LIB_NS, yang_filename_get(ymod));
+    }
     cprintf(cbret, "</rpc-reply>");
  ok:
     retval = 0;
  done:
-        if (cbxpath)
-            cbuf_free(cbxpath);
-    if (nsc)
-        xml_nsctx_free(nsc);
-    if (xpath)
-        free(xpath);
+    if (cbxpath)
+        cbuf_free(cbxpath);
+    if (cbapipath)
+        cbuf_free(cbapipath);
+    if (api_path1)
+        free(api_path1);
+    if (nsc0)
+        xml_nsctx_free(nsc0);
+    if (nsc1)
+        xml_nsctx_free(nsc1);
+    if (xpath1)
+        free(xpath1);
     if (xerr)
         xml_free(xerr);
     if (xtop)
         xml_free(xtop);
+    if (xpt)
+        xml_free(xpt);
     return retval;
 }
 
@@ -801,6 +895,7 @@ from_client_translate_format(clixon_handle h,
     enum format_enum format = FORMAT_XML;
     int              pretty = 0;
     int              skiptop = 0;
+    int              cli_aware = 0;
     char            *b;
     char            *prepend = NULL;
     char            *xpath = NULL;
@@ -831,6 +926,8 @@ from_client_translate_format(clixon_handle h,
         pretty = strcmp(b, "true") == 0;
     if ((b = xml_find_body(xe, "skiptop")) != NULL)
         skiptop = strcmp(b, "true") == 0;
+    if ((b = xml_find_body(xe, "cli-aware")) != NULL)
+        cli_aware = strcmp(b, "true") == 0;
     prepend = xml_find_body(xe, "prepend");
     xpath = xml_find_body(xe, "xpath");
     if ((xnsc = xml_find(xe, "namespace-context")) != NULL){
@@ -843,7 +940,7 @@ from_client_translate_format(clixon_handle h,
             goto done;
         }
         xn = NULL;
-        while ((xn = xml_child_each(xnsc, xn, CX_ELMNT)) != NULL){                
+        while ((xn = xml_child_each(xnsc, xn, CX_ELMNT)) != NULL){
             prefix = xml_find_body(xn, "prefix");
             ns = xml_find_body(xn, "ns");
             if (xml_nsctx_add(nsc, prefix, ns) < 0)
@@ -855,7 +952,7 @@ from_client_translate_format(clixon_handle h,
         if ((ret = xml_bind_yang(h, xdata, YB_MODULE, yspec0, 0, &xerr)) < 0)
             goto done;
         if (ret == 0){
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, WITHDEFAULTS_EXPLICIT) < 0)
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
                 goto done;
             goto ok;
         }
@@ -877,13 +974,13 @@ from_client_translate_format(clixon_handle h,
                 /* Print configuration according to format */
                 switch (format){
                 case FORMAT_XML:
-                    if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, WITHDEFAULTS_REPORT_ALL) < 0)
+                    if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
                         goto done;
                     if (!pretty && i == veclen-1)
                         cprintf(cb, "\n");
                     break;
                 case FORMAT_TEXT: /* XXX does not handle multiple leaf-list */
-                    if (clixon_text2cbuf(cb, xp, 0, skiptop, 1) < 0)
+                    if (clixon_text2cbuf(cb, xp, 0, skiptop, cli_aware) < 0)
                         goto done;
                     break;
                 case FORMAT_CLI:
@@ -901,7 +998,7 @@ from_client_translate_format(clixon_handle h,
                         if (pretty)
                             cprintf(cb, "\n");
                     }
-                    if (clixon_xml2cbuf1(cb, xp, 2, pretty, NULL, -1, skiptop, WITHDEFAULTS_REPORT_ALL) < 0)
+                    if (clixon_xml2cbuf1(cb, xp, 2, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
                         goto done;
                     if (i == veclen-1)
                         cprintf(cb, "</config></edit-config></rpc>]]>]]>\n");
@@ -959,8 +1056,8 @@ backend_clixon_lib_init(clixon_handle h)
     if (rpc_callback_register(h, from_client_restart_plugin, NULL,
                               CLIXON_LIB_NS, "restart-plugin") < 0)
         goto done;
-    if (rpc_callback_register(h, from_client_yang_api_path, NULL,
-                              CLIXON_LIB_NS, "yang-api-path") < 0)
+    if (rpc_callback_register(h, from_client_config_path_info, NULL,
+                              CLIXON_LIB_NS, "config-path-info") < 0)
         goto done;
     if (rpc_callback_register(h, from_client_translate_format, NULL,
                               CLIXON_LIB_NS, "translate-format") < 0)
