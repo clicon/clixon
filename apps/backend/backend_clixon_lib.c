@@ -1025,6 +1025,8 @@ from_client_translate_format(clixon_handle h,
         cvec_free(nsc);
     if (cb)
         cbuf_free(cb);
+    if (xdata)
+        xml_free(xdata);
     if (xerr)
         xml_free(xerr);
     return retval;
