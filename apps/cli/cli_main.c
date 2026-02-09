@@ -871,7 +871,9 @@ main(int    argc,
     }
     /* If any debug flags were undefined, try again after all plugins may have loaded */
     if (dbgundef){
-        opterr = 0;
+        int dbg0 = dbg;
+
+        opterr = 1;
         optind = 1;
         while ((c = getopt(argc, argv, CLI_OPTS)) != -1){
             switch (c){
@@ -886,7 +888,8 @@ main(int    argc,
                 break;
             }
         }
-        clixon_debug_init(h, dbg);
+        if (dbg != dbg0)
+            clixon_debug_init(h, dbg);
     }
     /* Print version, customized variant must wait for plugins to load */
     if (print_version){

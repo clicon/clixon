@@ -783,7 +783,11 @@ main(int    argc,
     }
     /* If any debug flags were undefined, try again after all plugins may have loaded */
     if (dbgundef){
-        opterr = 0;
+        int dbg0 = dbg;
+
+        argc += optind;
+        argv -= optind;
+        opterr = 1;
         optind = 1;
         while ((c = getopt(argc, argv, BACKEND_OPTS)) != -1){
             switch (c){
@@ -798,7 +802,10 @@ main(int    argc,
                 break;
             }
         }
-        clixon_debug_init(h, dbg);
+        if (dbg != dbg0)
+            clixon_debug_init(h, dbg);
+        argc -= optind;
+        argv += optind;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
