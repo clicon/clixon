@@ -436,24 +436,27 @@ rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xml
 conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>b</k></lu>" \
 "<l xmlns=\"urn:example:clixon\">bar</l>" \
 "ok/"
-rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>a</k></lu><lu xmlns=\"urn:example:clixon\"><k>b</k></lu>"
 
 puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any list items in a list configured as ordered-by user"
-conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>a</k></lu>" \
-"<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\"><k>b</k></lu>" \
+conflict "<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\"><k>b</k></lu>" \
+"<lu xmlns=\"urn:example:clixon\" operation=\"insert\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\"><k>a</k></lu>" \
 "Conflict occured: Cannot remove node, it is already removed"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<lu xmlns=\"urn:example:clixon\"><k>b</k></lu><lu xmlns=\"urn:example:clixon\"><k>a</k></lu>"
 
 puts "4.8.1.1 <update> operation by client without conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
+
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">a</llu><llu xmlns=\"urn:example:clixon\">b</llu>"
+
 conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" \
 "<l xmlns=\"urn:example:clixon\">bar</l>" \
 "ok/"
-rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
+
+rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">a</llu><llu xmlns=\"urn:example:clixon\">b</llu>"
 
 puts "4.8.1.1 <update> operation by client not ok, revert-on-conflict: There is a change to the order of any items in a leaf-list configured as ordered-by user"
-conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">a</llu>" \
-"<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\">b</llu>" \
+conflict "<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"first\">b</llu>" \
+"<llu xmlns=\"urn:example:clixon\" operation=\"replace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang\:insert=\"last\">a</llu>" \
 "Cannot remove node, it is already removed"
 rpc $session_1 "<get-config><source><candidate/></source></get-config>" "<llu xmlns=\"urn:example:clixon\">b</llu><llu xmlns=\"urn:example:clixon\">a</llu>"
 
@@ -589,7 +592,7 @@ rpc $session_2 "<commit/>" "rpc-error"
 rpc $session_2 "<update xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate\"/>"
 
 puts "Adhoc test 2: interface intf_4 without description"
-rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface  xmlns:ex=\"urn:example:clixon\" nc:operation=\"create\"><name>intf_4</name><type>ex:eth</type></interface></interfaces></config></edit-config>"
+rpc $session_2 	"<edit-config><target><candidate/></target><config><interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><interface  xmlns:ex=\"urn:example:clixon\"><name>intf_4</name><type>ex:eth</type></interface></interfaces></config></edit-config>"
 rpc $session_2 "<commit/>"
 
 puts "Adhoc test 3: interface intf_4 description updated from both sessions"
@@ -707,13 +710,22 @@ if {[string match *fail* [cli $session_cli_1 "commit"]]} {
 # issue 648 test case
 cli $session_cli_1 "set issue648 \"k\""
 cli $session_cli_1 "set l \"issue648ok\""
-cli $session_cli_1 "commit"
+cli $session_cli_1 "commit" "error"
 if {![string match *issue648ok* [cli $session_cli_1 "show compare"]]} {
-    puts "Controller Issue #648: Candidate database gets deleted on failed commit."
+    puts "Issue #648: Candidate database gets deleted on failed commit."
     exit 6
 }
-cli $session_cli_1 "update"
-cli $session_cli_1 "commit"
+# Commit should fail again
+cli $session_cli_1 "commit" "error"
+
+# Now fix the error by adding the mandatory value
+cli $session_cli_1 "set issue648 k value \"fixed\""
+
+# Commit should now succeed
+if {[string match *error* [cli $session_cli_1 "commit"]]} {
+    puts "Issue #648 follow-up: Second commit fails after fixing validation error"
+    exit 7
+}
 
 puts "\nClose sessions"
 close $session_cli_1
