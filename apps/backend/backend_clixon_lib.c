@@ -899,7 +899,7 @@ from_client_translate_format(clixon_handle h,
     char            *b;
     char            *prepend = NULL;
     char            *xpath = NULL;
-    cxobj           *xdata;
+    cxobj           *xdata = NULL;
     cxobj           *xp;
     cxobj          **vec = NULL;
     size_t           veclen;
