@@ -45,6 +45,7 @@ Expected: February 2026
      * extension: error-message
      * rpcs: clixon-cache, config-path-info, translate-format
 * New `clixon-autocli@2025-12-01.yang` revision
+   * Added explicit `enabled` flag
    * Deprecated `clispec-cache` and `clispec-cache-dir`
 
 ### C/CLI-API changes on existing features
