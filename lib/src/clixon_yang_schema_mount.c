@@ -903,13 +903,15 @@ yang_schema_yanglib_mount_parse(clixon_handle h,
  * Optionally check for shared yspec
  * @param[in]  h   Clixon handle
  * @param[in]  xt  XML tree node
+ * @param[in]  skip If set, do not parse new yang on mount-point
  * @retval     1   OK
  * @retval     0   anydata: No yanglib or problem when parsing yanglib
  * @retval    -1   Error
  */
-int
+static int
 yang_schema_yanglib_get_mount_parse(clixon_handle h,
-                                    cxobj        *xt)
+                                    cxobj        *xt,
+                                    int           skip)
 {
     int        retval = -1;
     cxobj     *xyanglib = NULL;
@@ -923,7 +925,7 @@ yang_schema_yanglib_get_mount_parse(clixon_handle h,
         goto done;
     if (xyanglib == NULL)
         goto anydata;
-    if ((ret = yang_schema_yanglib_mount_parse(h, xt, xyanglib, 0, NULL)) < 0)
+    if ((ret = yang_schema_yanglib_mount_parse(h, xt, xyanglib, skip, NULL)) < 0)
         goto done;
     if (ret == 0)
         goto anydata;
@@ -1027,7 +1029,9 @@ yang_schema_yspec_rm(clixon_handle h,
  * If no yang-lib mark xml node as ANYDATA
  * @param[in]     h       Clixon handle (sometimes NULL)
  * @param[in]     xt      XML mount-point
+ * @param[in]     skip    If set, do not parse new yang on mount-point
  * @param[in,out] yb      Yang spec of xn on entry, of module on exit
+ * @param[out]    yspec   Yang spec
  * @param[out]    xerr    Reason for failure, or NULL (call xml_free() after use)
  * @retval        1       OK, new yspec
  * @retval        0       Marks as anydata: no yanglib, or yanglib parsing problem
@@ -1036,6 +1040,7 @@ yang_schema_yspec_rm(clixon_handle h,
 int
 yang_schema_mount_yspec(clixon_handle h,
                         cxobj        *xt,
+                        int           skip,
                         yang_bind    *yb,
                         yang_stmt   **yspec,
                         cxobj       **xerr)
@@ -1052,7 +1057,7 @@ yang_schema_mount_yspec(clixon_handle h,
     }
     /* xt is a mount-point: yspec1 may be set */
     if (yspec1 == NULL){
-        if ((ret = yang_schema_yanglib_get_mount_parse(h, xt)) < 0)
+        if ((ret = yang_schema_yanglib_get_mount_parse(h, xt, skip)) < 0)
             goto done;
         if (ret == 0){ /* No yanglib or problem when parsing yanglib
                           Special flag if mount-point but no yanglib */

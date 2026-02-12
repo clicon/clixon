@@ -586,7 +586,7 @@ xml_bind_yang0_opt(clixon_handle h,
     ybc = YB_PARENT;
     if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT") &&
         xml_schema_mount_point(xt)){
-        if ((ret = yang_schema_mount_yspec(h, xt, &ybc, &yspec, xerr)) < 0)
+        if ((ret = yang_schema_mount_yspec(h, xt, skip_mnt, &ybc, &yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
@@ -688,11 +688,13 @@ xml_bind_yang0(clixon_handle h,
     strip_body_objects(xt);
     if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")&&
         xml_schema_mount_point(xt)){
-        if ((ret = yang_schema_mount_yspec(h, xt,
+        if ((ret = yang_schema_mount_yspec(h, xt, skip_mnt,
                                            NULL, // &ybc,
                                            &yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
+            goto ok;
+        if (skip_mnt)
             goto ok;
     }
     xc = NULL;     /* Apply on children */
