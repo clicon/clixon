@@ -429,6 +429,8 @@ cli_dbxml(clixon_handle       h,
             free(xpath);
         if (nsc)
             cvec_free(nsc);
+        if (body)
+            free(body);
     }
     if (xml_add_attr(xbot, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) == NULL)
         goto done;
