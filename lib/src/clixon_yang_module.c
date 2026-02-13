@@ -186,33 +186,35 @@ yang_modules_revision(clixon_handle h)
 
 /*! Actually build the yang modules state XML tree according to RFC8525
  *
- * @param[in]  h     Clixon handle
+ * @param[in]  h      Clixon handle
  * @param[in]  yspec
- * @param[in]  msid
+ * @param[in]  msid   Module-set-id, used as content-id in yang-library
+ * @param[in]  msname Module-set name, used as domain name in yang mounts
  * @param[in]  brief
  * @param[out] cb
- * @retval     0     OK
- * @retval    -1     Error
+ * @retval     0      OK
+ * @retval    -1      Error
  * This assumes CLICON_YANG_LIBRARY is enabled
  * @see RFC8525
  */
-int
+static int
 yang_modules_state_build(clixon_handle    h,
                          yang_stmt       *yspec,
                          const char      *msid,
+                         const char      *msname,
                          int              brief,
                          cbuf            *cb)
 {
-    int         retval = -1;
-    yang_stmt  *ylib = NULL; /* ietf-yang-library */
-    char       *module = "ietf-yang-library";
-    yang_stmt  *ys;
-    yang_stmt  *yc;
-    yang_stmt  *ymod;        /* generic module */
-    yang_stmt  *yns = NULL;  /* namespace */
-    yang_stmt  *yinc;
-    yang_stmt  *ysub;
-    char       *name;
+    int        retval = -1;
+    yang_stmt *ylib = NULL; /* ietf-yang-library */
+    char      *module = "ietf-yang-library";
+    yang_stmt *ys;
+    yang_stmt *yc;
+    yang_stmt *ymod;        /* generic module */
+    yang_stmt *yns = NULL;  /* namespace */
+    yang_stmt *yinc;
+    yang_stmt *ysub;
+    char      *name;
     int        inext;
     int        inext2;
 
@@ -230,7 +232,7 @@ yang_modules_state_build(clixon_handle    h,
     /* RFC 8525 */
     cprintf(cb,"<yang-library xmlns=\"%s\">", yang_argument_get(yns));
     cprintf(cb,"<content-id>%s</content-id>", msid);
-    cprintf(cb,"<module-set><name>default</name>");
+    cprintf(cb,"<module-set><name>%s</name>", msname);
     inext = 0;
     while ((ymod = yn_iter(yspec, &inext)) != NULL) {
         if (yang_keyword_get(ymod) != Y_MODULE)
@@ -335,6 +337,7 @@ yang_modules_state_get(clixon_handle    h,
     cxobj     **xvec = NULL;
     size_t      xlen;
     int         i;
+    char       *domain;
     int         ret;
 
     msid = clicon_option_str(h, "CLICON_MODULE_SET_ID"); /* In RFC 8525 changed to "content-id" */
@@ -357,8 +360,11 @@ yang_modules_state_get(clixon_handle    h,
             clixon_err(OE_UNIX, 0, "cligen buffer");
             goto done;
         }
+        // domain = "default";
+        domain = yang_argument_get(yang_parent_get(yspec));
         /* Build a cb string: <modules-state>... */
-        if (yang_modules_state_build(h, yspec, msid, brief, cb) < 0)
+        if (yang_modules_state_build(h, yspec, msid, domain, brief, cb) < 0)
+            if (yang_modules_state_build(h, yspec, msid, "default", brief, cb) < 0)
             goto done;
         /* Parse cb, x is on the form: <top><modules-state>... 
          * Note, list is not sorted since it is state (should not be)

@@ -459,10 +459,10 @@ function testrun()
     fi
 
     new "restconf schema resource, RFC 8040 sec 3.7 according to RFC 8525 (explicit resource)"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=default/module=ietf-interfaces)" 0 "HTTP/$HVER 200" '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces"}\]}'
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=top/module=ietf-interfaces)" 0 "HTTP/$HVER 200" '{"ietf-yang-library:module":\[{"name":"ietf-interfaces","revision":"2018-02-20","namespace":"urn:ietf:params:xml:ns:yang:ietf-interfaces"}\]}'
 
     new "restconf schema resource, mod-state top-level"
-    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=default)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:module-set\":\[{\"name\":\"default\",\"module\":\[{\"name\":\"clixon-autocli\",\"revision\":\"${CLIXON_AUTOCLI_REV}\",\"namespace\":\"http://clicon.org/autocli\"}" "{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
+    expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $proto://$addr/restconf/data/ietf-yang-library:yang-library/module-set=top)" 0 "HTTP/$HVER 200" "{\"ietf-yang-library:module-set\":\[{\"name\":\"top\",\"module\":\[{\"name\":\"clixon-autocli\",\"revision\":\"${CLIXON_AUTOCLI_REV}\",\"namespace\":\"http://clicon.org/autocli\"}" "{\"name\":\"clixon-lib\",\"revision\":\"${CLIXON_LIB_REV}\",\""
 
     new "restconf options. RFC 8040 4.1"
     expectpart "$(curl $CURLOPTS -X OPTIONS $proto://$addr/restconf/data)" 0 "HTTP/$HVER 200" "Allow: OPTIONS,HEAD,GET,POST,PUT,PATCH,DELETE"

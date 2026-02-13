@@ -40,7 +40,7 @@
 /*
  * Prototypes
  */
-int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, char *treename);
+int yang2cli_yspec(clixon_handle h, yang_stmt *yspec, const char *treename);
 int yang2cli_yanglib(clixon_handle h, const char *spec, cxobj *xyanglib, char *treename);
 int yang2cli_grouping_wrap(cligen_handle ch, const char *name, cvec *cvt, void *arg, char **namep);
 int yang2cli_init(clixon_handle h);

@@ -283,6 +283,7 @@ module clixon-autocli{
                  Client-side option: either disabled or read (write is deprecated)
                  If enabled, query backend of clispecs from YANG, where a cached clispec is returned
                  and if miss, generate and save.
+                 Note, disabled may not work across mount-points, use read instead
                  If read then CLICON_AUTOCLI_CACHE_DIR must also be set.";
             type cache-type;
             default disabled;

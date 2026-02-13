@@ -48,6 +48,16 @@ Expected: February 2026
    * Added explicit `enabled` flag
    * Deprecated `clispec-cache` and `clispec-cache-dir`
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Top-level yang-library (RFC 8525) module-set name is changed from `default` to `top`
+  * Changed from: `<yang-library><module-set><name>default</name>...`
+  * To: `<yang-library><module-set><name>top</name>...`
+  * This is to align yang-library module-set names to YANG domain names, where the top-level control and data YANG domain is `top`.
+    
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code

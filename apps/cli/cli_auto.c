@@ -734,7 +734,8 @@ autocli_trees_default(clixon_handle h)
  * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees
  * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the
  * "tree reference" syntax.
- *
+ * A tree is generated either locally or by querying the backend, depending on the autocli_cache setting.
+ * Dont generate if basemodel tree already exists.
  * @param[in]  h        Clixon handle
  * @retval     0        OK
  * @retval    -1        Error
@@ -747,9 +748,15 @@ autocli_start(clixon_handle h)
     int             enable = 0;
     autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
     cxobj          *xylib = NULL;
+    cxobj          *xylib1 = NULL; /* malloced */
     cxobj          *xmodset;
+    char           *treename = AUTOCLI_TREENAME;
 
     clixon_debug(CLIXON_DBG_CLI, "");
+    if (cligen_ph_find(cli_cligen(h), treename) != NULL){
+        clixon_debug(CLIXON_DBG_CLI, "Autocli not generated, cligen tree %s already exists)", treename);
+        goto ok;
+    }
     if (autocli_module(h, NULL, &enable) < 0)
         goto done;
     if (!enable){
@@ -765,31 +772,30 @@ autocli_start(clixon_handle h)
     switch (cache){
     case AUTOCLI_CACHE_DISABLED: /* Generate locally */
         /* The actual generating call from yang to clispec for the complete yang spec, @basemodel */
-        if (yang2cli_yspec(h, yspec, AUTOCLI_TREENAME) < 0)
+        if (yang2cli_yspec(h, yspec, treename) < 0)
             goto done;
         break;
     case AUTOCLI_CACHE_READ: /* Query backend */
         if ((xylib = clicon_modst_cache_get(h, 1)) == NULL){
-            if (yang_modules_state_get(h, yspec, NULL, NULL, 1, &xylib) < 0)
+            if (yang_modules_state_get(h, yspec, NULL, NULL, 1, &xylib1) < 0)
                 goto done;
-            if (xml_rootchild(xylib, 0, &xylib) < 0)
+            if (xml_rootchild(xylib1, 0, &xylib1) < 0)
                 goto done;
-            xmodset = xml_find(xylib, "module-set");
-            xml_purge(xml_find(xmodset, "name"));
-            xml_new_body("name", xmodset, yang_argument_get(yang_parent_get(yspec)));
+            xmodset = xml_find(xylib1, "module-set");
             xml_sort(xmodset);
+            xylib = xylib1;
         }
-        if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib, AUTOCLI_TREENAME) < 0)
+        if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib, treename) < 0)
             goto done;
         break;
     }
-    /* XXX Create pre-5.5 tree-refs for backward compatibility */
+    /* Create pre-5.5 tree-refs for backward compatibility */
     if (autocli_trees_default(h) < 0)
         goto done;
  ok:
     retval = 0;
  done:
-    if (xylib)
-        xml_free(xylib);
+    if (xylib1)
+        xml_free(xylib1);
     return retval;
 }

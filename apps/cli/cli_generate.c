@@ -346,7 +346,7 @@ yang2cli_client(clixon_handle h,
 int
 yang2cli_yspec(clixon_handle h,
                yang_stmt    *yspec,
-               char         *treename)
+               const char   *treename)
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
