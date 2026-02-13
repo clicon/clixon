@@ -781,11 +781,16 @@ autocli_start(clixon_handle h)
                 goto done;
             if (xml_rootchild(xylib1, 0, &xylib1) < 0)
                 goto done;
-            xmodset = xml_find(xylib1, "module-set");
-            xml_sort(xmodset);
-            xylib = xylib1;
         }
-        if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib, treename) < 0)
+        else
+            xylib1 = xml_dup(xylib);
+        xmodset = xml_find(xylib1, "module-set");
+#ifdef YANGLIB_MODSET_NAME_DEFAULT
+        xml_purge(xml_find(xmodset, "name"));
+        xml_new_body("name", xmodset, yang_argument_get(yang_parent_get(yspec)));
+#endif
+        xml_sort(xmodset);
+        if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib1, treename) < 0)
             goto done;
         break;
     }

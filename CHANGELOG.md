@@ -56,7 +56,7 @@ Users may have to change how they access the system
   * Changed from: `<yang-library><module-set><name>default</name>...`
   * To: `<yang-library><module-set><name>top</name>...`
   * This is to align yang-library module-set names to YANG domain names, where the top-level control and data YANG domain is `top`.
-    
+  * To keep this backward-compatible, set the constant `YANGLIB_MODSET_NAME_DEFAULT`
 
 ### C/CLI-API changes on existing features
 

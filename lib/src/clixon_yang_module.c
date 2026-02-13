@@ -360,8 +360,11 @@ yang_modules_state_get(clixon_handle    h,
             clixon_err(OE_UNIX, 0, "cligen buffer");
             goto done;
         }
-        // domain = "default";
+#ifdef YANGLIB_MODSET_NAME_DEFAULT
+        domain = "default";
+#else
         domain = yang_argument_get(yang_parent_get(yspec));
+#endif
         /* Build a cb string: <modules-state>... */
         if (yang_modules_state_build(h, yspec, msid, domain, brief, cb) < 0)
             if (yang_modules_state_build(h, yspec, msid, "default", brief, cb) < 0)
