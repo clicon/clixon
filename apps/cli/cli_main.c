@@ -171,8 +171,8 @@ cli_history_save(clixon_handle h)
 static int
 cli_terminate(clixon_handle h)
 {
-    cvec       *nsctx;
-    cxobj      *x;
+    cvec  *nsctx;
+    cxobj *x;
 
     if (clixon_exit_get() == 0)
         clixon_exit_set(1);

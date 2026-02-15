@@ -737,7 +737,7 @@ clicon_modst_cache_get(clixon_handle h,
 int
 clicon_modst_cache_set(clixon_handle h,
                        int           brief,
-                        cxobj        *xms)
+                       cxobj        *xms)
 {
     clicon_hash_t  *cdat = clicon_data(h);
     cxobj          *x;

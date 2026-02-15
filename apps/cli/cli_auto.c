@@ -195,12 +195,17 @@ cli_auto_edit(clixon_handle h,
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
     if (mtdomain){
+        char *str;
+        str = NULL;
+        if (clicon_data_get(h, "cli-edit-mtdomain", &str) == 0 && str != NULL)
+            free(str);
         if (clicon_data_set(h, "cli-edit-mtdomain", mtdomain) < 0)
             goto done;
-        mtdomain = NULL;
+        str = NULL;
+        if (clicon_data_get(h, "cli-edit-mtspec", &str) == 0 && str != NULL)
+            free(str);
         if (clicon_data_set(h, "cli-edit-mtspec", mtspec) < 0)
             goto done;
-        mtspec = NULL;
     }
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
         goto done;
@@ -777,8 +782,12 @@ autocli_start(clixon_handle h)
         break;
     case AUTOCLI_CACHE_READ: /* Query backend */
         if ((xylib = clicon_modst_cache_get(h, 1)) == NULL){
+            cxobj *x;
             if (yang_modules_state_get(h, yspec, NULL, NULL, 1, &xylib1) < 0)
                 goto done;
+            /* Kludge to remove cache which is useful only in the backend */
+            if ((x = clicon_modst_cache_get(h, 1)) != NULL)
+                xml_free(x);
             if (xml_rootchild(xylib1, 0, &xylib1) < 0)
                 goto done;
         }

@@ -2127,6 +2127,10 @@ cli_show_config_info(clixon_handle h,
     cligen_output(stdout, "APIpath:    %s\n", api_path);
     retval = 0;
  done:
+    if (mtdomain)
+        free(mtdomain);
+    if (mtspec)
+        free(mtspec);
     if (api_path_fmt_cb)
         cbuf_free(api_path_fmt_cb);
     if (api_path)

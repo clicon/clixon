@@ -320,6 +320,7 @@ x            +--ro namespace           inet:uri
                +--ro schema?     inet:uri
  * Previously RFC 7895
  * @see netconf_hello_server
+ * @note as a side-effect sets cache. This is useful for backend but need a version that is functional only.
  */
 int
 yang_modules_state_get(clixon_handle    h,
