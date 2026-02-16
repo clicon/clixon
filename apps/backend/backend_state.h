@@ -1,7 +1,7 @@
 /*
  *
   ***** BEGIN LICENSE BLOCK *****
-
+ 
   Copyright (C) 2009-2016 Olof Hagsand and Benny Holmgren
   Copyright (C) 2017-2019 Olof Hagsand
   Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC (Netgate)
@@ -25,31 +25,22 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2,
+  use your version of this file under the terms of Apache License version 2, 
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
- *
- * Check YANG validation
  */
 
-#ifndef _CLIXON_VALIDATE_H_
-#define _CLIXON_VALIDATE_H_
+#ifndef _BACKEND_STATE_H_
+#define _BACKEND_STATE_H_
 
 /*
  * Prototypes
  */
-int xml_yang_validate_rpc(clixon_handle h, cxobj *xrpc, int expanddefault, cxobj **xret);
-int xml_yang_validate_rpc_reply(clixon_handle h, cxobj *xrpc, cxobj **xret);
-int xml_yang_validate_add(clixon_handle h, cxobj *xt, cxobj **xret);
-int xml_yang_validate_list_key_only(cxobj *xt, cxobj **xret);
-int xml_yang_validate_all(clixon_handle h, cxobj *xt, int state, cxobj **xret);
-int xml_yang_validate_all_top(clixon_handle h, cxobj *xt, int state, cxobj **xret);
-int xml_yang_validate_exit(clixon_handle h);
-int rpc_reply_check(clixon_handle h, const char *rpcname, cbuf *cbret);
+int get_state_data(clixon_handle h, char *xpath, cvec *nsc, cxobj **xret);
+int merge_state_data(clixon_handle h, cxobj *xtop, yang_stmt *yspec, cxobj **xret);
 
-#endif  /* _CLIXON_VALIDATE_H_ */
+#endif  /* _BACKEND_STATE_H_ */

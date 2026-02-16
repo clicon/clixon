@@ -461,7 +461,7 @@ clixon_xml_changelog_init(clixon_handle h)
             goto done;
         if (xml_rootchild(xt, 0, &xt) < 0)
             goto done;
-        if ((ret = xml_yang_validate_all(h, xt, &xret)) < 0)
+        if ((ret = xml_yang_validate_all(h, xt, 0, &xret)) < 0)
             goto done;
         if (ret==1 && (ret = xml_yang_validate_add(h, xt, &xret)) < 0)
             goto done;
