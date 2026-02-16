@@ -70,260 +70,8 @@
 #include "clixon_backend_commit.h"
 #include "backend_client.h"
 #include "backend_handle.h"
+#include "backend_state.h"
 #include "backend_get.h"
-
-/*! Restconf get capabilities
- *
- * Maybe should be in the restconf client instead of backend?
- * @param[in]     h       Clixon handle
- * @param[in]     yspec   Yang spec
- * @param[in]     xpath   Xpath selection, not used but may be to filter early
- * @param[out]    xrs     XML restconf-state node
- * @retval        0       OK
- * @retval       -1       Error
- * @see netconf_hello_server
- * @see rfc8040 Sections 9.1
- */
-static int
-restconf_client_get_capabilities(clixon_handle h,
-                                 yang_stmt    *yspec,
-                                 char         *xpath,
-                                 cxobj       **xret)
-{
-    int     retval = -1;
-    cxobj  *xrstate = NULL; /* xml restconf-state node */
-    cbuf   *cb = NULL;
-
-    if ((xrstate = xpath_first(*xret, NULL, "restconf-state")) == NULL){
-        clixon_err(OE_YANG, ENOENT, "restconf-state not found in config node");
-        goto done;
-    }
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(cb, "<capabilities>");
-    cprintf(cb, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>");
-    cprintf(cb, "<capability>urn:ietf:params:restconf:capability:depth:1.0</capability>");
-    cprintf(cb, "<capability>urn:ietf:params:restconf:capability:with-defaults:1.0</capability>");
-    cprintf(cb, "</capabilities>");
-    if (clixon_xml_parse_string(cbuf_get(cb), YB_PARENT, NULL, &xrstate, NULL) < 0)
-        goto done;
-    retval = 0;
- done:
-    if (cb)
-        cbuf_free(cb);
-    return retval;
-}
-
-/*! Get streams state according to RFC 8040 or RFC5277 common function
- *
- * @param[in]     h       Clixon handle
- * @param[in]     yspec   Yang spec
- * @param[in]     xpath   XPath selection, not used but may be to filter early
- * @param[in]     nsc     Namespace context
- * @param[in]     module  Name of yang module
- * @param[in]     top     Top symbol, ie netconf or restconf-state
- * @param[in,out] xret    Existing XML tree, merge x into this
- * @retval        1       OK
- * @retval        0       Statedata callback failed
- * @retval       -1       Error (fatal)
- */
-static int
-client_get_streams(clixon_handle h,
-                   yang_stmt    *yspec,
-                   char         *xpath,
-                   cvec         *nsc,
-                   yang_stmt    *ymod,
-                   char         *top,
-                   cxobj       **xret)
-{
-    int            retval = -1;
-    yang_stmt     *yns = NULL;  /* yang namespace */
-    cbuf          *cb = NULL;
-
-    if ((yns = yang_find(ymod, Y_NAMESPACE, NULL)) == NULL){
-        clixon_err(OE_YANG, 0, "%s yang namespace not found", yang_argument_get(ymod));
-        goto done;
-    }
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
-    }
-    cprintf(cb, "<%s xmlns=\"%s\">", top, yang_argument_get(yns));
-    /* Second argument is a hack to have the same function for the
-     * RFC5277 and 8040 stream cases
-     */
-    if (stream_get_xml(h, strcmp(top, "restconf-state")==0, cb) < 0)
-        goto done;
-    cprintf(cb,"</%s>", top);
-
-    if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, xret, NULL) < 0){
-        if (xret && netconf_operation_failed_xml(xret, "protocol", clixon_err_reason())< 0)
-            goto done;
-        goto fail;
-    }
-    retval = 1;
- done:
-    if (cb)
-        cbuf_free(cb);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
-
-/*! Get system state-data, including streams and plugins
- *
- * @param[in]     h       Clixon handle
- * @param[in]     xpath   XPath selection, may be used to filter early
- * @param[in]     nsc     XML Namespace context for xpath
- * @param[in,out] xret    Existing XML tree, merge x into this, or rpc-error
- * @retval        1       OK
- * @retval        0       Statedata callback failed (error in xret)
- * @retval       -1       Error (fatal)
- * @note This code in general does not look at xpath, needs to be filtered in retrospect
- * @note Awkward error handling. Even if most of this is during development phase, except for plugin
- * state callbacks.
- * Present behavior:
- *   - Present behavior: should be returned in xret with retval 0(error) or 1(ok)
- *   - On error, previous content of xret is not freed
- *   - xret is in turn translated to cbuf in calling function
- * Instead, I think there should be a second out argument **xerr with the error message, see code
- * for CLICON_NETCONF_MONITORING which is transformed in calling function(?) to an internal error
- * message. But this needs to be explored in all sub-functions
- */
-static int
-get_state_data(clixon_handle h,
-               char         *xpath,
-               cvec         *nsc,
-               cxobj       **xret)
-{
-    int        retval = -1;
-    yang_stmt *yspec;
-    yang_stmt *ymod;
-    cxobj     *x1 = NULL;
-    cbuf      *cb = NULL;
-    cxobj     *xerr = NULL;
-    int        ret;
-
-    clixon_debug(CLIXON_DBG_BACKEND, "");
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_UNIX, errno, "cbuf_new");
-        goto done;
-    }
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC5277")){
-        if ((ymod = yang_find_module_by_name(yspec, "clixon-rfc5277")) == NULL){
-            clixon_err(OE_YANG, ENOENT, "yang module clixon-rfc5277 not found");
-            goto done;
-        }
-        if ((ret = client_get_streams(h, yspec, xpath, nsc, ymod, "netconf", &x1)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-        if (xpath_first(x1, nsc, "%s", xpath) != NULL){
-            if ((ret = netconf_trymerge(x1, yspec, xret)) < 0)
-                goto done;
-            if (ret == 0)
-                goto fail;
-        }
-    }
-    if (clicon_option_bool(h, "CLICON_STREAM_DISCOVERY_RFC8040")){
-        if ((ymod = yang_find_module_by_name(yspec, "ietf-restconf-monitoring")) == NULL){
-            clixon_err(OE_YANG, ENOENT, "yang module ietf-restconf-monitoring not found");
-            goto done;
-        }
-        if ((ret = client_get_streams(h, yspec, xpath, nsc, ymod, "restconf-state", &x1)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-        if (restconf_client_get_capabilities(h, yspec, xpath, &x1) < 0)
-            goto done;
-        if (xpath_first(x1, nsc, "%s", xpath) != NULL){
-            if ((ret = netconf_trymerge(x1, yspec, xret)) < 0)
-                goto done;
-            if (ret == 0)
-                goto fail;
-        }
-    }
-    if (clicon_option_bool(h, "CLICON_YANG_LIBRARY")){
-        if ((ret = yang_modules_state_get(h, yspec, xpath, nsc, 0, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-    }
-    if (clicon_option_bool(h, "CLICON_NETCONF_MONITORING"))
-        if (xpath == NULL ||         /* Raw optimization of xpath filtering */
-            strcmp(xpath, "/") == 0 ||
-            strstr(xpath, "netconf-state") != 0){
-            if ((ret = netconf_monitoring_state_get(h, yspec, xpath, nsc, xret, &xerr)) < 0)
-                goto done;
-            if (ret == 0){
-                if (clixon_netconf_internal_error(xerr, " . Internal error, netconf_monitoring_state returned invalid XML", NULL) < 0)
-                    goto done;
-                if (*xret)
-                    xml_free(*xret);
-                *xret = xerr;
-                xerr = NULL;
-                goto fail;
-            }
-            /* Some state, client state, is avaliable in backend only, not in lib
-             * Needs merge since same subtree as previous lib state
-             */
-            if ((ret = backend_monitoring_state_get(h, yspec, xpath, nsc, &x1, &xerr)) < 0)
-                goto done;
-            if (ret == 0){
-                if (clixon_netconf_internal_error(xerr, " . Internal error, backend_monitoring_state_get returned invalid XML", NULL) < 0)
-                    goto done;
-                if (*xret)
-                    xml_free(*xret);
-                *xret = xerr;
-                xerr = NULL;
-                goto fail;
-            }
-            if (xpath_first(x1, nsc, "%s", xpath) != NULL){
-                if ((ret = netconf_trymerge(x1, yspec, xret)) < 0)
-                    goto done;
-                if (ret == 0)
-                    goto fail;
-            }
-        }
-    if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
-        if ((ret = yang_schema_mount_statedata(h, yspec, xpath, nsc, xret, &xerr)) < 0)
-            goto done;
-        if (ret == 0){
-            if (clixon_netconf_internal_error(xerr, " . Internal error, schema_mounts_state_get returned invalid XML", NULL) < 0)
-                goto done;
-            if (*xret)
-                xml_free(*xret);
-            *xret = xerr;
-            xerr = NULL;
-            goto fail;
-        }
-    }
-    /* Use plugin state callbacks */
-    if ((ret = clixon_plugin_statedata_all(h, yspec, nsc, xpath, xret)) < 0)
-        goto done;
-    if (ret == 0)
-        goto fail;
-    retval = 1; /* OK */
- done:
-    clixon_debug(CLIXON_DBG_BACKEND, "retval:%d", retval);
-    if (xerr)
-        xml_free(xerr);
-    if (x1)
-        xml_free(x1);
-    if (cb)
-        cbuf_free(cb);
-    return retval;
- fail:
-    retval = 0;
-    goto done;
-}
 
 /*! Help function to filter out anything that is outside of xpath
  *
@@ -1107,6 +855,15 @@ get_common(clixon_handle   h,
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
+#if 0 // test_augment_state.sh fails
+        if ((ret = merge_state_data(h, xret, yspec, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* Error from callback (error in xret) */
+            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+                goto done;
+            goto ok;
+        }
+#else
         if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
@@ -1121,6 +878,7 @@ get_common(clixon_handle   h,
         /* Apply default values */
         if (xml_default_recurse(xret, 1, 0) < 0)
             goto done;
+#endif
         break;
     }
     if (content != CONTENT_CONFIG &&
@@ -1129,7 +887,9 @@ get_common(clixon_handle   h,
          * Primarily intended for user-supplied state-data.
          * The whole config tree must be present in case the state data references config data
          */
-        if ((ret = xml_yang_validate_all_top(h, xret, &xerr)) < 0)
+        if ((ret = xml_yang_validate_all_top(h, xret,
+                                             1, /* Validate also state data */
+                                             &xerr)) < 0)
             goto done;
         if (ret > 0 &&
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)

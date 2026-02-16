@@ -877,7 +877,7 @@ xml_yang_validate_rpc(clixon_handle h,
                 goto done;
             goto fail;
         }
-        if ((ret = xml_yang_validate_all(h, xn, xret)) < 0)
+        if ((ret = xml_yang_validate_all(h, xn, 0, xret)) < 0)
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
@@ -938,7 +938,7 @@ xml_yang_validate_rpc_reply(clixon_handle h,
                 goto done;
             goto fail;
         }
-        if ((ret = xml_yang_validate_all(h, xn, xret)) < 0)
+        if ((ret = xml_yang_validate_all(h, xn, 0, xret)) < 0)
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
@@ -1672,8 +1672,9 @@ xml_yang_validate_leaf_union(clixon_handle h,
 
 /*! Validate a single XML node with yang specification for all (not only added) entries
  *
- * 1. Check leafrefs. Eg you delete a leaf and a leafref references it.
- * @param[in]  xt  XML node to be validated
+ * @param[in]  h     Clixon handle
+ * @param[in]  xt    XML node to be validated
+ * @param[in]  state 0: ignore state, 1: also validate state (non-config)
  * @param[out] xret  Error XML tree (if retval=0). Free with xml_free after use
  * @retval     1     Validation OK
  * @retval     0     Validation failed (cbret set)
@@ -1681,7 +1682,7 @@ xml_yang_validate_leaf_union(clixon_handle h,
  * @code
  *   cxobj *x;
  *   cbuf *xret = NULL;
- *   if ((ret = xml_yang_validate_all(h, x, &xret)) < 0)
+ *   if ((ret = xml_yang_validate_all(h, x, 0, &xret)) < 0)
  *      err;
  *   if (ret == 0)
  *      fail;
@@ -1693,6 +1694,7 @@ xml_yang_validate_leaf_union(clixon_handle h,
 static int
 xml_yang_validate_all1(clixon_handle h,
                        cxobj        *xt,
+                       int           state,
                        cxobj       **xret)
 {
     int        retval = -1;
@@ -1866,7 +1868,9 @@ xml_yang_validate_all1(clixon_handle h,
     }
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-        if ((ret = xml_yang_validate_all1(h, x, xret)) < 0)
+        if (!state && (yc = xml_spec(x)) != NULL && yang_config(yc) == 0)
+            continue; /* skip if non-config */
+        if ((ret = xml_yang_validate_all1(h, x, state, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -1894,42 +1898,60 @@ xml_yang_validate_all1(clixon_handle h,
     goto done;
 }
 
+/*! Validate a single XML node completely with yang specification for all (not only added) entries
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  xt    XML tree to validate
+ * @param[in]  state 0: ignore state, 1: also validate state (non-config)
+ * @param[out] xret  Error XML tree (if ret == 0). Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ */
 int
 xml_yang_validate_all(clixon_handle h,
                       cxobj        *xt,
+                      int           state,
                       cxobj       **xret)
 {
     int retval;
 
 #ifdef LEAFREF_OPTIMIZE
     leafref_opt_init(h);
-    retval = xml_yang_validate_all1(h, xt, xret);
+    retval = xml_yang_validate_all1(h, xt, state, xret);
     leafref_opt_exit(h);
 #else
-    retval = xml_yang_validate_all1(h, xt, xret);
+    retval = xml_yang_validate_all1(h, xt, state, xret);
 #endif
     return retval;
 }
 
-/*! Validate a single XML node with yang specification
+/*! Validate children of an XML node and top-level constraints, eg unique and min-max.
  *
+ * Validate all entries, not only added entries, but not top-level object itself
  * @param[in]  h     Clixon handle
- * @param[out] xret   Error XML tree (if ret == 0). Free with xml_free after use
- * @retval     1      Validation OK
- * @retval     0      Validation failed (xret set)
- * @retval    -1      Error
+ * @param[in]  xt    XML tree to validate
+ * @param[in]  state 0: ignore state, 1: also validate state (non-config)
+ * @param[out] xret  Error XML tree (if ret == 0). Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
  */
 int
 xml_yang_validate_all_top(clixon_handle h,
                           cxobj        *xt,
+                          int           state,
                           cxobj       **xret)
 {
-    cxobj *x;
-    int    ret;
+    cxobj     *x;
+    yang_stmt *y;
+    int        ret;
 
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-        if ((ret = xml_yang_validate_all(h, x, xret)) < 1)
+        if (!state && (y = xml_spec(x)) != NULL && yang_config(y) == 0)
+            continue; /* skip if non-config */
+        if ((ret = xml_yang_validate_all(h, x, state, xret)) < 1)
             return ret;
     }
     if ((ret = xml_yang_validate_minmax(xt, 0, xret)) < 1)

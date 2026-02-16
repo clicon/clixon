@@ -101,6 +101,7 @@ APPOBJ  = $(APPSRC:.c=.o)
 # Accessible from plugin
 LIBSRC	= clixon_backend_transaction.c
 LIBSRC += clixon_backend_handle.c
+LIBSRC += backend_state.c
 LIBSRC += backend_commit.c
 LIBSRC += backend_confirm.c
 LIBSRC += backend_plugin.c

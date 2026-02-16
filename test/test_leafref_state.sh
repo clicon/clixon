@@ -8,6 +8,8 @@
 # The leafref in the sender-state part references a leaf in the sender-config part
 # Netconf tests are made to get state, state+config, using content attribute config/nonconfig/all
 # with different paths.
+# Note validation is made on <get> for state data (not validate/commit)
+# Another case is if config data references state data
 # Using the -sS <file> state capability of the main example, that is why CLICON_BACKEND_DIR is
 # /usr/local/lib/$APPNAME/backend so that the main backend plugins is included.
 # Note: Three runs:
@@ -132,7 +134,7 @@ EOF
 new "leafref config sender x"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "netconf commit"
+new "netconf commit 1"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Get path=/, state vs config
@@ -197,7 +199,7 @@ EOF
 new "leafref config delete sender x add y"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "netconf commit"
+new "netconf commit 2"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Leafref wrong internal: state references x but config contains only y
@@ -255,7 +257,7 @@ EOF
 new "leafref config sender x"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "netconf commit"
+new "netconf commit 3"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Leafref wrong internal: state references x but config contains only y
@@ -310,7 +312,7 @@ EOF
 new "leafref config sender x"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "netconf commit"
+new "netconf commit 4"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Leafref wrong internal: state references x but config contains only y

@@ -675,7 +675,7 @@ api_operations_post_output(clixon_handle h,
 #ifdef notyet
         if ((ret = xml_bind_yang(h, xoutput, YB_MODULE, yspec, &xerr)) < 0)
             goto done;
-        if (ret > 0 && (ret = xml_yang_validate_all(xoutput, &xerr)) < 0)
+        if (ret > 0 && (ret = xml_yang_validate_all(h, xoutput, 0, &xerr)) < 0)
             goto done;
         if (ret == 1 &&
             (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
