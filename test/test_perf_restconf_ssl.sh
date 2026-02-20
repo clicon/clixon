@@ -214,7 +214,7 @@ expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS
     curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data/scaling:x/y=$rnd
 done > /dev/null; } 2>&1 | awk '/real/ {print $2}'
 
-# Now do leaf-lists istead of leafs
+# Now do leaf-lists instead of leafs
 new "generate config with $perfnr leaf-lists to $fdataxml2"
 echo -n "<x xmlns=\"urn:example:clixon\">" > $fdataxml2
 for (( i=0; i<$perfnr; i++ )); do  

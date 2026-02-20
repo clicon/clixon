@@ -70,7 +70,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-expectpart "$($clixon_cli -1 -f $cfg -l o -C xml)" 0 "Warning: CLICON_CONFIGDIR:/var/tmp/./test_config_dir.sh/dontexist: No such directory"
+expectpart "$($clixon_cli -1 -f $cfg -l o -C xml)" 0 "Warning: CLICON_CONFIGDIR:.*/dontexist: No such directory"
 
 new "Start with wrong configdir -E override"
 rm -f $cfile1

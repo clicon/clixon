@@ -231,13 +231,13 @@ xml_copy_bottom_recurse(cxobj  *x0t,
 
 /*! Copy an XML tree bottom-up
  *
- * @retval     0    OK
- * @retval    -1    OK
+ * @retval   0    OK
+ * @retval  -1    Error
  */
 static int
-xml_copy_from_bottom(cxobj  *x0t,
-                     cxobj  *x0,
-                     cxobj  *x1t)
+xml_copy_from_bottom(cxobj *x0t,
+                     cxobj *x0,
+                     cxobj *x1t)
 {
     int        retval = -1;
     cxobj     *x1p    = NULL;
@@ -296,10 +296,10 @@ xml_copy_from_bottom(cxobj  *x0t,
  *    4a) If there is no such module in the file -> add to list mark as ADD
  */
 static int
-text_read_modstate(clixon_handle     h,
-                   yang_stmt        *yspec,
-                   cxobj            *xt,
-                   modstate_diff_t  *msdiff)
+text_read_modstate(clixon_handle    h,
+                   yang_stmt       *yspec,
+                   cxobj           *xt,
+                   modstate_diff_t *msdiff)
 {
     int    retval = -1;
     cxobj *xmodfile = NULL;   /* modstate of system (loaded yang modules in runtime) */
@@ -874,10 +874,10 @@ xmldb_msdiff(clixon_handle    h,
  * @see xmldb_get_cache  If candidate copy from running, this resets also candidate from file
  */
 int
-xmldb_get_cache_from_file(clixon_handle     h,
-                          db_elmnt         *de,
-                          cxobj           **xtp,
-                          cxobj           **xerr)
+xmldb_get_cache_from_file(clixon_handle h,
+                          db_elmnt     *de,
+                          cxobj       **xtp,
+                          cxobj       **xerr)
 {
     int              retval = -1;
     yang_stmt       *yspec0;
@@ -941,6 +941,8 @@ xmldb_get_cache_from_file(clixon_handle     h,
         *xtp = xt;
     retval = 1;
  done:
+    if (msdiff)
+        modstate_diff_free(msdiff);
     return retval;
  fail:
     retval = 0;
@@ -962,15 +964,15 @@ xmldb_get_cache_from_file(clixon_handle     h,
  * @note If db is candidate, copy from running (dont read from file)
  */
 int
-xmldb_get_cache(clixon_handle     h,
-                const char       *db,
-                cxobj           **xtp,
-                cxobj           **xerr)
+xmldb_get_cache(clixon_handle h,
+                const char   *db,
+                cxobj       **xtp,
+                cxobj       **xerr)
 {
-    int              retval = -1;
-    cxobj           *xt = NULL; /* (cached) top of tree */
-    db_elmnt        *de = NULL;
-    int              ret;
+    int       retval = -1;
+    cxobj    *xt = NULL; /* (cached) top of tree */
+    db_elmnt *de = NULL;
+    int       ret;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = xmldb_find(h, db)) == NULL){
@@ -1141,11 +1143,11 @@ xmldb_get_copy(clixon_handle h,
  * XXX: OBSOLETE: use xmldb_get0 directly
  */
 int
-xmldb_get(clixon_handle    h,
-          const char      *db,
-          cvec            *nsc,
-          const char      *xpath,
-          cxobj          **xret)
+xmldb_get(clixon_handle h,
+          const char   *db,
+          cvec         *nsc,
+          const char   *xpath,
+          cxobj       **xret)
 {
     return xmldb_get0(h, db, YB_MODULE, nsc, xpath, 0, 0, xret, NULL, NULL);
 }
@@ -1195,12 +1197,12 @@ xmldb_get(clixon_handle    h,
  *      <c><x>0</x></c>
  */
 int
-xmldb_get0(clixon_handle    h,
-           const char      *db,
-           int              notused0,
-           cvec            *nsc,
-           const char      *xpath,
-           int              notused1,
+xmldb_get0(clixon_handle     h,
+           const char       *db,
+           int               notused0,
+           cvec             *nsc,
+           const char       *xpath,
+           int               notused1,
            withdefaults_type wdef,
            cxobj           **xret,
            void             *notused2,
