@@ -296,15 +296,24 @@ expand_dbvar(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    /* Get XPath and namespace context from api_path */
+    /* Get XPath and namespace context from api_path
+     * Issue: with NACM, the rpc can fail but dont want to return error / -1, instead return empty list
+     */
     if (clixon_rpc_config_path_info(h, api_path, 0, NULL, NULL,
                                     cvec_find(co->co_cvec, "leafref-no-refer") == NULL, NULL, NULL,
                                     NULL, &xpath, &nsc,
-                                    NULL, NULL, NULL, NULL, NULL) < 0)
-        goto done;
+                                    NULL, NULL, NULL, NULL, NULL) < 0){
+        /* Try local call to find xpath and nsc, but this may not work over mountpoints */
+        if ((ret = api_path2xpath(api_path, yspec0, &xpath, &nsc, &xerr)) < 0)
+            goto done;
+        if (ret == 0){
+            clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Expand datastore symbol");
+            goto done;
+        }
+    }
     if (xpath == NULL){
         clixon_err(OE_YANG, 0, "xpath is NULL");
-        goto done;
+        goto ok;
     }
     if (mtdomain){
         if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
