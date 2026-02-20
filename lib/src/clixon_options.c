@@ -447,7 +447,7 @@ parse_configfile(clixon_handle  h,
     cxobj         *xerr = NULL;
     cvec          *nsc = NULL;
     int            i;
-    int            ndp;
+    int            ndp = 0;
     struct dirent *dp = NULL;
     char           filename1[MAXPATHLEN];
     char          *extraconfdir = NULL;
@@ -478,14 +478,22 @@ parse_configfile(clixon_handle  h,
         if ((xc = xpath_first(xt, 0, "CLICON_CONFIGDIR")) != NULL)
             extraconfdir = xml_body(xc);
     if (extraconfdir){ /* If extra dir, parse extra config files */
-        /* A check it exists (also done in clicon_file_dirent) */
+        /* A check it exists (also done in clicon_file_dirent)
+         */
         if ((dirp = opendir(extraconfdir)) == NULL) {
-            clixon_err(OE_UNIX, errno, "CLICON_CONFIGDIR: %s opendir", extraconfdir);
-            goto done;
+            if (errno == ENOENT){ /* See https://github.com/clicon/clixon/issues/653 */
+                clixon_log(h, LOG_WARNING, "Warning: CLICON_CONFIGDIR:%s: No such directory", extraconfdir);
+            }
+            else {
+                clixon_err(OE_UNIX, errno, "CLICON_CONFIGDIR: %s opendir", extraconfdir);
+                goto done;
+            }
         }
-        closedir(dirp);
-        if((ndp = clicon_file_dirent(extraconfdir, &dp, "\\.xml$", S_IFREG)) < 0)  /* Read dir */
-            goto done;
+        else {
+            closedir(dirp);
+            if((ndp = clicon_file_dirent(extraconfdir, &dp, "\\.xml$", S_IFREG)) < 0)  /* Read dir */
+                goto done;
+        }
         /* Loop through files */
         for (i = 0; i < ndp; i++){
             snprintf(filename1, sizeof(filename1), "%s/%s", extraconfdir, dp[i].d_name);

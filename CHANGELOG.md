@@ -74,6 +74,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Error if CLICON_CONFIGDIR is set but dir does not exist](https://github.com/clicon/clixon/issues/653)
 * Fixed: ["show xpath" don't work over mount point](https://github.com/clicon/clixon-controller/issues/190)
 * Fixed: [Candidate database gets deleted on failed commit](https://github.com/clicon/clixon/issues/648)
 * Fixed: [Private candidate commit fails when changing YANG choice case](https://github.com/clicon/clixon/issues/644)
