@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.7.0](#770) Expected: Februray 2026
+* [7.7.0](#770) 21 Februray 2026
 * [7.6.0](#760) 21 November 2025
 * [7.5.0](#750) 29 July 2025
 * [7.4.0](#740) 3 April 2025
@@ -17,15 +17,20 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.7.0
-Expected: February 2026
+21 February 2026
+
+The Clixon 7.7 release has optimized the CLI by removing local autocli generation and mounted YANG handling and instead querying the backend. Several logging and debug modifications have been made, as well as several bugfixes.
 
 ### Features
 
-* Customized error message for leafrefs
-  * See https://clixon-docs.readthedocs.io/en/latest/errors.html#error-message-extension
+* Changed cli cache to server-side instead of client-side
+  * Add cache protocol for yang-domains and clispecs
+    * This includes read and clear operations between cli client and backend
 * YANG optimization
   * Make CLI yang-independent: use server calls instead of local calls, in particular across mont-points
   * See [CLI memory optimization](https://github.com/clicon/clixon-controller/issues/175)
+* Customized error message for leafrefs
+  * See https://clixon-docs.readthedocs.io/en/latest/errors.html#error-message-extension
 * New debug logs
   * Extended debug levels for `-D` command-line options
     * See https://clixon-docs.readthedocs.io/en/latest/errors.html#extending-debug-flags
@@ -34,9 +39,6 @@ Expected: February 2026
     * See https://clixon-docs.readthedocs.io/en/latest/errors.html#explicit-truncation
 * Added syslog NOTICE to for all start and terminate of cli, backend, netconf and restconf, not just backend.
 * Add `-s` option to `clixon_cli` to disable output scrolling.
-* Changed cli cache to server-side instead of client-side
-  * Add cache protocol for yang-domains and clispecs
-    * This includes read and clear operations between cli client and backend
 * New `clixon-config@2025-12-01.yang` revision
    * Added `CLICON_AUTOCLI_CACHE_DIR`
    * Changed default value of `CLICON_CLI_TAB_MODE` to 0x08 (due to cligen change)
