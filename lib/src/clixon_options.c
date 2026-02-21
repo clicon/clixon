@@ -735,6 +735,8 @@ clicon_options_main(clixon_handle h)
         yangspec = clicon_option_str(h, "CLICON_CONFIG_EXTEND");
     if (yang_spec_parse_module(h, yangspec, NULL, yspec) < 0)
         goto done;
+    /* Also called in main */
+    yang_start(h);
     clicon_conf_xml_set(h, NULL);
     if (xconfig){
         xml_free(xconfig);

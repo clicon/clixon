@@ -4828,6 +4828,7 @@ yang_init(clixon_handle h)
  * Set local CLICON_YANG_USE_ORIGINAL variable
  * @param[in]  h  Clixon handle
  * @retval     0  OK
+ * @see clicon_options_main  there is a race condition where this may be called twice for getting control groupings right
  */
 int
 yang_start(clixon_handle h)

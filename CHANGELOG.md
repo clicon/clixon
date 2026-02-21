@@ -74,6 +74,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Clixon_restconf fails on a sudden appearance of <call-home> node in its config](https://github.com/clicon/clixon/issues/652)
 * Fixed: [Error if CLICON_CONFIGDIR is set but dir does not exist](https://github.com/clicon/clixon/issues/653)
 * Fixed: ["show xpath" don't work over mount point](https://github.com/clicon/clixon-controller/issues/190)
 * Fixed: [Candidate database gets deleted on failed commit](https://github.com/clicon/clixon/issues/648)
