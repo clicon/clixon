@@ -1,11 +1,13 @@
 <clixon-config xmlns="http://clicon.org/config">
   <autocli>
+     <enabled>true</enabled>
      <module-default>true</module-default>
      <list-keyword-default>kw-nokey</list-keyword-default>
      <treeref-state-default>false</treeref-state-default>
      <edit-mode-default>list container</edit-mode-default>
      <completion-default>true</completion-default>
      <grouping-treeref>true</grouping-treeref>
+     <clispec-cache>read</clispec-cache>
      <rule>
        <name>Exclude ietf nacm module</name>
        <description>

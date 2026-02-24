@@ -315,3 +315,18 @@
  * Note that disabling these validation may make you accept invalid YANGs that may fail with other tools later.
  */
 #undef CLIXON_RELAX_VALIDATE
+
+/*! Force RFC 8525 module-set name to "default"
+ *
+ * This is a backward-compatible mechanism that hardcodes the RFC 8525 yang library module-set name to "default".
+ * The RFC does not mandate anything wrt this name.
+ * Clixon mounting code uses the name field to distinguish YANG domains, ie the name is a yang domain.
+ * In particular, in clixon the YANG domain for the top-level config and data YANG modules should be "top".
+ * Default YANG domain for mounted YANGs is "default"
+ * But in <7.7 the name of the module-state is hard-coded to "default" which confuses some code, the autocli
+ * generation code in particular.
+ * By defining this constant, the module-set name is always "default" which keeps backward compatibility
+ * Some systems may want to keep this backward-compatible since it changes the yang-lib XML and shuld therefore
+ * define this constant.
+ */
+#undef YANGLIB_MODSET_NAME_DEFAULT

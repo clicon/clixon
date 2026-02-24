@@ -851,7 +851,7 @@ backend_update(clixon_handle h,
             if (xmldb_write_cache2file(h, db1) < 0)
                 goto done;
         /* Reset candidate-orig to running */
-        if (xmldb_copy(h, db1, db0) < 0){
+        if (xmldb_copy(h, "running", db0) < 0){
             if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                 goto done;
             goto fail;
@@ -965,6 +965,11 @@ from_client_commit(clixon_handle h,
         goto ok;
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")){
+        if ((ret = candidate_validate(h, db, cbret)) < 0)
+            goto done;
+        clixon_debug(CLIXON_DBG_BACKEND, "Commit candidate failed");
+        if (ret == 0)
+            goto ok;
         /* First step, rebase private candidate with running */
         if ((ret = backend_update(h, ce->ce_id, de, cbret)) < 0)
             goto done;

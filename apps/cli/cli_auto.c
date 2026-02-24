@@ -73,6 +73,7 @@
 #include <clixon/clixon.h>
 
 #include "clixon_cli_api.h"
+#include "cli_generate.h"
 #include "cli_common.h"
 
 /*
@@ -194,12 +195,17 @@ cli_auto_edit(clixon_handle h,
     if (clicon_data_set(h, "cli-edit-mode", api_path) < 0)
         goto done;
     if (mtdomain){
+        char *str;
+        str = NULL;
+        if (clicon_data_get(h, "cli-edit-mtdomain", &str) == 0 && str != NULL)
+            free(str);
         if (clicon_data_set(h, "cli-edit-mtdomain", mtdomain) < 0)
             goto done;
-        mtdomain = NULL;
+        str = NULL;
+        if (clicon_data_get(h, "cli-edit-mtspec", &str) == 0 && str != NULL)
+            free(str);
         if (clicon_data_set(h, "cli-edit-mtspec", mtspec) < 0)
             goto done;
-        mtspec = NULL;
     }
     if (clicon_data_cvec_set(h, "cli-edit-cvv", cvv2) < 0)
         goto done;
@@ -626,5 +632,184 @@ cli_auto_sub_enter(clixon_handle h,
         free(api_path);
     if (cvv1)
         cvec_free(cvv1);
+    return retval;
+}
+
+/*! Create pre-5.5 tree-refs for backward compatibility
+ *
+ * should probably be moved to clispec default
+ */
+static int
+autocli_trees_default(clixon_handle h)
+{
+    int         retval = -1;
+    cbuf       *cb = NULL;
+    int         mode = 0;
+    parse_tree *pt = NULL;
+    pt_head    *ph;
+
+    /* Create backward compatible tree: @datamodel */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodel")) == NULL)
+        goto done;
+    if ((pt = pt_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "pt_new");
+        goto done;
+    }
+    if (clispec_parse_str(cli_cligen(h),
+                         "@basemodel, @remove:act-prekey, @remove:act-list, @remove:act-leafconst, @remove:ac-state;",
+                         "datamodel", NULL, pt, NULL) < 0)
+        goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+        goto done;
+
+    /* Create backward compatible tree: @datamodelshow */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodelshow")) == NULL)
+        goto done;
+    if ((pt = pt_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "pt_new");
+        goto done;
+    }
+    if (clispec_parse_str(cli_cligen(h),
+                         "@basemodel, @remove:act-leafvar, @remove:ac-state;",
+                         "datamodelshow", NULL, pt, NULL) < 0)
+        goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+        goto done;
+    /* Create backward compatible tree: @datamodelstate */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodelstate")) == NULL)
+        goto done;
+    if ((pt = pt_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "pt_new");
+        goto done;
+    }
+    if (clispec_parse_str(cli_cligen(h),
+                         "@basemodel, @remove:act-leafvar;",
+                         "datamodelstate", NULL, pt, NULL) < 0)
+        goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+        goto done;
+
+    /* Create new tree: @datamodelmode */
+    if ((ph = cligen_ph_add(cli_cligen(h), "datamodelmode")) == NULL)
+        goto done;
+    if ((pt = pt_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "pt_new");
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "@basemodel, @remove:act-prekey, @remove:act-leafconst, @remove:ac-state");
+    /* Check if container and list are allowed edit modes */
+    mode = 0;
+    if (autocli_edit_mode(h, "container", &mode) < 0)
+        goto done;
+    if (mode == 0)
+        cprintf(cb, ", @remove:act-container");
+    mode = 0;
+    if (autocli_edit_mode(h, "listall", &mode) < 0)
+        goto done;
+    if (mode == 0)
+        cprintf(cb, ", @remove:act-list");
+    mode = 0;
+    if (autocli_edit_mode(h, "list", &mode) < 0)
+        goto done;
+    if (mode == 0)
+        cprintf(cb, ", @remove:act-lastkey");
+    mode = 0;
+    if (autocli_edit_mode(h, "leaf", &mode) < 0)
+        goto done;
+    if (mode == 0)
+        cprintf(cb, ", @remove:ac-leaf");
+    cprintf(cb, ";");
+    if (clispec_parse_str(cli_cligen(h), cbuf_get(cb), "datamodelmode", NULL, pt, NULL) < 0)
+        goto done;
+    if (cligen_ph_parsetree_set(ph, pt) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
+ *
+ * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees
+ * This tree is referenced from the main CLI spec (CLICON_CLISPEC_DIR) using the
+ * "tree reference" syntax.
+ * A tree is generated either locally or by querying the backend, depending on the autocli_cache setting.
+ * Dont generate if basemodel tree already exists.
+ * @param[in]  h        Clixon handle
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+int
+autocli_start(clixon_handle h)
+{
+    int             retval = -1;
+    yang_stmt      *yspec;
+    int             enable = 0;
+    autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
+    cxobj          *xylib = NULL;
+    cxobj          *xylib1 = NULL; /* malloced */
+    cxobj          *xmodset;
+    char           *treename = AUTOCLI_TREENAME;
+
+    clixon_debug(CLIXON_DBG_CLI, "");
+    if (cligen_ph_find(cli_cligen(h), treename) != NULL){
+        clixon_debug(CLIXON_DBG_CLI, "Autocli not generated, cligen tree %s already exists)", treename);
+        goto ok;
+    }
+    if (autocli_module(h, NULL, &enable) < 0)
+        goto done;
+    if (!enable){
+        clixon_debug(CLIXON_DBG_CLI, "Autocli not enabled (clixon-autocli)");
+        goto ok;
+    }
+    /* Init yang2cli */
+    if (yang2cli_init(h) < 0)
+        goto done;
+    if (autocli_cache(h, &cache, NULL) < 0)
+        goto done;
+    yspec = clicon_dbspec_yang(h);
+    switch (cache){
+    case AUTOCLI_CACHE_DISABLED: /* Generate locally */
+        /* The actual generating call from yang to clispec for the complete yang spec, @basemodel */
+        if (yang2cli_yspec(h, yspec, treename) < 0)
+            goto done;
+        break;
+    case AUTOCLI_CACHE_READ: /* Query backend */
+        if ((xylib = clicon_modst_cache_get(h, 1)) == NULL){
+            cxobj *x;
+            if (yang_modules_state_get(h, yspec, NULL, NULL, 1, &xylib1) < 0)
+                goto done;
+            /* Kludge to remove cache which is useful only in the backend */
+            if ((x = clicon_modst_cache_get(h, 1)) != NULL)
+                xml_free(x);
+            if (xml_rootchild(xylib1, 0, &xylib1) < 0)
+                goto done;
+        }
+        else
+            xylib1 = xml_dup(xylib);
+        xmodset = xml_find(xylib1, "module-set");
+#ifdef YANGLIB_MODSET_NAME_DEFAULT
+        xml_purge(xml_find(xmodset, "name"));
+        xml_new_body("name", xmodset, yang_argument_get(yang_parent_get(yspec)));
+#endif
+        xml_sort(xmodset);
+        if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib1, treename) < 0)
+            goto done;
+        break;
+    }
+    /* Create pre-5.5 tree-refs for backward compatibility */
+    if (autocli_trees_default(h) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (xylib1)
+        xml_free(xylib1);
     return retval;
 }

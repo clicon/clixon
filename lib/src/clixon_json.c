@@ -1496,7 +1496,7 @@ _json_parse(clixon_handle h,
         yspec = ys_spec(yt);
     if (h && clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT") &&
         xml_schema_mount_point(xt)) {
-        if (yang_schema_mount_yspec(h, xt, NULL, &yspec, xerr) < 0)
+        if (yang_schema_mount_yspec(h, xt, 0, NULL, &yspec, xerr) < 0)
             goto done;
     }
     /* Traverse new objects */

@@ -330,7 +330,7 @@ yang2cli_client(clixon_handle h,
     return retval;
 }
 
-/*! Generate clispec for all modules in yspec (except excluded)
+/*! Generate clispec for all modules in yspec (except excluded) for cache-mode = disabled
  *
  * Called in cli main function for top-level yangs. But may also be called dynamically for
  * mountpoints.
@@ -346,19 +346,16 @@ yang2cli_client(clixon_handle h,
 int
 yang2cli_yspec(clixon_handle h,
                yang_stmt    *yspec,
-               char         *treename)
+               const char   *treename)
 {
     int             retval = -1;
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *ymod;
-    yang_stmt      *yrev;
     yang_stmt      *ydomain;
     int             enable;
     cbuf           *cb = NULL;
     int             inext;
-    char           *domain;
-    char           *revision;
     const char     *keyword;
     char           *argument;
     autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
@@ -373,19 +370,20 @@ yang2cli_yspec(clixon_handle h,
     }
     if (autocli_cache(h, &cache, NULL) < 0)
         goto done;
+    if (cache != AUTOCLI_CACHE_DISABLED){
+        clixon_err(OE_CFG, 0, "Cache mode not DISABLED");
+        goto done;
+    }
     if ((ydomain = yang_parent_get(yspec)) == NULL){
         clixon_err(OE_YANG, 0, "No domain");
         goto done;
     }
-    domain = yang_argument_get(ydomain);
     /* Traverse YANG, loop through all modules and generate CLI */
     inext = 0;
     while ((ymod = yn_iter(yspec, &inext)) != NULL){
-        yrev = yang_find(ymod, Y_REVISION, NULL);
         /* Filter module name according to cli_autocli.yang setting
          * Default is pass and ordering is significant
          */
-        revision = yrev?yang_argument_get(yrev):NULL;
         keyword = yang_key2str(yang_keyword_get(ymod));
         argument = yang_argument_get(ymod);
         if (autocli_module(h, argument, &enable) < 0)
@@ -393,16 +391,8 @@ yang2cli_yspec(clixon_handle h,
         if (!enable)
             continue;
         cbuf_reset(cb);
-        switch (cache){
-        case AUTOCLI_CACHE_DISABLED: /* Generate locally */
-            if (yang2cli_stmt(h, ymod, 0, cb) < 0)
-                goto done;
-            break;
-        case AUTOCLI_CACHE_READ: /* Query backend */
-            if (clixon_rpc_clixon_cache(h, "read", "autocli", domain, yang_argument_get(yspec), argument, revision, keyword, argument, cb) < 0)
-                goto done;
-            break;
-        }
+        if (yang2cli_stmt(h, ymod, 0, cb) < 0)
+            goto done;
         if (cbuf_len(cb) == 0)
             continue;
         if (yang2cli_client(h, cbuf_get(cb), yang_filename_get(ymod), keyword, argument, &pt) < 0)

@@ -104,6 +104,38 @@ autocli_cache_str2int(char *str)
     return clicon_str2int(autocli_cache_map, str);
 }
 
+/*! Check if autocli is enabled
+ *
+ * @param[in]  h        Clixon handle
+ * @param[out] enablep  Return value:
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+int
+autocli_enabled(clixon_handle h,
+                int          *enablep)
+{
+    int    retval = -1;
+    cxobj *xautocli;
+    char  *str;
+
+    if (enablep == NULL){
+        clixon_err(OE_YANG, EINVAL, "Argument is NULL");
+        goto done;
+    }
+    if ((xautocli = clicon_conf_autocli(h)) == NULL)
+        goto ok;
+    if ((str = xml_find_body(xautocli, "enabled")) == NULL){
+        clixon_err(OE_XML, EINVAL, "No enabled element");
+        goto done;
+    }
+    *enablep = strcmp(str, "true") == 0;
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Filter module name according to cli_autocli.yang setting
  *
  * Traverse and find module/include/exclude rules

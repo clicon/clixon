@@ -899,7 +899,7 @@ from_client_translate_format(clixon_handle h,
     char            *b;
     char            *prepend = NULL;
     char            *xpath = NULL;
-    cxobj           *xdata;
+    cxobj           *xdata = NULL;
     cxobj           *xp;
     cxobj          **vec = NULL;
     size_t           veclen;
@@ -1025,6 +1025,8 @@ from_client_translate_format(clixon_handle h,
         cvec_free(nsc);
     if (cb)
         cbuf_free(cb);
+    if (xdata)
+        xml_free(xdata);
     if (xerr)
         xml_free(xerr);
     return retval;

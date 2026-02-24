@@ -257,7 +257,7 @@ testrun m11 false
 # This test has been broken up into all different modules instead of one large
 # reply since the modules change so often
 new "netconf schema resource, RFC 7895"
-rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"l:yang-library/l:module-set[l:name='default']/l:module\" xmlns:l=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>")
+rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"l:yang-library/l:module-set[l:name='top']/l:module\" xmlns:l=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>")
 ret=$($clixon_netconf -qf $cfg<<EOF
 $DEFAULTHELLO$rpc
 EOF
@@ -265,7 +265,7 @@ EOF
 #echo $ret
 
 new "netconf yang-library header"
-expect="^<rpc-reply $DEFAULTNS><data><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>default</name><module><name>"
+expect="^<rpc-reply $DEFAULTNS><data><yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"><module-set><name>top</name><module><name>"
 match=`echo "$ret" | grep --null -Go "$expect"`
 if [ -z "$match" ]; then
       err "$expect" "$ret"

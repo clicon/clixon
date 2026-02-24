@@ -114,6 +114,7 @@ Valgrind uses a suppression file `valgrind-clixon.supp` to filter dlopen functio
 The above scripts work with the `pattern` variable to limit the scope of which tests run, eg:
 ```
   pattern="test_c*.sh" mem.sh
+  pattern="test_[d-z]*.sh" mem.sh
 ```
 
 ## TLS and http/2

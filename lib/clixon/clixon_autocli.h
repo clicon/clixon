@@ -75,6 +75,7 @@ typedef enum autocli_cache autocli_cache_t;
 /*
  * Prototypes
  */
+int autocli_enabled(clixon_handle h, int *enablep);
 int autocli_module(clixon_handle h, const char *modname, int *enable);
 int autocli_completion(clixon_handle h, int *completion);
 int autocli_grouping_treeref(clixon_handle h, int *grouping_treeref);

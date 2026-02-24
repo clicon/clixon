@@ -43,7 +43,8 @@ module clixon-autocli{
 
     revision 2025-12-01 {
         description
-            "Deprecated clispec-cache,
+            "Added explicit enabled option
+             Deprecated clispec-cache,
              Changed clispec-cache-dir to apply to backend dir
              Released in Clixon 7.7";
     }
@@ -210,6 +211,12 @@ module clixon-autocli{
     }
     grouping clixon-autocli{
         /* options */
+        leaf enabled {
+            description
+                "Enable autocli generation";
+            type boolean;
+            default true;
+        }
         leaf module-default {
             description
                 "Include YANG modules for generation of autocli.
@@ -276,6 +283,7 @@ module clixon-autocli{
                  Client-side option: either disabled or read (write is deprecated)
                  If enabled, query backend of clispecs from YANG, where a cached clispec is returned
                  and if miss, generate and save.
+                 Note, disabled may not work across mount-points, use read instead
                  If read then CLICON_AUTOCLI_CACHE_DIR must also be set.";
             type cache-type;
             default disabled;

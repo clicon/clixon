@@ -202,7 +202,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 #expectpart "$($clixon_cli -1f $cfg -y $fyangerr show version)" 0 "Yang error: Extension ex:not-defined not found"
 
 new "netconf schema resource, RFC 8525"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"yanglib:yang-library/yanglib:module-set[yanglib:name='default']/yanglib:module\" xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>" "<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"yanglib:yang-library/yanglib:module-set[yanglib:name='top']/yanglib:module\" xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>" "<module><name>ietf-yang-types</name><revision>2013-07-15</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace></module>"
 
 new "netconf edit config"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><x xmlns=\"urn:example:clixon\"><y><a>1</a><b>2</b><c>5</c><val>one</val></y><d/></x></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
