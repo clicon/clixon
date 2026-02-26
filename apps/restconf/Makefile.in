@@ -39,7 +39,7 @@ VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 CC		= @CC@
-CFLAGS  	= @CFLAGS@ 
+CFLAGS  	= @CFLAGS@
 LINKAGE         = @LINKAGE@
 LDFLAGS 	= @LDFLAGS@
 
@@ -79,7 +79,7 @@ else
 endif
 
 # For dependency
-LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ -lm
 
@@ -99,7 +99,6 @@ APPL	  = clixon_restconf
 
 # Common source - not accessible from plugin - independent of restconf package (fcgi|native)
 APPSRC    =
-APPSRC   += restconf_err.c 
 APPSRC   += restconf_methods.c
 APPSRC   += restconf_methods_post.c
 APPSRC   += restconf_methods_get.c
@@ -130,8 +129,9 @@ APPOBJ    = $(APPSRC:.c=.o) $(YACCOBJS)
 # (eg restconf_method_notallowed) that uses symbols in restconf_api that
 # are not in the lib.
 LIBSRC    = restconf_lib.c
-LIBSRC   += restconf_handle.c 
-LIBSRC   += restconf_api_$(with_restconf).c 
+LIBSRC   += restconf_err.c
+LIBSRC   += restconf_handle.c
+LIBSRC   += restconf_api_$(with_restconf).c
 
 LIBOBJ    = $(LIBSRC:.c=.o)
 

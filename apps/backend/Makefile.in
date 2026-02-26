@@ -193,9 +193,9 @@ $(APPL) : $(APPOBJ) $(LIBDEPS)
 
 $(MYLIBDYNAMIC): $(LIBOBJ) $(LIBDEPS)
 ifeq ($(HOST_VENDOR),apple)
-	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ -lc $(LIBOBJ)
+	$(CC) $(LDFLAGS) -shared -undefined dynamic_lookup -o $@ $(LIBOBJ) -lc $(LIBS)
 else
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ -lc $(LIBOBJ) -Wl,-soname=$(MYLIBSO)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(MYLIBSO) -o $@ $(LIBOBJ) -lc -Wl,-soname=$(MYLIBSO) $(LIBS)
 endif
 
 # link-name is needed for application linking, eg for clixon_cli and clixon_backend
