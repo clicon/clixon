@@ -19,6 +19,15 @@
 ## 7.8.0
 Expected: May 2026
 
+### Features
+
+* New `clixon-config@2026-03-01.yang` revision
+   * Added `CLICON_VALIDATE_TARGET_STATE`
+
+### Corrected Bugs
+
+* Fixed: [leafref instance-required with state](https://github.com/clicon/clixon/issues/632
+
 ## 7.7.0
 21 February 2026
 

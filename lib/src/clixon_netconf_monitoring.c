@@ -207,13 +207,13 @@ netconf_monitoring_statistics(clixon_handle h,
     cvec *cvv = NULL;
     cg_var *cv;
 
+    if ((cvv = clicon_data_cvec_get(h, "netconf-statistics")) == NULL)
+        goto ok;
     cprintf(cb, "<statistics>");
     if (clicon_data_get(h, "netconf-start-time", &str) == 0 &&
         str != NULL){
         cprintf(cb, "<netconf-start-time>%s</netconf-start-time>", str);
     }
-    if ((cvv = clicon_data_cvec_get(h, "netconf-statistics")) == NULL)
-        goto ok;
     if ((cv = cvec_find(cvv, "in-bad-hellos")) != NULL)
         cprintf(cb, "<in-bad-hellos>%u</in-bad-hellos>", cv_uint32_get(cv));
     if ((cv = cvec_find(cvv, "in-sessions")) != NULL)
