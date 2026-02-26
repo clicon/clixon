@@ -615,14 +615,12 @@ example_statefile(clixon_handle h,
     /* Read state file if either not cached, or the cache is NULL */
     if (_state_file_cached == 0 ||
         _state_xml_cache == NULL){
-        if ((fp = fopen(_state_file, "r")) == NULL){
-            clixon_err(OE_UNIX, errno, "open(%s)", _state_file);
-            goto done;
-        }
         if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
             goto done;
-        if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
-            goto done;
+        if ((fp = fopen(_state_file, "r")) != NULL){
+            if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+                goto done;
+        }
         if (_state_file_cached)
             _state_xml_cache = xt;
     }

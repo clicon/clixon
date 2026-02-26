@@ -855,15 +855,7 @@ get_common(clixon_handle   h,
         break;
     case CONTENT_ALL:       /* both config and state */
     case CONTENT_NONCONFIG: /* state data only */
-#if 0 // test_augment_state.sh fails
-        if ((ret = merge_state_data(h, xret, yspec, &xerr)) < 0)
-            goto done;
-        if (ret == 0){ /* Error from callback (error in xret) */
-            if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
-                goto done;
-            goto ok;
-        }
-#else
+
         if ((ret = get_state_data(h, xpath?xpath:"/", nsc, &xret)) < 0)
             goto done;
         if (ret == 0){ /* Error from callback (error in xret) */
@@ -878,7 +870,6 @@ get_common(clixon_handle   h,
         /* Apply default values */
         if (xml_default_recurse(xret, 1, 0) < 0)
             goto done;
-#endif
         break;
     }
     if (content != CONTENT_CONFIG &&
@@ -887,9 +878,9 @@ get_common(clixon_handle   h,
          * Primarily intended for user-supplied state-data.
          * The whole config tree must be present in case the state data references config data
          */
-        if ((ret = xml_yang_validate_all_top(h, xret,
-                                             1, /* Validate also state data */
-                                             &xerr)) < 0)
+        if ((ret = xml_yang_validate_all_state(h, xret,
+                                               1, /* Validate also state data */
+                                               &xerr)) < 0)
             goto done;
         if (ret > 0 &&
             (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)

@@ -165,7 +165,7 @@ EOF
 </${DATASTORE_TOP}>
 EOF
     fi
-
+    rm -rf $fstate
     if [ $BE -ne 0 ]; then
         new "kill old backend"
         sudo clixon_backend -zf $cfg

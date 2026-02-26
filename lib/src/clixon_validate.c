@@ -1938,10 +1938,10 @@ xml_yang_validate_all(clixon_handle h,
  * @retval    -1     Error
  */
 int
-xml_yang_validate_all_top(clixon_handle h,
-                          cxobj        *xt,
-                          int           state,
-                          cxobj       **xret)
+xml_yang_validate_all_state(clixon_handle h,
+                            cxobj        *xt,
+                            int           state,
+                            cxobj       **xret)
 {
     cxobj     *x;
     yang_stmt *y;

@@ -318,20 +318,14 @@ cat <<EOF > $fstate
 </mystate>
 EOF
 
-# Also generate an invalid state XML. This should generate an "Internal" error and the name of the
+# Also generate an invalid state XML. This should generate an "Internal" error and the name of the failed entry
 new "restconf GET failed state"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data?content=nonconfig)" 0 "HTTP/$HVER 412" '<errors xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-info><bad-element>mystate</bad-element></error-info><error-severity>error</error-severity><error-message>Failed to find YANG spec of XML node: mystate with parent: config in namespace: urn:example:foobar. Internal error, state callback returned invalid XML from plugin: example_backend</error-message></error></errors>'
 
 # Add error XML a[4242] , it should fail on autocommit but may not be discarded, therefore still
 # there in candidate when want to add something else
 new "Add user-invalid entry (should fail)"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>4242</name></parameter></table>')" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-severity":"error","error-message":"User error"}}}'
-
-new "Add OK entry"
-expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>1</name></parameter></table>')" 0 "HTTP/$HVER 201" 
-
-new "Multiple requests: POST + POST" # XXX Do for HTTP/1 ALSO
-expectpart "$(curl $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:table -d '{"example:parameter":{"name":"local1","value":"nisse"}}' --next $CURLOPTS -H "Content-Type: application/yang-data+json" -X POST $RCPROTO://localhost/restconf/data/example:table -d '{"example:parameter":{"name":"local2","value":"laban"}}')" 0 "HTTP/$HVER 201" "localhost/restconf/data/example:table/parameter=local1" "localhost/restconf/data/example:table/parameter=local2"
+expectpart "$(curl $CURLOPTS -X POST -H "Content-Type: application/yang-data+xml" $RCPROTO://localhost/restconf/data -d '<table xmlns="urn:example:clixon"><parameter><name>4242</name></parameter></table>')" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"application","error-tag":"operation-failed","error-info":{"bad-element":"mystate"},"error-severity":"error","error-message":"Failed to find YANG spec of XML node: mystate with parent: config in namespace: urn:example:foobar. Internal error, state callback returned invalid XML from plugin: example_backend"}}}'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

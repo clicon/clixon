@@ -657,7 +657,7 @@ netconf_application_rpc(clixon_handle h,
             xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
             if ((ret = xml_bind_yang(h, xoutput, YB_MODULE, yspec, 0, &xerr)) < 0)
                 goto done;
-            if (ret > 0 && (ret = xml_yang_validate_all_top(h, xoutput, 0, &xerr)) < 0)
+            if (ret > 0 && (ret = xml_yang_validate_all_state(h, xoutput, 0, &xerr)) < 0)
                 goto done;
             if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
                 goto done;

@@ -5,7 +5,7 @@ on:
     branches:
        - master
        - test-actions
-       - privcand
+       - branch-issue-632
   pull_request:
     branches: [ master ]
 
