@@ -45,6 +45,7 @@ cat <<EOF > $cfg
   <CLICON_VALIDATE_STATE_XML>true</CLICON_VALIDATE_STATE_XML>
   <CLICON_STREAM_DISCOVERY_RFC8040>false</CLICON_STREAM_DISCOVERY_RFC8040>
   <CLICON_NETCONF_MONITORING>false</CLICON_NETCONF_MONITORING>
+  <CLICON_VALIDATE_TARGET_STATE>true</CLICON_VALIDATE_TARGET_STATE>
 </clixon-config>
 EOF
 
@@ -167,7 +168,7 @@ new "Issue #632: Configure with invalid MAC address - should fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config>$XML</config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "Issue #632: Commit with invalid MAC address should fail with instance-required"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>operation-failed</error-tag><error-app-tag>instance-required</error-app-tag>" ""
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>instance-required</error-app-tag><error-path>../state/mac-address-list</error-path>" ""
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
