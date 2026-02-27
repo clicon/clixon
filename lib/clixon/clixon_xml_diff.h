@@ -70,7 +70,7 @@ int            xml_diff(cxobj *x0, cxobj *x1,
                         cxobj ***second, size_t *secondlen,
                         cxobj ***changed_x0, cxobj ***changed_x1,
                         size_t *changedlen);
-int            xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason);
+int            xml_merge1(cxobj *x0, cxobj *x1, yang_stmt *yspec, int dontadd, char **reason);
 diff_rebase_t *diff_rebase_new(void);
 int            diff_rebase_free(diff_rebase_t *dr);
 int            diff_rebase_exec(diff_rebase_t *dr);
@@ -78,5 +78,12 @@ int            xml_rebase(clixon_handle h, cxobj *x0, cxobj *x1, cxobj *x2,
                           int *conflict, cbuf *cbret, diff_rebase_t *dr);
 int            clixon_xml_diff2patch(cxobj *x0, cxobj *x1, uint16_t flags, cxobj *xdiff);
 int            clixon_xml_diff_nacm_read(clixon_handle h, cxobj *xt, const char *xpath);
+
+/* Backward compatible 7.8 */
+static int inline
+xml_merge(cxobj *x0, cxobj *x1, yang_stmt *yspec, char **reason)
+{
+    return xml_merge1(x0, x1, yspec, 0, reason);
+}
 
 #endif  /* _CLIXON_XML_DIFF_H_ */

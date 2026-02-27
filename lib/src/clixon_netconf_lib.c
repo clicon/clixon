@@ -1773,7 +1773,7 @@ netconf_trymerge(cxobj       *x,
             goto done;
         goto ok;
     }
-    if (xml_merge(*xret, x, yspec, &reason) < 0)
+    if (xml_merge1(*xret, x, yspec, 0, &reason) < 0)
         goto done;
     if (reason){
         while ((xc = xml_child_i(*xret, 0)) != NULL)
