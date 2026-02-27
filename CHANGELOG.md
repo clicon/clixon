@@ -24,6 +24,15 @@ Expected: May 2026
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Replace `xml_merge()` with `xml_merge1()`
+     * Example change: `xml_merge(...,r)` --> `xml_merge1(...,0,r)`
+* Replace `xml_yang_validate_all_top()` with `xml_yang_validate_all_state()'
+     * Example change: `xml_yang_validate_all_top(h,x,r)` --> `xml_yang_validate_all_state(h,x,0,r)`
+
 ### Corrected Bugs
 
 * Fixed: [leafref instance-required with state](https://github.com/clicon/clixon/issues/632

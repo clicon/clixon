@@ -445,7 +445,8 @@ merge_state_data(clixon_handle h,
         /* Apply default values */
         if (xml_default_recurse(xstate, 1, 0) < 0)
             goto done;
-        if ((ret = xml_merge(xtop, xstate, yspec, &reason)) < 0)
+        /* Merge state data into config data, but dont add list elements if they do not exist */
+        if ((ret = xml_merge1(xtop, xstate, yspec, 1, &reason)) < 0)
             goto done;
         xstate = NULL;
         if (ret == 0){

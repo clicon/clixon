@@ -1355,9 +1355,8 @@ module clixon-config {
                  If not set, the state data is NOT included in the validation of config changes, and in particular, if
                  a config change includes a leafref to state data, it will fail validation.
                  Notes:
-                  (1) Enabling the option may cause a performance overhead for validation.
-                  (2) It should be enabled according the RFC, and plan is to change default value to true eventually.
-                  (3) Applies for config data, while CLICON_VALIDATE_STATE_XML applies for state data";
+                  (1) It should be enabled according the RFC, but may cause a performance overhead.
+                  (2) Applies for config data, while CLICON_VALIDATE_STATE_XML applies for state data";
         }
         leaf CLICON_PLUGIN_CALLBACK_CHECK {
             type int32;

@@ -622,7 +622,7 @@ snmp_cache_set(clixon_handle               h,
         clicon_ptr_set(h, "snmp-rowstatus-tree", xcache);
     }
     if (!isrowstatus || strcmp(valstr, "destroy") != 0)
-        if (xml_merge(xcache, xtop, yspec, NULL) < 0)
+        if (xml_merge1(xcache, xtop, yspec, 0, NULL) < 0)
             goto done;
     /* Special case: push active to clixon */
     if (isrowstatus && strcmp(valstr, "active") == 0){
