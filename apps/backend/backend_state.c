@@ -448,7 +448,6 @@ merge_state_data(clixon_handle h,
         /* Merge state data into config data, but dont add list elements if they do not exist */
         if ((ret = xml_merge1(xtop, xstate, yspec, 1, &reason)) < 0)
             goto done;
-        xstate = NULL;
         if (ret == 0){
             if (netconf_operation_failed_xml(xret, "rpc", reason)< 0)
                 goto done;
