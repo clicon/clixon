@@ -23,6 +23,8 @@ Expected: May 2026
 
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
+* New `clixon-lib@2026-03-01.yang` revision
+   * Extended stats rpc with `xml-type` parameter
 
 ### C/CLI-API changes on existing features
 

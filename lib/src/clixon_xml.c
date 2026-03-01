@@ -214,7 +214,8 @@ struct xmlbody{
  * Variables
  */
 
-/* Mapping between xml type <--> string */
+/*! Mapping between xml type string and integer
+ */
 static const map_str2int xsmap[] = {
     {"error",         CX_ERROR},
     {"element",       CX_ELMNT},
@@ -232,6 +233,31 @@ const char *
 xml_type2str(enum cxobj_type type)
 {
     return clicon_int2str(xsmap, type);
+}
+
+/*! Translate from xml type string keyword to enum form
+ */
+static const map_str2int xstatmap[] = {
+    {"all",         XML_STATS_ALL},
+    {"element",     XML_STATS_ELMNT},
+    {"body",        XML_STATS_BODY},
+    {"attr",        XML_STATS_ATTR},
+    {"name",        XML_STATS_NAME},
+    {"prefix",      XML_STATS_PREFIX},
+    {"childvec",    XML_STATS_CHILDVEC},
+    {"ns-cache",    XML_STATS_NS_CACHE},
+    {"cv",          XML_STATS_CV},
+    {"search-index",XML_STATS_SEARCH_INDEX},
+    {"value",       XML_STATS_VALUE},
+    {NULL,         -1}
+};
+
+/*! Translate from xml stats type string keyword to enum form
+ */
+enum xml_stats_enum
+xml_stats_str2type(const char *str)
+{
+    return clicon_str2int(xstatmap, str);
 }
 
 /* Stats (too low-level to hang it on handle) */
@@ -252,13 +278,15 @@ xml_stats_global(uint64_t *nr)
 /*! Return the alloced memory of a single XML obj 
  *
  * @param[in]   x    XML object
+ * @param[in]   type stats enum, 0 is all
  * @param[out]  szp  Size of this XML obj
  * @retval      0    OK
  * (baseline: 96 bytes per object on x86-64)
  */
 static int
-xml_stats_one(cxobj    *x,
-              size_t   *szp)
+xml_stats_one(cxobj         *x,
+              xml_stats_enum type,
+              size_t        *szp)
 {
     size_t sz = 0;
 
@@ -302,15 +330,17 @@ xml_stats_one(cxobj    *x,
 /*! Return statistics of an XML tree recursively
  *
  * @param[in]   xt   XML object
+ * @param[in]   type stats enum, 0 is all
  * @param[out]  nrp  Number of XML obj recursively
  * @param[out]  szp  Size of this XML obj recursively
  * @retval      0    OK
  * @retval     -1    Error
  */
 int
-xml_stats(cxobj    *xt,
-          uint64_t *nrp,
-          size_t   *szp)
+xml_stats(cxobj          *xt,
+          xml_stats_enum type,
+          uint64_t      *nrp,
+          size_t        *szp)
 {
     int    retval = -1;
     size_t sz = 0;
@@ -321,13 +351,13 @@ xml_stats(cxobj    *xt,
         goto done;
     }
     *nrp += 1;
-    xml_stats_one(xt, &sz);
+    xml_stats_one(xt, type, &sz);
     if (szp)
         *szp += sz;
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
         sz=0;
-        xml_stats(xc, nrp, &sz);
+        xml_stats(xc, type, nrp, &sz);
         if (szp)
             *szp += sz;
     }

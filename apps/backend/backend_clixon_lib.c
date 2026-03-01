@@ -75,24 +75,26 @@
 
 /*! Get clixon per datastore stats
  *
- * @param[in]     h       Clixon handle
- * @param[in]     dbname  Datastore name
- * @param[in,out] cb      Cligen buf
- * @retval        0       OK
- * @retval       -1       Error
+ * @param[in]     h        Clixon handle
+ * @param[in]     dbname   Datastore name
+ * @param[in]     xml_type XML stats type
+ * @param[in,out] cb       Cligen buf
+ * @retval        0        OK
+ * @retval       -1        Error
  */
 static int
-clixon_stats_datastore_get(clixon_handle h,
-                           char         *dbname,
-                           cbuf         *cb)
+clixon_stats_datastore_get(clixon_handle  h,
+                           char          *dbname,
+                           xml_stats_enum xml_type,
+                           cbuf          *cb)
 {
-    int       retval = -1;
-    cxobj    *xt = NULL; /* should not be freed */
-    uint64_t  nr = 0;
-    size_t    sz = 0;
-    cxobj    *xn = NULL;
-    db_elmnt *de;
-    int       ret;
+    int            retval = -1;
+    cxobj         *xt = NULL; /* should not be freed */
+    uint64_t       nr = 0;
+    size_t         sz = 0;
+    cxobj         *xn = NULL;
+    db_elmnt      *de;
+    int            ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
     /* This is the db cache */
@@ -107,7 +109,7 @@ clixon_stats_datastore_get(clixon_handle h,
         xt = xmldb_cache_get(de);
     }
     if (xt != NULL){
-        if (xml_stats(xt, &nr, &sz) < 0)
+        if (xml_stats(xt, xml_type, &nr, &sz) < 0)
             goto done;
         cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
                 "<size>%zu</size></datastore>",
@@ -240,9 +242,12 @@ from_client_stats(clixon_handle h,
     int        inext;
     int        inext2;
     int        inext3;
+    xml_stats_enum xml_type = XML_STATS_ALL;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
+    if ((str = xml_find_body(xe, "xml-type")) != NULL)
+        xml_type = xml_stats_str2type(str);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
@@ -253,12 +258,12 @@ from_client_stats(clixon_handle h,
     cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
     cprintf(cbret, "</global>");
     cprintf(cbret, "<datastores xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_stats_datastore_get(h, "running", cbret) < 0)
+    if (clixon_stats_datastore_get(h, "running", xml_type, cbret) < 0)
         goto done;
-    if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
+    if (clixon_stats_datastore_get(h, "candidate", xml_type, cbret) < 0)
         goto done;
     if (if_feature(h, "ietf-netconf", "startup"))
-	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
+	if (clixon_stats_datastore_get(h, "startup", xml_type, cbret) < 0)
 	    goto done;
     cprintf(cbret, "</datastores>");
     if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
