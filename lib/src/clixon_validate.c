@@ -93,6 +93,7 @@ struct leafref_opt {
     cxobj     *lc_cache_x0;    /* leafref xml node */
     cxobj    **lc_cache_xvec;
     size_t     lc_cache_xlen;
+    char      *lc_cache_xpath;  /* Cached xpath to distinguish union branches */
     int        lc_bin_search;  /* Result is binary searchable */
     cxobj     *lc_bin_x0;      /* First object hit, derive y and parent */
 };
@@ -250,6 +251,7 @@ leafref_opt_free(struct leafref_opt *lc)
         free(lc->lc_cache_xvec);
     lc->lc_cache_xvec = NULL;
     lc->lc_cache_xlen = 0;
+    lc->lc_cache_xpath = NULL;
     lc->lc_bin_search = 0;
     lc->lc_bin_x0 = NULL;
     return 0;
@@ -259,6 +261,7 @@ leafref_opt_free(struct leafref_opt *lc)
  *
  * @param[in]  ys    Cached YANG node
  * @param[in]  xt    Cached XML node
+ * @param[in]  xpath Cached xpath string (pointer, not copied)
  * @param[in]  xvec  Vector of matching XML values
  * @param[in]  xlen  Length of xvec
  * @retval     0     OK
@@ -266,12 +269,14 @@ leafref_opt_free(struct leafref_opt *lc)
 static int
 leafref_opt_cache_new(yang_stmt *ys,
                       cxobj     *xt,
+                      char      *xpath,
                       cxobj    **xvec,
                       size_t     xlen)
 {
     leafref_opt_free(&leafref_opt);
     leafref_opt.lc_cache_yang = ys;
     leafref_opt.lc_cache_x0 = xt;
+    leafref_opt.lc_cache_xpath = xpath;
     leafref_opt.lc_cache_xvec = xvec;
     leafref_opt.lc_cache_xlen = xlen;
     return 0;
@@ -610,7 +615,9 @@ validate_leafref(cxobj     *xt,
         goto done;
 #ifdef LEAFREF_OPTIMIZE
     if (yt == leafref_opt.lc_cache_yang &&
-         leafref_opt.lc_cache_x0){
+        leafref_opt.lc_cache_x0 &&
+        leafref_opt.lc_cache_xpath &&
+        strcmp(xpath, leafref_opt.lc_cache_xpath) == 0){
         if ((ret = leafref_opt_cache_check(xt, leafref_opt.lc_cache_x0, xpath, 0)) < 0)
             goto done;
         if (ret == 1){
@@ -623,8 +630,10 @@ validate_leafref(cxobj     *xt,
         if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
             goto done;
 #ifdef LEAFREF_OPTIMIZE
-    if (yt != leafref_opt.lc_cache_yang){
-        if (leafref_opt_cache_new(yt, xt, xvec, xlen) < 0)
+    if (yt != leafref_opt.lc_cache_yang ||
+        leafref_opt.lc_cache_xpath == NULL ||
+        strcmp(xpath, leafref_opt.lc_cache_xpath) != 0){
+        if (leafref_opt_cache_new(yt, xt, xpath, xvec, xlen) < 0)
             goto done;
         leafref_opt.lc_bin_search = 0;
         leafref_opt.lc_bin_x0 = NULL;
@@ -1607,6 +1616,18 @@ xml_yang_validate_list_key_only(cxobj  *xt,
     goto done;
 }
 
+/*! Validate a leaf of type union.
+ *
+ * For union, we need to validate against all subtypes, and if any validates, then it is OK.
+ * @param[in]  h         Clixon handle
+ * @param[in]  xt        XML node to be validated
+ * @param[in]  yt        Yang spec of xt
+ * @param[in]  yrestype  Yang spec of union type
+ * @param[out] xret      Error XML tree. if retval=0. Free with xml_free after use
+ * @retval     1         Validation OK
+ * @retval     0         Validation failed (xret set)
+ * @retval    -1         Error
+  */
 static int
 xml_yang_validate_leaf_union(clixon_handle h,
                              cxobj        *xt,
@@ -1620,6 +1641,8 @@ xml_yang_validate_leaf_union(clixon_handle h,
     yang_stmt *ytype; /* resolved type */
     char      *restype;
     int        inext;
+    char      *val;
+    char      *reason = NULL;
     int        ret;
 
     /* Enough that one is valid, eg returns 1,otherwise fail */
@@ -1633,7 +1656,6 @@ xml_yang_validate_leaf_union(clixon_handle h,
                               NULL, NULL, NULL, NULL) < 0)
             goto done;
         restype = ytype?yang_argument_get(ytype):NULL;
-        ret = 1; /* If not leafref/identityref it is valid on this level */
         if (strcmp(restype, "leafref") == 0){
             if ((ret = validate_leafref(xt, yt, ytype, &xret1)) < 0) // XXX
                 goto done;
@@ -1645,6 +1667,28 @@ xml_yang_validate_leaf_union(clixon_handle h,
         else if (strcmp("union", yang_argument_get(ytsub)) == 0){
             if ((ret = xml_yang_validate_leaf_union(h, xt, yt, ytype, &xret1)) < 0)
                 goto done;
+        }
+        else {
+            /* Non-leafref/identityref/union: validate value matches this
+             * branch type constraints so we dont unconditionally accept it.
+             * See https://github.com/clicon/clixon/issues/498
+             */
+            val = xml_body(xt);
+            if (val == NULL)
+                val = "";
+            if ((ret = ys_cv_validate_union_one(h, yt, &reason, ytsub,
+                                                yang_argument_get(ytsub), val)) < 0)
+                goto done;
+            if (ret == 0){
+                if (netconf_bad_element_xml(&xret1, "application",
+                                            xml_name(xt),
+                                            reason ? reason : "Union type validation failed") < 0)
+                    goto done;
+            }
+            if (reason){
+                free(reason);
+                reason = NULL;
+            }
         }
         if (ret == 1)
             break;
@@ -1658,12 +1702,21 @@ xml_yang_validate_leaf_union(clixon_handle h,
             xret1 = NULL;
         }
     }
-    if (ytsub == NULL)
+    if (ytsub == NULL) /* If not break from loop */
         goto fail;
+    /* Union validation succeeded: clear any error from failed branches
+     * to prevent error leakage to the caller
+     */
+    if (*xret){
+        xml_free(*xret);
+        *xret = NULL;
+    }
     retval = 1;
  done:
     if (xret1)
         xml_free(xret1);
+    if (reason)
+        free(reason);
     return retval;
  fail:
     retval = 0;
