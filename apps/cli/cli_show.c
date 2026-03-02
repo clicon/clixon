@@ -1617,7 +1617,9 @@ cli_show_statistics(clixon_handle h,
 {
     int         retval = -1;
     cbuf       *cb = NULL;
+    cbuf       *cb2 = NULL;
     cxobj      *xret = NULL;
+    cxobj      *xret_all = NULL;
     cxobj      *xerr;
     char       *what = NULL;
     int         cli = 0;
@@ -1644,6 +1646,8 @@ cli_show_statistics(clixon_handle h,
     char       *unit;
     int         inext;
     int         inext2;
+    int         ti;
+    char        valbuf[32];
 
     if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
         clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
@@ -1751,13 +1755,19 @@ cli_show_statistics(clixon_handle h,
         }
     }
     if (backend) {
+        static const char *xtypenames[] = {
+            "element", "body", "attr", "name", "prefix",
+            "childvec", "ns-cache", "cv", "search-index", "value", NULL
+        };
+
         if (cli)
             cligen_output(stdout, "\nBackend:\n========\n");
+        /* First RPC: xml-type not set (default "all") to get totals and YANG stats */
+        cbuf_reset(cb);
         cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
-        cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
-
+        cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
         cprintf(cb, ">");
         cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
         if (detail)
@@ -1778,32 +1788,94 @@ cli_show_statistics(clixon_handle h,
                 goto done;
         }
         else {
-            cligen_output(stdout, "%-25s %-10s\n", "Datastore", "Mem");
+            /* Save "all" response for YANG section and totals */
+            xret_all = xret;
+            xret = NULL;
+            /* --- XML per-type table --- */
+            /* Print header: Total first, then per-datastore */
+            cligen_output(stdout, "%-16s %12s", "XML Type", "Total");
+            if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
+                x = NULL;
+                while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+                    if (strcmp(xml_name(x), "datastore") != 0)
+                        continue;
+                    name = xml_find_body(x, "name");
+                    if (name)
+                        cligen_output(stdout, " %12s", name);
+                }
+            }
+            cligen_output(stdout, "\n");
+            /* Per-type rows */
+            for (ti = 0; xtypenames[ti]; ti++){
+                cbuf_reset(cb);
+                cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+                cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+                cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+                cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+                cprintf(cb, ">");
+                cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
+                cprintf(cb, "<xml-type>%s</xml-type>", xtypenames[ti]);
+                cprintf(cb, "</stats>");
+                cprintf(cb, "</rpc>");
+                if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+                    goto done;
+                if (xml_rootchild(xret, 0, &xret) < 0)
+                    goto done;
+                if ((cb2 = cbuf_new()) == NULL){
+                    clixon_err(OE_PLUGIN, errno, "cbuf_new");
+                    goto done;
+                }
+                tsz = 0;
+                if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
+                    x = NULL;
+                    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+                        if (strcmp(xml_name(x), "datastore") != 0)
+                            continue;
+                        parse_uint64(xml_find_body(x, "size"), &sz, NULL);
+                        tsz += sz;
+                        translatenumber(sz, &u64, &unit);
+                        snprintf(valbuf, sizeof(valbuf), "%" PRIu64 "%s", u64, unit);
+                        cprintf(cb2, " %12s", valbuf);
+                    }
+                }
+                translatenumber(tsz, &u64, &unit);
+                snprintf(valbuf, sizeof(valbuf), "%" PRIu64 "%s", u64, unit);
+                cligen_output(stdout, "%-16s %12s%s\n",
+                              xtypenames[ti], valbuf, cbuf_get(cb2));
+                cbuf_free(cb2);
+                cb2 = NULL;
+                xml_free(xret);
+                xret = NULL;
+            }
+            /* Total row from "all" response */
+            if ((cb2 = cbuf_new()) == NULL){
+                clixon_err(OE_PLUGIN, errno, "cbuf_new");
+                goto done;
+            }
             tsz = 0;
-            if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
+            if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
                 x = NULL;
                 while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "datastore") != 0)
                         continue;
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                     tsz += sz;
-                    name = xml_find_body(x, "name");
                     translatenumber(sz, &u64, &unit);
-                    if (strlen(name) > 25){
-                        cligen_output(stdout, "%s \\\n", name);
-                        cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "", u64, unit);
-                    }
-                    else{
-                        cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", name, u64, unit);
-                    }
+                    snprintf(valbuf, sizeof(valbuf), "%" PRIu64 "%s", u64, unit);
+                    cprintf(cb2, " %12s", valbuf);
                 }
             }
             translatenumber(tsz, &u64, &unit);
-            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "XML Total", u64, unit);
+            snprintf(valbuf, sizeof(valbuf), "%" PRIu64 "%s", u64, unit);
+            cligen_output(stdout, "%-16s %12s%s\n",
+                          "Total", valbuf, cbuf_get(cb2));
+            cbuf_free(cb2);
+            cb2 = NULL;
             tsz0 = tsz;
             tsz = 0;
-            cligen_output(stdout, "%s\n", "YANG");
-            if ((xp = xml_find_type(xret, NULL, "module-sets", CX_ELMNT)) != NULL){
+            /* --- YANG section --- */
+            cligen_output(stdout, "%-16s\n", "YANG");
+            if ((xp = xml_find_type(xret_all, NULL, "module-sets", CX_ELMNT)) != NULL){
                 x = NULL;
                 while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "module-set") != 0)
@@ -1828,12 +1900,20 @@ cli_show_statistics(clixon_handle h,
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
             translatenumber(tsz0+tsz, &u64, &unit);
             cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
+            if (xret_all){
+                xml_free(xret_all);
+                xret_all = NULL;
+            }
         }
     }
     retval = 0;
  done:
     if (xret)
         xml_free(xret);
+    if (xret_all)
+        xml_free(xret_all);
+    if (cb2)
+        cbuf_free(cb2);
     if (cb)
         cbuf_free(cb);
     return retval;

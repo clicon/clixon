@@ -21,6 +21,7 @@ Expected: May 2026
 
 ### Features
 
+* show memory: Added detailed statistics for config datastores (CLI and RPC)
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
 * New `clixon-lib@2026-03-01.yang` revision
