@@ -105,6 +105,7 @@ restconf_client_get_capabilities(clixon_handle h,
     cprintf(cb, "<capabilities>");
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability>");
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:depth:1.0</capability>");
+    cprintf(cb, "<capability>urn:ietf:params:restconf:capability:fields:1.0</capability>");
     cprintf(cb, "<capability>urn:ietf:params:restconf:capability:with-defaults:1.0</capability>");
     cprintf(cb, "</capabilities>");
     if (clixon_xml_parse_string(cbuf_get(cb), YB_PARENT, NULL, &xrstate, NULL) < 0)
