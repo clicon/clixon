@@ -190,12 +190,29 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCP
 # Maybe this is not correct w [null,null]but I have no good examples
 new 'B.3.2.  "depth" Parameter depth=3'
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox?depth=3)" 0 "HTTP/$HVER 200" '{"example-jukebox:jukebox":{"artist":\[null,null\]}}}
-'
+
+'
 
 new "restconf DELETE whole datastore"
 expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"
 
-#new 'B.3.3.  "fields" Parameter'
+new 'B.3.3.  "fields" Parameter: preamble (create system and jukebox data)'
+expectpart "$(curl $CURLOPTS -X PATCH -H 'Content-Type: application/yang-data+xml' $RCPROTO://localhost/restconf/data -d '<data xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf"><system xmlns="http://example.com/ns/example-system"><enable-jukebox-streaming>true</enable-jukebox-streaming></system><jukebox xmlns="http://example.com/ns/example-jukebox"><library><artist><name>Fields Artist</name></artist></library></jukebox></data>')" 0 "HTTP/$HVER 204"
+
+new 'B.3.3.  "fields" Parameter: system only'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data?fields=example-system:system)" 0 "HTTP/$HVER 200" \
+    '"example-system:system"' --not-- '"example-jukebox:jukebox"'
+
+new 'B.3.3.  "fields" Parameter: jukebox only'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data?fields=example-jukebox:jukebox)" 0 "HTTP/$HVER 200" \
+    '"example-jukebox:jukebox"' --not-- '"example-system:system"'
+
+new 'B.3.3.  "fields" Parameter: two modules'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' "$RCPROTO://localhost/restconf/data?fields=example-system:system%3Bexample-jukebox:jukebox")" 0 "HTTP/$HVER 200" \
+    '"example-system:system"' '"example-jukebox:jukebox"'
+
+new "restconf DELETE whole datastore (after fields test)"
+expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"
 
 new 'B.3.4.  "insert" Parameter'
 JSON="{\"example-jukebox:song\":[{\"index\":1,\"id\":\"/example-jukebox:jukebox/library/artist[name='Foo Fighters']/album[name='Wasting Light']/song[name='Rope']\"}]}"
@@ -251,7 +268,6 @@ new 'B.3.5.  "insert/point" leaf-list check order (2,4,3,1)'
 expectpart "$(curl $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-jukebox:extra -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<extra xmlns="http://example.com/ns/example-jukebox">2</extra><extra xmlns="http://example.com/ns/example-jukebox">4</extra><extra xmlns="http://example.com/ns/example-jukebox">3</extra><extra xmlns="http://example.com/ns/example-jukebox">1</extra>'
 
 #new "B.2.2.  Detect Datastore Resource Entity-Tag Change" # XXX done except entity-changed
-#new 'B.3.3.  "fields" Parameter'
 #new 'B.3.6.  "filter" Parameter'
 #new 'B.3.7.  "start-time" Parameter'
 #new 'B.3.8.  "stop-time" Parameter'
