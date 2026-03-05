@@ -854,7 +854,6 @@ yang2cli_var_union_one(clixon_handle h,
         if (yang2cli_var_union(h, ys, origtype, ytype, helptext, patpref, cb) < 0)
             goto done;
     }
-    /* XXX leafref inside union ? */
     else {
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;

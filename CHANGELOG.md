@@ -44,6 +44,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [CLI: union leafref not supported in completion](https://github.com/clicon/clixon/issues/558)
 * Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)
 * Fixed: [Validation of YANG leafref within union does not work](https://github.com/clicon/clixon/issues/498)
 * Fixed: [leafref instance-required with state](https://github.com/clicon/clixon/issues/632

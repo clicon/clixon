@@ -494,9 +494,11 @@ xpath_append(cbuf      *cb0,
     return retval;
 }
 
-/*! If xpath and leafref-refer and innermost yang is leafref, then append path to xpath
+/*! If xpath and leafref-refer and innermost yang is leafref or union, then append path to xpath
  *
  * Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
+ * For union types containing leafrefs, generate an XPath union of all leafref paths.
+ * Resolves through typedefs to handle indirect types.
  * @param[in]     yn      Yang node
  * @param[in]     nsc     Namespace context
  * @param[in,out] cbxpath XPath optionally extended with leafref path
@@ -511,18 +513,83 @@ leafref_append_path(yang_stmt *yn,
     int        retval = -1;
     yang_stmt *ytype;
     yang_stmt *ypath;
+    yang_stmt *yresolved;
+    char      *resolved_name;
+    yang_stmt *ytsub;
+    yang_stmt *yrestype;
+    char      *restype;
+    int        inext;
+    cbuf      *cb_orig = NULL;
+    cbuf      *cb_one = NULL;
+    int        first;
 
-    if ((ytype = yang_find(yn, Y_TYPE, NULL)) != NULL &&
-        strcmp(yang_argument_get(ytype), "leafref") == 0){
-        if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-            clixon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
+    if ((ytype = yang_find(yn, Y_TYPE, NULL)) == NULL)
+        goto ok;
+    /* Resolve through typedefs to get the built-in type */
+    if (yang_type_resolve(yn, yn, ytype,
+                          &yresolved, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    if (yresolved == NULL)
+        goto ok;
+    resolved_name = yang_argument_get(yresolved);
+    if (strcmp(resolved_name, "leafref") == 0){
+        if ((ypath = yang_find(yresolved, Y_PATH, NULL)) == NULL){
+            clixon_err(OE_DB, 0, "Leafref %s requires path statement", resolved_name);
             goto done;
         }
         if (xpath_append(cbxpath, yang_argument_get(ypath), yn, nsc) < 0)
             goto done;
     }
+    else if (strcmp(resolved_name, "union") == 0){
+        /* Union type: iterate sub-types, combine leafref paths with XPath union */
+        if ((cb_orig = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cbuf_append_str(cb_orig, cbuf_get(cbxpath));
+        cbuf_reset(cbxpath);
+        first = 1;
+        inext = 0;
+        while ((ytsub = yn_iter(yresolved, &inext)) != NULL){
+            if (yang_keyword_get(ytsub) != Y_TYPE)
+                continue;
+            /* Resolve through typedefs to find the actual type */
+            if (yang_type_resolve(yn, yn, ytsub,
+                                  &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
+            if (yrestype == NULL)
+                continue;
+            restype = yang_argument_get(yrestype);
+            if (strcmp(restype, "leafref") != 0)
+                continue;
+            if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL)
+                continue;
+            if ((cb_one = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cbuf_append_str(cb_one, cbuf_get(cb_orig));
+            if (xpath_append(cb_one, yang_argument_get(ypath), yn, nsc) < 0)
+                goto done;
+            if (!first)
+                cprintf(cbxpath, " | ");
+            cbuf_append_str(cbxpath, cbuf_get(cb_one));
+            cbuf_free(cb_one);
+            cb_one = NULL;
+            first = 0;
+        }
+        if (first){
+            /* No leafrefs found in union, restore original */
+            cbuf_append_str(cbxpath, cbuf_get(cb_orig));
+        }
+    }
+ ok:
     retval = 0;
  done:
+    if (cb_orig)
+        cbuf_free(cb_orig);
+    if (cb_one)
+        cbuf_free(cb_one);
     return retval;
 }
 

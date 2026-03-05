@@ -3,6 +3,7 @@
 # See eg https://github.com/clicon/clixon/issues/277
 # See also https://github.com/clicon/clixon/issues/388
 # See also https://github.com/clicon/clixon/issues/498
+# See also https://github.com/clicon/clixon/issues/558
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -28,7 +29,7 @@ cat <<EOF > $cfg
 EOF
 
 cat <<EOF > $fyang
-module example{
+module leafref{
     yang-version 1.1;
     namespace "urn:example:clixon";
     prefix ex;
@@ -252,6 +253,20 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# Issue #558: CLI completion for union leafref
+# At this point running has x=42, y=99
+new "cli expand union of two leafrefs z (issue #558)"
+expectpart "$(echo "set c z ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "42" "99"
+
+new "cli expand union of typedef leafrefs zdecl (issue #558)"
+expectpart "$(echo "set c zdecl ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "42" "99"
+
+new "cli expand union identityref+leafref u (issue #558)"
+expectpart "$(echo "set c u ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "42"
+
+new "cli expand typedef union string+leafref v (issue #558)"
+expectpart "$(echo "set c v ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "42"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
