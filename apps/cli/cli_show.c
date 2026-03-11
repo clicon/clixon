@@ -1770,7 +1770,7 @@ cli_show_statistics(clixon_handle h,
         cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
         cprintf(cb, ">");
         cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
-        if (detail)
+        if (0 && detail)
             cprintf(cb, "<modules>true</modules>");
         cprintf(cb, "</stats>");
         cprintf(cb, "</rpc>");

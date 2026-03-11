@@ -70,88 +70,9 @@
 #include "clixon_backend_plugin.h"
 #include "clixon_backend_client.h"
 #include "backend_handle.h"
+#include "backend_state.h"
 #include "clixon_backend_commit.h"
 #include "backend_clixon_lib.h"
-
-/*! Get clixon per datastore stats
- *
- * @param[in]     h        Clixon handle
- * @param[in]     dbname   Datastore name
- * @param[in]     xml_type XML stats type
- * @param[in,out] cb       Cligen buf
- * @retval        0        OK
- * @retval       -1        Error
- */
-static int
-clixon_stats_datastore_get(clixon_handle  h,
-                           char          *dbname,
-                           xml_stats_enum xml_type,
-                           cbuf          *cb)
-{
-    int            retval = -1;
-    cxobj         *xt = NULL; /* should not be freed */
-    uint64_t       nr = 0;
-    size_t         sz = 0;
-    cxobj         *xn = NULL;
-    db_elmnt      *de;
-    int            ret;
-
-    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
-    /* This is the db cache */
-    if ((de = xmldb_find(h, dbname)) != NULL &&
-        (xt = xmldb_cache_get(de)) == NULL){
-        /* Trigger cache if no exist (trick to ensure cache is present) */
-        if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
-            //goto done;
-            goto ok;
-        if (ret == 0)
-            goto ok;
-        xt = xmldb_cache_get(de);
-    }
-    if (xt != NULL){
-        if (xml_stats(xt, xml_type, &nr, &sz) < 0)
-            goto done;
-        cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
-                "<size>%zu</size></datastore>",
-                dbname, nr, sz);
-    }
- ok:
-    retval = 0;
- done:
-    if (xn)
-        xml_free(xn);
-    return retval;
-}
-
-/*! Get clixon per yang-spec stats
- *
- * @param[in]     h       Clixon handle
- * @param[in]     dbname  Datastore name
- * @param[in,out] cb      Cligen buf
- * @retval        0       OK
- * @retval       -1       Error
- */
-static int
-clixon_stats_yang_get(clixon_handle h,
-                      yang_stmt    *ys,
-                      cbuf         *cb)
-{
-    int       retval = -1;
-    uint64_t  nr = 0;
-    size_t    sz = 0;
-    cxobj    *xn = NULL;
-
-    if (ys == NULL)
-        return 0;
-    if (yang_stats(ys, 0, &nr, &sz) < 0)
-        goto done;
-    cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
-    retval = 0;
- done:
-    if (xn)
-        xml_free(xn);
-    return retval;
-}
 
 /*! Set debug level.
  *
@@ -229,19 +150,9 @@ from_client_stats(clixon_handle h,
                   void         *arg,
                   void         *regarg)
 {
-    int        retval = -1;
-    uint64_t   nr;
-    char      *str;
-    int        modules = 0;
-    yang_stmt *ymounts;
-    yang_stmt *ydomain;
-    yang_stmt *yspec;
-    yang_stmt *ymodule;
-    cxobj     *xt = NULL;
-    char      *domain;
-    int        inext;
-    int        inext2;
-    int        inext3;
+    int            retval = -1;
+    char          *str;
+    int            modules = 0;
     xml_stats_enum xml_type = XML_STATS_ALL;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
@@ -249,59 +160,13 @@ from_client_stats(clixon_handle h,
     if ((str = xml_find_body(xe, "xml-type")) != NULL)
         xml_type = xml_stats_str2type(str);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
-    cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
-    nr=0;
-    xml_stats_global(&nr);
-    cprintf(cbret, "<xmlnr>%" PRIu64 "</xmlnr>", nr);
-    nr=0;
-    yang_stats_global(&nr);
-    cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
-    cprintf(cbret, "</global>");
-    cprintf(cbret, "<datastores xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_stats_datastore_get(h, "running", xml_type, cbret) < 0)
+    if (clixon_backend_stats(h, modules, xml_type, cbret) < 0)
         goto done;
-    if (clixon_stats_datastore_get(h, "candidate", xml_type, cbret) < 0)
-        goto done;
-    if (if_feature(h, "ietf-netconf", "startup"))
-	if (clixon_stats_datastore_get(h, "startup", xml_type, cbret) < 0)
-	    goto done;
-    cprintf(cbret, "</datastores>");
-    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
-        goto done;
-    }
-    cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
-    inext = 0;
-    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
-        domain = yang_argument_get(ydomain);
-        /* per module-set, first configuration, then main dbspec, then mountpoints */
-        inext2 = 0;
-        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
-            cprintf(cbret, "<module-set>");
-            cprintf(cbret, "<name>%s/%s</name>", domain, yang_argument_get(yspec));
-            if (clixon_stats_yang_get(h, yspec, cbret) < 0)
-                goto done;
-            if (modules){
-                inext3 = 0;
-                while ((ymodule = yn_iter(yspec, &inext3)) != NULL) {
-                    cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ymodule));
-                    if (clixon_stats_yang_get(h, ymodule, cbret) < 0)
-                        goto done;
-                    cprintf(cbret, "</module>");
-                }
-            }
-            cprintf(cbret, "</module-set>");
-        }
-    }
-    cprintf(cbret, "</module-sets>");
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:
-    if (xt)
-	xml_free(xt);
     return retval;
 }
-
 
 /*! Control a specific process or daemon: start/stop, etc
  *

@@ -42,5 +42,6 @@
  */
 int get_state_data(clixon_handle h, char *xpath, cvec *nsc, cxobj **xret);
 int merge_state_data(clixon_handle h, cxobj *xtop, yang_stmt *yspec, cxobj **xret);
+int clixon_backend_stats(clixon_handle h, int modules, xml_stats_enum xml_type, cbuf *cbret);
 
 #endif  /* _BACKEND_STATE_H_ */
