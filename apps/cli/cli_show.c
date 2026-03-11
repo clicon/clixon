@@ -1605,8 +1605,8 @@ translatenumber(uint64_t   inr,
  *
  * mempry in KiB
  * @param[in]  h     Clixon handle
- * @param[in]  cvv   Vector of cli string and instantiated variables
- * @param[in]  argv  Arguments given at the callback: [(cli|backend|all) [detail]]
+ * @param[in]  cvv   Vector of cli string and instantiated variables could be "detail", "cli", "backend"
+ * @param[in]  argv  Arguments given at the callback
  * @retval     0     OK
  * @retval    -1     Error
  */
@@ -1621,7 +1621,6 @@ cli_show_statistics(clixon_handle h,
     cxobj      *xret = NULL;
     cxobj      *xret_all = NULL;
     cxobj      *xerr;
-    char       *what = NULL;
     int         cli = 0;
     int         backend = 0;
     int         detail = 0;
@@ -1637,7 +1636,6 @@ cli_show_statistics(clixon_handle h,
     yang_stmt  *ymounts;
     yang_stmt  *ydomain;
     yang_stmt  *yspec;
-    cg_var     *cv;
     cxobj      *xp;
     char       *domain;
     char       *name;
@@ -1649,32 +1647,12 @@ cli_show_statistics(clixon_handle h,
     int         ti;
     char        valbuf[32];
 
-    if (argv == NULL || (cvec_len(argv) < 1 || cvec_len(argv) > 2)){
-        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: [(cli|backend|all) [detail]]");
-        goto done;
-    }
-    cv = cvec_i(argv, 0);
-    what = cv_string_get(cv);
-    if (strcmp(what, "cli") == 0)
-        cli++;
-    else if (strcmp(what, "backend") == 0)
-        backend++;
-    else if (strcmp(what, "all") == 0){
+    detail = cvec_find(cvv, "detail") != NULL;
+    cli = cvec_find(cvv, "cli") != NULL;
+    backend = cvec_find(cvv, "backend") != NULL;
+    if (cli == 0 && backend == 0){
         cli++;
         backend++;
-    }
-    else {
-        clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: cli|backend|all", what);
-        goto done;
-    }
-    if (cvec_len(argv) > 1 &&
-        (cv = cvec_i(argv, 1)) != NULL){
-        if (strcmp(cv_string_get(cv), "detail") != 0){
-            clixon_err(OE_PLUGIN, EINVAL, "Unexpected argument: %s, expected: detail",
-                       cv_string_get(cv));
-            goto done;
-        }
-        detail = 1;
     }
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_PLUGIN, errno, "cbuf_new");

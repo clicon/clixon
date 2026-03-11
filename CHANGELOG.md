@@ -27,6 +27,12 @@ Expected: May 2026
 * New `clixon-lib@2026-03-01.yang` revision
    * Extended stats rpc with `xml-type` parameter
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Changed example CLI show memory arguments to: `show mem [detail] [cli] [backend]`
+
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
