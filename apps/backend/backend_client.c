@@ -1796,6 +1796,7 @@ from_client_msg(clixon_handle h,
         }
         clixon_err_reset();
         if ((ret = rpc_callback_call(h, xe, ce, &nr, cbret)) < 0){
+            cbuf_reset(cbret);
             if (netconf_operation_failed(cbret, "application", "%s", clixon_err_reason())< 0)
                 goto done;
             clixon_log(h, LOG_NOTICE, "%s Error in rpc_callback_call:%s", __func__, xml_name(xe));
