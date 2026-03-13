@@ -987,9 +987,11 @@ text_modify(clixon_handle       h,
                 if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
                     goto done;
                 xml_spec_set(x0, y0);
-#ifdef XML_PARENT_CANDIDATE
+                if (xml_parent_candidate(x0) != NULL){
+                    clixon_err(OE_XML, 0, "xml_parent_candidate is not NULL");
+                    goto done;
+                }
                 xml_parent_candidate_set(x0, x0p);
-#endif
                 changed++;
                 /* Get namespace from x1
                  * Check if namespace exists in x0 parent
@@ -1108,9 +1110,7 @@ text_modify(clixon_handle       h,
                     goto done;
                 if (xml_flag(x0, XML_FLAG_NONE) == 0x0 ||
                     xml_child_nr_type(x0, CX_ELMNT) > 0) {
-#ifdef XML_PARENT_CANDIDATE
                     xml_parent_candidate_set(x0, NULL);
-#endif
                     if (xml_insert(x0p, x0, insert, keystr, nscx1) < 0)
                         goto done;
                     xml_flag_set(x0, XML_FLAG_ADD);
@@ -1155,8 +1155,10 @@ text_modify(clixon_handle       h,
     if (nscx1)
         xml_nsctx_free(nscx1);
     /* Remove dangling added objects */
-    if (changed && x0 && xml_parent(x0)==NULL)
+    if (changed && x0 && xml_parent(x0)==NULL){
+        xml_parent_candidate_set(x0, NULL);
         xml_purge(x0);
+    }
     if (x0vec)
         free(x0vec);
     return retval;

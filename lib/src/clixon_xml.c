@@ -162,29 +162,29 @@ struct search_index{
  * It is this combination of the universally managed URI namespace with the 
  * vocabulary's local names that is effective in avoiding name clashes.
  * @see struct xmlbody    For XML body and attributes
+ * Compact layout: pointers first, then ints, then small fields.
+ * x_type stored as int8_t.
+ * Common fields (shared with xmlbody) must be at same offsets.
  */
 struct xml{
-    enum cxobj_type   x_type;       /* type of node: element, attribute, body */
     char             *x_name;       /* name of node */
     char             *x_prefix;     /* namespace localname N, called prefix */
-    uint16_t          x_flags;      /* Flags according to XML_FLAG_* */
     struct xml       *x_up;         /* parent node in hierarchy if any */
-#ifdef XML_PARENT_CANDIDATE
-    struct xml       *x_up_candidate; /* Candidate parent node for special cases (when+xpath) */
-#endif
-    int              _x_vector_i;   /* internal use: xml_child_each */
-    int              _x_i;          /* internal use for stable sorting:
-                                       see xml_enumerate_children and xml_cmp */
     /*----- next is body/attribute only */
-    cbuf             *x_value_cb;  /* attribute and body nodes have values (XXX: this consumes 
-                                       memory) cv? */
+    uint32_t         _x_vector_i;   /* internal use: xml_child_each */
+    uint32_t         _x_i;          /* internal use for stable sorting:
+                                       see xml_enumerate_children and xml_cmp */
+    uint16_t          x_flags;      /* Flags according to XML_FLAG_* */
+    int8_t            x_type;       /* type of node: element, attribute, body */
+    union {                           /* depends on co_type: */
+        struct xml      **xu_childvec;   /* vector of children nodes (XXX: use clixon_vec ) */
+        char             *xu_value;      /* attribute and body nodes have values (strdup'd) */
+    } x_u;
     /*----- up to here is common to all next is element only */
-    struct xml      **x_childvec;   /* vector of children nodes (XXX: use clixon_vec ) */
-    size_t            x_childvec_len;/* Number of children */
-    int               x_childvec_max;/* Length of allocated vector */
-
+    uint32_t          x_childvec_len;/* Number of children */
+    uint32_t          x_childvec_max;/* Length of allocated vector */
     cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
-    yang_stmt        *x_spec;       /* Pointer to specification, eg yang, 
+    yang_stmt        *x_spec;       /* Pointer to specification, eg yang,
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
 #ifdef XML_EXPLICIT_INDEX
@@ -192,22 +192,23 @@ struct xml{
 #endif
 };
 
+/* Access functions for x_u union fields */
+#define x_childvec         x_u.xu_childvec
+#define x_value            x_u.xu_value
+
 /* Variant of struct xml for use by non-elements to save space
  * @see struct xml  For XML elements
  */
 struct xmlbody{
-    enum cxobj_type   xb_type;       /* type of node: element, attribute, body */
     char             *xb_name;       /* name of node */
     char             *xb_prefix;     /* namespace localname N, called prefix */
-    uint16_t          xb_flags;      /* Flags according to XML_FLAG_* */
     struct xml       *xb_up;         /* parent node in hierarchy if any */
-#ifdef XML_PARENT_CANDIDATE
-    struct xml       *xb_up_candidate; /* Candidate parent node for special cases (when+xpath) */
-#endif
-    int              _xb_vector_i;   /* internal use: xml_child_each */
-    int              _xb_i;          /* internal use for sorting: 
-                                       see xml_enumerate and xml_cmp */
-    cbuf             *xb_value_cb;  /* attribute and body nodes have values */
+    uint32_t         _xb_vector_i;   /* internal use: xml_child_each */
+    uint32_t         _xb_i;          /* internal use for sorting:
+                                        see xml_enumerate and xml_cmp */
+    uint16_t          xb_flags;      /* Flags according to XML_FLAG_* */
+    int8_t            xb_type;       /* type of node: element, attribute, body */
+    char             *xb_value;      /* attribute and body nodes have values (strdup'd) */
 };
 
 /*
@@ -252,6 +253,29 @@ static const map_str2int xstatmap[] = {
     {NULL,         -1}
 };
 
+
+/* Stats (too low-level to hang it on handle) */
+static uint64_t _stats_xml_nr = 0;
+
+/*! Sorted map from xml node pointer to candidate parent pointer
+ *
+ * Only a handful of entries exist at any time (bounded by text_modify recursion depth).
+ * Set a temporary parent for use in special case "when" xpath calls
+ * Problem is when changing an existing (candidate) in-memory datastore that yang "when" conditionals
+ * should be changed in clixon_datastore_write.c:text_modify().
+ * Problem is that the tree is in an intermediate state so that a when condition may not see the
+ * full context.
+ * More specifically, new nodes (x0) are created without hooking them into the existing parent (x0p)
+ * and thus an xpath on the form "../PARENT" may not be evaluated as they should. x0 is eventually
+ * added to its parent but then it is more difficult to check the when condition.
+ * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
+ * an alternative if it exists.
+ * Note although this solves many usecases involving parents and absolute paths, it still does not
+ * solve all usecases, such as absolute usecases where the added node is looked for
+ */
+static map_ptr2ptr *_candidate_parent_map = NULL;
+static size_t       _candidate_parent_len = 0;
+
 /*! Translate from xml stats type string keyword to enum form
  */
 enum xml_stats_enum
@@ -259,9 +283,6 @@ xml_stats_str2type(const char *str)
 {
     return clicon_str2int(xstatmap, str);
 }
-
-/* Stats (too low-level to hang it on handle) */
-static uint64_t _stats_xml_nr = 0;
 
 /*! Get global statistics about XML objects
  *
@@ -320,8 +341,8 @@ xml_stats_one(cxobj         *x,
         case CX_BODY:
         case CX_ATTR:
             sz += sizeof(struct xmlbody);
-            if (x->x_value_cb)
-                sz += cbuf_buflen(x->x_value_cb);
+            if (x->x_value)
+                sz += strlen(x->x_value) + 1;
             break;
         default:
             break;
@@ -390,9 +411,9 @@ xml_stats_one(cxobj         *x,
         break;
     case XML_STATS_VALUE:
         if ((xml_type(x) == CX_BODY || xml_type(x) == CX_ATTR) &&
-            x->x_value_cb){
+            x->x_value){
             nr++;
-            sz += cbuf_buflen(x->x_value_cb);
+            sz += strlen(x->x_value) + 1;
         }
         break;
     }
@@ -683,35 +704,43 @@ xml_parent_set(cxobj *xn,
     return 0;
 }
 
-#ifdef XML_PARENT_CANDIDATE
 /*! Get candidate parent of xnode
  *
+ * Uses a global sorted map instead of a per-node field to save 8 bytes per node.
  * @param[in]  xn    xml node
- * @retval     parent xml node
+ * @retval     parent xml node, or NULL
  */
 cxobj*
 xml_parent_candidate(cxobj *xn)
 {
-    if (xn == NULL) {
+    if (xn == NULL)
         return NULL;
-    }
-    return xn->x_up_candidate;
+    return (cxobj*)clixon_ptr2ptr(_candidate_parent_map, _candidate_parent_len, xn);
 }
 
 /*! Set candidate parent of xml node
  *
+ * If parent is non-NULL, adds a mapping xn->parent in the global map.
+ * If parent is NULL, removes the mapping for xn.
  * @param[in]  xn      xml node
- * @param[in]  parent  pointer to candidate parent xml node
+ * @param[in]  parent  pointer to candidate parent xml node, or NULL to clear
  * @retval     0       OK
+ * @retval    -1       Error
  */
 int
 xml_parent_candidate_set(cxobj *xn,
                          cxobj *parent)
 {
-    xn->x_up_candidate = parent;
+    if (parent == NULL){
+        if (clixon_ptr2ptr_del(&_candidate_parent_map, &_candidate_parent_len, xn) < 0)
+            return -1;
+    }
+    else{
+        if (clixon_ptr2ptr_add(&_candidate_parent_map, &_candidate_parent_len, xn, parent) < 0)
+            return -1;
+    }
     return 0;
 }
-#endif /* XML_PARENT_CANDIDATE */
 
 /*! Get xml node flags, used for internal algorithms
  *
@@ -761,7 +790,7 @@ xml_value(cxobj *xn)
 {
     if (!is_bodyattr(xn))
         return NULL;
-    return xn->x_value_cb?cbuf_get(xn->x_value_cb):NULL;
+    return xn->x_value;
 }
 
 /*! Set value of xml node, value is copied
@@ -776,7 +805,6 @@ xml_value_set(cxobj      *xn,
               const char *val)
 {
     int    retval = -1;
-    size_t sz;
 
     if (!is_bodyattr(xn))
         return 0;
@@ -784,16 +812,12 @@ xml_value_set(cxobj      *xn,
         clixon_err(OE_XML, EINVAL, "value is NULL");
         goto done;
     }
-    sz = strlen(val)+1;
-    if (xn->x_value_cb == NULL){
-        if ((xn->x_value_cb = cbuf_new_alloc(sz + 1)) == NULL){
-            clixon_err(OE_XML, errno, "cbuf_new");
-            goto done;
-        }
+    if (xn->x_value)
+        free(xn->x_value);
+    if ((xn->x_value = strdup(val)) == NULL){
+        clixon_err(OE_XML, errno, "strdup");
+        goto done;
     }
-    else
-        cbuf_reset(xn->x_value_cb);
-    cbuf_append_str(xn->x_value_cb, val);
     retval = 0;
  done:
     return retval;
@@ -812,6 +836,8 @@ xml_value_append(cxobj      *xn,
 {
     int    retval = -1;
     size_t sz;
+    size_t oldlen;
+    char  *newval;
 
     if (!is_bodyattr(xn))
         return 0;
@@ -820,15 +846,20 @@ xml_value_append(cxobj      *xn,
         goto done;
     }
     sz = strlen(val)+1;
-    if (xn->x_value_cb == NULL){
-        if ((xn->x_value_cb = cbuf_new_alloc(sz)) == NULL){
-            clixon_err(OE_XML, errno, "cbuf_new");
+    if (xn->x_value == NULL){
+        if ((xn->x_value = strdup(val)) == NULL){
+            clixon_err(OE_XML, errno, "strdup");
             goto done;
         }
     }
-    if (cbuf_append_str(xn->x_value_cb, val) < 0){
-        clixon_err(OE_XML, errno, "cprintf");
-        goto done;
+    else{
+        oldlen = strlen(xn->x_value);
+        if ((newval = realloc(xn->x_value, oldlen + sz)) == NULL){
+            clixon_err(OE_XML, errno, "realloc");
+            goto done;
+        }
+        memcpy(newval + oldlen, val, sz);
+        xn->x_value = newval;
     }
     retval = 0;
  done:
@@ -1083,6 +1114,7 @@ xml_vector_decrement(cxobj *x,
  * @endcode
  * @see xml_child_index_each
  * @see xml_child_each_attr  hardcoded for sorted list and attributes
+ * XXX can we do something like: yn_iter
  */
 cxobj *
 xml_child_each(cxobj          *xparent,
@@ -2120,8 +2152,8 @@ xml_free0(cxobj *x)
     case CX_BODY:
     case CX_ATTR:
         sz = sizeof(struct xmlbody);
-        if (x->x_value_cb)
-            cbuf_free(x->x_value_cb);
+        if (x->x_value)
+            free(x->x_value);
         break;
     default:
         break;

@@ -445,3 +445,54 @@ clixon_ptr2ptr_add(map_ptr2ptr **mptabp,
  done:
     return retval;
 }
+
+/*! Remove a pointer pair from mptab map by key ptr0
+ *
+ * @param[in,out]  mptabp  Ptr to ptr map (may be reallocated)
+ * @param[in,out]  lenp    Length of map
+ * @param[in]      ptr0    Key pointer to remove
+ * @retval         0       OK (removed or not found)
+ * @retval        -1       Error
+ */
+int
+clixon_ptr2ptr_del(map_ptr2ptr **mptabp,
+                   size_t       *lenp,
+                   void         *ptr0)
+{
+    struct map_ptr2ptr *mp;
+    size_t              len;
+    size_t              idx;
+
+    if (mptabp == NULL || *mptabp == NULL)
+        return 0;
+    len = *lenp;
+    if (len == 0)
+        return 0;
+    if (ptr2ptr_search(*mptabp, ptr0, 0, len, len, 1, &mp) == 0)
+        return 0; /* not found, OK */
+    idx = mp - *mptabp;
+    if (idx + 1 < len)
+        memmove(mp, mp + 1, (len - idx - 1) * sizeof(*mp));
+    (*lenp)--;
+    return 0;
+}
+
+/*! Print a str2ptr map
+ *
+ * @param[in]  f     FILE
+ * @param[in]  mptab String to ptr map
+ * @retval     0     OK
+ */
+int
+clixon_ptr2ptr_print(FILE        *f,
+                     map_ptr2ptr *mptab,
+                     size_t       len)
+{
+    map_ptr2ptr *mp = NULL;
+    int          i;
+
+    i = 0;
+    for (mp = &mptab[0]; i<len; mp++)
+        fprintf(f, "%d %p %p\n", i++, mp->mp_p0, mp->mp_p1);
+    return 0;
+}

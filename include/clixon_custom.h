@@ -87,22 +87,6 @@
  */
 #define HTTP_DATA_INTERNAL_REDIRECT "index.html"
 
-/*! Set a temporary parent for use in special case "when" xpath calls
- *
- * Problem is when changing an existing (candidate) in-memory datastore that yang "when" conditionals
- * should be changed in clixon_datastore_write.c:text_modify().
- * Problem is that the tree is in an intermediate state so that a when condition may not see the
- * full context.
- * More specifically, new nodes (x0) are created without hooking them into the existing parent (x0p)
- * and thus an xpath on the form "../PARENT" may not be evaluated as they should. x0 is eventually
- * added to its parent but then it is more difficult to check the when condition.
- * This fix add the parent x0p as a "candidate" so that the xpath-eval function can use it as
- * an alternative if it exists.
- * Note although this solves many usecases involving parents and absolute paths, it still does not
- * solve all usecases, such as absolute usecases where the added node is looked for
- */
-#define XML_PARENT_CANDIDATE
-
 /*! Enable "remaining" attribute (sub-feature of list pagination)
  *
  * See "remaining" annotation defined in module ietf-list-pagination.yang

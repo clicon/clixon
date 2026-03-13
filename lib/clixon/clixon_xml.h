@@ -254,11 +254,8 @@ int       nscache_clear(cxobj *x);
 int       nscache_replace(cxobj *x, cvec *ns);
 cxobj    *xml_parent(cxobj *xn);
 int       xml_parent_set(cxobj *xn, cxobj *parent);
-#ifdef XML_PARENT_CANDIDATE
 cxobj    *xml_parent_candidate(cxobj *xn);
 int       xml_parent_candidate_set(cxobj *xn, cxobj *parent);
-#endif /* XML_PARENT_CANDIDATE */
-
 uint16_t  xml_flag(cxobj *xn, uint16_t flag);
 int       xml_flag_set(cxobj *xn, uint16_t flag);
 int       xml_flag_reset(cxobj *xn, uint16_t flag);

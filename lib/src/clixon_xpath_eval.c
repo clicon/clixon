@@ -490,10 +490,8 @@ xp_eval_step(xp_ctx     *xc0,
         for (i=0; i<veclen; i++){
             x = vec[i];
             if ((xp = xml_parent(x)) != NULL
-#ifdef XML_PARENT_CANDIDATE
                 /* Also check "candidate" parent for special when use-case */
                 || (xp = xml_parent_candidate(x)) != NULL
-#endif /* XML_PARENT_CANDIDATE */
                 )
                 if (cxvec_append(xp, &xc->xc_nodeset, &xc->xc_size) < 0)
                     goto done;
@@ -1266,13 +1264,9 @@ xp_eval(xp_ctx     *xc,
     case XP_ABSPATH:
         /* Set context node to top node, and nodeset to that node only */
         x = xc->xc_node;
-#ifdef XML_PARENT_CANDIDATE
+        /* If called from text_modify, trees may not be complete and may need temporary parent-candidate check */
         while (xml_parent(x) != NULL || xml_parent_candidate(x) != NULL)
             x = xml_parent(x)?xml_parent(x):xml_parent_candidate(x);
-#else
-        while (xml_parent(x) != NULL)
-            x = xml_parent(x);
-#endif
         xc->xc_node = x;
         xc->xc_nodeset[0] = x;
         xc->xc_size=1;

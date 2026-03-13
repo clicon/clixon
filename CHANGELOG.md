@@ -25,6 +25,8 @@ Expected: May 2026
 * New: XPath translate()
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
+* Optimization of XML config memory footprint
+  * Reduced size of `struct xml` struct
 * show memory: Added detailed statistics for config datastores (CLI and RPC)
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
