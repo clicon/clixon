@@ -1024,8 +1024,10 @@ vec_order_analyze(yang_stmt        *y,
     default:
         break;
     }
+#ifndef XML_EACH_WRAPPER
     if (x && nr)
         xml_vector_decrement(x, nr);
+#endif
     retval = 1;
  done:
     return retval;

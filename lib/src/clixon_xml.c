@@ -171,7 +171,9 @@ struct xml{
     char             *x_prefix;     /* namespace localname N, called prefix */
     struct xml       *x_up;         /* parent node in hierarchy if any */
     /*----- next is body/attribute only */
+#ifndef XML_EACH_WRAPPER
     uint32_t         _x_vector_i;   /* internal use: xml_child_each */
+#endif
     uint32_t         _x_i;          /* internal use for stable sorting:
                                        see xml_enumerate_children and xml_cmp */
     uint16_t          x_flags;      /* Flags according to XML_FLAG_* */
@@ -203,7 +205,9 @@ struct xmlbody{
     char             *xb_name;       /* name of node */
     char             *xb_prefix;     /* namespace localname N, called prefix */
     struct xml       *xb_up;         /* parent node in hierarchy if any */
+#ifndef XML_EACH_WRAPPER
     uint32_t         _xb_vector_i;   /* internal use: xml_child_each */
+#endif
     uint32_t         _xb_i;          /* internal use for sorting:
                                         see xml_enumerate and xml_cmp */
     uint16_t          xb_flags;      /* Flags according to XML_FLAG_* */
@@ -1071,7 +1075,10 @@ xml_child_order(cxobj *xp,
     return -1;
 }
 
+#ifndef XML_EACH_WRAPPER
 /*! Advanced function to decrement _x_vector_i if objects have been removed
+ *
+ * Only in vec_order_analyze()
  */
 int
 xml_vector_decrement(cxobj *x,
@@ -1080,6 +1087,7 @@ xml_vector_decrement(cxobj *x,
     x->_x_vector_i -= nr;
     return 0;
 }
+#endif
 
 /*! Iterator over xml children objects
  *
@@ -1113,14 +1121,27 @@ xml_vector_decrement(cxobj *x,
  *   }
  * @endcode
  * @see xml_child_index_each
- * @see xml_child_each_attr  hardcoded for sorted list and attributes
- * XXX can we do something like: yn_iter
+ * @see xml_child_iter
+ * @note  Wrapper over xml_child_iter, all calls should be replaced by that function.
  */
 cxobj *
 xml_child_each(cxobj          *xparent,
                cxobj          *xprev,
                enum cxobj_type type)
 {
+#ifdef XML_EACH_WRAPPER
+    int i = 0;
+
+    if (xprev != NULL){
+        for (i = 0; i < xparent->x_childvec_len; i++){
+            if (xparent->x_childvec[i] == xprev){
+                i++;
+                break;
+            }
+        }
+    }
+    return xml_child_iter(xparent, &i, type);
+#else
     int    i;
     cxobj *xn = NULL;
 
@@ -1141,6 +1162,7 @@ xml_child_each(cxobj          *xparent,
     else
         xn = NULL;
     return xn;
+#endif
 }
 
 /*! Same as xml_child_each but hard-coded for attributes
@@ -1152,33 +1174,74 @@ xml_child_each(cxobj          *xparent,
  * @param[in] xprev   previous child, or NULL on init
  * @retval    xn      Next XML node
  * @retval    NULL    End of list
- * @see xml_child_each
+ * @see xml_child_iter
+ * @note  Wrapper over xml_child_iter, all calls should be replaced by that function.
  */
 cxobj *
 xml_child_each_attr(cxobj  *xparent,
                     cxobj  *xprev)
 {
-    int             i;
-    cxobj          *xn = NULL;
+    int    i = 0;
+    cxobj *xn;
 
-    if (xparent == NULL)
+    if (xprev != NULL){
+        for (i = 0; i < xparent->x_childvec_len; i++){
+            if (xparent->x_childvec[i] == xprev){
+                i++;
+                break;
+            }
+        }
+    }
+    xn = xml_child_iter(xparent, &i, -1);
+    if (xn && xml_type(xn) != CX_ATTR)
+        return NULL;
+    return xn;
+}
+
+/*! Iterator over xml children using caller-side index (no struct state)
+ *
+ * Similar to yn_iter() for yang nodes. Uses an int index on the caller's stack
+ * instead of storing state in the child node. This allows:
+ * - Concurrent iteration over the same parent
+ * - No per-node storage overhead for iteration
+ * @param[in]     xparent xml tree node whose children should be iterated
+ * @param[in,out] inext   Iteration index, initialize to 0 before first call
+ * @param[in]     type    matching type or -1 (CX_ERROR) for any
+ * @retval    xn      Next XML child node
+ * @retval    NULL    End of list
+ * @code
+ *   cxobj *x;
+ *   int    i = 0;
+ *   while ((x = xml_child_iter(x_top, &i, CX_ELMNT)) != NULL) {
+ *     ...
+ *   }
+ * @endcode
+ * @note  NULL children are skipped, which means *inext may increment by more than 1
+ * @see xml_child_each      original iterator using per-node state
+ * @see xml_child_each_attr  hardcoded for attributes
+ * @see yn_iter              same pattern for yang nodes
+ */
+cxobj *
+xml_child_iter(cxobj          *xparent,
+               int            *inext,
+               enum cxobj_type type)
+{
+    cxobj *xn = NULL;
+
+    if (xparent == NULL || inext == NULL || *inext < 0)
         return NULL;
     if (!is_element(xparent))
         return NULL;
-    for (i=xprev?xprev->_x_vector_i+1:0; i<xparent->x_childvec_len; i++){
-        xn = xparent->x_childvec[i];
+    for (; *inext < xparent->x_childvec_len; (*inext)++){
+        xn = xparent->x_childvec[*inext];
         if (xn == NULL)
             continue;
-        if (xml_type(xn) != CX_ATTR){
-            return NULL;
-        }
-        break; /* this is next object after previous */
+        if (type != CX_ERROR && xml_type(xn) != type)
+            continue;
+        (*inext)++;
+        return xn;
     }
-    if (i < xparent->x_childvec_len) /* found */
-        xn->_x_vector_i = i;
-    else
-        xn = NULL;
-    return xn;
+    return NULL;
 }
 
 /*! Extend child vector with one and insert xml node there
@@ -2944,18 +3007,24 @@ xml_child_index_each(cxobj          *xparent,
         return NULL;
     if (xv == NULL)
         return NULL;
-    for (i=xprev?xprev->_x_vector_i+1:0; i<clixon_xvec_len(xv); i++){
+    if (xprev != NULL){
+        for (i = 0; i < clixon_xvec_len(xv); i++){
+            if (clixon_xvec_i(xv, i) == xprev){
+                i++;
+                break;
+            }
+        }
+    }
+    else
+        i = 0;
+    for (; i < clixon_xvec_len(xv); i++){
         if ((xn = clixon_xvec_i(xv, i)) == NULL)
             continue;
         if (type != CX_ERROR && xml_type(xn) != type)
             continue;
-        break; /* this is next object after previous */
+        return xn;
     }
-    if (i < clixon_xvec_len(xv)) /* found */
-        xn->_x_vector_i = i;
-    else
-        xn = NULL;
-    return xn;
+    return NULL;
 }
 
 #endif /* XML_EXPLICIT_INDEX */

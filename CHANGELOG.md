@@ -43,6 +43,21 @@ Users may have to change how they access the system
 
 Developers may need to change their code
 
+* Major API change: Replace `xml_child_each()` with `xml_child_iter()` as follows:
+  * From:
+  ```
+    cxobj   *xc;
+    xc = NULL;
+    while ((xc = xml_child_each(xt, xc, elmnt)) != NULL) {
+  ```
+  * To:
+    ```
+    cxobj   *xc;
+    int      ix;
+    ix = 0;
+    while ((xc = xml_child_iter(xt, &ixc, elmnt)) != NULL) {
+    ```
+  * Existing `xml_child_each()` remains as backward compatible but has (much) reduced performancce.
 * Replace `xml_merge()` with `xml_merge1()`
      * Example change: `xml_merge(...,r)` --> `xml_merge1(...,0,r)`
 * Replace `xml_yang_validate_all_top()` with `xml_yang_validate_all_state()'
