@@ -324,7 +324,7 @@ check_unique_list_direct(cxobj     *x,
                 goto fail;
             }
         }
-        x = xml_child_each(xt, x, CX_ELMNT);
+        x = xml_child_each(xt, x, CX_ELMNT); // XXX #ifdef XML_XCHILD_USE_ITER31
         i++;
     } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
  ok:
@@ -716,10 +716,19 @@ xml_yang_validate_minmax(cxobj  *xt,
     int           nr = 0;
     yang_stmt    *yt;
     int           inext = 0;
+#ifdef XML_XCHILD_USE_ITER31 // XXX DONT KNOW WHY THIS DOES NOT WORK
+    int           ix;
+#endif
     int           ret;
 
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
+#ifdef XML_XCHILD_USE_ITER31 // XXX DONT KNOW WHY THIS DOES NOT WORK
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
+#else
+    x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
+#endif
         if ((y = xml_spec(x)) == NULL)
             continue;
         keyw = yang_keyword_get(y);
@@ -987,6 +996,7 @@ remove_duplicates_single(yang_stmt        *y,
  * @param[in]  vlen  Length of vec
  * @param[in]  x     Most recent XML element, for adjustment
  * @param[in]  rm    0: return 0 on first duplicate, 1: remove all duplicates
+ * @param[out] ix    xml_child_iter index variable for caller to adjust after potential removals
  * @param[out] xret  Error XML tree. Free with xml_free after use
  * @retval     1     OK, no duplicates
  * @retval     0     Validation failed (xret set) (only if rm=0)
@@ -998,6 +1008,7 @@ vec_order_analyze(yang_stmt        *y,
                   size_t            vlen,
                   cxobj            *x,
                   int               rm,
+                  int              *ix,
                   cxobj           **xret)
 {
     int  retval = -1;
@@ -1024,10 +1035,14 @@ vec_order_analyze(yang_stmt        *y,
     default:
         break;
     }
-#ifndef XML_EACH_WRAPPER
-    if (x && nr)
-        xml_vector_decrement(x, nr);
+    if (x && nr){
+#ifdef XML_XCHILD_USE_ITER33
+        if (ix)
+            *ix -= nr;
+#else
+        xml_vector_decrement(x, nr); // XXX INSTEAD should decrement ix in outer loop
 #endif
+    }
     retval = 1;
  done:
     return retval;
@@ -1067,17 +1082,23 @@ xml_duplicate_detect1(cxobj  *xt,
     char             *str;
     cxobj            *xi;
     int               v;
+    int               ix;
     int               ret;
 
     xml_enumerate_children(xt); // Could be done in-line
     y0 = NULL;
     slen0 = 0;
+#ifdef XML_XCHILD_USE_ITER33
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
+#else
     x = NULL;
     while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+#endif
         if ((y = xml_spec(x)) == NULL)
             continue;
         if (y != y0 && vec != NULL){ /* New */
-            if ((ret = vec_order_analyze(y0, vec, vlen, x, rm, xret)) < 0)
+            if ((ret = vec_order_analyze(y0, vec, vlen, x, rm, &ix, xret)) < 0)
                 goto done;
             if (ret == 0)
                 goto fail;
@@ -1177,7 +1198,7 @@ xml_duplicate_detect1(cxobj  *xt,
         y0 = y;
     }
     if (y0 && vec != NULL){
-        if ((ret = vec_order_analyze(y0, vec, vlen, NULL, rm, xret)) < 0)
+        if ((ret = vec_order_analyze(y0, vec, vlen, NULL, rm, NULL, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -1210,13 +1231,14 @@ xml_duplicate_detect(cxobj  *xt,
     int    retval = -1;
     cxobj *x;
     int    ret;
+    int    ix;
 
     if ((ret = xml_duplicate_detect1(xt, rm, xret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml_duplicate_detect(x, rm, xret)) < 0)
             goto done;
         if (ret == 0)

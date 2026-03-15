@@ -110,11 +110,13 @@ singleconfigroot(cxobj  *xt,
 {
     int    retval = -1;
     cxobj *x = NULL;
-    int    i = 0;
+    int    i;
+    int    ix;
 
     /* There should only be one element and called config */
-    x = NULL;
-    while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
+    i = 0;
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         i++;
         if (strcmp(xml_name(x), DATASTORE_TOP_SYMBOL)){
             clixon_err(OE_DB, ENOENT, "Wrong top-element %s expected %s",
@@ -126,8 +128,8 @@ singleconfigroot(cxobj  *xt,
         clixon_err(OE_DB, ENOENT, "Top-element is not unique, expecting single config");
         goto done;
     }
-    x = NULL;
-    while ((x = xml_child_each(xt, x,  CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (xml_rm(x) < 0)
             goto done;
         if (xml_free(xt) < 0)
@@ -168,6 +170,7 @@ xml_copy_bottom_recurse(cxobj  *x0t,
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
+    int        ix;
 
     if (x0 == x0t){
         *x1pp = x1t;
@@ -190,8 +193,8 @@ xml_copy_bottom_recurse(cxobj  *x0t,
         if (xml_copy_one(x0, x1) < 0)
             goto done;
         /* Copy all attributes */
-        x0a = NULL;
-        while ((x0a = xml_child_each(x0, x0a, -1)) != NULL) {
+        ix = 0;
+        while ((x0a = xml_child_iter(x0, &ix, -1)) != NULL) {
             /* Assume ordered, skip after attributes */
             if (xml_type(x0a) != CX_ATTR)
                 break;
@@ -316,6 +319,7 @@ text_read_modstate(clixon_handle    h,
     char  *fns;               /* file namespace */
     char  *sns;               /* system namespace */
     int    rfc7895=0;         /* backward-compatible: old version */
+    int    ix;
 
     /* Read module-state as computed at startup, see startup_module_state() */
     if ((xmodcache = clicon_modst_cache_get(h, 1)) != NULL)
@@ -346,8 +350,8 @@ text_read_modstate(clixon_handle    h,
             }
         }
         /* 3) For each module state m in the file */
-        xf = NULL;
-        while ((xf = xml_child_each(xmodfile, xf, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((xf = xml_child_iter(xmodfile, &ix, CX_ELMNT)) != NULL) {
             if (rfc7895){
                 if (strcmp(xml_name(xf), "module-set-id") == 0){
                     if (xml_body(xf) && (msdiff->md_content_id = strdup(xml_body(xf))) == NULL){
@@ -404,8 +408,8 @@ text_read_modstate(clixon_handle    h,
             }
         }
         /* 4) For each module state s in the system (xmodsystem) */
-        xs = NULL;
-        while ((xs = xml_child_each(xmodsystem, xs, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((xs = xml_child_iter(xmodsystem, &ix, CX_ELMNT)) != NULL) {
             if (strcmp(xml_name(xs), "module"))
                 continue; /* ignore other tags, such as module-set-id */
             if ((name = xml_find_body(xs, "name")) == NULL)
@@ -457,14 +461,15 @@ disable_nacm_on_empty(cxobj     *xt,
     cxobj     *xnacm = NULL;
     cxobj     *x;
     cxobj     *xb;
+    int        ix;
 
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-netconf-acm")) == NULL)
         goto ok;
     if ((xnacm = xpath_first(xt, NULL, "nacm")) == NULL)
         goto ok;
     /* Go through all children and check all are defaults, otherwise quit */
-    x = NULL;
-    while ((x = xml_child_each(xnacm, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xnacm, &ix, CX_ELMNT)) != NULL) {
         if (!xml_flag(x, XML_FLAG_DEFAULT))
             break;
     }

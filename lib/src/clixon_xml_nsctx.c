@@ -572,9 +572,10 @@ xml2ns_recurse(cxobj *xt)
     cxobj *x;
     char  *prefix;
     char  *namespace;
+    int    ix;
 
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((prefix = xml_prefix(x)) != NULL){
             namespace = NULL;
             if (xml2ns(x, prefix, &namespace) < 0)
@@ -795,14 +796,15 @@ xml_nsctx_parse(cxobj *xnsc,
     char  *prefix;
     char  *ns;
     cvec  *cvv;
+    int    ix;
 
     if ((cvv = cvec_new(0)) == NULL){
         clixon_err(OE_XML, errno, "cvec_new");
         goto done;
     }
     if ((xns = xml_find(xnsc, "namespace-context")) != NULL){
-        xn = NULL;
-        while ((xn = xml_child_each(xns, xn, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((xn = xml_child_iter(xns, &ix, CX_ELMNT)) != NULL) {
             ns = xml_find_body(xn, "ns");
             prefix = xml_find_body(xn, "prefix");
             if (ns){

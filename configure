@@ -769,6 +769,7 @@ enable_http1
 enable_nghttp2
 enable_netsnmp
 with_mib_generated_yang_dir
+enable_xml_child_each_wrapper
 with_configfile
 with_libxml2
 with_sigaction
@@ -1422,6 +1423,8 @@ Optional Features:
   --disable-nghttp2       Disable nghttp2 for native restconf http/2, ie
                           http/1 only
   --enable-netsnmp        Enable net-snmp Clixon YANG mapping
+  --enable-xml-child-each-wrapper
+                          Enable xml_child_each wrapper
 
 
 Optional Packages:
@@ -5645,7 +5648,7 @@ then :
 fi
 
 
-# This is for net-snmp
+# This is for net-snmp (should be "with" since it is an external project)
 # Check whether --enable-netsnmp was given.
 if test ${enable_netsnmp+y}
 then :
@@ -5781,6 +5784,35 @@ fi
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR}" >&5
 printf "%s\n" "Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR}" >&6; }
+fi
+
+# In 7.8 native xml_child_each_wrapper is disabled by default which wastes one ptr in the xml struct
+# but makes calls to xml_child_each keep their pre-7.8 performance
+# This can be enabled by --enable-xml-child-each-wrapper in which xml_child_each uses a wrapper to xml_child_iter
+# for memory footprint optimization, but make calls to xml_child_each slower
+# This variable should eventually be permanently enabled
+# Check whether --enable-xml-child-each-wrapper was given.
+if test ${enable_xml_child_each_wrapper+y}
+then :
+  enableval=$enable_xml_child_each_wrapper;
+   if test "$enableval" = no; then
+      enable_xml_child_each_wrapper=no
+   else
+      enable_xml_child_each_wrapper=yes
+   fi
+
+else $as_nop
+   enable_xml_child_each_wrapper=no
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: xml-child-each-wrapper is: $enable_xml_child_each_wrapper" >&5
+printf "%s\n" "xml-child-each-wrapper is: $enable_xml_child_each_wrapper" >&6; }
+
+if test "${enable_child_each_wrapper}" = "yes"; then
+   XML_EACH_CHILD_WRAPPER=1
+
+printf "%s\n" "#define XML_EACH_CHILD_WRAPPER 1" >>confdefs.h
+
 fi
 
 # Set default config file location

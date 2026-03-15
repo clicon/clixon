@@ -1258,6 +1258,8 @@ snmp_table_getnext(clixon_handle               h,
     yang_stmt *ycol;
     yang_stmt *ys;
     cvec      *cvk_name;
+    int        ixrow;
+    int        ixcol;
     oid        oidc[MAX_OID_LEN] = {0,}; /* Table / list oid */
     size_t     oidclen = MAX_OID_LEN;
     oid        oidk[MAX_OID_LEN] = {0,}; /* Key oid */
@@ -1289,15 +1291,15 @@ snmp_table_getnext(clixon_handle               h,
             clixon_err(OE_YANG, 0, "No keys");
             goto done;
         }
-        xrow = NULL;
-        while ((xrow = xml_child_each(xtable, xrow, CX_ELMNT)) != NULL) {
+        ixrow = 0;
+        while ((xrow = xml_child_iter(xtable, &ixrow, CX_ELMNT)) != NULL) {
             /* Get key part of OID from XML list entry */
             if ((ret = snmp_xmlkey2val_oid(xrow, cvk_name, NULL, /*&cvk_oid,*/ oidk, &oidklen)) < 0)
                 goto done;
             if (ret == 0)
                 continue; /* skip row, not all indexes */
-            xcol = NULL;
-            while ((xcol = xml_child_each(xrow, xcol, CX_ELMNT)) != NULL) {
+            ixcol = 0;
+            while ((xcol = xml_child_iter(xrow, &ixcol, CX_ELMNT)) != NULL) {
                 if ((ycol = xml_spec(xcol)) == NULL)
                     continue;
                 if (yang_keyword_get(ycol) != Y_LEAF)

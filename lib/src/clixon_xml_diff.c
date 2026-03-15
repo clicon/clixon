@@ -534,6 +534,7 @@ xml_merge_recurse(cxobj     *x0,  /* the target */
     char           *ns;
     char           *px;
     char           *pxe;
+    int             ix;
     int             ret;
 
     if (x1 == NULL || xml_type(x1) != CX_ELMNT || y0 == NULL){
@@ -597,8 +598,8 @@ xml_merge_recurse(cxobj     *x0,  /* the target */
         }
         i = 0;
         /* Loop through children of the modification tree */
-        x1c = NULL;
-        while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x1c = xml_child_iter(x1, &ix, CX_ELMNT)) != NULL) {
             x1cname = xml_name(x1c);
             /* Get yang spec of the child */
             if ((yc = yang_find_datanode(y0, x1cname)) == NULL){
@@ -699,17 +700,18 @@ xml_merge1(cxobj     *x0,
            int        dontadd,
            char     **reason)
 {
-    int        retval = -1;
-    char      *x1cname; /* child name */
-    cxobj     *x0c; /* base child */
-    cxobj     *x1c; /* mod child */
-    yang_stmt *yc;
-    yang_stmt *ymod;
-    cbuf      *cbr = NULL; /* Reason buffer */
-    int        i;
+    int             retval = -1;
+    char           *x1cname; /* child name */
+    cxobj          *x0c; /* base child */
+    cxobj          *x1c; /* mod child */
+    yang_stmt      *yc;
+    yang_stmt      *ymod;
+    cbuf           *cbr = NULL; /* Reason buffer */
+    int             i;
     merge_twophase *twophase = NULL;
-    int        twophase_len;
-    int        ret;
+    int             twophase_len;
+    int             ix;
+    int             ret;
 
     if (x0 == NULL || x1 == NULL){
         clixon_err(OE_UNIX, EINVAL, "parameters x0 or x1 is NULL");
@@ -722,8 +724,8 @@ xml_merge1(cxobj     *x0,
     }
     /* Loop through children of the modification tree */
     i = 0;
-    x1c = NULL;
-    while ((x1c = xml_child_each(x1, x1c, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x1c = xml_child_iter(x1, &ix, CX_ELMNT)) != NULL) {
         x1cname = xml_name(x1c);
         if ((ys_module_by_xml(yspec, x1c, &ymod)) < 0)
             goto done;

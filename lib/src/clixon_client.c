@@ -400,13 +400,14 @@ clixon_xml_bottom(cxobj  *xtop,
     cxobj *x;
     cxobj *xp;
     cxobj *xc = NULL;
+    int    ix;
 
     xp = xtop;
     while (xp != NULL){
         /* Find child, if many, one which is not a key, if any */
         xc = NULL;
-        x = NULL;
-        while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL)
+        ix = 0;
+        while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL)
             xc = x;
         /* xc is last XXX */
         if (xc == NULL)

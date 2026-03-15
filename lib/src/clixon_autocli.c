@@ -160,6 +160,8 @@ autocli_module(clixon_handle h,
     int    op;
     cxobj *xautocli;
     char  *body;
+    int    ix;
+    int    ixc;
 
     if (enablep == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -176,8 +178,8 @@ autocli_module(clixon_handle h,
     enable = strcmp(str, "true") == 0;
     if (enable && modname == NULL)
         goto ok;
-    xrule = NULL;
-    while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xrule = xml_child_iter(xautocli, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(xrule), "rule") != 0)
             continue;
         if ((str = xml_find_body(xrule, "operation")) == NULL)
@@ -188,8 +190,8 @@ autocli_module(clixon_handle h,
             /* Enable rules logic is:
              * - If match, break, done
              */
-            xmod = NULL;
-            while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
+            ixc = 0;
+            while ((xmod = xml_child_iter(xrule, &ixc, CX_ELMNT)) != NULL) {
                 if ((element = xml_name(xmod)) == NULL)
                     continue;
                 if (strcmp(element, "module-name") == 0){
@@ -207,8 +209,8 @@ autocli_module(clixon_handle h,
             }
         }
         else if (enable && op == AUTOCLI_OP_DISABLE) {
-            xmod = NULL;
-            while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
+            ixc = 0;
+            while ((xmod = xml_child_iter(xrule, &ixc, CX_ELMNT)) != NULL) {
                 if ((element = xml_name(xmod)) == NULL)
                     continue;
                 if (strcmp(element, "module-name") == 0){
@@ -282,7 +284,7 @@ autocli_compress_extension(yang_stmt *ys,
  * - At least one compress rules that match
  *
  * @param[in]  h        Clixon handle
- * @param[out] compress 
+ * @param[out] compress
  * @retval     0        OK, and compress set
  * @retval    -1        Error
  * Canonical examples:
@@ -315,6 +317,8 @@ autocli_compress(clixon_handle h,
     const char *keywstr;
     int        match = 0;
     char      *body;
+    int        ix;
+    int        ixc;
 
     if (compress == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -329,8 +333,8 @@ autocli_compress(clixon_handle h,
     keyw = yang_keyword_get(ys);
     keywstr = yang_key2str(keyw);
     nodeid = yang_argument_get(ys);
-    xrule = NULL;
-    while ((xrule = xml_child_each(xautocli, xrule, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xrule = xml_child_iter(xautocli, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(xrule), "rule") != 0)
             continue;
         if ((str = xml_find_body(xrule, "operation")) == NULL)
@@ -344,8 +348,8 @@ autocli_compress(clixon_handle h,
          * - If not match, continue to next rule
          */
         match = 1;
-        xmod = NULL;
-        while ((xmod = xml_child_each(xrule, xmod, CX_ELMNT)) != NULL) {
+        ixc = 0;
+        while ((xmod = xml_child_iter(xrule, &ixc, CX_ELMNT)) != NULL) {
             if ((element = xml_name(xmod)) == NULL)
                 continue;
             if (strcmp(element, "name") == 0 ||
@@ -669,6 +673,7 @@ cli2cbuf(clixon_handle h,
     autocli_listkw_t listkw;
     int              exist = 0;
     char            *name;
+    int              ix;
 
     if (autocli_list_keyword(h, &listkw) < 0)
         goto done;
@@ -719,8 +724,8 @@ cli2cbuf(clixon_handle h,
 
     /* If list then first loop through keys */
     if (yang_keyword_get(ys) == Y_LIST){
-        xe = NULL;
-        while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+        ix = 0;
+        while ((xe = xml_child_iter(xn, &ix, -1)) != NULL) {
             if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
                 goto done;
             if (!match)
@@ -750,8 +755,8 @@ cli2cbuf(clixon_handle h,
     if (yang_keyword_get(ys) == Y_LIST)
         cprintf(cb, "%s\n", cbuf_get(cbpre));
     /* Then loop through all other (non-keys) */
-    xe = NULL;
-    while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+    ix = 0;
+    while ((xe = xml_child_iter(xn, &ix, -1)) != NULL) {
         if (yang_keyword_get(ys) == Y_LIST){
             if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
                 goto done;
@@ -798,6 +803,7 @@ cli2file(clixon_handle     h,
     autocli_listkw_t listkw;
     int              exist = 0;
     char            *name;
+    int              ix;
 
     if (autocli_list_keyword(h, &listkw) < 0)
         goto done;
@@ -848,8 +854,8 @@ cli2file(clixon_handle     h,
 
     /* If list then first loop through keys */
     if (yang_keyword_get(ys) == Y_LIST){
-        xe = NULL;
-        while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+        ix = 0;
+        while ((xe = xml_child_iter(xn, &ix, -1)) != NULL) {
             if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
                 goto done;
             if (!match)
@@ -879,8 +885,8 @@ cli2file(clixon_handle     h,
     if (yang_keyword_get(ys) == Y_LIST)
         (*fn)(f, "%s\n", cbuf_get(cbpre));
     /* Then loop through all other (non-keys) */
-    xe = NULL;
-    while ((xe = xml_child_each(xn, xe, -1)) != NULL){
+    ix = 0;
+    while ((xe = xml_child_iter(xn, &ix, -1)) != NULL) {
         if (yang_keyword_get(ys) == Y_LIST){
             if ((match = yang_key_match(ys, xml_name(xe), NULL)) < 0)
                 goto done;
@@ -920,14 +926,15 @@ clixon_cli2file(clixon_handle     h,
                 clicon_output_cb *fn,
                 int               skiptop)
 {
-    int   retval = 1;
+    int    retval = 1;
     cxobj *xc;
+    int    ix;
 
     if (fn == NULL)
         fn = fprintf;
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+        ix = 0;
+        while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL)
             if (cli2file(h, f, xc, prepend, fn) < 0)
                 goto done;
     }
@@ -963,10 +970,11 @@ clixon_cli2cbuf(clixon_handle h,
 {
     int   retval = 1;
     cxobj *xc;
+    int   ixc;
 
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+        ixc = 0;
+        while ((xc = xml_child_iter(xn, &ixc, CX_ELMNT)) != NULL)
             if (cli2cbuf(h, cb, xc, prepend) < 0)
                 goto done;
     }

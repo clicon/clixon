@@ -238,6 +238,7 @@ api_data_write(clixon_handle h,
     char          *xpath = NULL;
     char          *attr;
     int            nr;
+    int            ix;
     int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "api_path:\"%s\"", api_path0);
@@ -306,8 +307,8 @@ api_data_write(clixon_handle h,
     else
         xdata0 = xdata00;
     /* Mark existing elements as DEL to detect which are added */
-    xc = NULL;
-    while ((xc = xml_child_each(xdata0, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xdata0, &ix, CX_ELMNT)) != NULL) {
         xml_flag_set(xc, XML_FLAG_MARK);
     }
     if (xml_spec(xdata0)==NULL){
@@ -366,8 +367,8 @@ api_data_write(clixon_handle h,
      */
     nr = 0;
     xdata = NULL;
-    xc = NULL;
-    while ((xc = xml_child_each(xdata0, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xdata0, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(xc, XML_FLAG_MARK) == 0x0){
             nr++;
             xdata = xc;

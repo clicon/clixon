@@ -998,6 +998,7 @@ load_config_file(clixon_handle h,
     yang_stmt       *yspec;
     cxobj           *xerr = NULL;
     char            *lineptr = NULL;
+    int              ix;
     int              ret;
 
     if (cvec_len(argv) < 2 || cvec_len(argv) > 4){
@@ -1112,8 +1113,8 @@ load_config_file(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         /* Read as datastore-top but transformed into an edit-config "config" */
         xml_name_set(x, NETCONF_INPUT_CONFIG);
     }

@@ -1624,6 +1624,7 @@ cli_show_statistics(clixon_handle h,
     int         cli = 0;
     int         backend = 0;
     int         detail = 0;
+    int         ix;
     pt_head    *ph;
     parse_tree *pt;
     uint64_t    nr;
@@ -1773,8 +1774,8 @@ cli_show_statistics(clixon_handle h,
             /* Print header: Total first, then per-datastore */
             cligen_output(stdout, "%-16s %12s", "XML Type", "Total");
             if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
-                x = NULL;
-                while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+                ix = 0;
+                while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "datastore") != 0)
                         continue;
                     name = xml_find_body(x, "name");
@@ -1805,8 +1806,8 @@ cli_show_statistics(clixon_handle h,
                 }
                 tsz = 0;
                 if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
-                    x = NULL;
-                    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+                    ix = 0;
+                    while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                         if (strcmp(xml_name(x), "datastore") != 0)
                             continue;
                         parse_uint64(xml_find_body(x, "size"), &sz, NULL);
@@ -1832,8 +1833,8 @@ cli_show_statistics(clixon_handle h,
             }
             tsz = 0;
             if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
-                x = NULL;
-                while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+                ix = 0;
+                while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "datastore") != 0)
                         continue;
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
@@ -1854,8 +1855,8 @@ cli_show_statistics(clixon_handle h,
             /* --- YANG section --- */
             cligen_output(stdout, "%-16s\n", "YANG");
             if ((xp = xml_find_type(xret_all, NULL, "module-sets", CX_ELMNT)) != NULL){
-                x = NULL;
-                while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+                ix = 0;
+                while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "module-set") != 0)
                         continue;
                     if ((name = xml_find_body(x, "name")) == NULL)

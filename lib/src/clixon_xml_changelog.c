@@ -518,6 +518,7 @@ xml_namespace_vec(clixon_handle h,
     cxobj  *xc;
     char   *ns0;
     int     i;
+    int     ix;
 
     /* Allocate upper bound on length (ie could be too large) + a NULL element
      * (event though we use veclen)
@@ -530,7 +531,8 @@ xml_namespace_vec(clixon_handle h,
     /* Iterate and find xml nodes with assoctaed namespace */
     xc = NULL;
     i = 0;
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (xml2ns(xc, NULL, &ns0) < 0) /* Get namespace of XML */
             goto done;
         if (strcmp(ns, ns0))

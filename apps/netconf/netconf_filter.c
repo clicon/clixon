@@ -114,12 +114,13 @@ xml_filter_recursive(cxobj *xfilter,
     cxobj *sprev;
     cxobj *f;
     cxobj *attr;
-    char *an;
-    char *af;
-    char *fstr;
-    char *sstr;
-    int   containments;
-    int   remove_s;
+    char  *an;
+    char  *af;
+    char  *fstr;
+    char  *sstr;
+    int    containments;
+    int    remove_s;
+    int    ix;
 
     *remove_me = 0;
     /* 1. Check selection */
@@ -129,15 +130,16 @@ xml_filter_recursive(cxobj *xfilter,
     /* Count containment/selection nodes in filter */
     f = NULL;
     containments = 0;
-    while ((f = xml_child_each(xfilter, f, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((f = xml_child_iter(xfilter, &ix, CX_ELMNT)) != NULL) {
         if (leafstring(f))
             continue;
         containments++;
     }
 
     /* 2. Check attribute match */
-    attr = NULL;
-    while ((attr = xml_child_each(xfilter, attr, CX_ATTR)) != NULL) {
+    ix = 0;
+    while ((attr = xml_child_iter(xfilter, &ix, CX_ATTR)) != NULL) {
         af = xml_value(attr);
         an = xml_find_value(xfilter, xml_name(attr));
         if (af && an && strcmp(af, an)==0)
@@ -146,8 +148,8 @@ xml_filter_recursive(cxobj *xfilter,
             goto nomatch;
     }
     /* 3. Check content match */
-    f = NULL;
-    while ((f = xml_child_each(xfilter, f, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((f = xml_child_iter(xfilter, &ix, CX_ELMNT)) != NULL) {
         if ((fstr = leafstring(f)) == NULL)
             continue;
         if ((s = xml_find(xparent, xml_name(f))) == NULL)
@@ -162,9 +164,11 @@ xml_filter_recursive(cxobj *xfilter,
         goto match;
     /* Check recursively the rest of the siblings */
     sprev = s = NULL;
-    while ((s = xml_child_each(xparent, s, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((s = xml_child_iter(xparent, &ix, CX_ELMNT)) != NULL) {
         if ((f = xml_find(xfilter, xml_name(s))) == NULL){
             xml_purge(s);
+            ix--;
             s = sprev;
             continue;
         }
@@ -178,6 +182,7 @@ xml_filter_recursive(cxobj *xfilter,
             return -1;
         if (remove_s){
             xml_purge(s);
+            ix--;
             s = sprev;
         }
         sprev = s;

@@ -134,6 +134,7 @@ xml2cvec(cxobj      *xt,
     char             *body;
     char             *reason = NULL;
     char             *name;
+    int               ix;
     int               ret;
 
     xc = NULL;
@@ -142,9 +143,9 @@ xml2cvec(cxobj      *xt,
         clixon_err(OE_UNIX, errno, "cvec_new");
         goto err;
     }
-    xc = NULL;
     /* Go through all children of the xml tree */
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         name = xml_name(xc);
         if ((ys = yang_find_datanode(yt, name)) == NULL){
             clixon_debug(CLIXON_DBG_ALWAYS, "yang sanity problem: %s in xml but not present in yang under %s",
@@ -293,20 +294,19 @@ xml_tree_prune_flagged_sub(cxobj *xt,
     int        submark;
     int        mark;
     cxobj     *x;
-    cxobj     *xprev;
     int        iskey;
     int        anykey=0;
     yang_stmt *yt;
+    int        ix;
 
     mark = 0;
     yt = xml_spec(xt); /* can be null */
     x = NULL;
-    xprev = x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(x, flag) == (test?flag:0)){
             /* Pass test */
             mark++;
-            xprev = x;
             continue; /* mark and stop here */
         }
         /* If it is key dont remove it yet (see second round) */
@@ -315,7 +315,6 @@ xml_tree_prune_flagged_sub(cxobj *xt,
                 goto done;
             if (iskey){
                 anykey++;
-                xprev = x; /* skip if this is key */
                 continue;
             }
         }
@@ -328,24 +327,23 @@ xml_tree_prune_flagged_sub(cxobj *xt,
         else{ /* Safe with xml_child_each if last */
             if (xml_purge(x) < 0)
                 goto done;
-            x = xprev;
+            ix--;
         }
-        xprev = x;
     }
     /* Second round: if any keys were found, and no marks detected, purge now */
     if (anykey && !mark){
-        x = NULL;
-        xprev = x = NULL;
-        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
             /* If it is key remove it here */
             if (yt){
                 if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
                     goto done;
-                if (iskey && xml_purge(x) < 0)
-                    goto done;
-                x = xprev;
+                if (iskey){
+                    if (xml_purge(x) < 0)
+                        goto done;
+                    ix--;
+                }
             }
-            xprev = x;
         }
     }
     retval = 0;
@@ -380,11 +378,12 @@ xml_tree_mark_flagged_sub(cxobj *xt,
     int        iskey;
     int        anykey=0;
     yang_stmt *yt;
+    int        ix;
 
     mark = 0;
     yt = xml_spec(xt); /* can be null */
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(x, flag) == (test?flag:0)){
             /* Pass test */
             mark++;
@@ -412,8 +411,8 @@ xml_tree_mark_flagged_sub(cxobj *xt,
     /* Second round: if any keys were found, and no marks detected, purge now */
     if (anykey && !mark){
         x = NULL;
-        x = NULL;
-        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
             /* If it is key remove it here */
             if (yt){
                 if ((iskey = yang_key_match(yt, xml_name(x), NULL)) < 0)
@@ -476,15 +475,15 @@ xml_tree_prune_flags1(cxobj *xt,
 {
     int     retval = -1;
     cxobj  *x;
-    cxobj  *xprev;
+    int     ix;
 
     x = NULL;
-    xprev = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(x, mask) == flags){        /* Pass test means purge */
             if (xml_purge(x) < 0)
                 goto done;
-            x = xprev;
+            ix--;
             if (removed)
                 (*removed)++;
             continue;
@@ -492,7 +491,6 @@ xml_tree_prune_flags1(cxobj *xt,
         if (recursive)
             if (xml_tree_prune_flags1(x, flags, mask, 1, removed) < 0)
                 goto done;
-        xprev = x;
     }
     retval = 0;
  done:
@@ -596,10 +594,11 @@ xml_non_config_data(cxobj  *xt,
     cxobj     *x;
     yang_stmt *y;
     cbuf      *cb = NULL;
+    int        ix;
     int        ret;
 
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((y = (yang_stmt*)xml_spec(x)) == NULL)
             goto ok;
         if (!yang_config(y)){ /* config == false means state data */
@@ -1378,6 +1377,7 @@ xml_copy_marked(cxobj *x0,
     yang_stmt *yt;
     char      *name;
     char      *prefix;
+    int        ix;
 
     if (x0 == NULL || x1 == NULL){
         clixon_err(OE_UNIX, EINVAL, "x0 or x1 is NULL");
@@ -1404,15 +1404,15 @@ xml_copy_marked(cxobj *x0,
      * node in list is marked
      */
     mark = 0;
-    x = NULL;
-    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(x0, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(x, XML_FLAG_MARK|XML_FLAG_CHANGE)){
             mark++;
             break;
         }
     }
-    x = NULL;
-    while ((x = xml_child_each(x0, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(x0, &ix, CX_ELMNT)) != NULL) {
         name = xml_name(x);
         if (xml_flag(x, XML_FLAG_MARK)){
             /* (2) the complete subtree of that node is copied. */
@@ -1648,8 +1648,10 @@ xml_find_action(cxobj  *xn,
     int        retval = -1;
     cxobj     *xc = NULL;
     yang_stmt *yc;
+    int        ix;
 
-    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if ((yc = xml_spec(xc)) == NULL)
             continue;
         if (!top && yang_keyword_get(yc) == Y_ACTION){
@@ -1689,14 +1691,13 @@ purge_tagged_nodes(cxobj      *xn,
     int    retval = -1;
     cxobj *x;
     cxobj *xa;
-    cxobj *xprev;
     char  *prefix;
     char  *v;
+    int    ix;
     int    ret;
 
-    x = NULL;
-    xprev = NULL;
-    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml2prefix(x, ns, &prefix)) < 0)
             goto done;
         if (ret == 0)
@@ -1706,14 +1707,13 @@ purge_tagged_nodes(cxobj      *xn,
                 (v = xml_value(xa)) != NULL &&
                 strcmp(v, value) == 0){
                 xml_purge(x);
-                x = xprev;
+                ix--;
                 continue;
             }
             xml_purge(xa); /* remove attribute regardless */
         }
         if (purge_tagged_nodes(x, ns, name, value, keepnode) < 0)
             goto done;
-        xprev = x;
     }
     retval = 0;
  done:

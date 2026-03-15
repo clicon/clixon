@@ -333,8 +333,8 @@ nodetest_recursive(cxobj      *xn,
     cxobj **vec = *vec0;
     size_t  veclen = *vec0len;
 
-    xsub = NULL;
-    while ((xsub = xml_child_each(xn, xsub, node_type)) != NULL) {
+    int ixsub = 0;
+    while ((xsub = xml_child_iter(xn, &ixsub, node_type)) != NULL) {
         if (nodetest_eval(xsub, nodetest, nsc, localonly) == 1){
             clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%x %x", flags, xml_flag(xsub, flags));
             if (flags==0x0 || xml_flag(xsub, flags))
@@ -382,6 +382,7 @@ xp_eval_step(xp_ctx     *xc0,
     cxobj      *xp;
     cxobj     **vec = NULL;
     size_t      veclen = 0;
+    int         ix;
     xpath_tree *nodetest = xs->xs_c0;
     xp_ctx     *xc = NULL;
     int         ret;
@@ -437,7 +438,8 @@ xp_eval_step(xp_ctx     *xc0,
                         free(vec0);
                 }
                 else if (ret == 0){/* regular code, no optimization made */
-                    while ((x = xml_child_each(xv, x, CX_ELMNT)) != NULL) {
+                    ix = 0;
+                    while ((x = xml_child_iter(xv, &ix, CX_ELMNT)) != NULL) {
                         /* xs->xs_c0 is nodetest */
                         if (nodetest == NULL ||
                             nodetest_eval(x, nodetest, nsc, localonly) == 1){

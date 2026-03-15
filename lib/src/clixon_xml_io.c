@@ -121,6 +121,7 @@ xml2output_wdef(cxobj            *x,
     cxobj     *xc;
     yang_stmt *y;
     int        config;
+    int        ix;
     int        ret;
 
     if ((y = xml_spec(x)) == NULL)
@@ -136,8 +137,8 @@ xml2output_wdef(cxobj            *x,
             if (yang_find(y, Y_PRESENCE, NULL) == NULL){
                 keep = 0;
                 /* Loop thru children */
-                xc = NULL;
-                while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+                ix = 0;
+                while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
                     if ((ret = xml2output_wdef(xc, wdef, NULL)) < 0)
                         goto done;
                     if (ret == 1)
@@ -261,6 +262,7 @@ xml2file_recurse(FILE                *f,
     int        subfile = 0;   /* File is split into subfile */
     char      *xpath = NULL;
     char      *hexstr = NULL;
+    int        ix;
     int        ret;
 
     if (x == NULL)
@@ -317,9 +319,9 @@ xml2file_recurse(FILE                *f,
             (*fn)(f, " wd:default=\"true\"");
         hasbody = 0;
         haselement = 0;
-        xc = NULL;
         /* print attributes only */
-        while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+        ix = 0;
+        while ((xc = xml_child_iter(x, &ix, -1)) != NULL) {
             switch (xml_type(xc)){
             case CX_ATTR:
                 if (xml2file_recurse(f, xc, level+1, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
@@ -362,8 +364,8 @@ xml2file_recurse(FILE                *f,
                     (*fn)(f, "\n");
                 }
             }
-            xc = NULL;
-            while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+            ix = 0;
+            while ((xc = xml_child_iter(x, &ix, -1)) != NULL) {
                 cxobj *xa = NULL;
                 char  *ns = NULL;
 
@@ -452,14 +454,15 @@ clixon_xml2file1(FILE                *f,
                  int                  multi,
                  int                  system_only)
 {
-    int   retval = 1;
+    int    retval = 1;
     cxobj *xc;
+    int    ix;
 
     if (fn == NULL)
         fn = fprintf;
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+        ix = 0;
+        while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL)
             if (xml2file_recurse(f, xc, level, pretty, prefix, fn, autocliext, wdef, multi, system_only) < 0)
                 goto done;
     }
@@ -529,10 +532,11 @@ xml_print1(FILE  *f,
            cxobj *xn)
 {
     cxobj *xc;
+    int    ix;
 
     fprintf(f, "<%s>\n", xml_name(xn));
-    xc = NULL;
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, -1)) != NULL) {
         switch(xml_type(xc)){
         case CX_BODY:
             fprintf(stderr, "   %s\n", xml_value(xc));
@@ -559,6 +563,7 @@ xml_dump1(FILE  *f,
           int    indent)
 {
     cxobj *xc;
+    int    ix;
 
     if (xml_type(x) != CX_ELMNT)
         return 0;
@@ -582,8 +587,8 @@ xml_dump1(FILE  *f,
     if (xml_flag(x, XML_FLAG_CACHE_DIRTY))
         fprintf(f, " cache-dirty");
     fprintf(f, "\n");
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, -1)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, -1)) != NULL) {
         xml_dump1(f, xc, indent+1);
     }
     return 0;
@@ -641,6 +646,7 @@ xml2cbuf_recurse(cbuf             *cb,
     int        level1;
     yang_stmt *y;
     int        tag = 0;
+    int        ix;
     int        ret;
 
     if (depth == 0)
@@ -694,9 +700,9 @@ xml2cbuf_recurse(cbuf             *cb,
             cbuf_append_str(cb, " wd:default=\"true\"");
         hasbody = 0;
         haselement = 0;
-        xc = NULL;
         /* print attributes only */
-        while ((xc = xml_child_each(x, xc, -1)) != NULL)
+        ix = 0;
+        while ((xc = xml_child_iter(x, &ix, -1)) != NULL)
             switch (xml_type(xc)){
             case CX_ATTR:
                 if (xml2cbuf_recurse(cb, xc, level+1, pretty, prefix, -1, cli_aware, wdef) < 0)
@@ -718,8 +724,8 @@ xml2cbuf_recurse(cbuf             *cb,
             cbuf_append_str(cb, ">");
             if (pretty && hasbody == 0)
                 cbuf_append_str(cb, "\n");
-            xc = NULL;
-            while ((xc = xml_child_each(x, xc, -1)) != NULL)
+            ix = 0;
+            while ((xc = xml_child_iter(x, &ix, -1)) != NULL)
                 if (xml_type(xc) != CX_ATTR){
                     cxobj *xa = NULL;
                     char  *ns = NULL;
@@ -768,7 +774,7 @@ xml2cbuf_recurse(cbuf             *cb,
     return retval;
 }
 
-/*! Print an XML tree structure to a cligen buffer and encode chars "<>&" 
+/*! Print an XML tree structure to a cligen buffer and encode chars "<>&"
  *
  * Extended version with with-defaults
  * @param[in,out] cb      Cligen buffer to write to
@@ -805,10 +811,11 @@ clixon_xml2cbuf1(cbuf             *cb,
 {
     int    retval = -1;
     cxobj *xc;
+    int    ix;
 
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+        ix = 0;
+        while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL)
             if (xml2cbuf_recurse(cb, xc, level, pretty, prefix, depth, cli_aware, wdef) < 0)
                 goto done;
     }
@@ -857,6 +864,7 @@ xmltree2cbuf(cbuf  *cb,
 {
     cxobj *xc;
     int    i;
+    int    ix;
 
     for (i=0; i<level*PRETTYPRINT_INDENT; i++)
         cprintf(cb, " ");
@@ -873,8 +881,8 @@ xmltree2cbuf(cbuf  *cb,
     if (xml_child_nr(x))
         cprintf(cb, " {");
     cprintf(cb, "\n");
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, -1)) != NULL)
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, -1)) != NULL)
         xmltree2cbuf(cb, xc, level+1);
     if (xml_child_nr(x)){
         for (i=0; i<level*PRETTYPRINT_INDENT; i++)

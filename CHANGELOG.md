@@ -54,10 +54,11 @@ Developers may need to change their code
     ```
     cxobj   *xc;
     int      ix;
+
     ix = 0;
-    while ((xc = xml_child_iter(xt, &ixc, elmnt)) != NULL) {
+    while ((xc = xml_child_iter(xt, &ix, elmnt)) != NULL) {
     ```
-  * Existing `xml_child_each()` remains as backward compatible but has (much) reduced performancce.
+  * Run: `configure --enable-child-each-wrapper` after migration
 * Replace `xml_merge()` with `xml_merge1()`
      * Example change: `xml_merge(...,r)` --> `xml_merge1(...,0,r)`
 * Replace `xml_yang_validate_all_top()` with `xml_yang_validate_all_state()'

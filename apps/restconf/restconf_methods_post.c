@@ -186,6 +186,7 @@ api_data_post(clixon_handle h,
     cxobj         *x;
     char          *username;
     int            nrchildren0 = 0;
+    int            ix;
     yang_bind      yb;
     int            ret;
 
@@ -226,8 +227,8 @@ api_data_post(clixon_handle h,
 
     /* Record how many children before parse (after check nr should be +1) */
     nrchildren0 = 0;
-    x = NULL;
-    while ((x = xml_child_each(xbot, x, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((x = xml_child_iter(xbot, &ix, CX_ELMNT)) != NULL) {
         nrchildren0++;
         xml_flag_set(x, XML_FLAG_MARK);
     }
@@ -286,8 +287,8 @@ api_data_post(clixon_handle h,
         goto ok;
     }
     /* Find the actual (new) object, the single unmarked one */
-    x = NULL;
-    while ((x = xml_child_each(xbot, x, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((x = xml_child_iter(xbot, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(x, XML_FLAG_MARK)){
             xml_flag_reset(x, XML_FLAG_MARK);
             continue;
@@ -636,6 +637,7 @@ api_operations_post_output(clixon_handle h,
     cxobj     *x;
     cxobj     *xok;
     int        isempty;
+    int        ix;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     /* Validate that exactly only <rpc-reply> tag with exactly one element child */
@@ -707,8 +709,8 @@ api_operations_post_output(clixon_handle h,
         goto fail;
     }
     /* Clear namespace of parameters */
-    x = NULL;
-    while ((x = xml_child_each(xoutput, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xoutput, &ix, CX_ELMNT)) != NULL) {
         if ((xa = xml_find_type(x, NULL, "xmlns", CX_ATTR)) != NULL)
             if (xml_purge(xa) < 0)
                 goto done;

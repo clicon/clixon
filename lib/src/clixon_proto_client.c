@@ -2265,6 +2265,7 @@ clixon_rpc_translate_format(clixon_handle    h,
     char      *str;
     char      *strdec = NULL;
     cg_var    *cv;
+    int        ix;
     int        ret;
 
     yspec0 = clicon_dbspec_yang(h);
@@ -2303,8 +2304,8 @@ clixon_rpc_translate_format(clixon_handle    h,
         cprintf(cb, "</namespace-context>");
     }
     cprintf(cb, "<xml>");
-    xn = NULL;
-    while ((xn = xml_child_each(xt, xn, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xn = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (clixon_xml2cbuf1(cb, xn, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
             goto done;
     }

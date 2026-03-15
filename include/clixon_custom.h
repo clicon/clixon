@@ -316,18 +316,17 @@
  */
 #undef YANGLIB_MODSET_NAME_DEFAULT
 
-/*! Make xml_child_each a wrapper around xml_child_iter
- *
- * Calls to xml_child_each() are being migrated to use xml_child_iter() instead of childvec, see XML_CHILD_USE_ITER
- * But this is a large change and needs to be done in steps due to performance reasons.
- * That is, as long as there are remaining calls to xml_child_each() this option should be disabled to ensure high performance.
- * If there are remaining calls to xml_child_each() and this option is enabled, then xml_child_each() will be implemented as a
- * wrapper around xml_child_iter() which will cause a significant performance degradation.
- */
-#undef XML_EACH_WRAPPER
-
-/*! Migrate xml_child_each to use xml_child_iter instead of childvec
- *
- * Temporary option to migrate calls to xml_child_each() to use xml_child_iter() instead of childvec.
- */
 #define XML_CHILD_USE_ITER
+
+/*! Always undef really
+ * test_api.sh
+ */
+#undef XML_XCHILD_USE_ITER31
+
+/*!
+# test_netconf_duplicate.sh
+# test_unique.sh
+   xml_duplicate_detect1 # 33
+      vec_order_analyze x2 # 33
+ */
+#undef XML_XCHILD_USE_ITER33

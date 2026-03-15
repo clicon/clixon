@@ -1045,6 +1045,7 @@ yang_file_find_match(clixon_handle h,
     cbuf          *cb = NULL;
     struct dirent *dp = NULL;
     int            ndp;
+    int            ix;
 
     /* get clicon config file in xml form */
     if ((x = clicon_conf_xml(h)) == NULL)
@@ -1090,8 +1091,8 @@ yang_file_find_match(clixon_handle h,
         }
     }
     /* Second look in recursive YANG lib dirs */
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(xc), "CLICON_YANG_DIR") == 0 &&
             (dir = xml_body(xc)) != NULL){
             /* get all matching files in this directory recursively */

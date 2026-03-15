@@ -91,14 +91,15 @@ static int
 tleaf(cxobj *x)
 {
     cxobj *xc;
+    int    ix;
 
     if (xml_type(x) != CX_ELMNT)
         return 0;
     if (xml_child_nr_notype(x, CX_ATTR) != 1)
         return 0;
     /* From here exactly one noattr child, get it */
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, -1)) != NULL)
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, -1)) != NULL)
         if (xml_type(xc) != CX_ATTR)
             break;
     if (xc == NULL)
@@ -129,6 +130,7 @@ text_wdef(cxobj            *x,
     cxobj     *xc;
     yang_stmt *yc;
     int        config;
+    int        ix;
     int        ret;
 
     switch (wdef){
@@ -142,8 +144,8 @@ text_wdef(cxobj            *x,
             if (yang_find(y, Y_PRESENCE, NULL) == NULL){
                 keep = 0;
                 /* Loop thru children */
-                xc = NULL;
-                while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+                ix = 0;
+                while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
                     if ((yc = xml_spec(xc)) != NULL){
                         if ((ret = text_wdef(xc, yc, wdef)) < 0)
                             goto done;
@@ -226,6 +228,7 @@ text2file(cxobj            *xn,
     cg_var    *cvi;
     cvec      *cvk = NULL; /* vector of index keys */
     cbuf      *cbb = NULL;
+    int        ix;
 #ifndef TEXT_SYNTAX_NOPREFIX
     yang_stmt *yp = NULL;
     yang_stmt *ymod;
@@ -280,8 +283,8 @@ text2file(cxobj            *xn,
             (*fn)(f, "%*s]\n", PRETTYPRINT_INDENT*(level), "");
         }
     }
-    xc = NULL;     /* count children (elements and bodies, not attributes) */
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL)
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, -1)) != NULL)
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
             children++;
     if (children == 0){ /* If no children print line */
@@ -341,8 +344,8 @@ text2file(cxobj            *xn,
         (*fn)(f, " {\n");
     else
         (*fn)(f, " ");
-    xc = NULL;
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL){
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, -1)) != NULL) {
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
             if (yn && yang_key_match(yn, xml_name(xc), NULL))
                 continue; /* Skip keys, already printed */
@@ -429,6 +432,7 @@ text2cbuf(cbuf             *cb,
     cbuf      *cbb = NULL;
     int        level1;
     char      *prefix = NULL;
+    int        ix;
     int        ret;
 
     if (xn == NULL || cb == NULL){
@@ -471,8 +475,8 @@ text2cbuf(cbuf             *cb,
             cprintf(cb, "%*s\n", level1, "]");
         }
     }
-    xc = NULL;     /* count children (elements and bodies, not attributes) */
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL)
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, -1)) != NULL)
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
             children++;
     if (children == 0){ /* If no children print line */
@@ -537,8 +541,8 @@ text2cbuf(cbuf             *cb,
         cprintf(cb, " {\n");
     else
         cprintf(cb, " ");
-    xc = NULL;
-    while ((xc = xml_child_each(xn, xc, -1)) != NULL){
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, -1)) != NULL) {
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY){
             if (yn && yang_key_match(yn, xml_name(xc), NULL))
                 continue; /* Skip keys, already printed */
@@ -589,12 +593,13 @@ clixon_text2file(FILE             *f,
     cxobj *xc;
     int    leafl = 0;
     char  *leaflname = NULL;
+    int    ix;
 
     if (fn == NULL)
         fn = fprintf;
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+        ix = 0;
+        while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL)
             if (text2file(xc, fn, f, level, autocliext, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
     }
@@ -628,10 +633,11 @@ clixon_text2cbuf(cbuf             *cb,
     cxobj *xc;
     int    leafl = 0;
     char  *leaflname = NULL;
+    int    ix;
 
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL)
+        ix = 0;
+        while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL)
             if (text2cbuf(cb, xc, level, NULL, autocliext, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
     }
@@ -1053,6 +1059,7 @@ text_populate_list(cxobj *xn)
     cvec      *cvk; /* vector of index keys */
     cg_var    *cvi = NULL;
     char      *namei;
+    int        ix;
 
     if ((yn = xml_spec(xn)) == NULL)
         goto ok;
@@ -1082,8 +1089,8 @@ text_populate_list(cxobj *xn)
         if (xml_sort(xn) < 0)
             goto done;
     }
-    xc = NULL;
-    while ((xc = xml_child_each(xn, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if (text_populate_list(xc) < 0)
             goto done;
     }
@@ -1120,6 +1127,8 @@ _text_syntax_parse(const char *str,
     cbuf                   *cberr = NULL;
     int                     failed = 0; /* yang assignment */
     cxobj                  *xc;
+    int                     ix;
+    int                     ixc;
     int                     ret;
 
     if (clixon_debug_get() & CLIXON_DBG_DETAIL)
@@ -1142,9 +1151,8 @@ _text_syntax_parse(const char *str,
             clixon_err(OE_JSON, 0, "TEXT SYNTAX parser error with no error code (should not happen)");
         goto done;
     }
-
-    x = NULL;
-    while ((x = xml_child_each(ts.ts_xtop, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(ts.ts_xtop, &ix, CX_ELMNT)) != NULL) {
         /* Populate, ie associate xml nodes with yang specs
          */
         switch (yb){
@@ -1167,8 +1175,8 @@ _text_syntax_parse(const char *str,
             break;
         } /* switch */
         /* Look for YANG lists nodes and convert bodies to keys */
-        xc = NULL;
-        while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL)
+        ixc = 0;
+        while ((xc = xml_child_iter(x, &ixc, CX_ELMNT)) != NULL)
             if (text_populate_list(xc) < 0)
                 goto done;
     }

@@ -767,14 +767,15 @@ xyanglib_digest(cxobj *xylib,
     cxobj *xmodset;
     cxobj *xmodule;
     char  *b;
+    int    ix;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
     if ((xmodset = xml_find(xylib, "module-set")) != NULL){
-        xmodule = NULL;
-        while ((xmodule = xml_child_each(xmodset, xmodule, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((xmodule = xml_child_iter(xmodset, &ix, CX_ELMNT)) != NULL) {
             if (strcmp(xml_name(xmodule), "name") == 0){
                 cprintf(cb, "%s", xml_body(xmodule));
                 continue;

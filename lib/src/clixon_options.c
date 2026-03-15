@@ -362,8 +362,8 @@ merge_control_xml(clixon_handle h,
     cxobj *x;
 
     /* One could have used xml_merge, but there are several special conditions */
-    xec = NULL;
-    while ((xec = xml_child_each(xe, xec, CX_ELMNT)) != NULL){
+    int ixec = 0;
+    while ((xec = xml_child_iter(xe, &ixec, CX_ELMNT)) != NULL) {
         if ((name = xml_name(xec)) == NULL)
             continue;
         if ((body = xml_body(xec)) == NULL){
@@ -442,6 +442,7 @@ parse_configfile(clixon_handle  h,
     yang_stmt     *y;
     char          *name;
     char          *body;
+    int            ix;
     clicon_hash_t *copt = clicon_options(h);
     cbuf          *cbret = NULL;
     cxobj         *xerr = NULL;
@@ -508,8 +509,8 @@ parse_configfile(clixon_handle  h,
         }
     }
     /* Check obsolete options before default expansion */
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((y = xml_spec(x)) != NULL){
             if ((yang_find(y, Y_STATUS, "obsolete")) != NULL){
                 clixon_err(OE_CFG, 0, "Clixon option %s is obsolete but given in the config file which is considered an error",
@@ -533,8 +534,8 @@ parse_configfile(clixon_handle  h,
     /* Add top-level hash options.
      * Hashed options are historical and could be replaced with xml, see eg clicon_option_str
      */
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         name = xml_name(x);
         body = xml_body(x);
         /* Ignore non-leafs */

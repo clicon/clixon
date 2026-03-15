@@ -451,6 +451,7 @@ yang2cli_yanglib(clixon_handle h,
                  char         *treename)
 {
     int             retval = -1;
+    int             ix;
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     cbuf           *cb = NULL;
@@ -480,7 +481,8 @@ yang2cli_yanglib(clixon_handle h,
     }
     xymodset = xml_find_type(xyanglib, NULL, "module-set", CX_ELMNT);
     domain = xml_find_body(xymodset, "name");
-    while ((xy = xml_child_each(xymodset, xy, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xy = xml_child_iter(xymodset, &ix, CX_ELMNT)) != NULL) {
         keyword = xml_name(xy);
         if (strcmp(keyword, "submodule") == 0){ // XXX?
             clixon_err(OE_YANG, 0, "Submodules NYI"); // XXX This is actually an error in the RFC 8525 generation code, why no submodules?

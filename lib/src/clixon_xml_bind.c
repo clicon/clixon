@@ -494,6 +494,7 @@ xml_bind_yang_mnt(clixon_handle h,
 {
     int    retval = -1;
     cxobj *xc;         /* xml child */
+    int    ix;
     int    ret;
 
     strip_body_objects(xt);
@@ -503,8 +504,8 @@ xml_bind_yang_mnt(clixon_handle h,
         if (ret == 0)
             goto fail;
     }
-    xc = NULL;     /* Apply on children */
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml_bind_yang0(h, xc, yb, yspec, jsonenc, skip_mnt, xerr)) < 0)
             goto done;
         if (ret == 0){
@@ -554,6 +555,7 @@ xml_bind_yang0_opt(clixon_handle h,
     char      *name;
     yang_bind  ybc;
     char      *prefix;
+    int        ix;
     int        ret;
 
     if (jsonenc){
@@ -593,8 +595,8 @@ xml_bind_yang0_opt(clixon_handle h,
         if (skip_mnt)
             goto ok;
     }
-    xc = NULL;     /* Apply on children */
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         /* It is xml2ns in populate_self_parent that needs improvement */
         /* cache previous + prefix */
         name = xml_name(xc);
@@ -654,6 +656,7 @@ xml_bind_yang0(clixon_handle h,
 {
     int        retval = -1;
     cxobj     *xc;           /* xml child */
+    int        ix;
     int        ret;
 
     if (jsonenc){
@@ -697,8 +700,8 @@ xml_bind_yang0(clixon_handle h,
         if (skip_mnt)
             goto ok;
     }
-    xc = NULL;     /* Apply on children */
-    while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml_bind_yang0_opt(h, xc, YB_PARENT, yspec, NULL, jsonenc, skip_mnt, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -908,6 +911,8 @@ xml_bind_yang_rpc(clixon_handle h,
     char      *opname;  /* top-level netconf operation */
     char      *name;
     cxobj     *xc;
+    int        ix;
+    int        ixc;
     int        ret;
 
     opname = xml_name(xrpc);
@@ -918,14 +923,14 @@ xml_bind_yang_rpc(clixon_handle h,
          * Actually, there are no error replies to hello messages according to any RFC, so
          * rpc error reply here is non-standard, but may be useful.
          */
-        x = NULL;
-        while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xrpc, &ix, CX_ELMNT)) != NULL) {
             name = xml_name(x);
             if (strcmp(name, "session-id") == 0)
                 continue;
             else if (strcmp(name, "capabilities") == 0){
-                xc = NULL;
-                while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL) {
+                ixc = 0;
+                while ((xc = xml_child_iter(x, &ixc, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(xc), "capability") != 0){
                         if (xerr &&
                             netconf_unknown_element_xml(xerr, "protocol", xml_name(xc),
@@ -966,8 +971,8 @@ xml_bind_yang_rpc(clixon_handle h,
             goto fail;
         }
     }
-    x = NULL;
-    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xrpc, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml_bind_yang_rpc_method(h, x, yspec, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -1012,11 +1017,12 @@ xml_bind_yang_rpc_reply(clixon_handle h,
     yang_stmt *ymod=NULL;      /* yang module */
     yang_stmt *yo = NULL;      /* output */
     cxobj     *x;
-    int        ret;
     cxobj     *xerr1 = NULL;
     char      *opname;
     cbuf      *cberr = NULL;
     cxobj     *xc;
+    int        ix;
+    int        ret;
 
     opname = xml_name(xrpc);
     if (strcmp(opname, "rpc-reply")){
@@ -1029,8 +1035,8 @@ xml_bind_yang_rpc_reply(clixon_handle h,
             goto done;
         goto fail;
     }
-    x = NULL;
-    while ((x = xml_child_each(xrpc, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xrpc, &ix, CX_ELMNT)) != NULL) {
         if (ys_module_by_xml(yspec, x, &ymod) < 0)
             goto done;
         if (ymod == NULL)

@@ -1598,6 +1598,7 @@ from_client_msg(clixon_handle h,
     char                *msg_id = NULL;
     int                  nr = 0;
     cbuf                *cbce = NULL;
+    int                  ix;
     int                  ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
@@ -1736,8 +1737,8 @@ from_client_msg(clixon_handle h,
     /* Username may be used by callbacks, etc */
     username = xml_find_value(x, "username");
     clicon_username_set(h, username);
-    xe = NULL;
-    while ((xe = xml_child_each(x, xe, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xe = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
         rpc = xml_name(xe);
         if ((ye = xml_spec(xe)) == NULL){
             if (netconf_operation_not_supported(cbret, "protocol", rpc) < 0)

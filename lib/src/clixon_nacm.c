@@ -718,6 +718,7 @@ nacm_datanode_write_recurse(clixon_handle h,
     int      retval = -1;
     cxobj   *x;
     int      ret = 0;
+    int      ix;
     prepvec *pv;
 
     pv = pv_list;
@@ -750,8 +751,8 @@ nacm_datanode_write_recurse(clixon_handle h,
         goto deny;
     }
     /* If node should be purged, dont recurse and defer removal to caller */
-    x = NULL;   /* Recursively check XML */
-    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if ((ret = nacm_datanode_write_recurse(h, x, pv_list,
                                                defpermit, yspec, cbret, xpathp)) < 0)
             goto done;
@@ -1012,6 +1013,7 @@ nacm_datanode_read_recurse(clixon_handle h,
 {
     int      retval = -1;
     cxobj   *x;
+    int      ix;
     prepvec *pv;
     int      ret;
 
@@ -1033,8 +1035,8 @@ nacm_datanode_read_recurse(clixon_handle h,
     }
     /* If node should be purged, dont recurse and defer removal to caller */
     if (xml_flag(xn, XML_FLAG_DENY) == 0){
-        x = NULL;       /* Recursively check XML */
-        while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
             if (nacm_datanode_read_recurse(h, x, pv_list, yspec) < 0)
                 goto done;
         }
@@ -1105,6 +1107,7 @@ nacm_datanode_read1(clixon_handle h,
     size_t   rlistlen;
     char    *read_default = NULL;
     cvec    *nsc = NULL;
+    int      ix;
     prepvec *pv_list = NULL;
 
     xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_DENY|XML_FLAG_ADD));
@@ -1154,7 +1157,8 @@ nacm_datanode_read1(clixon_handle h,
         cxobj *x = NULL;
         /* If default is permit, mark all top-level children is not DEL as ADD
          */
-        while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
             if (xml_flag(xt, XML_FLAG_DENY) == 0x0)
                 xml_flag_set(x, XML_FLAG_ADD);
         }

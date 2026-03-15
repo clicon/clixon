@@ -166,9 +166,11 @@ add_snmp_var_bindings(netsnmp_variable_list **var_list,
     size_t          snmplen = 0;
     oid             objid[MAX_OID_LEN] = {0,}; /* Leaf */
     size_t          objidlen = MAX_OID_LEN;
+    int             ix;
     int             ret;
 
-    while ((xncont = xml_child_each(cxparent, xncont, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xncont = xml_child_iter(cxparent, &ix, CX_ELMNT)) != NULL) {
         char *node_name = xml_name(xncont);
         if ((ychild = yang_find(ys, 0, node_name)) != NULL) {
             switch (yang_keyword_get(ychild)){
@@ -246,12 +248,14 @@ snmp_publish_notification(clixon_handle h,
     oid                    objid[MAX_OID_LEN] = {0,};
     size_t                 objidlen = MAX_OID_LEN;
     netsnmp_variable_list *var_list = NULL;
+    int                    ix;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    while ((xncont = xml_child_each(xn, xncont, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xncont = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         char *node_name = xml_name(xncont);
         /* Skip eventTime. It is the only pre-defined child node as defined in RFC 5277 */
         if (strcmp(node_name, "eventTime") != 0){
@@ -294,6 +298,7 @@ snmp_stream_cb(int   s,
     cxobj        *xncont = NULL; /* notification content xml */
     cbuf         *cbmsg = NULL;
     int           ret;
+    int           ix;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     if (clixon_msg_rcv11(s, NULL, 0, &cbmsg, &eof) < 0)
@@ -313,7 +318,8 @@ snmp_stream_cb(int   s,
         goto done;
     }
     /* forward notification(s) as snmp trap */
-    while ((xncont = xml_child_each(xtop, xncont, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xncont = xml_child_iter(xtop, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(xncont), "notification") == 0) {
             if(snmp_publish_notification(h, xncont) < 0)
                 goto done;
@@ -410,8 +416,9 @@ get_all_streams_from_backend(clixon_handle    h,
     cxobj  *xe;
     cxobj  *xname;
     cbuf   *cb = NULL;
-    int    cnt = 0;
-    char **st = NULL;
+    int     cnt = 0;
+    char  **st = NULL;
+    int     ix;
 
     clixon_debug(CLIXON_DBG_SNMP, "");
     *count = 0;
@@ -435,7 +442,8 @@ get_all_streams_from_backend(clixon_handle    h,
         clixon_debug(CLIXON_DBG_SNMP, "No streams provided by backend");
         goto ok;
     }
-    while ((xnchild = xml_child_each(xe, xnchild, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xnchild = xml_child_iter(xe, &ix, CX_ELMNT)) != NULL) {
         if ((xname = xpath_first(xnchild, NULL, "name")) != NULL){
             char *stream_name = xml_body(xname);
             if (cnt == 0) {

@@ -219,12 +219,13 @@ xml_default_choice(yang_stmt *yc,
     yang_stmt *ych = NULL;
     yang_stmt *yca = NULL;
     yang_stmt *ydef;
+    int        ix;
 
     clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "");
     /* 1. Is there a default case and no child under this choice?
      */
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((y = xml_spec(x)) == NULL)
             continue;
         /* Check if this child is a child of yc */
@@ -501,6 +502,7 @@ xml_default_recurse(cxobj *xn,
     yang_stmt *yn;
     cxobj     *x;
     yang_stmt *y;
+    int        ix;
 
     if (flag){
         if (xml_flag(xn, XML_FLAG_CHANGE) != 0)
@@ -515,8 +517,8 @@ xml_default_recurse(cxobj *xn,
         if (xml_default(yn, xn, state) < 0)
             goto done;
     }
-    x = NULL;
-    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if ((y = (yang_stmt*)xml_spec(x)) != NULL){
             if (!state && !yang_config(y))
                 continue;
@@ -665,12 +667,12 @@ xml_default_nopresence(cxobj *xn,
 {
     int           retval = -1;
     cxobj        *x;
-    cxobj        *xprev;
     yang_stmt    *yn;
     yang_stmt    *y;
     int           rmx = 0; /* If set, remove this xn */
     enum rfc_6020 keyw;
     int           config = 1;
+    int           ix;
     int           ret;
 
     if (flag){
@@ -696,9 +698,8 @@ xml_default_nopresence(cxobj *xn,
         config = yang_config_ancestor(yn);
     }
     /* Loop thru children */
-    x = NULL;
-    xprev = NULL;
-    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         /* 1: node is empty non-presence or default leaf (eg rmx) */
         if ((ret = xml_default_nopresence(x, mode, flag)) < 0)
             goto done;
@@ -715,7 +716,7 @@ xml_default_nopresence(cxobj *xn,
             case 3:
                 if (xml_purge(x) < 0)
                     goto done;
-                x = xprev;
+                ix--;
                 break;
             default:
                 break;

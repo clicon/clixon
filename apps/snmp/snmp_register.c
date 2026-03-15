@@ -475,6 +475,8 @@ mibyang_table_poll(clixon_handle h,
     cvec      *cvk_name;
     cvec      *cvk_val = NULL; /* vector of index keys: original index */
     yang_stmt *ys;
+    int        ixrow;
+    int        ixcol;
     oid        oidk[MAX_OID_LEN] = {0,};
     size_t     oidklen = MAX_OID_LEN;
     int        ret;
@@ -501,14 +503,14 @@ mibyang_table_poll(clixon_handle h,
             clixon_err(OE_YANG, 0, "No keys");
             goto done;
         }
-        xrow = NULL;
-        while ((xrow = xml_child_each(xtable, xrow, CX_ELMNT)) != NULL) {
+        ixrow = 0;
+        while ((xrow = xml_child_iter(xtable, &ixrow, CX_ELMNT)) != NULL) {
             if ((ret = snmp_xmlkey2val_oid(xrow, cvk_name, &cvk_val, oidk, &oidklen)) < 0)
                 goto done;
             if (ret == 0)
                 continue; /* skip row, not all indexes */
-            xcol = NULL;
-            while ((xcol = xml_child_each(xrow, xcol, CX_ELMNT)) != NULL) {
+            ixcol = 0;
+            while ((xcol = xml_child_iter(xrow, &ixcol, CX_ELMNT)) != NULL) {
                 if ((y = xml_spec(xcol)) == NULL)
                     continue;
                 if (mibyang_leaf_register(h, y, cvk_val, oidk, oidklen) < 0)
@@ -620,6 +622,7 @@ clixon_snmp_traverse_mibyangs(clixon_handle h)
     cxobj     *x;
     yang_stmt *yspec;
     yang_stmt *ymod;
+    int        ix;
 
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
@@ -628,8 +631,8 @@ clixon_snmp_traverse_mibyangs(clixon_handle h)
     /* Loop over clixon configuration file to find all CLICON_SNMP_MIB, and
      * then loop over all those MIBs to register OIDs with netsnmp
      */
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(clicon_conf_xml(h), &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(x), "CLICON_SNMP_MIB") != 0)
             continue;
         if ((modname = xml_body(x)) == NULL)

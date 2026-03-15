@@ -863,6 +863,7 @@ xml_yang_validate_rpc(clixon_handle h,
     cxobj *xn;       /* rpc name */
     char  *rpcprefix;
     char  *namespace = NULL;
+    int    ix;
     int    ret;
 
     if (strcmp(xml_name(xrpc), "rpc")){
@@ -878,9 +879,9 @@ xml_yang_validate_rpc(clixon_handle h,
             goto done;
         goto fail;
     }
-    xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
-    while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xn = xml_child_iter(xrpc, &ix, CX_ELMNT)) != NULL) {
         if (xml_spec(xn) == NULL){
             if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
                 goto done;
@@ -918,6 +919,7 @@ xml_yang_validate_rpc_reply(clixon_handle h,
     cxobj     *xn;       /* rpc name */
     char      *rpcprefix;
     char      *namespace = NULL;
+    int        ix;
     int        ret;
 
     if (strcmp(xml_name(xrpc), "rpc-reply")){
@@ -935,9 +937,9 @@ xml_yang_validate_rpc_reply(clixon_handle h,
             goto done;
         goto fail;
     }
-    xn = NULL;
     /* xn is name of rpc, ie <rcp><xn/></rpc> */
-    while ((xn = xml_child_each(xrpc, xn, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xn = xml_child_iter(xrpc, &ix, CX_ELMNT)) != NULL) {
         /* OK and rpc-error are not explicit in ietf-netconf.yang.  Why are they hardcoded ? */
         if (strcmp(xml_name(xn), "ok") == 0 || strcmp(xml_name(xn), "rpc-error") == 0){
             continue;
@@ -996,9 +998,10 @@ check_choice(cxobj     *xp,
     cxobj     *x;
     yang_stmt *y;
     yang_stmt *yp;
+    int        ix;
 
-    x = NULL; /* Find a child with same yang spec */
-    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
         if (x == xt)
             continue;
         y = xml_spec(x);
@@ -1278,11 +1281,12 @@ check_mandatory_case(cxobj     *xt,
     yang_stmt *ym;
     yang_stmt *ycnew;
     yang_stmt *ycase;
+    int        ix;
     int        ret;
 
     ycase = NULL;
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((y = xml_spec(x)) != NULL &&
             yang_ancestor_child(y, yc, &ym, &ycnew) != 0 &&
             yang_keyword_get(ycnew) == Y_CASE){
@@ -1353,6 +1357,7 @@ check_mandatory(cxobj     *xt,
     yang_stmt *yp;
     cbuf      *cb = NULL;
     int        inext;
+    int        ix;
     int        ret;
 
     if (yt == NULL || !yang_config(yt)){
@@ -1370,8 +1375,8 @@ check_mandatory(cxobj     *xt,
         /* Choice is more complex because of choice/case structure and possibly hierarchical */
         if (yang_keyword_get(yc) == Y_CHOICE){
             if (yang_xml_mandatory(xt, yc)){
-                x = NULL;
-                while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+                ix = 0;
+                while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
                     if ((y = xml_spec(x)) != NULL &&
                         (yp = yang_choice(y)) != NULL &&
                         yp == yc){
@@ -1404,8 +1409,8 @@ check_mandatory(cxobj     *xt,
             if (yang_config(yc)==0)
                  break;
             /* Find a child with the mandatory yang */
-            x = NULL;
-            while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+            ix = 0;
+            while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
                 if ((y = xml_spec(x)) != NULL
                     && y==yc)
                     break; /* got it */
@@ -1478,6 +1483,7 @@ xml_yang_validate_add(clixon_handle h,
     enum cv_type   cvtype;
     validate_level vl = VL_NONE;
     cbuf          *cb = NULL;
+    int            ix;
     int            ret;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
@@ -1553,8 +1559,8 @@ xml_yang_validate_add(clixon_handle h,
             break;
         }
     }
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml_yang_validate_add(h, x, xret)) < 0)
             goto done;
         if (ret == 0)
@@ -1589,6 +1595,7 @@ xml_yang_validate_list_key_only(cxobj  *xt,
     int        retval = -1;
     yang_stmt *yt;   /* yang spec of xt going in */
     cxobj     *x;
+    int        ix;
     int        ret;
 
     /* if not given by argument (override) use default link
@@ -1601,8 +1608,8 @@ xml_yang_validate_list_key_only(cxobj  *xt,
         if (ret == 0)
             goto fail;
     }
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if ((ret = xml_yang_validate_list_key_only(x, xret)) < 0)
             goto done;
         if (ret == 0)
@@ -1766,6 +1773,7 @@ xml_yang_validate_all1(clixon_handle h,
     validate_level vl = VL_NONE;
     int        saw_node = 0;
     int        inext;
+    int        ix;
     int        ret;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
@@ -1919,8 +1927,8 @@ xml_yang_validate_all1(clixon_handle h,
             }
         }
     }
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (!state && (yc = xml_spec(x)) != NULL && yang_config(yc) == 0)
             continue; /* skip if non-config */
         if ((ret = xml_yang_validate_all1(h, x, state, xret)) < 0)
@@ -1998,10 +2006,11 @@ xml_yang_validate_all_state(clixon_handle h,
 {
     cxobj     *x;
     yang_stmt *y;
+    int        ix;
     int        ret;
 
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (!state && (y = xml_spec(x)) != NULL && yang_config(y) == 0)
             continue; /* skip if non-config */
         if ((ret = xml_yang_validate_all(h, x, state, xret)) < 1)

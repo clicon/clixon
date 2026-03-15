@@ -704,6 +704,7 @@ netconf_rpc_dispatch(clixon_handle h,
     cxobj      *xe;
     char       *username;
     cxobj      *xa;
+    int         ix;
 
     /* Tag username on all incoming requests in case they are forwarded as internal messages
      * This may be unecesary since not all are forwarded.
@@ -718,8 +719,8 @@ netconf_rpc_dispatch(clixon_handle h,
      * in the call. Some call however need extra validation, such as the
      * filter parameter to get/get-config and tes- err-opts of edit-config.
      */
-    xe = NULL;
-    while ((xe = xml_child_each(xn, xe, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xe = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(xe), "copy-config") == 0 ||
             strcmp(xml_name(xe), "delete-config") == 0 ||
             strcmp(xml_name(xe), "lock") == 0 ||

@@ -846,6 +846,7 @@ from_client_translate_format(clixon_handle h,
     int              i;
     cbuf            *cb = NULL;
     cvec            *nsc = NULL;
+    int              ix;
     int              ret;
 
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -876,8 +877,8 @@ from_client_translate_format(clixon_handle h,
             clixon_err(OE_UNIX, errno, "cvec_new");
             goto done;
         }
-        xn = NULL;
-        while ((xn = xml_child_each(xnsc, xn, CX_ELMNT)) != NULL){
+        ix = 0;
+        while ((xn = xml_child_iter(xnsc, &ix, CX_ELMNT)) != NULL) {
             prefix = xml_find_body(xn, "prefix");
             ns = xml_find_body(xn, "ns");
             if (xml_nsctx_add(nsc, prefix, ns) < 0)

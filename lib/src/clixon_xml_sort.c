@@ -151,8 +151,10 @@ xml_cv_cache_clear(cxobj *xt)
 {
     int    retval = -1;
     cxobj *x = NULL;
+    int    ix;
 
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL)
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL)
         if (xml_cv_set(x, NULL) < 0)
             goto done;
     retval = 0;
@@ -485,6 +487,7 @@ xml_sort_recurse(cxobj *xn)
 {
     int    retval = -1;
     cxobj *x;
+    int    ix;
     int    ret;
 
     ret = xml_sort_verify(xn, NULL);
@@ -498,8 +501,8 @@ xml_sort_recurse(cxobj *xn)
     }
     if (xml_cv_cache_clear(xn) < 0)
         goto done;
-    x = NULL;
-    while ((x = xml_child_each(xn, x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xn, &ix, CX_ELMNT)) != NULL) {
         if (xml_sort_recurse(x) < 0)
             goto done;
     }
@@ -1184,6 +1187,7 @@ xml_sort_verify(cxobj *x0,
     int    retval = -1;
     cxobj *x = NULL;
     cxobj *xprev = NULL;
+    int    ix;
 #ifndef STATE_ORDERED_BY_SYSTEM
     yang_stmt *ys;
 
@@ -1195,7 +1199,8 @@ xml_sort_verify(cxobj *x0,
 #endif
     if (xml_type(x0) == CX_ELMNT){
         xml_enumerate_children(x0);
-        while ((x = xml_child_each(x0, x, -1)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(x0, &ix, -1)) != NULL) {
             if (xprev != NULL){ /* Check xprev <= x */
                 if (xml_cmp(xprev, x, 1, 0, NULL) > 0)
                     goto done;
@@ -1284,6 +1289,7 @@ xml_find_noyang_cvk(const char  *ns0,
     char   *keyname;
     char   *keyval;
     char   *body;
+    int     ix;
 
     cvi = NULL;
     /* Loop through index variables. xc should match all, on exit if cvi=NULL it macthes */
@@ -1300,8 +1306,8 @@ xml_find_noyang_cvk(const char  *ns0,
         else{
             /* Index variable on form <id>=<val>
              * Loop through children of the matched x (to match keyname and value) */
-            xcc = NULL;
-            while ((xcc = xml_child_each(xc, xcc, CX_ELMNT)) != NULL) {
+            ix = 0;
+            while ((xcc = xml_child_iter(xc, &ix, CX_ELMNT)) != NULL) {
                 if (xml2ns(xcc, xml_prefix(xcc), &ns) < 0)
                     goto done;
                 if (strcmp(ns0, ns) != 0) /* Namespace does not match, skip */
@@ -1341,14 +1347,15 @@ xml_find_noyang_name(cxobj       *xp,
     int     retval = -1;
     cxobj  *xc;
     char   *ns;
+    int     ix;
 
     if (name == NULL || ns0 == NULL){
         clixon_err(OE_XML, EINVAL, "name and namespace required");
         goto done;
     }
     /* Go through children linearly */
-    xc = NULL;
-    while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
         ns = NULL;
         if (xml2ns(xc, xml_prefix(xc), &ns) < 0)
             goto done;
@@ -1408,6 +1415,7 @@ xml_find_index_yang(cxobj       *xp,
     char      *encstr;
     int        revert = 0;
     char      *indexvar = NULL;
+    int        ix;
 
     if (xp == NULL){
         clixon_err(OE_XML, EINVAL, "xp is NULL");
@@ -1493,8 +1501,8 @@ xml_find_index_yang(cxobj       *xp,
     /* Populate created XML tree with yang specs */
     if (xml_spec_set(xc, yc) < 0)
         goto done;
-    xk = NULL;
-    while ((xk = xml_child_each(xc, xk, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xk = xml_child_iter(xc, &ix, CX_ELMNT)) != NULL) {
         if ((yk = yang_find(yc, Y_LEAF, xml_name(xk))) == NULL){
             clixon_err(OE_YANG, ENOENT, "yang spec of key %s not found", xml_name(xk));
             goto done;
@@ -1634,6 +1642,7 @@ clixon_xml_find_pos(cxobj        *xp,
     cxobj     *xc = NULL;
     char      *name;
     uint32_t   u;
+    int        ix;
 
     if (yc == NULL){
         clixon_err(OE_YANG, ENOENT, "yang spec not found");
@@ -1641,8 +1650,8 @@ clixon_xml_find_pos(cxobj        *xp,
     }
     name = yang_argument_get(yc);
     u = 0;
-    xc = NULL;
-    while ((xc = xml_child_each(xp, xc, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xc = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(name, xml_name(xc)))
             continue;
         if (pos == u++){ /* Found */

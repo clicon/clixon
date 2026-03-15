@@ -118,6 +118,7 @@ child_type(cxobj *x)
 {
     cxobj *xc;   /* the only child of x */
     int    clen; /* nr of children */
+    int    ix;
 
     clen = xml_child_nr_notype(x, CX_ATTR);
     if (xml_type(x) != CX_ELMNT)
@@ -127,8 +128,8 @@ child_type(cxobj *x)
     if (clen > 1)
         return ANY_CHILD;
     /* From here exactly one noattr child, get it */
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, -1)) != NULL)
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, -1)) != NULL)
         if (xml_type(xc) != CX_ATTR)
             break;
     if (xc == NULL)
@@ -415,6 +416,7 @@ json2xml_decode(cxobj *x,
     enum rfc_6020 keyword;
     cxobj        *xc;
     yang_stmt    *ytype = NULL;
+    int           ix;
     int           ret;
 
     if ((y = xml_spec(x)) != NULL){
@@ -435,8 +437,8 @@ json2xml_decode(cxobj *x,
             }
         }
     }
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
         if ((ret = json2xml_decode(xc, xerr)) < 0)
             goto done;
         if (ret == 0)
@@ -1154,11 +1156,13 @@ clixon_json2cbuf(cbuf  *cb,
 {
     int    retval = -1;
     cxobj *xc;
-    int    i=0;
+    int    i;
+    int    ix;
 
+    i = 0;
     if (skiptop){
-        xc = NULL;
-        while ((xc = xml_child_each(xt, xc, CX_ELMNT)) != NULL){
+        ix = 0;
+        while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
             if (i++)
                 cprintf(cb, ",");
             if (xml2json_cbuf1(cb, xc, pretty, autocliext, system_only) < 0)
@@ -1202,7 +1206,9 @@ xml2json_cbuf_vec(cbuf      *cb,
     int    i;
     cxobj *xc0;
     cxobj *xc;
+    cxobj *x;
     cvec  *nsc = NULL;
+    int    ix;
 
     if ((xp = xml_new("xml2json", NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -1213,8 +1219,9 @@ xml2json_cbuf_vec(cbuf      *cb,
         if (xml_nsctx_node(xc0, &nsc) < 0)
             goto done;
         if (skiptop){
-            cxobj *x = NULL;
-            while ((x = xml_child_each(xc0, x, CX_ELMNT)) != NULL) {
+            x = NULL;
+            ix = 0;
+            while ((x = xml_child_iter(xc0, &ix, CX_ELMNT)) != NULL) {
                 if ((xc = xml_dup(x)) == NULL)
                     goto done;
                 xml_addsub(xp, xc);
@@ -1394,6 +1401,7 @@ json_xmlns_translate(yang_stmt *yspec,
     char      *namespace;
     char      *modname = NULL;
     cxobj     *xc;
+    int        ix;
     int        ret;
 
     if ((modname = xml_prefix(x)) != NULL){ /* prefix is here module name */
@@ -1421,8 +1429,8 @@ json_xmlns_translate(yang_stmt *yspec,
         if (xml_namespace_change(x, namespace, NULL) < 0)
             goto done;
     }
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL){
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
         if ((ret = json_xmlns_translate(yspec, xc, xerr)) < 0)
             goto done;
         if (ret == 0)

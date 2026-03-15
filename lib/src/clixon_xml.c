@@ -170,18 +170,17 @@ struct xml{
     char             *x_name;       /* name of node */
     char             *x_prefix;     /* namespace localname N, called prefix */
     struct xml       *x_up;         /* parent node in hierarchy if any */
-    /*----- next is body/attribute only */
-#ifndef XML_EACH_WRAPPER
+    union {                           /* depends on co_type: */
+        struct xml      **xu_childvec;   /* vector of children nodes (XXX: use clixon_vec ) */
+        char             *xu_value;      /* attribute and body nodes have values (strdup'd) */
+    } x_u;
+#ifndef XML_CHILD_EACH_WRAPPER
     uint32_t         _x_vector_i;   /* internal use: xml_child_each */
 #endif
     uint32_t         _x_i;          /* internal use for stable sorting:
                                        see xml_enumerate_children and xml_cmp */
     uint16_t          x_flags;      /* Flags according to XML_FLAG_* */
     int8_t            x_type;       /* type of node: element, attribute, body */
-    union {                           /* depends on co_type: */
-        struct xml      **xu_childvec;   /* vector of children nodes (XXX: use clixon_vec ) */
-        char             *xu_value;      /* attribute and body nodes have values (strdup'd) */
-    } x_u;
     /*----- up to here is common to all next is element only */
     uint32_t          x_childvec_len;/* Number of children */
     uint32_t          x_childvec_max;/* Length of allocated vector */
@@ -205,14 +204,14 @@ struct xmlbody{
     char             *xb_name;       /* name of node */
     char             *xb_prefix;     /* namespace localname N, called prefix */
     struct xml       *xb_up;         /* parent node in hierarchy if any */
-#ifndef XML_EACH_WRAPPER
+    char             *xb_value;      /* attribute and body nodes have values (strdup'd) */
+#ifndef XML_CHILD_EACH_WRAPPER
     uint32_t         _xb_vector_i;   /* internal use: xml_child_each */
 #endif
     uint32_t         _xb_i;          /* internal use for sorting:
                                         see xml_enumerate and xml_cmp */
     uint16_t          xb_flags;      /* Flags according to XML_FLAG_* */
     int8_t            xb_type;       /* type of node: element, attribute, body */
-    char             *xb_value;      /* attribute and body nodes have values (strdup'd) */
 };
 
 /*
@@ -447,6 +446,7 @@ xml_stats(cxobj          *xt,
     uint64_t nr = 0;
     size_t   sz = 0;
     cxobj   *xc;
+    int      ixc;
 
     if (xt == NULL){
         clixon_err(OE_XML, EINVAL, "xml node is NULL");
@@ -457,8 +457,8 @@ xml_stats(cxobj          *xt,
         *nrp += nr;
     if (szp)
         *szp += sz;
-    xc = NULL;
-    while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+    ixc = 0;
+    while ((xc = xml_child_iter(xt, &ixc, -1)) != NULL) {
         nr=0;
         sz=0;
         xml_stats(xc, type, &nr, &sz);
@@ -949,12 +949,13 @@ int
 xml_child_nr_notype(cxobj          *xn,
                     enum cxobj_type type)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     int    nr = 0;
+    int    ix = 0;
 
     if (!is_element(xn))
         return 0;
-    while ((x = xml_child_each(xn, x, -1)) != NULL) {
+    while ((x = xml_child_iter(xn, &ix, -1)) != NULL) {
         if (xml_type(x) != type)
             nr++;
     }
@@ -973,12 +974,13 @@ int
 xml_child_nr_type(cxobj          *xn,
                   enum cxobj_type type)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     int    len = 0;
+    int    ix = 0;
 
     if (!is_element(xn))
         return 0;
-    while ((x = xml_child_each(xn, x, type)) != NULL)
+    while ((x = xml_child_iter(xn, &ix, type)) != NULL)
         len++;
     return len;
 }
@@ -1019,12 +1021,13 @@ xml_child_i_type(cxobj          *xn,
                  int             i,
                  enum cxobj_type type)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     int    it = 0;
+    int    ix = 0;
 
     if (!is_element(xn))
         return NULL;
-    while ((x = xml_child_each(xn, x, type)) != NULL) {
+    while ((x = xml_child_iter(xn, &ix, type)) != NULL) {
         if (x->x_type == type && (i == it++))
             return x;
     }
@@ -1062,12 +1065,13 @@ int
 xml_child_order(cxobj *xp,
                 cxobj *xc)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     int    i = 0;
+    int    ix = 0;
 
     if (!is_element(xp))
         return -1;
-    while ((x = xml_child_each(xp, x, -1)) != NULL) {
+    while ((x = xml_child_iter(xp, &ix, -1)) != NULL) {
         if (x == xc)
             return i;
         i++;
@@ -1075,7 +1079,7 @@ xml_child_order(cxobj *xp,
     return -1;
 }
 
-#ifndef XML_EACH_WRAPPER
+#ifndef XML_XCHILD_USE_ITER33
 /*! Advanced function to decrement _x_vector_i if objects have been removed
  *
  * Only in vec_order_analyze()
@@ -1129,7 +1133,7 @@ xml_child_each(cxobj          *xparent,
                cxobj          *xprev,
                enum cxobj_type type)
 {
-#ifdef XML_EACH_WRAPPER
+#ifdef XML_CHILD_EACH_WRAPPER
     int i = 0;
 
     if (xprev != NULL){
@@ -1555,14 +1559,15 @@ cxobj *
 xml_find(cxobj      *xp,
          const char *name)
 {
-    cxobj *x = NULL;
+    cxobj *x;
+    int    ix = 0;
 
     if (xp == NULL || name == NULL) {
         return NULL;
     }
     if (!is_element(xp))
         return NULL;
-    while ((x = xml_child_each(xp, x, -1)) != NULL)
+    while ((x = xml_child_iter(xp, &ix, -1)) != NULL)
         if (strcmp(name, xml_name(x)) == 0)
             break; /* x is set */
     return x;
@@ -1775,12 +1780,13 @@ xml_rm(cxobj *xc)
     cxobj *xp;
     cxobj *x;
     int    i;
+    int    ix;
 
     if ((xp = xml_parent(xc)) == NULL)
         goto ok;
     /* Find child in parent XXX: search? */
-    x = NULL; i = 0;
-    while ((x = xml_child_each(xp, x, -1)) != NULL) {
+    i = 0; ix = 0;
+    while ((x = xml_child_iter(xp, &ix, -1)) != NULL) {
         if (x == xc)
             break;
         i++;
@@ -1896,6 +1902,7 @@ xml_rootchild_node(cxobj  *xp,
     int    retval = -1;
     cxobj *x;
     int    i;
+    int    ix;
 
     if (!is_element(xp))
         return 0;
@@ -1903,8 +1910,8 @@ xml_rootchild_node(cxobj  *xp,
         clixon_err(OE_XML, 0, "Parent is not root");
         goto done;
     }
-    x = NULL; i = 0;
-    while ((x = xml_child_each(xp, x, -1)) != NULL) {
+    i = 0; ix = 0;
+    while ((x = xml_child_iter(xp, &ix, -1)) != NULL) {
         if (x == xc)
             break;
         i++;
@@ -1933,12 +1940,13 @@ xml_rootchild_node(cxobj  *xp,
 int
 xml_enumerate_children(cxobj *xp)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     int    i = 0;
+    int    ix = 0;
 
     if (!is_element(xp))
         return 0;
-    while ((x = xml_child_each(xp, x, -1)) != NULL)
+    while ((x = xml_child_iter(xp, &ix, -1)) != NULL)
         x->_x_i = i++;
     return 0;
 }
@@ -1948,11 +1956,12 @@ xml_enumerate_children(cxobj *xp)
 int
 xml_enumerate_reset(cxobj *xp)
 {
-    cxobj *x = NULL;
+    cxobj *x;
+    int    ix = 0;
 
     if (!is_element(xp))
         return 0;
-    while ((x = xml_child_each(xp, x, -1)) != NULL)
+    while ((x = xml_child_iter(xp, &ix, -1)) != NULL)
         x->_x_i = 0;
     return 0;
 }
@@ -1986,11 +1995,12 @@ xml_enumerate_get(cxobj *x)
 char *
 xml_body(cxobj *xn)
 {
-    cxobj *xb = NULL;
+    cxobj *xb;
+    int    ixb = 0;
 
     if (!is_element(xn))
         return NULL;
-    while ((xb = xml_child_each(xn, xb, CX_BODY)) != NULL)
+    while ((xb = xml_child_iter(xn, &ixb, CX_BODY)) != NULL)
         return xml_value(xb);
     return NULL;
 }
@@ -2005,11 +2015,12 @@ xml_body(cxobj *xn)
 cxobj *
 xml_body_get(cxobj *xt)
 {
-    cxobj *xb = NULL;
+    cxobj *xb;
+    int    ixb = 0;
 
     if (!is_element(xt))
         return NULL;
-    while ((xb = xml_child_each(xt, xb, CX_BODY)) != NULL)
+    while ((xb = xml_child_iter(xt, &ixb, CX_BODY)) != NULL)
         return xb;
     return NULL;
 }
@@ -2065,13 +2076,14 @@ xml_find_type(cxobj          *xt,
               const char     *name,
               enum cxobj_type type)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     int    pmatch;  /* prefix match */
     char  *xprefix; /* xprefix */
+    int    ix = 0;
 
     if (!is_element(xt))
         return NULL;
-    while ((x = xml_child_each(xt, x, type)) != NULL) {
+    while ((x = xml_child_iter(xt, &ix, type)) != NULL) {
         if (prefix){
             xprefix = xml_prefix(x);
             pmatch = xprefix ? strcmp(prefix,xprefix)==0 : 0;
@@ -2103,11 +2115,12 @@ char *
 xml_find_value(cxobj      *xt,
                const char *name)
 {
-    cxobj *x = NULL;
+    cxobj *x;
+    int    ix = 0;
 
     if (!is_element(xt))
         return NULL;
-    while ((x = xml_child_each(xt, x, -1)) != NULL)
+    while ((x = xml_child_iter(xt, &ix, -1)) != NULL)
         if (strcmp(name, xml_name(x)) == 0)
             return xml_value(x);
     return NULL;
@@ -2129,11 +2142,12 @@ char *
 xml_find_body(cxobj      *xt,
               const char *name)
 {
-    cxobj *x=NULL;
+    cxobj *x;
+    int    ix = 0;
 
     if (!is_element(xt))
         return NULL;
-    while ((x = xml_child_each(xt, x, -1)) != NULL)
+    while ((x = xml_child_iter(xt, &ix, -1)) != NULL)
         if (strcmp(name, xml_name(x)) == 0)
             return xml_body(x);
     return NULL;
@@ -2158,12 +2172,13 @@ xml_find_body_obj(cxobj      *xt,
                   const char *name,
                   const char *val)
 {
-    cxobj *x = NULL;
+    cxobj *x;
     char  *bstr;
+    int    ix = 0;
 
     if (!is_element(xt))
         return NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(name, xml_name(x)))
             continue;
         if ((bstr = xml_body(x)) == NULL)
@@ -2309,11 +2324,11 @@ xml_copy(cxobj *x0,
     int    retval = -1;
     cxobj *x;
     cxobj *xcopy;
+    int    ix = 0;
 
     if (xml_copy_one(x0, x1) <0)
         goto done;
-    x = NULL;
-    while ((x = xml_child_each(x0, x, -1)) != NULL) {
+    while ((x = xml_child_iter(x0, &ix, -1)) != NULL) {
         if ((xcopy = xml_new(xml_name(x), x1, xml_type(x))) == NULL)
             goto done;
         if (xml_type(x) == CX_ELMNT && xml_child_nr(x)){
@@ -2464,12 +2479,12 @@ xml_apply(cxobj          *xn,
 {
     int        retval = -1;
     cxobj     *x;
+    int        ix = 0;
     int        ret;
 
     if (!is_element(xn))
         return 0;
-    x = NULL;
-    while ((x = xml_child_each(xn, x, type)) != NULL) {
+    while ((x = xml_child_iter(xn, &ix, type)) != NULL) {
         if ((ret = fn(x, arg)) < 0)
             goto done;
         if (ret == 2)

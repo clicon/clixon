@@ -401,6 +401,7 @@ example_rpc(clixon_handle h,            /* Clixon handle */
     cxobj *xp;
     char  *namespace;
     char  *msgid;
+    int    ix;
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((namespace = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL){
@@ -416,7 +417,8 @@ example_rpc(clixon_handle h,            /* Clixon handle */
     if (!xml_child_nr_type(xe, CX_ELMNT))
         cprintf(cbret, "<ok/>");
     else {
-        while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xe, &ix, CX_ELMNT)) != NULL) {
             if (xmlns_set(x, NULL, namespace) < 0)
                 goto done;
         }
@@ -1182,6 +1184,7 @@ upgrade_2014_to_2016(clixon_handle h,
     size_t     vlen;
     int        i;
     char      *name;
+    int        ix;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "from:%d to:%d", from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
@@ -1200,8 +1203,8 @@ upgrade_2014_to_2016(clixon_handle h,
             /* Note you cannot delete or move xml objects directly under xc
              * in the loop (eg xi objects) but you CAN move children of xi
              */
-            xi = NULL;
-            while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+            ix = 0;
+            while ((xi = xml_child_iter(xc, &ix, CX_ELMNT)) != NULL) {
                 if (strcmp(xml_name(xi), "interface"))
                     continue;
                 if ((name = xml_find_body(xi, "name")) == NULL)
@@ -1224,8 +1227,8 @@ upgrade_2014_to_2016(clixon_handle h,
         }
         else if (strcmp(xml_name(xc),"interfaces") == 0){
             /* Iterate through interfaces */
-            xi = NULL;
-            while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+            ix = 0;
+            while ((xi = xml_child_iter(xc, &ix, CX_ELMNT)) != NULL) {
                 if (strcmp(xml_name(xi), "interface"))
                     continue;
                 /* Rename /interfaces/interface/description to descr */
@@ -1285,6 +1288,7 @@ upgrade_2016_to_2018(clixon_handle h,
     cxobj     *xb;
     size_t     vlen;
     int        i;
+    int        ix;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "from:%d to:%d", from, to);
     if (op != XML_FLAG_CHANGE) /* Only treat fully present modules */
@@ -1305,8 +1309,8 @@ upgrade_2016_to_2018(clixon_handle h,
         /* Iterate through interfaces */
         else if (strcmp(xml_name(xc),"interfaces") == 0){
             /* Iterate through interfaces */
-            xi = NULL;
-            while ((xi = xml_child_each(xc, xi, CX_ELMNT)) != NULL) {
+            ix = 0;
+            while ((xi = xml_child_iter(xc, &ix, CX_ELMNT)) != NULL) {
                 if (strcmp(xml_name(xi), "interface"))
                     continue;
                 /* Wrap /interfaces/interface/descr to /interfaces/interface/docs/descr */
