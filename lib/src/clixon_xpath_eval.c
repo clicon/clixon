@@ -397,6 +397,18 @@ xp_eval_step(xp_ctx     *xc0,
     case A_ATTRIBUTE: /* principal node type is attribute */
         break;
     case A_CHILD:
+        if (nodetest &&
+            nodetest->xs_type == XP_NODE_FN &&
+            nodetest->xs_int == XPATHFN_TEXT){
+            for (i=0; i<xc->xc_size; i++){
+                xv = xc->xc_nodeset[i];
+                if (xml_body(xv) == NULL)
+                    continue;
+                if (cxvec_append(xv, &vec, &veclen) < 0)
+                    goto done;
+            }
+            break;
+        }
         if (xc->xc_descendant){
             for (i=0; i<xc->xc_size; i++){
                 xv = xc->xc_nodeset[i];
@@ -1009,7 +1021,30 @@ xp_relop(xp_ctx    *xc1,
             }
             break;
         case XT_STRING:
-            xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)==0);
+            switch (op){
+            case XO_EQ:
+                xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)==0);
+                break;
+            case XO_NE:
+                xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)!=0);
+                break;
+            case XO_GE:
+                xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)>=0);
+                break;
+            case XO_LE:
+                xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)<=0);
+                break;
+            case XO_LT:
+                xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)<0);
+                break;
+            case XO_GT:
+                xr->xc_bool = (strcmp(xc1->xc_string, xc2->xc_string)>0);
+                break;
+            default:
+                clixon_err(OE_XML, 0, "Operator %s not supported for string/string comparison", clicon_int2str(xpopmap,op));
+                goto done;
+                break;
+            }
             break;
         } /* switch xc1 */
     }
@@ -1382,8 +1417,8 @@ xp_eval(xp_ctx     *xc,
                 clixon_err(OE_XML, EFAULT, "XPath function not implemented: %s", xs->xs_s0);
                 goto done;
                 break;
+                }
             }
-        }
         break;
     default:
         break;
