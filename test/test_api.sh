@@ -124,6 +124,7 @@ trigger_rpc(clixon_handle h,          /* Clicon handle */
     cvec        *cvk = NULL;
     cg_var      *cv;
     clixon_xvec *xv = NULL;
+    int          ix;
 
     if (xmldb_get(h, "running", NULL, "/c", &xret) < 0)
       goto done;
@@ -132,9 +133,9 @@ trigger_rpc(clixon_handle h,          /* Clicon handle */
     clixon_debug(CLIXON_DBG_DEFAULT, "%s xc:%s", __FUNCTION__, xml_name(xc));
 
     /* Method 1 loop */
-    x = NULL;
     val = NULL;
-    while ((x = xml_child_each(xc, x, -1)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xc, &ix, -1)) != NULL) {
        if (strcmp(xml_name(x), "y3") != 0)
          continue;
        if ((k = xml_find_body(x, "k")) != NULL &&

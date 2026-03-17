@@ -498,6 +498,7 @@ clixon_module_upgrade(clixon_handle    h,
     char   *ns;           /* Namespace */
     cxobj  *xmod;           /* XML module state diff */
     int     ret;
+    int     ix;
 
     if (msd == NULL){
         clixon_err(OE_CFG, EINVAL, "No modstate");
@@ -508,8 +509,8 @@ clixon_module_upgrade(clixon_handle    h,
     /* Iterate through xml modified module state 
      * Note top-level here is typically module-set
      */
-    xmod = NULL;
-    while ((xmod = xml_child_each(msd->md_diff, xmod, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xmod = xml_child_iter(msd->md_diff, &ix, CX_ELMNT)) != NULL) {
         /* Extract namespace */
         if ((ns = xml_find_body(xmod, "namespace")) == NULL)
             goto done;

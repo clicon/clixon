@@ -505,8 +505,8 @@ clicon_nacm_cache_set(clixon_handle h,
  * Must use hash functions directly since they are not strings.
  * Example: features are typically accessed directly in the config tree.
  * @code
- *   cxobj *x = NULL;
- *   while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+ *   int ix = 0;
+ *   while ((x = xml_child_iter(clicon_conf_xml(h), &ix, CX_ELMNT)) != NULL) {
  *      if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
  *         break;
  *   }

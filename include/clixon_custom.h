@@ -316,17 +316,7 @@
  */
 #undef YANGLIB_MODSET_NAME_DEFAULT
 
+/*! Use iterators for xml_child_each and xml_child_iter, remaining code that doe not work properly
+ *
+ */
 #define XML_CHILD_USE_ITER
-
-/*! Always undef really
- * test_api.sh
- */
-#undef XML_XCHILD_USE_ITER31
-
-/*!
-# test_netconf_duplicate.sh
-# test_unique.sh
-   xml_duplicate_detect1 # 33
-      vec_order_analyze x2 # 33
- */
-#undef XML_XCHILD_USE_ITER33

@@ -121,11 +121,13 @@ xml_tree_equal(cxobj *x0,
     cxobj     *x0c; /* x0 child */
     cxobj     *x1c; /* x1 child */
     int        extflag = 0;
+    int        ix0c;
+    int        ix1c;
 
     /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    ix0c = ix1c = 0;
+    x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+    x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
@@ -137,7 +139,7 @@ xml_tree_equal(cxobj *x0,
                 goto done;
             if (extflag){ /* skip */
                 if (x1c) {
-                    x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                    x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
                     continue;
                 }
                 else
@@ -149,7 +151,7 @@ xml_tree_equal(cxobj *x0,
                 goto done;
             if (extflag){ /* skip */
                 if (x1c) {
-                    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                    x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                     continue;
                 }
                 else
@@ -190,8 +192,8 @@ xml_tree_equal(cxobj *x0,
                         goto done;
                 }
         }
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+        x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
     }
  ok:
     retval = 0;
@@ -216,22 +218,28 @@ xml_diff_ordered_by_user(cxobj     *x0,
                          cxobj     *x1,
                          cxobj     *x0c,
                          cxobj     *x1c,
+                         int        ix0c,
+                         int        ix1c,
                          yang_stmt *yc)
 {
     int    retval = -1;
     cxobj *xi;
     cxobj *xj;
+    int    ixi;
+    int    ixj;
 
     /* Simpler algoithm: Just delete whole old list and add new list if ANY changes */
     xi = x0c;
+    ixi = ix0c;
     do {
         xml_flag_set(xi, XML_FLAG_DEL);
-    } while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+    } while ((xi = xml_child_iter(x0, &ixi, CX_ELMNT)) != NULL &&
            xml_spec(xi) == yc);
     xj = x1c;
+    ixj = ix1c;
     do {
         xml_flag_set(xj, XML_FLAG_ADD);
-    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+    } while ((xj = xml_child_iter(x1, &ixj, CX_ELMNT)) != NULL &&
              xml_spec(xj) == yc);
     retval = 0;
     // done:
@@ -295,11 +303,15 @@ xml_diff1(cxobj     *x0,
     cxobj     *xi;
     cxobj     *xj;
     int        extflag;
+    int        ix0c;
+    int        ix1c;
+    int        ixi;
+    int        ixj;
 
     /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    ix0c = ix1c = 0;
+    x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+    x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
     for (;;){
         if (x0c == NULL && x1c == NULL)
             goto ok;
@@ -308,38 +320,38 @@ xml_diff1(cxobj     *x0,
         /* If cl:ignore-compare extension, return equal */
         if (x0c) {
             if (xml_flag(x0c, XML_FLAG_SKIP) != 0x0){ /* skip */
-                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
                 continue;
             }
             else
                 if ((y0c = xml_spec(x0c)) != NULL){
                     if (!state && yang_config(y0c) == 0){ /* skip state data if state is not included */
-                        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                        x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
                         continue;
                     }
                     if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                         goto done;
                     if (extflag){ /* skip */
-                        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                        x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
                         continue;
                     }
                 }
         }
         if (x1c) {
             if (xml_flag(x1c, XML_FLAG_SKIP) != 0x0){ /* skip */
-                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                 continue;
             }
             else
                 if ((y1c = xml_spec(x1c)) != NULL){
                     if (!state && yang_config(y1c) == 0){ /* skip state data if state is not included */
-                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                         continue;
                     }
                     if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                         goto done;
                     if (extflag){ /* skip */
-                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                         continue;
                     }
                 }
@@ -347,57 +359,61 @@ xml_diff1(cxobj     *x0,
         if (x0c == NULL){
             if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                 goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         else if (x1c == NULL){
             if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                 goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
             continue;
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         /* override ordered-by user with special look-ahead checks */
         if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
-            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, y0c) < 0)
+            if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, ix0c, ix1c, y0c) < 0)
                 goto done;
             /* Add all in x0 marked as DELETE in x0vec
              * Flags can remain: XXX should apply to all
              */
             xi = x0c;
+            ixi = ix0c;
             do {
                 if (xml_flag(xi, XML_FLAG_DEL)){
                     if (cxvec_append(xi, x0vec, x0veclen) < 0)
                         goto done;
                 }
             }
-            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+            while ((xi = xml_child_iter(x0, &ixi, CX_ELMNT)) != NULL &&
                    xml_spec(xi) == y0c);
             x0c = xi;
+            ix0c = ixi;
 
             /* Add all in x1 marked as ADD in x1vec */
             xj = x1c;
+            ixj = ix1c;
             do {
                 if (xml_flag(xj, XML_FLAG_ADD))
                     if (cxvec_append(xj, x1vec, x1veclen) < 0)
                         goto done;
             }
-            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+            while ((xj = xml_child_iter(x1, &ixj, CX_ELMNT)) != NULL &&
                    xml_spec(xj) == y1c);
             x1c = xj;
+            ix1c = ixj;
             continue;
         }
         else if (eq < 0){
             if (cxvec_append(x0c, x0vec, x0veclen) < 0)
                 goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
             continue;
         }
         else if (eq > 0){
             if (cxvec_append(x1c, x1vec, x1veclen) < 0)
                 goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         else{ /* equal */
@@ -432,8 +448,8 @@ xml_diff1(cxobj     *x0,
                                changed_x0, changed_x1, changedlen)< 0)
                 goto done;
         }
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+        x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
     }
  ok:
     retval = 0;
@@ -1173,11 +1189,14 @@ xml_rebase(clixon_handle  h,
     char      *value0;
     char      *value1;
     int        conflict = 0;
+    int        ix0c;
+    int        ix1c;
+    int        ix2c;
 
-    x0c = x1c = x2c = NULL;
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    x2c = xml_child_each(x2, x2c, CX_ELMNT);
+    ix0c = ix1c = ix2c = 0;
+    x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+    x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
+    x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
     while (x0c != NULL || x1c != NULL || x2c != NULL){
         if (x0c){
             if (xml2xpath(x0c, NULL, 0, 0, &xpath0) < 0)
@@ -1240,9 +1259,9 @@ xml_rebase(clixon_handle  h,
                         goto done;
                     conflict++;
                 }
-                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+                x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
             }
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             goto next;
         }
         else if (same10 == 0){
@@ -1251,7 +1270,7 @@ xml_rebase(clixon_handle  h,
                     if (diff_rebase_add(dr, x1, x2c) < 0)
                         goto done;
                 }
-                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+                x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
                 goto next;
             }
             else if (same20 == 0){
@@ -1291,14 +1310,14 @@ xml_rebase(clixon_handle  h,
                         goto done;
                     conflict++;
                 }
-                x0c = xml_child_each(x0, x0c, CX_ELMNT);
-                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+                x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                 goto next;
             }
         }
         else if (same10 > 0){ /* Deleted x1c */
             if (same20 < 0){
-                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+                x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
             }
             else if (same20 == 0){
                 if (xml_tree_equal(x0c, x2c) != 0){
@@ -1307,23 +1326,23 @@ xml_rebase(clixon_handle  h,
                         goto done;
                     conflict++;
                 }
-                x0c = xml_child_each(x0, x0c, CX_ELMNT);
-                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+                x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+                x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
             }
             else if (same20 > 0){ /* Deleted both in x1c and x2c */
                 if (xml_rebase_conflict(h, xpath0, NULL, NULL, NULL, NULL,
                                         "Cannot remove node, it is already removed", cbret) < 0)
                     goto done;
                 conflict++;
-                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
             }
             goto next;
         }
         if (xml_rebase(h, x0c, x1c, x2c, &conflict, cbret, dr) < 0)
             goto done;
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
-        x2c = xml_child_each(x2, x2c, CX_ELMNT);
+        x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
+        x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
     next:
         if (xpath0){
             free(xpath0);
@@ -1518,6 +1537,8 @@ xml_diff2patch_ordered_by_user(cxobj     *x1,
                                uint16_t   flags,
                                cxobj     *x1c,
                                cxobj     *x2c,
+                               int        ix1c,
+                               int        ix2c,
                                yang_stmt *yc,
                                cxobj     *xpatch,
                                int       *nr)
@@ -1525,17 +1546,22 @@ xml_diff2patch_ordered_by_user(cxobj     *x1,
     int    retval = 1;
     cxobj *xi;
     cxobj *xj;
+    int    ixi;
+    int    ixj;
 
     xj = x2c;
+    ixj = ix2c;
     do { /* Mark all  x2 as ADD */
         xml_flag_set(xj, XML_FLAG_ADD);
-    } while ((xj = xml_child_each(x2, xj, CX_ELMNT)) != NULL &&
+    } while ((xj = xml_child_iter(x2, &ixj, CX_ELMNT)) != NULL &&
              xml_spec(xj) == yc);
     /* If in both sets, unmark add/del */
     xi = x1c;
+    ixi = ix1c;
     do {
         xml_flag_set(xi, XML_FLAG_DEL);
         xj = x2c;
+        ixj = ix2c;
         do {
             if (xml_flag(xj, XML_FLAG_ADD) &&
                 xml_cmp(xi, xj, 0, 0, NULL) == 0){
@@ -1547,10 +1573,10 @@ xml_diff2patch_ordered_by_user(cxobj     *x1,
                 break;
             }
         }
-        while ((xj = xml_child_each(x2, xj, CX_ELMNT)) != NULL &&
+        while ((xj = xml_child_iter(x2, &ixj, CX_ELMNT)) != NULL &&
                xml_spec(xj) == yc);
     }
-    while ((xi = xml_child_each(x1, xi, CX_ELMNT)) != NULL &&
+    while ((xi = xml_child_iter(x1, &ixi, CX_ELMNT)) != NULL &&
            xml_spec(xi) == yc);
 
     retval = 0;
@@ -1590,21 +1616,25 @@ xml_diff2patch(cxobj   *x1,
     char      *b0;
     char      *b1;
     int        eq;
+    int        ix1c;
+    int        ix2c;
+    int        ixi;
+    int        ixj;
 
     /* Traverse x1 and x2 in lock-step */
-    x1c = x2c = NULL;
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
-    x2c = xml_child_each(x2, x2c, CX_ELMNT);
+    ix1c = ix2c = 0;
+    x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
+    x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
     for (;;){
         if (x1c == NULL && x2c == NULL)
             goto ok;
         /* Skip if marked as DENY by NACM */
         if (x1c && xml_flag(x1c, XML_FLAG_DENY) != 0){
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         else if (x2c && xml_flag(x2c, XML_FLAG_DENY) != 0){
-            x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
             continue;
         }
         y0c = NULL;
@@ -1614,7 +1644,7 @@ xml_diff2patch(cxobj   *x1,
             if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
             if (extflag){ /* skip */
-                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                 continue;
             }
         }
@@ -1622,20 +1652,20 @@ xml_diff2patch(cxobj   *x1,
             if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
             if (extflag){ /* skip */
-                x2c = xml_child_each(x2, x2c, CX_ELMNT);
+                x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
                 continue;
             }
         }
         if (x1c == NULL){
             if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
                 goto done;
-            x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
             continue;
         }
         else if (x2c == NULL){
             if (xml_diff2patch_create_delete(x1c, 0, xpatch, nr) < 0)
                 goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         /* Both x1c and x2c exists, check if yang equal */
@@ -1644,11 +1674,12 @@ xml_diff2patch(cxobj   *x1,
         b1 = xml_body(x2c);
         if ((flags & DIFF_FLAG_ORDER_IGNORE) != 0 &&
             eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
-            if (xml_diff2patch_ordered_by_user(x1, x2, flags, x1c, x2c, y0c, xpatch, nr) < 0)
+            if (xml_diff2patch_ordered_by_user(x1, x2, flags, x1c, x2c, ix1c, ix2c, y0c, xpatch, nr) < 0)
                 goto done;
             /* Show all marked as DELETE as - entries
              */
             xi = x1c;
+            ixi = ix1c;
             do {
                 if (xml_flag(xi, XML_FLAG_DEL)){
                     xml_flag_reset(xi, XML_FLAG_DEL);
@@ -1656,12 +1687,14 @@ xml_diff2patch(cxobj   *x1,
                         goto done;
                 }
             }
-            while ((xi = xml_child_each(x1, xi, CX_ELMNT)) != NULL &&
+            while ((xi = xml_child_iter(x1, &ixi, CX_ELMNT)) != NULL &&
                    xml_spec(xi) == y0c);
             x1c = xi; /* skip entries in this yang class */
+            ix1c = ixi;
             /* Show all marked as ADD as + entries
              */
             xj = x2c;
+            ixj = ix2c;
             do {
                 if (xml_flag(xj, XML_FLAG_ADD)){
                     xml_flag_reset(xj, XML_FLAG_ADD);
@@ -1669,21 +1702,22 @@ xml_diff2patch(cxobj   *x1,
                         goto done;
                 }
             }
-            while ((xj = xml_child_each(x2, xj, CX_ELMNT)) != NULL &&
+            while ((xj = xml_child_iter(x2, &ixj, CX_ELMNT)) != NULL &&
                    xml_spec(xj) == y1c);
             x2c = xj;
+            ix2c = ixj;
             continue;
         } /* ordered-by user */
         else if (eq < 0){
             if (xml_diff2patch_create_delete(x1c, 0, xpatch, nr) < 0)
                 goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         else if (eq > 0){
             if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
                 goto done;
-            x2c = xml_child_each(x2, x2c, CX_ELMNT);
+            x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
             continue;
         }
         else{ /* equal */
@@ -1712,8 +1746,8 @@ xml_diff2patch(cxobj   *x1,
                 goto done;
         }
         /* Get next */
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
-        x2c = xml_child_each(x2, x2c, CX_ELMNT);
+        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
+        x2c = xml_child_iter(x2, &ix2c, CX_ELMNT);
     }
  ok:
     retval = 0;

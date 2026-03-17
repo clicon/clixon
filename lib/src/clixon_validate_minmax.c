@@ -238,6 +238,7 @@ check_insert_duplicate(char **vec,
 static int
 check_unique_list_direct(cxobj     *x,
                          cxobj     *xt,
+                         int        ix0,
                          yang_stmt *y,
                          yang_stmt *yu,
                          cxobj    **xret)
@@ -255,6 +256,7 @@ check_unique_list_direct(cxobj     *x,
     char     *str;
     cvec     *cvk;
     int       dupl;
+    int       ix;
 
     /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
      * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
@@ -282,6 +284,7 @@ check_unique_list_direct(cxobj     *x,
     }
     /* Loop over children, then over each key, then search "backwards" */
     i = 0; /* x element index */
+    ix = ix0;
     do {
         xvec[i] = x;
         cvi = NULL;
@@ -324,7 +327,7 @@ check_unique_list_direct(cxobj     *x,
                 goto fail;
             }
         }
-        x = xml_child_each(xt, x, CX_ELMNT); // XXX #ifdef XML_XCHILD_USE_ITER31
+        x = xml_child_iter(xt, &ix, CX_ELMNT);
         i++;
     } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
  ok:
@@ -368,6 +371,7 @@ check_unique_list_direct(cxobj     *x,
 static int
 check_unique_list(cxobj     *x,
                   cxobj     *xt,
+                  int        ix0,
                   yang_stmt *y,
                   yang_stmt *yu,
                   cxobj    **xret)
@@ -382,11 +386,12 @@ check_unique_list(cxobj     *x,
     cvec   *nsc0 = NULL;
     cvec   *nsc1 = NULL;
     int     ret;
+    int     ix;
 
     /* Check if multiple direct children */
     cvk = yang_cvec_get(yu);
     if (cvec_len(cvk) > 1){
-        retval = check_unique_list_direct(x, xt, y, yu, xret);
+        retval = check_unique_list_direct(x, xt, ix0, y, yu, xret);
         goto done;
     }
     cvi = cvec_i(cvk, 0);
@@ -396,7 +401,7 @@ check_unique_list(cxobj     *x,
     }
     /* Check if direct schmeanode-id , ie not xpath */
     if (index(xpath0, '/') == NULL){
-        retval = check_unique_list_direct(x, xt, y, yu, xret);
+        retval = check_unique_list_direct(x, xt, ix0, y, yu, xret);
         goto done;
     }
     /* Here proper xpath with at least one slash (can there be a descendant schemanodeid w/o slash?) */
@@ -407,6 +412,7 @@ check_unique_list(cxobj     *x,
         goto done;
     if (ret == 0)
         goto fail; // XXX set xret
+    ix = ix0;
     do {
         /* Collect search results from one */
         if ((ret = unique_search_xpath(x, xpath1, nsc1, &svec, &slen)) < 0)
@@ -416,7 +422,7 @@ check_unique_list(cxobj     *x,
                 goto done;
             goto fail;
         }
-        x = xml_child_each(xt, x, CX_ELMNT);
+        x = xml_child_iter(xt, &ix, CX_ELMNT);
     } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
     // ok:
     /* It would be possible to cache vec here as an optimization */
@@ -551,6 +557,7 @@ check_empty_list_minmax(cxobj     *xt,
 static int
 xml_unique_detect(cxobj     *x,
                   cxobj     *xt,
+                  int        ix0,
                   yang_stmt *y,
                   cxobj    **xret)
 {
@@ -563,7 +570,7 @@ xml_unique_detect(cxobj     *x,
     while ((yu = yn_iter(y, &inext)) != NULL) {
         if (yang_keyword_get(yu) != Y_UNIQUE)
             continue;
-        if ((ret = check_unique_list(x, xt, y, yu, xret)) < 0)
+        if ((ret = check_unique_list(x, xt, ix0, y, yu, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -716,19 +723,12 @@ xml_yang_validate_minmax(cxobj  *xt,
     int           nr = 0;
     yang_stmt    *yt;
     int           inext = 0;
-#ifdef XML_XCHILD_USE_ITER31 // XXX DONT KNOW WHY THIS DOES NOT WORK
     int           ix;
-#endif
     int           ret;
 
     yt = xml_spec(xt); /* If yt == NULL, then no gap-analysis is done */
-#ifdef XML_XCHILD_USE_ITER31 // XXX DONT KNOW WHY THIS DOES NOT WORK
     ix = 0;
     while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
-#else
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL){
-#endif
         if ((y = xml_spec(x)) == NULL)
             continue;
         keyw = yang_keyword_get(y);
@@ -753,11 +753,11 @@ xml_yang_validate_minmax(cxobj  *xt,
             /* new list check */
             if (ret){
                 if (keyw == Y_LIST){
-                    if ((ret = check_unique_list_direct(x, xt, y, y, xret)) < 0)
+                    if ((ret = check_unique_list_direct(x, xt, ix, y, y, xret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
-                    if ((ret = xml_unique_detect(x, xt, y, xret)) < 0)
+                    if ((ret = xml_unique_detect(x, xt, ix, y, xret)) < 0)
                         goto done;
                     if (ret == 0)
                         goto fail;
@@ -1036,12 +1036,8 @@ vec_order_analyze(yang_stmt        *y,
         break;
     }
     if (x && nr){
-#ifdef XML_XCHILD_USE_ITER33
         if (ix)
             *ix -= nr;
-#else
-        xml_vector_decrement(x, nr); // XXX INSTEAD should decrement ix in outer loop
-#endif
     }
     retval = 1;
  done:
@@ -1088,13 +1084,8 @@ xml_duplicate_detect1(cxobj  *xt,
     xml_enumerate_children(xt); // Could be done in-line
     y0 = NULL;
     slen0 = 0;
-#ifdef XML_XCHILD_USE_ITER33
     ix = 0;
     while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
-#else
-    x = NULL;
-    while ((x = xml_child_each(xt, x, CX_ELMNT)) != NULL) {
-#endif
         if ((y = xml_spec(x)) == NULL)
             continue;
         if (y != y0 && vec != NULL){ /* New */
@@ -1167,7 +1158,7 @@ xml_duplicate_detect1(cxobj  *xt,
                 vlen++;
             }
             /* Special case of YANG unique statement */
-            if ((ret = xml_unique_detect(x, xt, y, xret)) < 0)
+            if ((ret = xml_unique_detect(x, xt, ix, y, xret)) < 0)
                 goto done;
             if (ret == 0)
                 goto fail;

@@ -306,6 +306,7 @@ xml_parse_bslash(clixon_xml_yacc *xy,
     cxobj *xc;
     char  *prefix0;
     char  *name0;
+    int    ix;
 
     /* These are existing tags */
     prefix0 = xml_prefix(x);
@@ -326,8 +327,8 @@ xml_parse_bslash(clixon_xml_yacc *xy,
      * But there is more: when YANG is assigned, if not leaf/leaf-lists, then all contents should
      * be stripped, see xml_bind_yang()
      */
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL)
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL)
         break;
     if (xc != NULL){ /* at least one element */
         if (xml_rm_children(x, CX_BODY) < 0) /* remove all bodies */

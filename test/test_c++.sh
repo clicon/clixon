@@ -130,6 +130,7 @@ int example_rpc(clixon_handle h,
     int    retval = -1;
     cxobj *x = NULL;
     char  *ns;
+    int    ix;
 
     /* get namespace from rpc name, return back in each output parameter */
     if ((ns = xml_find_type_value(xe, NULL, "xmlns", CX_ATTR)) == NULL)
@@ -141,7 +142,8 @@ int example_rpc(clixon_handle h,
     if (!xml_child_nr_type(xe, CX_ELMNT))
               cprintf(cbret, "<ok/>");
     else{
-        while ((x = xml_child_each(xe, x, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((x = xml_child_iter(xe, &ix, CX_ELMNT)) != NULL) {
             if (xmlns_set(x, NULL, ns) < 0)
                 goto done;
         }

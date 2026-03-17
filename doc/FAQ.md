@@ -502,10 +502,10 @@ You can look for added, deleted and changed entries in this way.
 ## How do I access the XML tree?
 Using XPath, find and iteration functions defined in the XML library. Example library functions:
 ```
-      xml_child_each(), 
-      xml_find(), 
-      xml_body(), 
-      xml_print(), 
+      xml_child_iter(),
+      xml_find(),
+      xml_body(),
+      xml_print(),
       xml_apply()
 ```
 More are found in the doxygen reference.

@@ -324,7 +324,7 @@ xml_tree_prune_flagged_sub(cxobj *xt,
          */
         if (submark)
             mark++;
-        else{ /* Safe with xml_child_each if last */
+        else{ /* Safe with xml_child_iter if last */
             if (xml_purge(x) < 0)
                 goto done;
             ix--;
@@ -404,7 +404,7 @@ xml_tree_mark_flagged_sub(cxobj *xt,
          */
         if (submark)
             mark++;
-        else{ /* Safe with xml_child_each if last */
+        else{ /* Safe with xml_child_iter if last */
             xml_flag_set(x, delmark);
         }
     }
@@ -841,9 +841,11 @@ assign_namespace_body(cxobj *x0, /* source */
     char  *prefix0;
     char  *prefix1 = NULL;
     cxobj *xa;
+    int    ix;
 
-    xa = NULL;
-    while ((xa = xml_child_each_attr(x0, xa)) != NULL) {
+    ix = 0;
+    while ((xa = xml_child_iter_attr(x0, &ix)) != NULL) {
+    //    while ((xa = xml_child_iter(x0, &ixa, CX_ATTR)) != NULL) {
         prefix0 = xml_prefix(xa);
         name = xml_name(xa);
         namespace = xml_value(xa);
@@ -1390,8 +1392,8 @@ xml_copy_marked(cxobj *x0,
         if (xml_prefix_set(x1, prefix) < 0)
             goto done;
     /* Copy all attributes */
-    x = NULL;
-    while ((x = xml_child_each_attr(x0, x)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter_attr(x0, &ix)) != NULL) {
         name = xml_name(x);
         if ((xcopy = xml_new(name, x1, CX_ATTR)) == NULL)
             goto done;

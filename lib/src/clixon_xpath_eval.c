@@ -1254,6 +1254,7 @@ xp_eval(xp_ctx     *xc,
     xp_ctx    *xr1 = NULL;
     xp_ctx    *xr2 = NULL;
     int        use_xr0 = 0; /* In 2nd child use transitively result of 1st child */
+    int        ix;
 
     // ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
     /* Pre-actions before check first child c0
@@ -1457,8 +1458,8 @@ xp_eval(xp_ctx     *xc,
             memset(xr0, 0, sizeof(*xr0));
             xr0->xc_initial = xc->xc_initial;
             xr0->xc_type = XT_NODESET;
-            x = NULL;
-            while ((x = xml_child_each(xc->xc_node, x, CX_ELMNT)) != NULL) {
+            ix = 0;
+            while ((x = xml_child_iter(xc->xc_node, &ix, CX_ELMNT)) != NULL) {
                 if (cxvec_append(x, &xr0->xc_nodeset, &xr0->xc_size) < 0)
                     goto done;
             }

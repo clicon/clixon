@@ -794,13 +794,14 @@ xmldb_msdiff(clixon_handle    h,
     char      *rev;            /* revision */
     int        needclone;
     yang_stmt *yspec1 = NULL;
+    int        ix;
 
     /* Check if old/deleted yangs not present in the loaded/running yangspec.
      * If so, append them to the global yspec
      */
     needclone = 0;
-    xmsd = NULL;
-    while ((xmsd = xml_child_each(msdiff->md_diff, xmsd, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((xmsd = xml_child_iter(msdiff->md_diff, &ix, CX_ELMNT)) != NULL) {
         if (xml_flag(xmsd, XML_FLAG_CHANGE|XML_FLAG_DEL) == 0)
             continue;
         needclone++;
@@ -841,8 +842,8 @@ xmldb_msdiff(clixon_handle    h,
     if (needclone && msdiff->md_xmodfile){
         if ((yspec1 = yspec_new1(h, YANG_DOMAIN_TOP, "prevyang")) == NULL)
             goto done;
-        xmsd = NULL;
-        while ((xmsd = xml_child_each(msdiff->md_xmodfile, xmsd, CX_ELMNT)) != NULL) {
+        ix = 0;
+        while ((xmsd = xml_child_iter(msdiff->md_xmodfile, &ix, CX_ELMNT)) != NULL) {
             if (strcmp(xml_name(xmsd), "module"))
                 continue;
             if ((ns = xml_find_body(xmsd, "namespace")) == NULL)

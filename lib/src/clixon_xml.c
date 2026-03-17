@@ -1079,20 +1079,6 @@ xml_child_order(cxobj *xp,
     return -1;
 }
 
-#ifndef XML_XCHILD_USE_ITER33
-/*! Advanced function to decrement _x_vector_i if objects have been removed
- *
- * Only in vec_order_analyze()
- */
-int
-xml_vector_decrement(cxobj *x,
-                     int    nr)
-{
-    x->_x_vector_i -= nr;
-    return 0;
-}
-#endif
-
 /*! Iterator over xml children objects
  *
  * @param[in] xparent xml tree node whose children should be iterated
@@ -1169,37 +1155,37 @@ xml_child_each(cxobj          *xparent,
 #endif
 }
 
-/*! Same as xml_child_each but hard-coded for attributes
+/*! Same as xml_child_iter but hard-coded for attributes assumed childvec is sorted
  *
  * Assumes attributes are first in list, which they are if they are sorted, but there are
  * situations where the children have not (yet) been sorted, in which case you need to use the 
- * original function.
- * @param[in] xparent xml tree node whose children should be iterated
- * @param[in] xprev   previous child, or NULL on init
- * @retval    xn      Next XML node
- * @retval    NULL    End of list
+ * original function: xml_child_iter(,,CX_ATTR)
+ * @param[in]     xparent xml tree node whose children should be iterated
+ * @param[in,out] inext   Iteration index, initialize to 0 before first call
+ * @retval        xn      Next XML attr node
+ * @retval        NULL    End of list
  * @see xml_child_iter
- * @note  Wrapper over xml_child_iter, all calls should be replaced by that function.
  */
 cxobj *
-xml_child_each_attr(cxobj  *xparent,
-                    cxobj  *xprev)
+xml_child_iter_attr(cxobj *xparent,
+                    int   *inext)
 {
-    int    i = 0;
     cxobj *xn;
 
-    if (xprev != NULL){
-        for (i = 0; i < xparent->x_childvec_len; i++){
-            if (xparent->x_childvec[i] == xprev){
-                i++;
-                break;
-            }
-        }
-    }
-    xn = xml_child_iter(xparent, &i, -1);
-    if (xn && xml_type(xn) != CX_ATTR)
+    if (xparent == NULL || inext == NULL || *inext < 0)
         return NULL;
-    return xn;
+    if (!is_element(xparent))
+        return NULL;
+    for (; *inext < xparent->x_childvec_len; (*inext)++){
+        xn = xparent->x_childvec[*inext];
+        if (xn == NULL)
+            continue;
+        if (xml_type(xn) != CX_ATTR)
+            return NULL;
+        (*inext)++;
+        return xn;
+    }
+    return NULL;
 }
 
 /*! Iterator over xml children using caller-side index (no struct state)
@@ -1211,8 +1197,8 @@ xml_child_each_attr(cxobj  *xparent,
  * @param[in]     xparent xml tree node whose children should be iterated
  * @param[in,out] inext   Iteration index, initialize to 0 before first call
  * @param[in]     type    matching type or -1 (CX_ERROR) for any
- * @retval    xn      Next XML child node
- * @retval    NULL    End of list
+ * @retval        xn      Next XML child node
+ * @retval        NULL    End of list
  * @code
  *   cxobj *x;
  *   int    i = 0;

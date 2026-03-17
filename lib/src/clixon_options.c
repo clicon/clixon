@@ -193,6 +193,8 @@ clicon_option_dump(clixon_handle h,
     size_t         klen;
     size_t         vlen;
     cxobj         *x = NULL;
+    cxobj         *xconf;
+    int            ix;
 
     if (clicon_hash_keys(hash, &keys, &klen) < 0)
         goto done;
@@ -212,20 +214,21 @@ clicon_option_dump(clixon_handle h,
     /* Next print CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_DIR from config tree
      * Since they are lists they are placed in the config tree.
      */
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+    xconf = clicon_conf_xml(h);
+    ix = 0;
+    while ((x = xml_child_iter(xconf, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(x), "CLICON_YANG_DIR") != 0)
             continue;
         clixon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
     }
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xconf, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
             continue;
         clixon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
     }
-    x = NULL;
-    while ((x = xml_child_each(clicon_conf_xml(h), x, CX_ELMNT)) != NULL) {
+    ix = 0;
+    while ((x = xml_child_iter(xconf, &ix, CX_ELMNT)) != NULL) {
         if (strcmp(xml_name(x), "CLICON_SNMP_MIB") != 0)
             continue;
         clixon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));

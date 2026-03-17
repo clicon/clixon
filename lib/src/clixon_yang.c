@@ -3496,6 +3496,7 @@ ys_populate_feature(clixon_handle h,
     cxobj     *xc;
     char      *m;
     char      *f;
+    int        ix;
 
     /* Get clicon config file in xml form.
      * Bootstrapping: A feature is enabled if found in clixon-config
@@ -3508,8 +3509,8 @@ ys_populate_feature(clixon_handle h,
     }
     module = yang_argument_get(ymod);
     feature = yang_argument_get(ys);
-    xc = NULL;
-    while ((xc = xml_child_each(x, xc, CX_ELMNT)) != NULL && found == 0) {
+    ix = 0;
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL && found == 0) {
         m = NULL;
         f = NULL;
         if (strcmp(xml_name(xc), "CLICON_FEATURE") != 0)

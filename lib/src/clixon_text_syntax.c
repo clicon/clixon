@@ -695,6 +695,8 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
                                cxobj     *x1,
                                cxobj     *x0c,
                                cxobj     *x1c,
+                               int        ix0c,
+                               int        ix1c,
                                yang_stmt *yc,
                                int        level,
                                int        skiptop)
@@ -702,17 +704,22 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
     int    retval = 1;
     cxobj *xi;
     cxobj *xj;
+    int    ixi;
+    int    ixj;
 
     xj = x1c;
+    ixj = ix1c;
     do {
         xml_flag_set(xj, XML_FLAG_ADD);
-    } while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+    } while ((xj = xml_child_iter(x1, &ixj, CX_ELMNT)) != NULL &&
              xml_spec(xj) == yc);
     /* If in both sets, unmark add/del */
     xi = x0c;
+    ixi = ix0c;
     do {
         xml_flag_set(xi, XML_FLAG_DEL);
         xj = x1c;
+        ixj = ix1c;
         do {
             if (xml_flag(xj, XML_FLAG_ADD) &&
                 xml_cmp(xi, xj, 0, 0, NULL) == 0){
@@ -724,10 +731,10 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
                 break;
             }
         }
-        while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+        while ((xj = xml_child_iter(x1, &ixj, CX_ELMNT)) != NULL &&
                xml_spec(xj) == yc);
     }
-    while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+    while ((xi = xml_child_iter(x0, &ixi, CX_ELMNT)) != NULL &&
            xml_spec(xi) == yc);
 
     retval = 0;
@@ -792,6 +799,10 @@ text_diff2cbuf(cbuf             *cb,
     cxobj     *xi;
     cxobj     *xj;
     int        extflag;
+    int        ix0c;
+    int        ix1c;
+    int        ixi;
+    int        ixj;
 
     level1 = level*PRETTYPRINT_INDENT;
     if ((y0 = xml_spec(x0)) != NULL){
@@ -800,20 +811,20 @@ text_diff2cbuf(cbuf             *cb,
 #endif
     }
     /* Traverse x0 and x1 in lock-step */
-    x0c = x1c = NULL;
-    x0c = xml_child_each(x0, x0c, CX_ELMNT);
-    x1c = xml_child_each(x1, x1c, CX_ELMNT);
+    ix0c = ix1c = 0;
+    x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+    x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
     for (;;) {
         /* Check if one or both subtrees are NULL */
         if (x0c == NULL && x1c == NULL)
             goto ok;
         /* Skip if marked as DENY */
         if (x0c && xml_flag(x0c, XML_FLAG_DENY) != 0){
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
             continue;
         }
         else if (x1c && xml_flag(x1c, XML_FLAG_DENY) != 0){
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         y0c = NULL;
@@ -823,7 +834,7 @@ text_diff2cbuf(cbuf             *cb,
             if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
             if (extflag){ /* skip */
-                x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
                 continue;
             }
         }
@@ -831,7 +842,7 @@ text_diff2cbuf(cbuf             *cb,
             if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
             if (extflag){ /* skip */
-                x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                 continue;
             }
         }
@@ -847,7 +858,7 @@ text_diff2cbuf(cbuf             *cb,
             }
             if (text2cbuf(cb, x1c, level+1, "+", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         else if (x1c == NULL){
@@ -862,7 +873,7 @@ text_diff2cbuf(cbuf             *cb,
             }
             if (text2cbuf(cb, x0c, level+1, "-", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
             continue;
         }
         /* Both x0c and x1c exists, check if they are yang-equal. */
@@ -870,13 +881,14 @@ text_diff2cbuf(cbuf             *cb,
         b0 = xml_body(x0c);
         b1 = xml_body(x1c);
         if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
-            if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, y0c,
+            if (text_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, ix0c, ix1c, y0c,
                                                level, skiptop) < 0)
                 goto done;
             /* Add all in x0 marked as DELETE in x0vec
              * Flags can remain: XXX should apply to all
              */
             xi = x0c;
+            ixi = ix0c;
             do {
                 if (xml_flag(xi, XML_FLAG_DEL)){
                     xml_flag_reset(xi, XML_FLAG_DEL);
@@ -893,12 +905,14 @@ text_diff2cbuf(cbuf             *cb,
                         goto done;
                 }
             }
-            while ((xi = xml_child_each(x0, xi, CX_ELMNT)) != NULL &&
+            while ((xi = xml_child_iter(x0, &ixi, CX_ELMNT)) != NULL &&
                    xml_spec(xi) == y0c);
             x0c = xi;
+            ix0c = ixi;
 
             /* Add all in x1 marked as ADD in x1vec */
             xj = x1c;
+            ixj = ix1c;
             do {
                 if (xml_flag(xj, XML_FLAG_ADD)){
                     xml_flag_reset(xj, XML_FLAG_ADD);
@@ -915,9 +929,10 @@ text_diff2cbuf(cbuf             *cb,
                         goto done;
                 }
             }
-            while ((xj = xml_child_each(x1, xj, CX_ELMNT)) != NULL &&
+            while ((xj = xml_child_iter(x1, &ixj, CX_ELMNT)) != NULL &&
                    xml_spec(xj) == y1c);
             x1c = xj;
+            ix1c = ixj;
             continue;
         }
         else if (eq < 0){
@@ -932,7 +947,7 @@ text_diff2cbuf(cbuf             *cb,
             }
             if (text2cbuf(cb, x0c, level+1, "-", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
-            x0c = xml_child_each(x0, x0c, CX_ELMNT);
+            x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
             continue;
         }
         else if (eq > 0){
@@ -947,7 +962,7 @@ text_diff2cbuf(cbuf             *cb,
             }
             if (text2cbuf(cb, x1c, level+1, "+", 0, WITHDEFAULTS_EXPLICIT, &leafl, &leaflname) < 0)
                 goto done;
-            x1c = xml_child_each(x1, x1c, CX_ELMNT);
+            x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
             continue;
         }
         else{ /* equal */
@@ -1001,8 +1016,8 @@ text_diff2cbuf(cbuf             *cb,
                 goto done;
         }
         /* Get next */
-        x0c = xml_child_each(x0, x0c, CX_ELMNT);
-        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+        x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+        x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
     } /* for */
  ok:
     if (nr)

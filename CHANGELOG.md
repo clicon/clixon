@@ -59,6 +59,7 @@ Developers may need to change their code
     while ((xc = xml_child_iter(xt, &ix, elmnt)) != NULL) {
     ```
   * Run: `configure --enable-child-each-wrapper` after migration
+  * Replace `xml_child_each_attr()` --> `xml_child_iter_attr()`
 * Replace `xml_merge()` with `xml_merge1()`
      * Example change: `xml_merge(...,r)` --> `xml_merge1(...,0,r)`
 * Replace `xml_yang_validate_all_top()` with `xml_yang_validate_all_state()'
