@@ -387,9 +387,6 @@ module clixon-lib {
             enum cv{
                 description "XML CLIgen value";
             }
-            enum search-index{
-                description "XML CLIgen search index";
-            }
             enum value{
                 description "XML body value";
             }

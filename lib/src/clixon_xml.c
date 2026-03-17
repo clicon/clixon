@@ -126,6 +126,20 @@ struct search_index{
     char        *si_name; /* Name of index variable (must be (potential) child of xml node at hand */
     clixon_xvec *si_xvec; /* Sorted vector of xml object pointers (should be of YANG type LIST) */
 };
+
+/* External map from cxobj* -> search_index* (replaces per-node x_search_index field) */
+static map_ptr2ptr *_search_index_map = NULL;
+static size_t       _search_index_map_len = 0;
+
+/*! Get search_index head pointer for an XML node from the external map
+ */
+static struct search_index *
+xml_search_index_head(cxobj *x)
+{
+    return (struct search_index *)clixon_ptr2ptr(_search_index_map,
+                                                  _search_index_map_len, x);
+}
+
 #endif
 
 /*! xml tree node, with name, type, parent, children, etc 
@@ -188,9 +202,6 @@ struct xml{
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang,
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
-#ifdef XML_EXPLICIT_INDEX
-    struct search_index *x_search_index; /* explicit search index vectors */
-#endif
 };
 
 /* Access functions for x_u union fields */
@@ -251,7 +262,6 @@ static const map_str2int xstatmap[] = {
     {"childvec",    XML_STATS_CHILDVEC},
     {"ns-cache",    XML_STATS_NS_CACHE},
     {"cv",          XML_STATS_CV},
-    {"search-index",XML_STATS_SEARCH_INDEX},
     {"value",       XML_STATS_VALUE},
     {NULL,         -1}
 };
@@ -331,15 +341,6 @@ xml_stats_one(cxobj         *x,
                 sz += cvec_size(x->x_ns_cache);
             if (x->x_cv)
                 sz += cv_size(x->x_cv);
-#ifdef XML_EXPLICIT_INDEX
-            if (x->x_search_index){
-                sz += sizeof(struct search_index);
-                if (x->x_search_index->si_name)
-                    sz += strlen(x->x_search_index->si_name)+1;
-                if (x->x_search_index->si_xvec)
-                    sz += clixon_xvec_len(x->x_search_index->si_xvec)*sizeof(struct cxobj*);
-            }
-#endif
             break;
         case CX_BODY:
         case CX_ATTR:
@@ -399,18 +400,6 @@ xml_stats_one(cxobj         *x,
             nr++;
             sz += cv_size(x->x_cv);
         }
-        break;
-    case XML_STATS_SEARCH_INDEX:
-#ifdef XML_EXPLICIT_INDEX
-        if (xml_type(x) == CX_ELMNT && x->x_search_index){
-            nr++;
-            sz += sizeof(struct search_index);
-            if (x->x_search_index->si_name)
-                sz += strlen(x->x_search_index->si_name)+1;
-            if (x->x_search_index->si_xvec)
-                sz += clixon_xvec_len(x->x_search_index->si_xvec)*sizeof(struct cxobj*);
-        }
-#endif
         break;
     case XML_STATS_VALUE:
         if ((xml_type(x) == CX_BODY || xml_type(x) == CX_ATTR) &&
@@ -2789,15 +2778,18 @@ static int
 xml_search_index_free(cxobj *x)
 {
     struct search_index *si;
+    struct search_index *head;
 
-    while ((si = x->x_search_index) != NULL) {
-        DELQ(si, x->x_search_index, struct search_index *);
+    head = xml_search_index_head(x);
+    while ((si = head) != NULL) {
+        DELQ(si, head, struct search_index *);
         if (si->si_name)
             free(si->si_name);
         if (si->si_xvec)
             clixon_xvec_free(si->si_xvec);
         free(si);
     }
+    clixon_ptr2ptr_del(&_search_index_map, &_search_index_map_len, x);
     return 0;
 }
 
@@ -2813,6 +2805,7 @@ xml_search_index_add(cxobj *x,
                      char  *name)
 {
     struct search_index *si = NULL;
+    struct search_index *head;
 
     if ((si = malloc(sizeof(struct search_index))) == NULL){
         clixon_err(OE_XML, errno, "malloc");
@@ -2831,7 +2824,14 @@ xml_search_index_add(cxobj *x,
         si = NULL;
         goto done;
     }
-    ADDQ(si, x->x_search_index);
+    head = xml_search_index_head(x);
+    ADDQ(si, head);
+    /* Update (or add) the map entry to point to the new head */
+    clixon_ptr2ptr_del(&_search_index_map, &_search_index_map_len, x);
+    if (clixon_ptr2ptr_add(&_search_index_map, &_search_index_map_len, x, head) < 0){
+        si = NULL;
+        goto done;
+    }
  done:
     return si;
 }
@@ -2848,15 +2848,18 @@ xml_search_index_get(cxobj *x,
                      char  *name)
 {
     struct search_index *si = NULL;
+    struct search_index *head;
 
-    if ((si = x->x_search_index) != NULL) {
+    if ((head = xml_search_index_head(x)) != NULL) {
+        si = head;
         do {
             if (strcmp(si->si_name, name) == 0){
                 goto done;
                 break;
             }
             si = NEXTQ(struct search_index *, si);
-        } while (si && si != x->x_search_index);
+        } while (si && si != head);
+        si = NULL;
     }
  done:
     return si;
@@ -2877,16 +2880,18 @@ xml_search_vector_get(cxobj        *xp,
                       clixon_xvec **xvec)
 {
     struct search_index *si;
+    struct search_index *head;
 
     *xvec = NULL;
-    if ((si = xp->x_search_index) != NULL) {
+    if ((head = xml_search_index_head(xp)) != NULL) {
+        si = head;
         do {
             if (strcmp(si->si_name, name) == 0){
                 *xvec = si->si_xvec;
                 break;
             }
             si = NEXTQ(struct search_index *, si);
-        } while (si && si != xp->x_search_index);
+        } while (si && si != head);
     }
     return 0;
 }

@@ -213,7 +213,6 @@ enum xml_stats_enum{
     XML_STATS_CHILDVEC,
     XML_STATS_NS_CACHE,
     XML_STATS_CV,
-    XML_STATS_SEARCH_INDEX,
     XML_STATS_VALUE,
 };
 typedef enum xml_stats_enum xml_stats_enum;
