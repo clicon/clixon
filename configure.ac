@@ -372,11 +372,11 @@ AC_ARG_ENABLE(xml-child-each-wrapper, AS_HELP_STRING([--enable-xml-child-each-wr
    fi
   ],
   [ enable_xml_child_each_wrapper=no])
-AC_MSG_RESULT(xml-child-each-wrapper is: $enable_xml_child_each_wrapper)
+AC_MSG_RESULT(xml-child-each-wrapper is: ${enable_xml_child_each_wrapper})
 
-if test "${enable_child_each_wrapper}" = "yes"; then
-   XML_EACH_CHILD_WRAPPER=1
-   AC_DEFINE(XML_EACH_CHILD_WRAPPER, 1, [Enable xml-child-each-wrapper])
+if test "${enable_xml_child_each_wrapper}" = "yes"; then
+   XML_CHILD_EACH_WRAPPER=1
+   AC_DEFINE_UNQUOTED(XML_CHILD_EACH_WRAPPER, ${XML_CHILD_EACH_WRAPPER}, [Enable xml-child-each-wrapper])
 fi
 
 # Set default config file location
@@ -387,7 +387,6 @@ AC_ARG_WITH([configfile],
 
 # Default location for config file
 AC_DEFINE_UNQUOTED(CLIXON_DEFAULT_CONFIG,"${CLIXON_DEFAULT_CONFIG}",[Location for apps to find default config file])
-
 AC_DEFINE_UNQUOTED(CLIXON_CONFIG_BINDIR, "${BINDIR}", [Pass-through $bindir])
 AC_DEFINE_UNQUOTED(CLIXON_CONFIG_LOCALSTATEDIR, "${LOCALSTATEDIR}", [Pass-through $localstatedir])
 AC_DEFINE_UNQUOTED(CLIXON_CONFIG_SBINDIR, "${SBINDIR}", [Pass-through $sbindir])

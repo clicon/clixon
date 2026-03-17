@@ -129,6 +129,7 @@ clixon_client_init(const char *config_file)
     /* Set clixon config file - reuse the one in the main installation */
     clicon_option_str_set(h, "CLICON_CONFIGFILE",
                           config_file?(char*)config_file:CLIXON_DEFAULT_CONFIG);
+    xml_init(h);
     yang_init(h);
     /* Find, read and parse configfile */
     if (clicon_options_main(h) < 0)

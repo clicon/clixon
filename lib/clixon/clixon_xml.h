@@ -325,6 +325,8 @@ char     *xml_operation2str(enum operation_type op);
 int       xml_attr_insert2val(const char *instr, enum insert_type *ins);
 cxobj    *xml_add_attr(cxobj *xn, const char *name, const char *value,
                        const char *prefix, const char *ns);
+int       xml_init(clixon_handle h);
+int       xml_exit(clixon_handle h);
 #ifdef XML_EXPLICIT_INDEX
 int       xml_search_index_p(cxobj *x);
 int       xml_search_vector_get(cxobj *x, const char *name, clixon_xvec **xvec);

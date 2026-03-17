@@ -5805,13 +5805,13 @@ else $as_nop
    enable_xml_child_each_wrapper=no
 fi
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: xml-child-each-wrapper is: $enable_xml_child_each_wrapper" >&5
-printf "%s\n" "xml-child-each-wrapper is: $enable_xml_child_each_wrapper" >&6; }
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: xml-child-each-wrapper is: ${enable_xml_child_each_wrapper}" >&5
+printf "%s\n" "xml-child-each-wrapper is: ${enable_xml_child_each_wrapper}" >&6; }
 
-if test "${enable_child_each_wrapper}" = "yes"; then
-   XML_EACH_CHILD_WRAPPER=1
+if test "${enable_xml_child_each_wrapper}" = "yes"; then
+   XML_CHILD_EACH_WRAPPER=1
 
-printf "%s\n" "#define XML_EACH_CHILD_WRAPPER 1" >>confdefs.h
+printf "%s\n" "#define XML_CHILD_EACH_WRAPPER ${XML_CHILD_EACH_WRAPPER}" >>confdefs.h
 
 fi
 
@@ -5828,7 +5828,6 @@ fi
 # Default location for config file
 
 printf "%s\n" "#define CLIXON_DEFAULT_CONFIG \"${CLIXON_DEFAULT_CONFIG}\"" >>confdefs.h
-
 
 
 printf "%s\n" "#define CLIXON_CONFIG_BINDIR \"${BINDIR}\"" >>confdefs.h

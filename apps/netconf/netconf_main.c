@@ -597,6 +597,7 @@ netconf_terminate(clixon_handle h)
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
     clicon_rpc_close_session(h);
+    xml_exit(h);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
@@ -769,6 +770,7 @@ main(int    argc,
      */
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clixon_debug_init(h, dbg);
+    xml_init(h);
     yang_init(h);
 
     /* Find, read and parse configfile */

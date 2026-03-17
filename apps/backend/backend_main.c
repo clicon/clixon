@@ -113,6 +113,7 @@ backend_terminate(clixon_handle h)
     if ((x = clicon_xml_changelog_get(h)) != NULL)
         xml_free(x);
     xml_yang_validate_exit(h);
+    xml_exit(h);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
@@ -463,7 +464,7 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int           print_version = 0;
     int32_t       d;
-    int autocli_cache_clear = 1;
+    int           autocli_cache_clear = 1;
 
     /* Initiate CLICON handle */
     if ((h = backend_handle_init()) == NULL)
@@ -544,6 +545,7 @@ main(int    argc,
      */
     clixon_log_init(h, __PROGRAM__, dbg?LOG_DEBUG:LOG_INFO, logdst);
     clixon_debug_init(h, dbg);
+    xml_init(h);
     yang_init(h);
     /* Find and read configfile */
     if (clicon_options_main(h) < 0){

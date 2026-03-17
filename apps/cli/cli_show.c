@@ -1736,7 +1736,7 @@ cli_show_statistics(clixon_handle h,
     if (backend) {
         static const char *xtypenames[] = {
             "element", "body", "attr", "name", "prefix",
-            "childvec", "ns-cache", "cv", "search-index", "value", NULL
+            "childvec", "ns-cache", "cv", "value", NULL
         };
 
         if (cli)
@@ -1864,21 +1864,21 @@ cli_show_statistics(clixon_handle h,
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                     tsz += sz;
                     translatenumber(sz, &u64, &unit);
-                    if (strlen(name) > 25){
+                    if (strlen(name) > 24){
                         cligen_output(stdout, "%s\n", name);
                         if (sz != 0){
-                            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "", u64, unit);
+                            cligen_output(stdout, "%-24s %" PRIu64 "%-10s\n", "", u64, unit);
                         }
                     }
                     else{
-                        cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", name, u64, unit);
+                        cligen_output(stdout, "%-24s %" PRIu64 "%-10s\n", name, u64, unit);
                     }
                 }
             }
             translatenumber(tsz, &u64, &unit);
-            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
+            cligen_output(stdout, "%-24s %" PRIu64 "%-10s\n", "YANG Total", u64, unit);
             translatenumber(tsz0+tsz, &u64, &unit);
-            cligen_output(stdout, "%-25s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
+            cligen_output(stdout, "%-24s %" PRIu64 "%-10s\n", "Mem Total", u64, unit);
             if (xret_all){
                 xml_free(xret_all);
                 xret_all = NULL;

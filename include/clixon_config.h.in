@@ -195,7 +195,7 @@
 #undef WITH_RESTCONF_NATIVE
 
 /* Enable xml-child-each-wrapper */
-#undef XML_EACH_CHILD_WRAPPER
+#undef XML_CHILD_EACH_WRAPPER
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */

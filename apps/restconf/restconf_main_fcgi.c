@@ -408,7 +408,7 @@ main(int    argc,
         clixon_err(OE_DAEMON, errno, "Setting signal");
         goto done;
     }
-
+    xml_init(h);
     yang_init(h);
     /* Find and read configfile */
     if (clicon_options_main(h) < 0)

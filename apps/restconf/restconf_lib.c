@@ -440,6 +440,7 @@ restconf_terminate(clixon_handle h)
     if ((pw = getpwuid(getuid())) != NULL) /* Force user to close-session */
         clicon_username_set(h, pw->pw_name);
     clicon_rpc_close_session(h);
+    xml_exit(h);
     yang_exit(h);
     if ((nsctx = clicon_nsctx_global_get(h)) != NULL)
         cvec_free(nsctx);
