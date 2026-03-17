@@ -120,11 +120,11 @@ enum cxobj_type {CX_ERROR=-1,
                  CX_ATTR,
                  CX_BODY};
 
-/*! How to bind yang to XML top-level when parsing 
+/*! How to bind yang to XML top-level when parsing
  *
- * Assume an XML tree x with parent xp (or NULL) and a set of children c1,c2:   
+ * Assume an XML tree x with parent xp (or NULL) and a set of children c1,c2:
  *
- *                (XML)  xp  
+ *                (XML)  xp
  *                       |
  *                       x
  *                      / \
@@ -137,18 +137,18 @@ enum cxobj_type {CX_ERROR=-1,
  *                       x - - - - - y
  *                      / \         / \
  *                     x1  x2 - -  y1  y2
- * In that case, "y" is a container, list, leaf or leaf-list with same name as "x". 
+ * In that case, "y" is a container, list, leaf or leaf-list with same name as "x".
  *
  * (2) If you make a binding using YB_PARENT, you assume xp already have a YANG binding (eg to "yp"):
  *
  *                (XML)  xp - - - -  yp (YANG)
- *                       |           
- *                       x           
+ *                       |
+ *                       x
  * so that the yang binding of "x" is a child of "yp":
  *
  *                (XML)  xp - - - -  yp (YANG)
  *                       |           |
- *                       x  - - - -  y         
+ *                       x  - - - -  y
  *                      / \         / \
  *                     x1  x2 - -  y1  y2
  */
@@ -174,7 +174,7 @@ typedef struct xml cxobj; /* struct defined in clicon_xml.c */
 
 /*! Callback function type for xml_apply
  *
- * @param[in]  x    XML node  
+ * @param[in]  x    XML node
  * @param[in]  arg  General-purpose argument
  * @retval     2    Locally abort this subtree, continue with others
  * @retval     1    Abort, dont continue with others, return 1 to end user
@@ -199,6 +199,25 @@ enum format_enum{
     FORMAT_PIPE_XML_DEFAULT /* Meta: If pipe, xml, if not default */
 };
 
+/*! Detail statistics about XML objects, used for debugging and optimization purposes
+ *
+ * @see xml_stats enum in clixon-lib.yang and xstatmap
+ */
+enum xml_stats_enum{
+    XML_STATS_ALL = 0,
+    XML_STATS_ELMNT,
+    XML_STATS_BODY,
+    XML_STATS_ATTR,
+    XML_STATS_NAME,
+    XML_STATS_PREFIX,
+    XML_STATS_CHILDVEC,
+    XML_STATS_NS_CACHE,
+    XML_STATS_CV,
+    XML_STATS_SEARCH_INDEX,
+    XML_STATS_VALUE,
+};
+typedef enum xml_stats_enum xml_stats_enum;
+
 /*! XML flags
  */
 #define XML_FLAG_MARK      0x01 /* General-purpose eg expand and xpath_vec selection and
@@ -220,8 +239,9 @@ enum format_enum{
  * Prototypes
  */
 const char *xml_type2str(enum cxobj_type type);
+xml_stats_enum xml_stats_str2type(const char *str);
 int       xml_stats_global(uint64_t *nr);
-int       xml_stats(cxobj *xt, uint64_t *nrp, size_t *szp);
+int       xml_stats(cxobj *xt, xml_stats_enum type, uint64_t *nrp, size_t *szp);
 char     *xml_name(cxobj *xn);
 int       xml_name_set(cxobj *xn, const char *name);
 char     *xml_prefix(cxobj *xn);

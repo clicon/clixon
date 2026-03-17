@@ -569,7 +569,7 @@ xml_global_defaults(clixon_handle h,
     if (xml_apply(xpart, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
         goto done;
     /* Merge global pruned tree with xt */
-    if ((ret = xml_merge(xt, xpart, yspec, NULL)) < 1) /* XXX reason */
+    if ((ret = xml_merge1(xt, xpart, yspec, 0, NULL)) < 1) /* XXX reason */
         goto done;
     retval = 0;
  done:

@@ -40,7 +40,6 @@
 /*
  * Prototypes
  */
-int backend_monitoring_state_get(clixon_handle h, yang_stmt *yspec, char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);
 int backend_client_rm(clixon_handle h, client_entry *ce);
 int from_client(int fd, void *arg);
 int backend_rpc_init(clixon_handle h);

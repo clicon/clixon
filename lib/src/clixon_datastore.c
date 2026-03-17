@@ -972,19 +972,16 @@ xmldb_delete(clixon_handle h,
     return retval;
 }
 
-/*! Clear any candidate information that may remain in the file system
+/*! Clear datastores matching pattern, clear cache if any. Remove file and dir
  *
- * if the previous execution did not terminate properly:
- *   candidate.db
- *   candidate.123.db
- *   candidate_orig.123.db
- *   candidate.d/0.xml
-  * @param[in] h   Clixon handle
- * @retval    0   OK
- * @retval   -1   Error
+ * @param[in] h       Clixon handle
+ * @param[in] pattern regexp
+ * @retval    0       OK
+ * @retval   -1       Error
  */
 int
-xmldb_delete_candidates(clixon_handle h)
+xmldb_delete_pattern(clixon_handle h,
+                     const char   *pattern)
 {
     int            retval = -1;
     char          *dir;
@@ -999,14 +996,14 @@ xmldb_delete_candidates(clixon_handle h)
         goto done;
     }
     /* shared is candidate_db; privcand is candidate.56_db and candidate-orig.56_db */
-    if (clixon_dir_remove_files(dir, NULL, "^candidate") < 0)
+    if (clixon_dir_remove_files(dir, NULL, pattern) < 0)
         goto done;
     /* multi is candidate.d/0.xml and candidate.56.d/0.xml */
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    if ((ndp = clicon_file_dirent(dir, &dp, "^candidate", S_IFDIR)) < 0)
+    if ((ndp = clicon_file_dirent(dir, &dp, pattern, S_IFDIR)) < 0)
         goto done;
     for (i = 0; i < ndp; i++) {
         if (clixon_dir_remove_files(dir, dp[i].d_name, "\\.xml") < 0)

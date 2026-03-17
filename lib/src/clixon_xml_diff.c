@@ -242,6 +242,7 @@ xml_diff_ordered_by_user(cxobj     *x0,
  *
  * @param[in]  x0         First XML tree
  * @param[in]  x1         Second XML tree
+ * @param[in]  state      0: ignore state, 1: include state (non-config)
  * @param[out] x0vec      Pointervector to XML nodes existing in only first tree
  * @param[out] x0veclen   Length of first vector
  * @param[out] x1vec      Pointervector to XML nodes existing in only second tree
@@ -274,6 +275,7 @@ xml_diff_ordered_by_user(cxobj     *x0,
 static int
 xml_diff1(cxobj     *x0,
           cxobj     *x1,
+          int        state,
           cxobj   ***x0vec,
           size_t    *x0veclen,
           cxobj   ***x1vec,
@@ -311,6 +313,10 @@ xml_diff1(cxobj     *x0,
             }
             else
                 if ((y0c = xml_spec(x0c)) != NULL){
+                    if (!state && yang_config(y0c) == 0){ /* skip state data if state is not included */
+                        x0c = xml_child_each(x0, x0c, CX_ELMNT);
+                        continue;
+                    }
                     if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                         goto done;
                     if (extflag){ /* skip */
@@ -326,6 +332,10 @@ xml_diff1(cxobj     *x0,
             }
             else
                 if ((y1c = xml_spec(x1c)) != NULL){
+                    if (!state && yang_config(y1c) == 0){ /* skip state data if state is not included */
+                        x1c = xml_child_each(x1, x1c, CX_ELMNT);
+                        continue;
+                    }
                     if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                         goto done;
                     if (extflag){ /* skip */
@@ -416,7 +426,7 @@ xml_diff1(cxobj     *x0,
                         goto done;
                 }
             }
-            else if (xml_diff1(x0c, x1c,
+            else if (xml_diff1(x0c, x1c, state,
                                x0vec, x0veclen,
                                x1vec, x1veclen,
                                changed_x0, changed_x1, changedlen)< 0)
@@ -476,7 +486,7 @@ xml_diff(cxobj     *x0,
             goto done;
         goto ok;
     }
-    if (xml_diff1(x0, x1,
+    if (xml_diff1(x0, x1, 0,
                   first, firstlen,
                   second, secondlen,
                   changed_x0, changed_x1, changedlen) < 0)
@@ -487,12 +497,13 @@ xml_diff(cxobj     *x0,
     return retval;
 }
 
-/*! Merge a base tree x0 with x1 with yang spec y
+/*! Merge a base tree x0 with x1 with yang spec y, internal recursive function
  *
- * @param[in]  x0  Base xml tree (can be NULL in add scenarios)
- * @param[in]  y0  Yang spec corresponding to xml-node x0. NULL if x0 is NULL
- * @param[in]  x0p Parent of x0
- * @param[in]  x1  xml tree which modifies base
+ * @param[in]  x0     Base xml tree (can be NULL in add scenarios)
+ * @param[in]  y0     Yang spec corresponding to xml-node x0. NULL if x0 is NULL
+ * @param[in]  x0p    Parent of x0
+ * @param[in]  x1     xml tree which modifies base
+ * @param[in]  dontadd Dont add new list elements if they do not exist in the original tree. Only modify existing ones.
  * @param[out] reason If retval=0 a malloced string
  * @retval     1      OK
  * @retval     0      Yang error, reason is set
@@ -500,11 +511,12 @@ xml_diff(cxobj     *x0,
  * Assume x0 and x1 are same on entry and that y is the spec
  */
 static int
-xml_merge1(cxobj              *x0,  /* the target */
-           yang_stmt          *y0,
-           cxobj              *x0p,
-           cxobj              *x1,  /* the source */
-           char              **reason)
+xml_merge_recurse(cxobj     *x0,  /* the target */
+                  yang_stmt *y0,
+                  cxobj     *x0p,
+                  cxobj     *x1,  /* the source */
+                  int        dontadd,
+                  char     **reason)
 {
     int             retval = -1;
     char           *x1cname; /* child name */
@@ -531,6 +543,8 @@ xml_merge1(cxobj              *x0,  /* the target */
     if (x0 == NULL){
         if (xml_nsctx_node(x1, &nsc) < 0)
             goto done;
+        if (yang_keyword_get(y0) == Y_LIST && dontadd)
+            goto ok;
         if (xml_rm(x1) < 0)
             goto done;
         /* This is to make the anydata case a little more robust, more could be done */
@@ -637,11 +651,12 @@ xml_merge1(cxobj              *x0,  /* the target */
          * Loop through children of the modification tree */
         for (i=0; i<twophase_len; i++){
             assert(twophase[i].mt_x1c);
-            if ((ret = xml_merge1(twophase[i].mt_x0c,
-                                  twophase[i].mt_yc,
-                                  x0,
-                                  twophase[i].mt_x1c,
-                                  reason)) < 0)
+            if ((ret = xml_merge_recurse(twophase[i].mt_x0c,
+                                         twophase[i].mt_yc,
+                                         x0,
+                                         twophase[i].mt_x1c,
+                                         dontadd,
+                                         reason)) < 0)
                 goto done;
             if (ret == 0)
                 goto fail;
@@ -670,6 +685,7 @@ xml_merge1(cxobj              *x0,  /* the target */
  * @param[in]  x0     Base xml tree (can be NULL in add scenarios)
  * @param[in]  x1     xml tree which modifies base
  * @param[in]  yspec  Yang spec
+ * @param[in]  dontadd Dont add new list elements if they do not exist in the original tree. Only modify existing ones.
  * @param[out] reason If retval=0, reason is set. Malloced. Needs to be freed by caller
  * @retval     1      OK
  * @retval     0      Yang error, reason is set
@@ -677,10 +693,11 @@ xml_merge1(cxobj              *x0,  /* the target */
  * @note both x0 and x1 need to be top-level trees AND bound to YANG
  */
 int
-xml_merge(cxobj     *x0,
-          cxobj     *x1,
-          yang_stmt *yspec,
-          char     **reason)
+xml_merge1(cxobj     *x0,
+           cxobj     *x1,
+           yang_stmt *yspec,
+           int        dontadd,
+           char     **reason)
 {
     int        retval = -1;
     char      *x1cname; /* child name */
@@ -753,11 +770,12 @@ xml_merge(cxobj     *x0,
      * Loop through children of the modification tree */
     for (i=0; i<twophase_len; i++){
         assert(twophase[i].mt_x1c);
-        if ((ret = xml_merge1(twophase[i].mt_x0c,
-                              twophase[i].mt_yc,
-                              x0,
-                              twophase[i].mt_x1c,
-                              reason)) < 0)
+        if ((ret = xml_merge_recurse(twophase[i].mt_x0c,
+                                     twophase[i].mt_yc,
+                                     x0,
+                                     twophase[i].mt_x1c,
+                                     dontadd,
+                                     reason)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

@@ -32,32 +32,16 @@
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-
- *
- * The exported interface to plugins. External apps (eg backend plugins) should
- * only include this file.
- * Internal code should not include this file
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
-#ifndef _CLIXON_BACKEND_H_
-#define _CLIXON_BACKEND_H_
+
+#ifndef _BACKEND_STATE_H_
+#define _BACKEND_STATE_H_
 
 /*
- * Use this constant to disable some prototypes that should not be visible outside the lib.
- * This is an alternative to use separate internal include files.
+ * Prototypes
  */
+int get_state_data(clixon_handle h, char *xpath, cvec *nsc, cxobj **xret);
+int merge_state_data(clixon_handle h, cxobj *xtop, yang_stmt *yspec, cxobj **xret);
+int clixon_backend_stats(clixon_handle h, int modules, xml_stats_enum xml_type, cbuf *cbret);
 
-/* Common code (API and Backend daemon) */
-#include <clixon/clixon_backend_client.h>
-#include <clixon/clixon_backend_transaction.h>
-#include <clixon/backend_state.h>
-#include <clixon/clixon_backend_plugin.h>
-#include <clixon/clixon_backend_commit.h>
-
-#endif /* _CLIXON_BACKEND_H_ */
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
+#endif  /* _BACKEND_STATE_H_ */

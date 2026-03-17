@@ -62,6 +62,8 @@ char      *cv2yang_type(enum cv_type cv_type);
 yang_stmt *yang_find_identity(yang_stmt *ys, const char *identity);
 yang_stmt *yang_find_identity_nsc(yang_stmt *yspec, const char *identity, cvec *nsc);
 int        ys_cv_validate(clixon_handle h, cg_var *cv, yang_stmt *ys, yang_stmt **ysub, char **reason);
+int        ys_cv_validate_union_one(clixon_handle h, yang_stmt *ys, char **reason,
+                                    yang_stmt *yt, char *type, char *val);
 int        clicon_type2cv(const char *type, const char *rtype, yang_stmt *ys, enum cv_type *cvtype);
 int        yang_type_get(yang_stmt *ys, char **otype, yang_stmt **restype,
                          int *options, cvec **cvv,

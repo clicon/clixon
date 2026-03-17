@@ -214,7 +214,8 @@ struct xmlbody{
  * Variables
  */
 
-/* Mapping between xml type <--> string */
+/*! Mapping between xml type string and integer
+ */
 static const map_str2int xsmap[] = {
     {"error",         CX_ERROR},
     {"element",       CX_ELMNT},
@@ -232,6 +233,31 @@ const char *
 xml_type2str(enum cxobj_type type)
 {
     return clicon_int2str(xsmap, type);
+}
+
+/*! Translate from xml type string keyword to enum form
+ */
+static const map_str2int xstatmap[] = {
+    {"all",         XML_STATS_ALL},
+    {"element",     XML_STATS_ELMNT},
+    {"body",        XML_STATS_BODY},
+    {"attr",        XML_STATS_ATTR},
+    {"name",        XML_STATS_NAME},
+    {"prefix",      XML_STATS_PREFIX},
+    {"childvec",    XML_STATS_CHILDVEC},
+    {"ns-cache",    XML_STATS_NS_CACHE},
+    {"cv",          XML_STATS_CV},
+    {"search-index",XML_STATS_SEARCH_INDEX},
+    {"value",       XML_STATS_VALUE},
+    {NULL,         -1}
+};
+
+/*! Translate from xml stats type string keyword to enum form
+ */
+enum xml_stats_enum
+xml_stats_str2type(const char *str)
+{
+    return clicon_str2int(xstatmap, str);
 }
 
 /* Stats (too low-level to hang it on handle) */
@@ -252,31 +278,108 @@ xml_stats_global(uint64_t *nr)
 /*! Return the alloced memory of a single XML obj 
  *
  * @param[in]   x    XML object
+ * @param[in]   type stats enum, 0 is all
  * @param[out]  szp  Size of this XML obj
  * @retval      0    OK
  * (baseline: 96 bytes per object on x86-64)
  */
 static int
-xml_stats_one(cxobj    *x,
-              size_t   *szp)
+xml_stats_one(cxobj         *x,
+              xml_stats_enum type,
+              uint64_t      *nrp,
+              size_t        *szp)
 {
-    size_t sz = 0;
+    size_t   sz = 0;
+    uint64_t nr = 0;
 
-    if (x->x_name)
-        sz += strlen(x->x_name) + 1;
-    if (x->x_prefix)
-        sz += strlen(x->x_prefix) + 1;
-    switch (xml_type(x)){
-    case CX_ELMNT:
-        sz += sizeof(struct xml);
-        sz += x->x_childvec_max*sizeof(struct xml*);
-        if (x->x_ns_cache)
-            sz += cvec_size(x->x_ns_cache);
-        if (x->x_cv)
-            sz += cv_size(x->x_cv);
+    switch (type){
+    case XML_STATS_ALL:
+        nr++;
+        if (x->x_name)
+            sz += strlen(x->x_name) + 1;
+        if (x->x_prefix)
+            sz += strlen(x->x_prefix) + 1;
+        switch (xml_type(x)){
+        case CX_ELMNT:
+            sz += sizeof(struct xml);
+            sz += x->x_childvec_max*sizeof(struct xml*);
+            if (x->x_ns_cache)
+                sz += cvec_size(x->x_ns_cache);
+            if (x->x_cv)
+                sz += cv_size(x->x_cv);
 #ifdef XML_EXPLICIT_INDEX
-        if (x->x_search_index){
-            /* XXX: only one */
+            if (x->x_search_index){
+                sz += sizeof(struct search_index);
+                if (x->x_search_index->si_name)
+                    sz += strlen(x->x_search_index->si_name)+1;
+                if (x->x_search_index->si_xvec)
+                    sz += clixon_xvec_len(x->x_search_index->si_xvec)*sizeof(struct cxobj*);
+            }
+#endif
+            break;
+        case CX_BODY:
+        case CX_ATTR:
+            sz += sizeof(struct xmlbody);
+            if (x->x_value_cb)
+                sz += cbuf_buflen(x->x_value_cb);
+            break;
+        default:
+            break;
+        }
+        break;
+    case XML_STATS_ELMNT:
+        if (xml_type(x) == CX_ELMNT){
+            sz += sizeof(struct xml);
+            nr++;
+        }
+        break;
+    case XML_STATS_BODY:
+        if (xml_type(x) == CX_BODY){
+            nr++;
+            sz += sizeof(struct xmlbody);
+        }
+        break;
+    case XML_STATS_ATTR:
+        if (xml_type(x) == CX_ATTR){
+            nr++;
+            sz += sizeof(struct xmlbody);
+        }
+        break;
+    case XML_STATS_NAME:
+        if (x->x_name){
+            nr++;
+            sz += strlen(x->x_name) + 1;
+        }
+        break;
+    case XML_STATS_PREFIX:
+        if (x->x_prefix){
+            nr++;
+            sz += strlen(x->x_prefix) + 1;
+        }
+        break;
+    case XML_STATS_CHILDVEC:
+        if (xml_type(x) == CX_ELMNT){
+            if (x->x_childvec_len)
+                nr++;
+            sz += x->x_childvec_max*sizeof(struct xml*);
+        }
+        break;
+    case XML_STATS_NS_CACHE:
+        if (xml_type(x) == CX_ELMNT && x->x_ns_cache){
+            nr++;
+            sz += cvec_size(x->x_ns_cache);
+        }
+        break;
+    case XML_STATS_CV:
+        if (xml_type(x) == CX_ELMNT && x->x_cv){
+            nr++;
+            sz += cv_size(x->x_cv);
+        }
+        break;
+    case XML_STATS_SEARCH_INDEX:
+#ifdef XML_EXPLICIT_INDEX
+        if (xml_type(x) == CX_ELMNT && x->x_search_index){
+            nr++;
             sz += sizeof(struct search_index);
             if (x->x_search_index->si_name)
                 sz += strlen(x->x_search_index->si_name)+1;
@@ -285,15 +388,16 @@ xml_stats_one(cxobj    *x,
         }
 #endif
         break;
-    case CX_BODY:
-    case CX_ATTR:
-        sz += sizeof(struct xmlbody);
-        if (x->x_value_cb)
+    case XML_STATS_VALUE:
+        if ((xml_type(x) == CX_BODY || xml_type(x) == CX_ATTR) &&
+            x->x_value_cb){
+            nr++;
             sz += cbuf_buflen(x->x_value_cb);
-        break;
-    default:
+        }
         break;
     }
+    if (nrp)
+        *nrp = nr;
     if (szp)
         *szp = sz;
     return 0;
@@ -302,32 +406,39 @@ xml_stats_one(cxobj    *x,
 /*! Return statistics of an XML tree recursively
  *
  * @param[in]   xt   XML object
+ * @param[in]   type stats enum, 0 is all
  * @param[out]  nrp  Number of XML obj recursively
  * @param[out]  szp  Size of this XML obj recursively
  * @retval      0    OK
  * @retval     -1    Error
  */
 int
-xml_stats(cxobj    *xt,
-          uint64_t *nrp,
-          size_t   *szp)
+xml_stats(cxobj          *xt,
+          xml_stats_enum type,
+          uint64_t      *nrp,
+          size_t        *szp)
 {
-    int    retval = -1;
-    size_t sz = 0;
-    cxobj *xc;
+    int      retval = -1;
+    uint64_t nr = 0;
+    size_t   sz = 0;
+    cxobj   *xc;
 
     if (xt == NULL){
         clixon_err(OE_XML, EINVAL, "xml node is NULL");
         goto done;
     }
-    *nrp += 1;
-    xml_stats_one(xt, &sz);
+    xml_stats_one(xt, type, &nr, &sz);
+    if (nrp)
+        *nrp += nr;
     if (szp)
         *szp += sz;
     xc = NULL;
     while ((xc = xml_child_each(xt, xc, -1)) != NULL) {
+        nr=0;
         sz=0;
-        xml_stats(xc, nrp, &sz);
+        xml_stats(xc, type, &nr, &sz);
+        if (nrp)
+            *nrp += nr;
         if (szp)
             *szp += sz;
     }

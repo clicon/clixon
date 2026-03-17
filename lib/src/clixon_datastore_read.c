@@ -893,6 +893,7 @@ xmldb_get_cache_from_file(clixon_handle h,
         clixon_err(OE_YANG, ENOENT, "No yang spec");
         goto done;
     }
+    clixon_debug(CLIXON_DBG_DATASTORE, "Cache of datastore %s is empty, read from file", db);
     /* If there is no xml x0 tree (in cache), then read it from file */
     /* xml looks like: <top><config><x>... where "x" is a top-level symbol in a module */
     if ((ret = xmldb_readfile(h, db, YB_NONE, yspec0, &xt, de, &msdiff, xerr)) < 0)

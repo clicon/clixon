@@ -870,7 +870,7 @@ ys_cv_validate_leafref(clixon_handle h,
  * @retval     0      Validation not OK, malloced reason is returned. Free reason with free()
  * @retval    -1      Error (fatal), with errno set to indicate error
  */
-static int
+int
 ys_cv_validate_union_one(clixon_handle h,
                          yang_stmt    *ys,
                          char        **reason,

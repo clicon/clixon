@@ -19,6 +19,36 @@
 ## 7.8.0
 Expected: May 2026
 
+### Features
+
+* show memory: Added detailed statistics for config datastores (CLI and RPC)
+* New `clixon-config@2026-03-01.yang` revision
+   * Added `CLICON_VALIDATE_TARGET_STATE`
+* New `clixon-lib@2026-03-01.yang` revision
+   * Extended stats rpc with `xml-type` parameter
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* Changed example CLI show memory arguments to: `show mem [detail] [cli] [backend]`
+
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Replace `xml_merge()` with `xml_merge1()`
+     * Example change: `xml_merge(...,r)` --> `xml_merge1(...,0,r)`
+* Replace `xml_yang_validate_all_top()` with `xml_yang_validate_all_state()'
+     * Example change: `xml_yang_validate_all_top(h,x,r)` --> `xml_yang_validate_all_state(h,x,0,r)`
+
+### Corrected Bugs
+
+* Fixed: [CLI: union leafref not supported in completion](https://github.com/clicon/clixon/issues/558)
+* Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)
+* Fixed: [Validation of YANG leafref within union does not work](https://github.com/clicon/clixon/issues/498)
+* Fixed: [leafref instance-required with state](https://github.com/clicon/clixon/issues/632
+
 ## 7.7.0
 21 February 2026
 

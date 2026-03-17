@@ -139,7 +139,7 @@ backend_terminate(clixon_handle h)
     clixon_err_exit();
     clixon_log_exit();
     stream_delete_all(h, 1);
-    xmldb_delete_candidates(h);
+    xmldb_delete_pattern(h, "^candidate");
     xmldb_disconnect(h);
     clixon_debug_exit();
     backend_handle_exit(h); /* Cannot use h after this. */
@@ -906,7 +906,7 @@ main(int    argc,
     else
         if (startup_mode == SM_RUNNING_STARTUP)
             startup_mode = SM_RUNNING;
-    if (xmldb_delete_candidates(h) < 0)
+    if (xmldb_delete_pattern(h, "^candidate") < 0)
         goto done;
     /* If startup fails, lib functions report invalidation info in a cbuf */
     if ((cbret = cbuf_new()) == NULL){

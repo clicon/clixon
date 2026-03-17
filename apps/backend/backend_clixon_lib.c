@@ -70,86 +70,9 @@
 #include "clixon_backend_plugin.h"
 #include "clixon_backend_client.h"
 #include "backend_handle.h"
+#include "backend_state.h"
 #include "clixon_backend_commit.h"
 #include "backend_clixon_lib.h"
-
-/*! Get clixon per datastore stats
- *
- * @param[in]     h       Clixon handle
- * @param[in]     dbname  Datastore name
- * @param[in,out] cb      Cligen buf
- * @retval        0       OK
- * @retval       -1       Error
- */
-static int
-clixon_stats_datastore_get(clixon_handle h,
-                           char         *dbname,
-                           cbuf         *cb)
-{
-    int       retval = -1;
-    cxobj    *xt = NULL; /* should not be freed */
-    uint64_t  nr = 0;
-    size_t    sz = 0;
-    cxobj    *xn = NULL;
-    db_elmnt *de;
-    int       ret;
-
-    clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
-    /* This is the db cache */
-    if ((de = xmldb_find(h, dbname)) != NULL &&
-        (xt = xmldb_cache_get(de)) == NULL){
-        /* Trigger cache if no exist (trick to ensure cache is present) */
-        if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
-            //goto done;
-            goto ok;
-        if (ret == 0)
-            goto ok;
-        xt = xmldb_cache_get(de);
-    }
-    if (xt != NULL){
-        if (xml_stats(xt, &nr, &sz) < 0)
-            goto done;
-        cprintf(cb, "<datastore><name>%s</name><nr>%" PRIu64 "</nr>"
-                "<size>%zu</size></datastore>",
-                dbname, nr, sz);
-    }
- ok:
-    retval = 0;
- done:
-    if (xn)
-        xml_free(xn);
-    return retval;
-}
-
-/*! Get clixon per yang-spec stats
- *
- * @param[in]     h       Clixon handle
- * @param[in]     dbname  Datastore name
- * @param[in,out] cb      Cligen buf
- * @retval        0       OK
- * @retval       -1       Error
- */
-static int
-clixon_stats_yang_get(clixon_handle h,
-                      yang_stmt    *ys,
-                      cbuf         *cb)
-{
-    int       retval = -1;
-    uint64_t  nr = 0;
-    size_t    sz = 0;
-    cxobj    *xn = NULL;
-
-    if (ys == NULL)
-        return 0;
-    if (yang_stats(ys, 0, &nr, &sz) < 0)
-        goto done;
-    cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
-    retval = 0;
- done:
-    if (xn)
-        xml_free(xn);
-    return retval;
-}
 
 /*! Set debug level.
  *
@@ -227,76 +150,23 @@ from_client_stats(clixon_handle h,
                   void         *arg,
                   void         *regarg)
 {
-    int        retval = -1;
-    uint64_t   nr;
-    char      *str;
-    int        modules = 0;
-    yang_stmt *ymounts;
-    yang_stmt *ydomain;
-    yang_stmt *yspec;
-    yang_stmt *ymodule;
-    cxobj     *xt = NULL;
-    char      *domain;
-    int        inext;
-    int        inext2;
-    int        inext3;
+    int            retval = -1;
+    char          *str;
+    int            modules = 0;
+    xml_stats_enum xml_type = XML_STATS_ALL;
 
     if ((str = xml_find_body(xe, "modules")) != NULL)
         modules = strcmp(str, "true") == 0;
+    if ((str = xml_find_body(xe, "xml-type")) != NULL)
+        xml_type = xml_stats_str2type(str);
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
-    cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
-    nr=0;
-    xml_stats_global(&nr);
-    cprintf(cbret, "<xmlnr>%" PRIu64 "</xmlnr>", nr);
-    nr=0;
-    yang_stats_global(&nr);
-    cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
-    cprintf(cbret, "</global>");
-    cprintf(cbret, "<datastores xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_stats_datastore_get(h, "running", cbret) < 0)
+    if (clixon_backend_stats(h, modules, xml_type, cbret) < 0)
         goto done;
-    if (clixon_stats_datastore_get(h, "candidate", cbret) < 0)
-        goto done;
-    if (if_feature(h, "ietf-netconf", "startup"))
-	if (clixon_stats_datastore_get(h, "startup", cbret) < 0)
-	    goto done;
-    cprintf(cbret, "</datastores>");
-    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
-        goto done;
-    }
-    cprintf(cbret, "<module-sets xmlns=\"%s\">", CLIXON_LIB_NS);
-    inext = 0;
-    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
-        domain = yang_argument_get(ydomain);
-        /* per module-set, first configuration, then main dbspec, then mountpoints */
-        inext2 = 0;
-        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
-            cprintf(cbret, "<module-set>");
-            cprintf(cbret, "<name>%s/%s</name>", domain, yang_argument_get(yspec));
-            if (clixon_stats_yang_get(h, yspec, cbret) < 0)
-                goto done;
-            if (modules){
-                inext3 = 0;
-                while ((ymodule = yn_iter(yspec, &inext3)) != NULL) {
-                    cprintf(cbret, "<module><name>%s</name>", yang_argument_get(ymodule));
-                    if (clixon_stats_yang_get(h, ymodule, cbret) < 0)
-                        goto done;
-                    cprintf(cbret, "</module>");
-                }
-            }
-            cprintf(cbret, "</module-set>");
-        }
-    }
-    cprintf(cbret, "</module-sets>");
     cprintf(cbret, "</rpc-reply>");
     retval = 0;
  done:
-    if (xt)
-	xml_free(xt);
     return retval;
 }
-
 
 /*! Control a specific process or daemon: start/stop, etc
  *
@@ -385,7 +255,7 @@ from_client_restart_one(clixon_handle    h,
     /* This is the state we are going to */
     if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, &xerr)) < 0)
         goto done;
-    if (ret == 1 && (ret = xml_yang_validate_all_top(h, td->td_target, &xerr)) < 0)
+    if (ret == 1 && (ret = xml_yang_validate_all_state(h, td->td_target, 0, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
@@ -624,9 +494,11 @@ xpath_append(cbuf      *cb0,
     return retval;
 }
 
-/*! If xpath and leafref-refer and innermost yang is leafref, then append path to xpath
+/*! If xpath and leafref-refer and innermost yang is leafref or union, then append path to xpath
  *
  * Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
+ * For union types containing leafrefs, generate an XPath union of all leafref paths.
+ * Resolves through typedefs to handle indirect types.
  * @param[in]     yn      Yang node
  * @param[in]     nsc     Namespace context
  * @param[in,out] cbxpath XPath optionally extended with leafref path
@@ -641,18 +513,83 @@ leafref_append_path(yang_stmt *yn,
     int        retval = -1;
     yang_stmt *ytype;
     yang_stmt *ypath;
+    yang_stmt *yresolved;
+    char      *resolved_name;
+    yang_stmt *ytsub;
+    yang_stmt *yrestype;
+    char      *restype;
+    int        inext;
+    cbuf      *cb_orig = NULL;
+    cbuf      *cb_one = NULL;
+    int        first;
 
-    if ((ytype = yang_find(yn, Y_TYPE, NULL)) != NULL &&
-        strcmp(yang_argument_get(ytype), "leafref") == 0){
-        if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL){
-            clixon_err(OE_DB, 0, "Leafref %s requires path statement", yang_argument_get(ytype));
+    if ((ytype = yang_find(yn, Y_TYPE, NULL)) == NULL)
+        goto ok;
+    /* Resolve through typedefs to get the built-in type */
+    if (yang_type_resolve(yn, yn, ytype,
+                          &yresolved, NULL, NULL, NULL, NULL, NULL) < 0)
+        goto done;
+    if (yresolved == NULL)
+        goto ok;
+    resolved_name = yang_argument_get(yresolved);
+    if (strcmp(resolved_name, "leafref") == 0){
+        if ((ypath = yang_find(yresolved, Y_PATH, NULL)) == NULL){
+            clixon_err(OE_DB, 0, "Leafref %s requires path statement", resolved_name);
             goto done;
         }
         if (xpath_append(cbxpath, yang_argument_get(ypath), yn, nsc) < 0)
             goto done;
     }
+    else if (strcmp(resolved_name, "union") == 0){
+        /* Union type: iterate sub-types, combine leafref paths with XPath union */
+        if ((cb_orig = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cbuf_append_str(cb_orig, cbuf_get(cbxpath));
+        cbuf_reset(cbxpath);
+        first = 1;
+        inext = 0;
+        while ((ytsub = yn_iter(yresolved, &inext)) != NULL){
+            if (yang_keyword_get(ytsub) != Y_TYPE)
+                continue;
+            /* Resolve through typedefs to find the actual type */
+            if (yang_type_resolve(yn, yn, ytsub,
+                                  &yrestype, NULL, NULL, NULL, NULL, NULL) < 0)
+                goto done;
+            if (yrestype == NULL)
+                continue;
+            restype = yang_argument_get(yrestype);
+            if (strcmp(restype, "leafref") != 0)
+                continue;
+            if ((ypath = yang_find(yrestype, Y_PATH, NULL)) == NULL)
+                continue;
+            if ((cb_one = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cbuf_append_str(cb_one, cbuf_get(cb_orig));
+            if (xpath_append(cb_one, yang_argument_get(ypath), yn, nsc) < 0)
+                goto done;
+            if (!first)
+                cprintf(cbxpath, " | ");
+            cbuf_append_str(cbxpath, cbuf_get(cb_one));
+            cbuf_free(cb_one);
+            cb_one = NULL;
+            first = 0;
+        }
+        if (first){
+            /* No leafrefs found in union, restore original */
+            cbuf_append_str(cbxpath, cbuf_get(cb_orig));
+        }
+    }
+ ok:
     retval = 0;
  done:
+    if (cb_orig)
+        cbuf_free(cb_orig);
+    if (cb_one)
+        cbuf_free(cb_one);
     return retval;
 }
 

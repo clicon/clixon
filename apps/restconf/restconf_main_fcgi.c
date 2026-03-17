@@ -453,6 +453,10 @@ main(int    argc,
                 goto done;
             break;
         }
+        case 'W':  /* Run restconf daemon as this user (after drop) */
+            if (clicon_option_add(h, "CLICON_RESTCONF_USER", optarg) < 0)
+                goto done;
+            break;
         case 'R':  /* Restconf on-line config */
             inline_config = optarg;
             break;

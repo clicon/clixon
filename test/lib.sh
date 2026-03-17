@@ -741,6 +741,7 @@ function endtest()
 }
 
 # Increment test number and print a nice string
+# Note, must be one between each expect macro (or any test) to get cli/netconf valgrind checks right
 function new(){
     if [ $valgrindtest -eq 1 ]; then 
         checkvalgrind

@@ -70,6 +70,8 @@
 #include "clixon_backend_client.h"
 #include "backend_handle.h"
 #include "clixon_backend_commit.h"
+#include "backend_state.h"
+#include "backend_get.h"
 #include "backend_client.h"
 
 /*! Key values are checked for validity independent of user-defined callbacks
@@ -102,7 +104,7 @@ generic_validate(clixon_handle       h,
     int        ret;
 
     /* All entries */
-    if ((ret = xml_yang_validate_all_top(h, td->td_target, xret)) < 0)
+    if ((ret = xml_yang_validate_all_state(h, td->td_target, 0, xret)) < 0)
         goto done;
     if (ret == 0)
         goto fail;
@@ -562,6 +564,15 @@ validate_common(clixon_handle       h,
         goto done;
     if (ret == 0)
         goto fail;
+    /* Include state in target for validation, mainly for including state leafrefs, see #632
+     * This may incur an performance overhead
+     */
+    if (clicon_option_bool(h, "CLICON_VALIDATE_TARGET_STATE")) {
+        if ((ret = merge_state_data(h, td->td_target, yspec, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
     /* Clear flags xpath for get */
     xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
