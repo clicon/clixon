@@ -759,18 +759,34 @@ yang_schema_mount_statedata(clixon_handle h,
  * @retval    -1       Error
  * XXX: maybe move to better place?
  */
+/* Compare function for qsort of module entry strings */
+static int
+xyanglib_modcmp(const void *a, const void *b)
+{
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+
 int
 xyanglib_digest(cxobj *xylib,
                 char **digest)
 {
     int    retval = -1;
     cbuf  *cb = NULL;
+    cbuf  *cbmod = NULL;
     cxobj *xmodset;
     cxobj *xmodule;
     char  *b;
     int    ix;
+    char **modarr = NULL;
+    int    modcnt = 0;
+    int    modmax = 0;
+    int    i;
 
     if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if ((cbmod = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
@@ -783,18 +799,48 @@ xyanglib_digest(cxobj *xylib,
             }
             if (strcmp(xml_name(xmodule), "module") != 0)
                 continue;
+            /* Collect module entry string */
+            cbuf_reset(cbmod);
             if ((b = xml_find_body(xmodule, "name")) != NULL)
-                cprintf(cb, "%s", b);
+                cprintf(cbmod, "%s", b);
             if ((b = xml_find_body(xmodule, "revision")) != NULL)
-                cprintf(cb, "%s", b);
+                cprintf(cbmod, "%s", b);
             if ((b = xml_find_body(xmodule, "namespace")) != NULL)
-                cprintf(cb, "%s", b);
+                cprintf(cbmod, "%s", b);
+            /* Add to array */
+            if (modcnt >= modmax){
+                modmax = modmax ? modmax * 2 : 64;
+                modarr = realloc(modarr, modmax * sizeof(char *));
+                if (modarr == NULL){
+                    clixon_err(OE_UNIX, errno, "realloc");
+                    goto done;
+                }
+            }
+            modarr[modcnt] = strdup(cbuf_get(cbmod));
+            if (modarr[modcnt] == NULL){
+                clixon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+            modcnt++;
         }
+        /* Sort module entries alphabetically for order-independent digest */
+        if (modcnt > 1)
+            qsort(modarr, modcnt, sizeof(char *), xyanglib_modcmp);
+        /* Append sorted module entries to digest string */
+        for (i = 0; i < modcnt; i++)
+            cprintf(cb, "%s", modarr[i]);
         if (clixon_digest_hex(cbuf_get(cb), digest) < 0)
             goto done;
     }
     retval = 0;
  done:
+    if (modarr){
+        for (i = 0; i < modcnt; i++)
+            free(modarr[i]);
+        free(modarr);
+    }
+    if (cbmod)
+        cbuf_free(cbmod);
     if (cb)
         cbuf_free(cb);
     return retval;
