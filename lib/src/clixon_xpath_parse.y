@@ -251,6 +251,8 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     }
     fn = ret;
     switch (fn){
+    case XPATHFN_TRANSLATE:
+        break;
     case XPATHFN_ENUM_VALUE: /* Group of NOT IMPLEMENTED xpath functions */
     case XPATHFN_LAST:
     case XPATHFN_ID:
@@ -291,7 +293,6 @@ xp_primary_function(clixon_xpath_yacc *xpy,
     case XPATHFN_SUBSTRING_AFTER:
     case XPATHFN_SUBSTRING:
     case XPATHFN_STRING_LENGTH:
-    case XPATHFN_TRANSLATE:
     case XPATHFN_BOOLEAN:
     case XPATHFN_NOT:
     case XPATHFN_TRUE:
