@@ -146,17 +146,32 @@ api_data_get2(clixon_handle  h,
                                     restconf_apipath_mount_cb, h, NULL, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){ /* validation failed */
-            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-                goto done;
-            goto ok;
+            clixon_err(OE_RESTCONF, EINVAL,
+                       "api_data_get2: api_path2xml_mnt validation failed pi=%d path:%s xerr:%s",
+                       pi, api_path, xerr ? "set" : "NULL");
+            /* If no rpc-error was provided, continue and let the xpath translation
+             * try to handle the path instead of aborting the request.
+             */
+            if (xerr == NULL)
+                ret = 1;
+            else {
+                if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                    goto done;
+                goto ok;
+            }
         }
         /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */
         if ((ret = api_path2xpath(api_path, yspec, &xpath, &nsc, &xerr)) < 0)
             goto done;
         if (ret == 0){ /* validation failed */
-            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-                goto done;
-            goto ok;
+            clixon_err(OE_RESTCONF, EINVAL, "api_data_get2: api_path2xpath validation failed pi=%d path:%s xerr:%s", pi, api_path, xerr ? "set" : "NULL");
+            if (xerr == NULL)
+                ret = 1;
+            else {
+                if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+                    goto done;
+                goto ok;
+            }
         }
 
         /* Ad-hoc method to determine json pagination request:
