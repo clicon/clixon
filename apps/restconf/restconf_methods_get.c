@@ -68,9 +68,10 @@ static int api_data_pagination(clixon_handle h, void *req, char *api_path, int p
 
 /*! Filter top-level data nodes based on "fields" query parameter (RFC 8040 Sec 4.8.3)
  *
- * Simple implementation: only top-level module:node or module:* selection at data root.
+ * Simple implementation: only top-level module:node selection at data root.
  * Removes children of xdata that do not match any entry in the semicolon-separated
- * fields list.
+ * fields list. Each entry is either "module:node" (exact match) or "module" (any
+ * node in that module). The fields list is parsed once before iterating children.
  * @param[in]  xdata       XML data root whose children are top-level data nodes
  * @param[in]  fields_str  Value of the "fields" query parameter, e.g. "mod1:node1;mod2:node2"
  * @retval     0           OK
@@ -93,7 +94,29 @@ restconf_fields_filter(cxobj *xdata,
     char      *nodename;
     int        i;
     int        found;
+    char      *fmod[64];
+    char      *fnode[64];
+    int        nf = 0;
+    int        j;
 
+    /* Parse the fields list once before iterating children */
+    if ((str = strdup(fields_str)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    s = strtok_r(str, ";", &saveptr);
+    while (s != NULL && nf < 64){
+        colon = strchr(s, ':');
+        fmod[nf] = s;
+        if (colon != NULL){
+            *colon = '\0';
+            fnode[nf] = colon + 1;
+        }
+        else
+            fnode[nf] = NULL;
+        nf++;
+        s = strtok_r(NULL, ";", &saveptr);
+    }
     for (i = xml_child_nr(xdata)-1; i >= 0; i--){
         x = xml_child_i(xdata, i);
         if (xml_type(x) != CX_ELMNT)
@@ -103,31 +126,22 @@ restconf_fields_filter(cxobj *xdata,
         modname = (ymod != NULL) ? yang_argument_get(ymod) : NULL;
         nodename = xml_name(x);
         found = 0;
-        if ((str = strdup(fields_str)) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
-            goto done;
-        }
-        s = strtok_r(str, ";", &saveptr);
-        while (s != NULL){
-            colon = strchr(s, ':');
-            if (colon != NULL){
-                *colon = '\0';
+        for (j = 0; j < nf; j++){
+            if (fnode[j] != NULL){
                 if (modname != NULL &&
-                    strcmp(s, modname) == 0 &&
-                    strcmp(colon+1, nodename) == 0)
+                    strcmp(fmod[j], modname) == 0 &&
+                    strcmp(fnode[j], nodename) == 0){
                     found = 1;
-                *colon = ':';
+                    break;
+                }
             }
             else{
-                if (modname != NULL && strcmp(s, modname) == 0)
+                if (modname != NULL && strcmp(fmod[j], modname) == 0){
                     found = 1;
+                    break;
+                }
             }
-            if (found)
-                break;
-            s = strtok_r(NULL, ";", &saveptr);
         }
-        free(str);
-        str = NULL;
         if (!found)
             if (xml_purge(x) < 0)
                 goto done;
