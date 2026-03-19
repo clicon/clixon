@@ -171,6 +171,7 @@ ys_grouping_resolve(yang_stmt  *yuses,
     yang_stmt      *yp;
     yang_stmt      *ys;
     yang_stmt      *yspec;
+    yang_stmt      *yorig = NULL;
     enum rfc_6020   keyw;
 
     yspec = ys_spec(yuses);
@@ -199,9 +200,15 @@ ys_grouping_resolve(yang_stmt  *yuses,
             ys = (yang_stmt*)yp;            /* Proceed to next level */
         }
     }
+    if (ygrouping == NULL){
+        if ((yorig = yang_orig_get(yuses)) != NULL && yorig != yuses){
+            if (ys_grouping_resolve(yorig, prefix, name, &ygrouping) < 0)
+                goto done;
+        }
+    }
     *ygrouping0 = ygrouping;
     retval = 0;
-    // done:
+ done:
     return retval;
 }
 
