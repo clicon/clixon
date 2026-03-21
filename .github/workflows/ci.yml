@@ -12,7 +12,7 @@ jobs:
   ubuntu-build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -33,7 +33,7 @@ jobs:
   ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -58,7 +58,7 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
@@ -89,7 +89,7 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
@@ -120,7 +120,7 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
@@ -151,7 +151,7 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)

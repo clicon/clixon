@@ -737,6 +737,9 @@ yang2cli_leaf_var_sub(clixon_handle h,
     const char *cvtypestr;
     char       *arg;
     size_t      len;
+    yang_stmt  *yd;
+    char       *desc;
+    size_t      dlen;
 
     if (cvtype == CGV_VOID){
         retval = 0;
@@ -765,6 +768,23 @@ yang2cli_leaf_var_sub(clixon_handle h,
                     if (index(CLIGEN_DELIMITERS, arg[j]))
                         cprintf(cb, "\\");
                     cprintf(cb, "%c", arg[j]);
+                }
+                /* Add per-enum description as per-choice helptext if available */
+                if ((yd = yang_find(yi, Y_DESCRIPTION, NULL)) != NULL &&
+                    (desc = yang_argument_get(yd)) != NULL){
+                    dlen = strlen(desc);
+                    cprintf(cb, "(\"");
+                    for (j=0; j<(int)dlen; j++){
+                        if (desc[j] == '"')
+                            cprintf(cb, "\\\"");
+                        else if (desc[j] == '\n')
+                            cprintf(cb, " ");
+                        else if (desc[j] == ')' && j+1 < (int)dlen && desc[j+1] == '"')
+                            cprintf(cb, " "); /* avoid ") which breaks clispec parsing */
+                        else
+                            cprintf(cb, "%c", desc[j]);
+                    }
+                    cprintf(cb, "\")");
                 }
                 i++;
             }

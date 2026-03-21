@@ -261,8 +261,6 @@ cat <<EOF > $dir/startup_db
 </${DATASTORE_TOP}>
 EOF
 
-
-
 # This is 2014 syntax
 cat <<EOF > $dir/startup_db
 <${DATASTORE_TOP}>
