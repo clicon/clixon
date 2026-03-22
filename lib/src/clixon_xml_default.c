@@ -165,6 +165,41 @@ xml_default_create(yang_stmt *y,
     return retval;
 }
 
+/*! Create leaf-list element from an explicit cv default value
+ *
+ * @param[in]   y       Yang spec (leaf-list)
+ * @param[in]   xt      XML parent tree
+ * @param[in]   cv      The default value to use
+ * @retval      0       OK
+ * @retval     -1       Error
+ */
+static int
+xml_default_create_cv(yang_stmt *y,
+                      cxobj     *xt,
+                      cg_var    *cv)
+{
+    int    retval = -1;
+    cxobj *xc = NULL;
+    cxobj *xb;
+    char  *str;
+
+    if (xml_default_create1(y, xt, &xc) < 0)
+        goto done;
+    xml_flag_set(xc, XML_FLAG_DEFAULT);
+    if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
+        goto done;
+    if ((str = cv2str_dup(cv)) == NULL){
+        clixon_err(OE_UNIX, errno, "cv2str_dup");
+        goto done;
+    }
+    if (xml_value_set(xb, str) < 0)
+        goto done;
+    free(str);
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Traverse a choice
  *
  * From RFC7950 Sec 7.9.3
@@ -252,6 +287,16 @@ xml_nopresence_try(yang_stmt *yt,
                 goto ok;
             }
             break;
+        case Y_LEAF_LIST:
+            /* Default values exist in cvec */
+            if (yang_cvec_get(y) != NULL){
+                if (state && yang_config_ancestor(y))
+                    ;
+                else
+                    *createp = 1;
+                goto ok;
+            }
+            break;
         case Y_CONTAINER:
             if (yang_find(y, Y_PRESENCE, NULL) == NULL){
                 /* If this is non-presence, (and it does not exist in xt) call recursively 
@@ -306,6 +351,7 @@ xml_default(yang_stmt *yt,
     int        nr = 0;
     int        hit = 0;
     cg_var    *cv;
+    cvec      *cvv;
     int        inext;
 
     if (xt == NULL){ /* No xml */
@@ -349,6 +395,23 @@ xml_default(yang_stmt *yt,
                             goto done;
                         xml_sort(xt);
                     }
+                }
+                break;
+            case Y_LEAF_LIST:
+                /* RFC 7950 Sec 7.7.2: defaults used when no instances exist in tree */
+                if ((cvv = yang_cvec_get(yc)) != NULL &&
+                    xml_find_type(xt, NULL, yang_argument_get(yc), CX_ELMNT) == NULL){
+                    /* Check when condition */
+                    if (yang_check_when_xpath(NULL, xt, yc, &hit, &nr, NULL) < 0)
+                        goto done;
+                    if (hit && nr == 0)
+                        break;
+                    cv = NULL;
+                    while ((cv = cvec_each(cvv, cv)) != NULL){
+                        if (xml_default_create_cv(yc, xt, cv) < 0)
+                            goto done;
+                    }
+                    xml_sort(xt);
                 }
                 break;
             case Y_CONTAINER:
@@ -626,7 +689,7 @@ xml_default_nopresence(cxobj *xn,
         if (keyw == Y_CONTAINER &&
             yang_find(yn, Y_PRESENCE, NULL) == NULL)
             rmx = 1;
-        else if (keyw == Y_LEAF &&
+        else if ((keyw == Y_LEAF || keyw == Y_LEAF_LIST) &&
                  xml_flag(xn, XML_FLAG_DEFAULT) &&
                  mode != 3)
             rmx = 1;
@@ -703,10 +766,12 @@ int
 xml_flag_state_default_value(cxobj   *x,
                              uint16_t flag)
 {
-    yang_stmt   *y;
-    cg_var      *cv;
-    char        *yv;
-    char        *xv;
+    yang_stmt    *y;
+    cg_var       *cv;
+    cvec         *cvv;
+    char         *yv;
+    char         *xv;
+    enum rfc_6020 keyw;
 
     xml_flag_reset(x, flag); /* Assume not default value */
     if ((xv = xml_body(x)) == NULL)
@@ -715,15 +780,33 @@ xml_flag_state_default_value(cxobj   *x,
         goto done;
     if (yang_config_ancestor(y) == 1)
         goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
-        goto done;
-    if (cv_name_get(cv) == NULL)
-        goto done;
-    if ((yv = cv2str_dup(cv)) == NULL)
-        goto done;
-    if (strcmp(xv, yv) == 0)
-        xml_flag_set(x, flag); /* Actual value same as default value */
-    free(yv);
+    keyw = yang_keyword_get(y);
+    if (keyw == Y_LEAF_LIST){
+        if ((cvv = yang_cvec_get(y)) == NULL)
+            goto done;
+        cv = NULL;
+        while ((cv = cvec_each(cvv, cv)) != NULL){
+            if ((yv = cv2str_dup(cv)) == NULL)
+                goto done;
+            if (strcmp(xv, yv) == 0){
+                free(yv);
+                xml_flag_set(x, flag);
+                goto done;
+            }
+            free(yv);
+        }
+    }
+    else{
+        if ((cv = yang_cv_get(y)) == NULL)
+            goto done;
+        if (cv_name_get(cv) == NULL)
+            goto done;
+        if ((yv = cv2str_dup(cv)) == NULL)
+            goto done;
+        if (strcmp(xv, yv) == 0)
+            xml_flag_set(x, flag); /* Actual value same as default value */
+        free(yv);
+    }
   done:
     return 0;
 }
@@ -740,27 +823,46 @@ int
 xml_flag_default_value(cxobj   *x,
                        uint16_t flag)
 {
-    yang_stmt   *y;
-    cg_var      *cv;
-    char        *yv;
-    char        *xv;
+    yang_stmt    *y;
+    cg_var       *cv;
+    cvec         *cvv;
+    char         *yv;
+    char         *xv;
+    enum rfc_6020 keyw;
 
     xml_flag_reset(x, flag); /* Assume not default value */
     if ((xv = xml_body(x)) == NULL)
         goto done;
     if ((y = xml_spec(x)) == NULL)
         goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
-        goto done;
-    if ((cv = yang_cv_get(y)) == NULL)
-        goto done;
-    if (cv_name_get(cv) == NULL)
-        goto done;
-    if ((yv = cv2str_dup(cv)) == NULL)
-        goto done;
-    if (strcmp(xv, yv) == 0)
-        xml_flag_set(x, flag); /* Actual value same as default value */
-    free(yv);
+    keyw = yang_keyword_get(y);
+    if (keyw == Y_LEAF_LIST){
+        /* leaf-list: check against all default values in cvec */
+        if ((cvv = yang_cvec_get(y)) == NULL)
+            goto done;
+        cv = NULL;
+        while ((cv = cvec_each(cvv, cv)) != NULL){
+            if ((yv = cv2str_dup(cv)) == NULL)
+                goto done;
+            if (strcmp(xv, yv) == 0){
+                free(yv);
+                xml_flag_set(x, flag);
+                goto done;
+            }
+            free(yv);
+        }
+    }
+    else{
+        if ((cv = yang_cv_get(y)) == NULL)
+            goto done;
+        if (cv_name_get(cv) == NULL)
+            goto done;
+        if ((yv = cv2str_dup(cv)) == NULL)
+            goto done;
+        if (strcmp(xv, yv) == 0)
+            xml_flag_set(x, flag); /* Actual value same as default value */
+        free(yv);
+    }
   done:
     return 0;
 }

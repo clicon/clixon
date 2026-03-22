@@ -2932,8 +2932,11 @@ ys_populate_leaf2(clixon_handle h,
 {
     int             retval = -1;
     cg_var         *cv = NULL;
+    cg_var         *cv2;
     yang_stmt      *yparent;
     yang_stmt      *ydef;
+    yang_stmt      *ydef2;
+    yang_stmt      *ymin;
     enum cv_type    cvtype = CGV_ERR;
     int             cvret;
     char           *reason = NULL;
@@ -2943,6 +2946,8 @@ ys_populate_leaf2(clixon_handle h,
     uint8_t         fraction_digits = 0;
     int             options = 0x0;
     yang_stmt      *ytypedef; /* where type is define */
+    uint32_t        minval;
+    int             inext2;
     int             ret;
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
@@ -2967,37 +2972,88 @@ ys_populate_leaf2(clixon_handle h,
     /* get parent of where type is defined, can be original object */
     ytypedef = yrestype?yang_parent_get(yrestype):ys;
 
-    /* 3. Check if default value. Here we parse the string in the default-stmt
-     * and add it to the leafs cv.
-     * 3a) First check local default
+    /* 3. Check if default value.
+     * For leaf-list: iterate all Y_DEFAULT children and store in cvec (RFC 7950 Sec 7.7.2).
+     * For leaf: store single default in cv.
      */
-    if ((ydef = yang_find(ys, Y_DEFAULT, NULL)) != NULL){
-        if ((cvret = cv_parse1(yang_argument_get(ydef), cv, &reason)) < 0){ /* error */
-            clixon_err(OE_YANG, errno, "parsing cv");
-            goto done;
+    if (yang_keyword_get(ys) == Y_LEAF_LIST){
+        /* 3a. Iterate all local Y_DEFAULT children */
+        inext2 = 0;
+        while ((ydef2 = yn_iter(ys, &inext2)) != NULL){
+            if (yang_keyword_get(ydef2) != Y_DEFAULT)
+                continue;
+            if ((cv2 = yang_cvec_add(ys, cvtype, yang_argument_get(ys))) == NULL)
+                goto done;
+            if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64)
+                cv_dec64_n_set(cv2, fraction_digits);
+            if ((cvret = cv_parse1(yang_argument_get(ydef2), cv2, &reason)) < 0){
+                clixon_err(OE_YANG, errno, "parsing cv");
+                goto done;
+            }
+            if (cvret == 0){
+                clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+                free(reason);
+                goto done;
+            }
         }
-        if (cvret == 0){ /* parsing failed */
-            clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
-            free(reason);
-            goto done;
+        /* 3b. If no local defaults, check typedef default.
+         * One instance used unless min-elements >= 1 (RFC 7950 Sec 7.7.2). */
+        if (yang_cvec_get(ys) == NULL &&
+            ytypedef != ys &&
+            (ydef = yang_find(ytypedef, Y_DEFAULT, NULL)) != NULL){
+            minval = 0;
+            if ((ymin = yang_find(ys, Y_MIN_ELEMENTS, NULL)) != NULL)
+                minval = cv_uint32_get(yang_cv_get(ymin));
+            if (minval == 0){
+                if ((cv2 = yang_cvec_add(ys, cvtype, yang_argument_get(ys))) == NULL)
+                    goto done;
+                if (options & YANG_OPTIONS_FRACTION_DIGITS && cvtype == CGV_DEC64)
+                    cv_dec64_n_set(cv2, fraction_digits);
+                if ((cvret = cv_parse1(yang_argument_get(ydef), cv2, &reason)) < 0){
+                    clixon_err(OE_YANG, errno, "parsing cv");
+                    goto done;
+                }
+                if (cvret == 0){
+                    clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+                    free(reason);
+                    goto done;
+                }
+            }
         }
-    }
-    /* 2. then check typedef default */
-    else if (ytypedef != ys &&
-             (ydef = yang_find(ytypedef, Y_DEFAULT, NULL)) != NULL) {
-        if ((cvret = cv_parse1(yang_argument_get(ydef), cv, &reason)) < 0){ /* error */
-            clixon_err(OE_YANG, errno, "parsing cv");
-            goto done;
-        }
-        if (cvret == 0){ /* parsing failed */
-            clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
-            free(reason);
-            goto done;
-        }
+        /* Mark template cv as unset; leaf-list defaults are in cvec */
+        cv_flag_set(cv, V_UNSET);
     }
     else{
-        /* 3b. If not default value, indicate empty cv. */
-        cv_flag_set(cv, V_UNSET); /* no value (no default) */
+        /* Y_LEAF: single default value in cv */
+        /* 3a. First check local default */
+        if ((ydef = yang_find(ys, Y_DEFAULT, NULL)) != NULL){
+            if ((cvret = cv_parse1(yang_argument_get(ydef), cv, &reason)) < 0){ /* error */
+                clixon_err(OE_YANG, errno, "parsing cv");
+                goto done;
+            }
+            if (cvret == 0){ /* parsing failed */
+                clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+                free(reason);
+                goto done;
+            }
+        }
+        /* 3b. then check typedef default */
+        else if (ytypedef != ys &&
+                 (ydef = yang_find(ytypedef, Y_DEFAULT, NULL)) != NULL) {
+            if ((cvret = cv_parse1(yang_argument_get(ydef), cv, &reason)) < 0){ /* error */
+                clixon_err(OE_YANG, errno, "parsing cv");
+                goto done;
+            }
+            if (cvret == 0){ /* parsing failed */
+                clixon_err(OE_YANG, errno, "Parsing CV: %s", reason);
+                free(reason);
+                goto done;
+            }
+        }
+        else{
+            /* 3c. No default value */
+            cv_flag_set(cv, V_UNSET); /* no value (no default) */
+        }
     }
     /* 4. Check if leaf is part of list, if key exists mark leaf as key/unique */
     if (yparent && yparent->ys_keyword == Y_LIST){

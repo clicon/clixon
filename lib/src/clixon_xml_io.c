@@ -164,12 +164,31 @@ xml2output_wdef(cxobj            *x,
                     keep = 0;
             }
             break;
+        case Y_LEAF_LIST:
+            config = yang_config_ancestor(y);
+            if (xml_flag(x, XML_FLAG_DEFAULT)) {
+                /* RFC 6243: Any value set by the NETCONF server [eg: state-data] that is not the schema
+                   defined default value is also considered explicitly set data.*/
+                if (!config && wdef == WITHDEFAULTS_EXPLICIT)
+                    ;
+                else
+                    keep = 0;
+            }
+            else if (wdef == WITHDEFAULTS_TRIM &&
+                     (cv = yang_cv_get(y)) != NULL &&
+                     (body = xml_body(x)) != NULL){
+                if ((yv = cv2str_dup(cv)) == NULL)
+                    goto done;
+                if (body && strcmp(body, yv) == 0)
+                    keep = 0;
+            }
+            break;
         default:
             break;
         }
         break;
     case WITHDEFAULTS_REPORT_ALL_TAGGED:
-        if (tag && yang_keyword_get(y) == Y_LEAF){
+        if (tag && (yang_keyword_get(y) == Y_LEAF || yang_keyword_get(y) == Y_LEAF_LIST)){
             if (xml_flag(x, XML_FLAG_DEFAULT))
                 *tag = 1;
             else if ((cv = yang_cv_get(y)) != NULL &&
