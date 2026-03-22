@@ -300,6 +300,7 @@ function testrun()
         if [ $? -ne 0 ]; then
             err1 "expected 0" "$?"
         fi
+        RCPID=$!
     fi
 
     #------------------------------------------------------- HTTP/1 + HTTP/2 

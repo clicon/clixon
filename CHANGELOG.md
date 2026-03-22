@@ -1,6 +1,7 @@
 # Clixon Changelog
 
 * [7.8.0](#780) Expected: May 2026
+* [7.7.0](#770) 21 February 2026
 * [7.6.0](#760) 21 November 2025
 * [7.5.0](#750) 29 July 2025
 * [7.4.0](#740) 3 April 2025
@@ -21,6 +22,7 @@ Expected: May 2026
 
 ### Features
 
+* New: XPath translate()
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
 * show memory: Added detailed statistics for config datastores (CLI and RPC)
 * New `clixon-config@2026-03-01.yang` revision
