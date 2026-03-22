@@ -122,8 +122,10 @@ restconf_fields_filter(cxobj *xdata,
         if (xml_type(x) != CX_ELMNT)
             continue;
         ynode = xml_spec(x);
-        ymod = (ynode != NULL) ? ys_module(ynode) : NULL;
-        modname = (ymod != NULL) ? yang_argument_get(ymod) : NULL;
+        ymod = NULL;
+        if (ynode != NULL && ys_real_module(ynode, &ymod) < 0)
+            goto done;
+        modname = (ymod != NULL) ? yang_argument_get(ymod) : xml_prefix(x);
         nodename = xml_name(x);
         found = 0;
         for (j = 0; j < nf; j++){
