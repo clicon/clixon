@@ -4,12 +4,13 @@
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
-mkdir -p /usr/local/var/demo && chown clicon:clicon /usr/local/var/demo
+APPNAME=test
+dbdir=$(mktemp -d "$dir/${APPNAME}.xmldb.XXXXXX")
+rundir=$(mktemp -d "$dir/${APPNAME}.run.XXXXXX")
+chmod 777 "$dbdir" "$rundir"
 
-APPNAME=demo
-
-cfg=$dir/conf_demo_xpath_translate.xml
-fyang=$dir/demo-xpath-translate.yang
+cfg=$dir/conf_test_xpath_translate.xml
+fyang=$dir/test-xpath-translate.yang
 
 cat <<EOFCONF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -19,16 +20,16 @@ cat <<EOFCONF > $cfg
   <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
+  <CLICON_SOCK>$rundir/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>$rundir/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
 </clixon-config>
 EOFCONF
 
 cat <<'EOFYANG' > $fyang
-module demo-xpath-translate {
+module test-xpath-translate {
   yang-version 1.1;
-  namespace "urn:demo:xpath-translate";
+  namespace "urn:test:xpath-translate";
   prefix dxt;
 
   container profiles {
@@ -87,7 +88,7 @@ fi
 new "wait backend"
 wait_backend
 
-ns="urn:demo:xpath-translate"
+ns="urn:test:xpath-translate"
 
 new "must translate valid values"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><profiles xmlns=\"$ns\"><profile><name>p1</name><profile-name>good-name</profile-name><addr>user@example.com</addr></profile></profiles></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
