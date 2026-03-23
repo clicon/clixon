@@ -809,6 +809,7 @@ main(int    argc,
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
+    clixon_debug(CLIXON_DBG_YANG, "Loading top/data YANGs");
     if ((str = clicon_yang_main_file(h)) != NULL)
         if (yang_spec_parse_file(h, str, yspec) < 0)
             goto done;

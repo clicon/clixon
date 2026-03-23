@@ -66,6 +66,93 @@
 /* Forward */
 static int api_data_pagination(clixon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
 
+/*! Filter top-level data nodes based on "fields" query parameter (RFC 8040 Sec 4.8.3)
+ *
+ * Simple implementation: only top-level module:node selection at data root.
+ * Removes children of xdata that do not match any entry in the semicolon-separated
+ * fields list. Each entry is either "module:node" (exact match) or "module" (any
+ * node in that module). The fields list is parsed once before iterating children.
+ * @param[in]  xdata       XML data root whose children are top-level data nodes
+ * @param[in]  fields_str  Value of the "fields" query parameter, e.g. "mod1:node1;mod2:node2"
+ * @retval     0           OK
+ * @retval    -1           Error
+ * @see RFC 8040 Sec 4.8.3
+ */
+static int
+restconf_fields_filter(cxobj *xdata,
+                       char  *fields_str)
+{
+    int        retval = -1;
+    char      *str = NULL;
+    char      *s;
+    char      *saveptr;
+    char      *colon;
+    cxobj     *x;
+    yang_stmt *ynode;
+    yang_stmt *ymod;
+    char      *modname;
+    char      *nodename;
+    int        i;
+    int        found;
+    char      *fmod[64];
+    char      *fnode[64];
+    int        nf = 0;
+    int        j;
+
+    /* Parse the fields list once before iterating children */
+    if ((str = strdup(fields_str)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    s = strtok_r(str, ";", &saveptr);
+    while (s != NULL && nf < 64){
+        colon = strchr(s, ':');
+        fmod[nf] = s;
+        if (colon != NULL){
+            *colon = '\0';
+            fnode[nf] = colon + 1;
+        }
+        else
+            fnode[nf] = NULL;
+        nf++;
+        s = strtok_r(NULL, ";", &saveptr);
+    }
+    for (i = xml_child_nr(xdata)-1; i >= 0; i--){
+        x = xml_child_i(xdata, i);
+        if (xml_type(x) != CX_ELMNT)
+            continue;
+        ynode = xml_spec(x);
+        ymod = (ynode != NULL) ? ys_module(ynode) : NULL;
+        modname = (ymod != NULL) ? yang_argument_get(ymod) : NULL;
+        nodename = xml_name(x);
+        found = 0;
+        for (j = 0; j < nf; j++){
+            if (fnode[j] != NULL){
+                if (modname != NULL &&
+                    strcmp(fmod[j], modname) == 0 &&
+                    strcmp(fnode[j], nodename) == 0){
+                    found = 1;
+                    break;
+                }
+            }
+            else{
+                if (modname != NULL && strcmp(fmod[j], modname) == 0){
+                    found = 1;
+                    break;
+                }
+            }
+        }
+        if (!found)
+            if (xml_purge(x) < 0)
+                goto done;
+    }
+    retval = 0;
+ done:
+    if (str)
+        free(str);
+    return retval;
+}
+
 /*! Generic GET (both HEAD and GET)
  *
  * According to restconf
@@ -125,6 +212,7 @@ api_data_get2(clixon_handle  h,
     cxobj     *xtop = NULL;
     yang_stmt *y = NULL;
     char      *defaults = NULL;
+    char      *fields_str = NULL;
     cvec      *nscd = NULL;
     int        ret;
 
@@ -207,6 +295,11 @@ api_data_get2(clixon_handle  h,
         clixon_debug(CLIXON_DBG_RESTCONF, "with_defaults=%s", attr);
         defaults = attr;
     }
+    /* Check for fields attribute: simple root-level module:node filter, RFC 8040 Sec 4.8.3 */
+    if ((attr = cvec_find_str(qvec, "fields")) != NULL){
+        clixon_debug(CLIXON_DBG_RESTCONF, "fields=%s", attr);
+        fields_str = attr;
+    }
 
     clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", xpath);
     if ((ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret)) < 0){
@@ -235,6 +328,11 @@ api_data_get2(clixon_handle  h,
         goto done;
     }
     if (xpath==NULL || strcmp(xpath,"/")==0){ /* Special case: data root */
+        /* Apply fields filter if requested */
+        if (fields_str != NULL){
+            if (restconf_fields_filter(xret, fields_str) < 0)
+                goto done;
+        }
         switch (media_out){
         case YANG_DATA_XML:
             if (clixon_xml2cbuf(cbx, xret, 0, pretty, NULL, -1, 0) < 0) /* Dont print top object?  */

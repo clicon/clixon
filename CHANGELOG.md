@@ -21,6 +21,7 @@ Expected: May 2026
 
 ### Features
 
+* Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
 * show memory: Added detailed statistics for config datastores (CLI and RPC)
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
@@ -44,6 +45,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [cli description should be enumeration's desc not the leaf's. for yang enum type](https://github.com/clicon/clixon/issues/183)
 * Fixed: [CLI: union leafref not supported in completion](https://github.com/clicon/clixon/issues/558)
 * Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)
 * Fixed: [Validation of YANG leafref within union does not work](https://github.com/clicon/clixon/issues/498)

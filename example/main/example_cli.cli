@@ -132,7 +132,7 @@ show("Show a particular state of the system"){
     }		   
     memory("Show memory usage") {
       [<detail:string keyword:detail>] [<cli:string keyword:cli>]  [<backend:string keyword:backend>], cli_show_statistics();
-         @|pipe_common, cli_show_statistics();
+         @|example_pipe, cli_show_statistics();
     }
     sessions("Show client sessions"), cli_show_sessions();{
          detail("Show sessions detailed state"), cli_show_sessions("detail");

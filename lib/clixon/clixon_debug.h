@@ -154,13 +154,14 @@ int clixon_debug_fn(clixon_handle h, const char *fn, const int line, int dbgleve
 static inline int clixon_debug_isset(unsigned n)
 {
     unsigned level = clixon_debug_get();
+    unsigned detaillevel = (level & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
     unsigned detail = (n & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
     unsigned subject = (n & CLIXON_DBG_SMASK);
 
     /* not this subject */
     if ((level & subject) == 0)
         return 0;
-    return ((level & CLIXON_DBG_DMASK) >= detail);
+    return detaillevel >= detail;
 }
 
 /* Is detail set ?, return detail level 0-7 */

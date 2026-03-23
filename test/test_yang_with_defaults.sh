@@ -509,14 +509,14 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCP
 0 \
 "HTTP/$HVER 200" "Content-Type: application/yang-data+json" \
 'Cache-Control: no-cache' \
-'{"ietf-restconf-monitoring:capabilities":{"capability":\["urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit","urn:ietf:params:restconf:capability:depth:1.0","urn:ietf:params:restconf:capability:with-defaults:1.0"\]}}'
+'{"ietf-restconf-monitoring:capabilities":{"capability":\["urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit","urn:ietf:params:restconf:capability:depth:1.0","urn:ietf:params:restconf:capability:fields:1.0","urn:ietf:params:restconf:capability:with-defaults:1.0"\]}}'
 
 new "rfc8040 B.1.3.  Retrieve the Server Capability Information xml"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/ietf-restconf-monitoring:restconf-state/capabilities)" \
 0 \
 "HTTP/$HVER 200" "Content-Type: application/yang-data+xml" \
 'Cache-Control: no-cache' \
-'<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability><capability>urn:ietf:params:restconf:capability:depth:1.0</capability><capability>urn:ietf:params:restconf:capability:with-defaults:1.0</capability></capabilities>'
+'<capabilities xmlns="urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring"><capability>urn:ietf:params:restconf:capability:defaults:1.0?basic-mode=explicit</capability><capability>urn:ietf:params:restconf:capability:depth:1.0</capability><capability>urn:ietf:params:restconf:capability:fields:1.0</capability><capability>urn:ietf:params:restconf:capability:with-defaults:1.0</capability></capabilities>'
 
 new "rfc8040 B.3.9. RESTCONF with-defaults parameter = report-all json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:interfaces/interface=eth1?with-defaults=report-all)" \

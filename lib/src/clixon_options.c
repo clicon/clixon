@@ -733,6 +733,7 @@ clicon_options_main(clixon_handle h)
     /* Parse clixon yang spec */
     if (clicon_option_str(h, "CLICON_CONFIG_EXTEND") != NULL)
         yangspec = clicon_option_str(h, "CLICON_CONFIG_EXTEND");
+    clixon_debug(CLIXON_DBG_YANG, "Loading top/config YANGs");
     if (yang_spec_parse_module(h, yangspec, NULL, yspec) < 0)
         goto done;
     /* Also called in main */

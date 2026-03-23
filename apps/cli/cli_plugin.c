@@ -570,6 +570,8 @@ clicon_parse(clixon_handle  h,
             }
             cli_output_reset();
             if (!cligen_exiting(ch)) {
+                if (hist_expand_callback(ch, cmd, cvv) < 0)
+                    goto done;
                 clixon_err_reset();
                 if ((ret = cligen_eval(ch, match_obj, cvv)) < 0) {
                     cli_handler_err(stdout);
