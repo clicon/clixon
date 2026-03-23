@@ -976,26 +976,38 @@ xmldb_get_cache(clixon_handle h,
                 cxobj       **xtp,
                 cxobj       **xerr)
 {
-    int       retval = -1;
-    cxobj    *xt = NULL; /* (cached) top of tree */
-    db_elmnt *de = NULL;
-    int       ret;
+    int                     retval = -1;
+    cxobj                  *xt = NULL; /* (cached) top of tree */
+    db_elmnt               *de = NULL;
+    int                     ret;
+    enum xmldb_cache_status  status;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
     if ((de = xmldb_find(h, db)) == NULL){
         if ((de = xmldb_new(h, db)) == NULL)
             goto done;
     }
-    if ((xt = xmldb_cache_get(de)) == NULL){
-        if (xmldb_candidate_get(de)){
-            clixon_err(OE_DB, 0, "Candidate db cache is NULL");
-            goto done;
-        }
+    status = xmldb_cache_status_get(de);
+    if (status == XMLDB_CACHE_FILE){
+        /* File-only: read from file each time; de_xml is populated but caller
+         * must free the returned tree when done (not a persistent cache). */
         if ((ret = xmldb_get_cache_from_file(h, de, &xt, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
-    } /* xt == NULL */
+    }
+    else {
+        if ((xt = xmldb_cache_get(de)) == NULL){
+            if (xmldb_candidate_get(de)){
+                clixon_err(OE_DB, 0, "Candidate db cache is NULL");
+                goto done;
+            }
+            if ((ret = xmldb_get_cache_from_file(h, de, &xt, xerr)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        } /* xt == NULL */
+    }
     *xtp = xt;
     retval = 1;
  done:
@@ -1120,6 +1132,13 @@ xmldb_get_copy(clixon_handle h,
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    /* FILE-only: x0t is not a persistent cache; free after use */
+    if (x0t != NULL &&
+        (de = xmldb_find(h, db)) != NULL &&
+        xmldb_cache_status_get(de) == XMLDB_CACHE_FILE){
+        xml_free(x0t);
+        xmldb_cache_set(de, NULL);
+    }
     if (xvec)
         free(xvec);
     return retval;

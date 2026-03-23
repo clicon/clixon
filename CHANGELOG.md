@@ -25,11 +25,13 @@ Expected: May 2026
 * New: XPath translate()
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
+* New xmldb-cache-status: inmem, file and file-inmem to configure each datastore cache behavior
 * Optimization of XML config memory footprint
   * Reduced size of `struct xml` struct
 * show memory: Added detailed statistics for config datastores (CLI and RPC)
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
+   * Added `CLICON_XMLDB_CACHE_STATUS`
 * New `clixon-lib@2026-03-01.yang` revision
    * Extended stats rpc with `xml-type` parameter
 
@@ -60,10 +62,15 @@ Developers may need to change their code
     ```
   * Run: `configure --enable-child-each-wrapper` after migration
   * Replace `xml_child_each_attr()` --> `xml_child_iter_attr()`
+* Replace `volatile` API with more generic `cache-status` API:
+  * Example changes:
+    * `xmldb_volatile_get(de)` --> `xmldb_cache_status_get(de) == XMLDB_CACHE_INMEM`
+    * `xmldb_volatile_set(de, 1)` --> `xmldb_cache_status_set(de, XMLDB_CACHE_INMEM)`
 * Replace `xml_merge()` with `xml_merge1()`
      * Example change: `xml_merge(...,r)` --> `xml_merge1(...,0,r)`
 * Replace `xml_yang_validate_all_top()` with `xml_yang_validate_all_state()'
      * Example change: `xml_yang_validate_all_top(h,x,r)` --> `xml_yang_validate_all_state(h,x,0,r)`
+* Removed `XMLDB_CANDIDATE_INMEM`, use `CLICON_XMLDB_CACHE_STATUS` instead
 
 ### Corrected Bugs
 

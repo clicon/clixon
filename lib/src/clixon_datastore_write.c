@@ -1527,14 +1527,23 @@ xmldb_put(clixon_handle       h,
 #endif
     /* Write back to datastore cache if first time */
     xmldb_empty_set(de, xml_child_nr(xmldb_cache_get(de)) == 0);
-    /* Write cache to file unless volatile (ie stop syncing to store) */
-    if (xmldb_volatile_get(de) == 0){
+    /* Write cache to file and clear flags based on cache status:
+     * FILE / FILE_INMEM: flush to disk.
+     * INMEM: keep only in-memory (volatile), skip file write.
+     * FILE: additionally discard in-mem cache after writing to disk.
+     */
+    if (xmldb_cache_status_get(de) != XMLDB_CACHE_INMEM){
         if (xmldb_write_cache2file(h, db) < 0)
             goto done;
         /* Clear flags from previous steps + dirty */
         if (xml_apply(x0, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                       (void*)(XML_FLAG_NONE|XML_FLAG_ADD|XML_FLAG_DEL|XML_FLAG_CHANGE|XML_FLAG_CACHE_DIRTY)) < 0)
             goto done;
+        /* FILE-only: free in-mem cache after persisting to disk */
+        if (xmldb_cache_status_get(de) == XMLDB_CACHE_FILE){
+            xml_free(xmldb_cache_get(de));
+            xmldb_cache_set(de, NULL);
+        }
     }
     else {
         /* Clear flags from previous steps */

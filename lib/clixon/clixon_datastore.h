@@ -46,6 +46,15 @@
  * The internal struct is defined in clixon_yang_internal.h */
 typedef struct db_elmnt db_elmnt;
 
+/*! Per-datastore cache/file policy, matches YANG typedef xmldb_cache_status
+ * @see xcmap
+ */
+enum xmldb_cache_status {
+    XMLDB_CACHE_FILE       = 0, /* File only: no in-memory cache */
+    XMLDB_CACHE_INMEM      = 1, /* In-memory only: never write to file */
+    XMLDB_CACHE_FILE_INMEM = 2  /* Both file and in-memory (default) */
+};
+
 /*
  * Prototypes
  */
@@ -64,8 +73,8 @@ int      xmldb_empty_get(db_elmnt *de);
 int      xmldb_empty_set(db_elmnt *de, int value);
 int      xmldb_candidate_get(db_elmnt *de);
 int      xmldb_candidate_set(db_elmnt *de, int value);
-int      xmldb_volatile_get(db_elmnt *de);
-int      xmldb_volatile_set(db_elmnt *de, int value);
+enum xmldb_cache_status xmldb_cache_status_get(db_elmnt *de);
+int      xmldb_cache_status_set(db_elmnt *de, enum xmldb_cache_status status);
 
 /* Creator */
 db_elmnt *xmldb_new(clixon_handle h, const char *db);
@@ -111,5 +120,15 @@ int xmldb_drop_priv(clixon_handle h, const char *db, uid_t uid, gid_t gid);
 int xmldb_system_only_config(clixon_handle h, const char *xpath, cvec *nsc, cxobj **xret);
 int xmldb_candidate_find(clixon_handle h, const char *name, uint32_t ceid, db_elmnt **dep, char **db);
 int xmldb_post_commit(clixon_handle h, uint32_t ceid);
+
+/*-- Backward compatible 7.7 --*/
+static inline int
+xmldb_volatile_get(db_elmnt *de){
+    return xmldb_cache_status_get(de) == XMLDB_CACHE_INMEM;
+}
+static inline int
+xmldb_volatile_set(db_elmnt *de, int value){
+    return xmldb_cache_status_set(de, value ? XMLDB_CACHE_INMEM : XMLDB_CACHE_FILE_INMEM);
+}
 
 #endif /* _CLIXON_DATASTORE_H */

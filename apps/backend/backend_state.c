@@ -493,6 +493,9 @@ clixon_stats_datastore_get(clixon_handle  h,
     /* This is the db cache */
     if ((de = xmldb_find(h, dbname)) != NULL &&
         (xt = xmldb_cache_get(de)) == NULL){
+        /* For FILE-only datastores, do not trigger a cache load - they have no persistent cache */
+        if (xmldb_cache_status_get(de) == XMLDB_CACHE_FILE)
+            goto ok;
         /* Trigger cache if no exist (trick to ensure cache is present) */
         if ((ret = xmldb_get0(h, dbname, YB_MODULE, NULL, "/", 1, 0, &xn, NULL, NULL)) < 0)
             //goto done;

@@ -73,6 +73,7 @@
 #include "clixon_debug.h"
 #include "clixon_uid.h"
 #include "clixon_string.h"
+#include "clixon_map.h"
 #include "clixon_file.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
@@ -93,19 +94,53 @@
  * @see db_elmnt  The external type in clixon_datastore.h
  */
 struct db_elmnt {
-    char          *de_name;     /* Name of datastore */
-    uint32_t       de_id;       /* If set, locked by this client/session id */
-    struct timeval de_tv;       /* Timevalue, set by lock/unlock */
-    cxobj         *de_xml;      /* XML tree cache */
-    int            de_modified; /* Dirty since loaded/copied/committed/etc
-                                 * For NETCONF lock. Set by edit-config, copy, delete,
-                                 * reset by commit, discard
-                                 */
-    int            de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
-    int            de_candidate; /* Is shared/private candidate */
-    int            de_volatile; /* Disable auto-sync of cache to disk on every update (ie xmldb_put)
-                                 * Objects are marked with XML_FLAG_CACHE_DIRTY that are not written */
+    char                   *de_name;     /* Name of datastore */
+    uint32_t                de_id;       /* If set, locked by this client/session id */
+    struct timeval          de_tv;       /* Timevalue, set by lock/unlock */
+    cxobj                  *de_xml;      /* XML tree cache */
+    int                     de_modified; /* Dirty since loaded/copied/committed/etc
+                                          * For NETCONF lock. Set by edit-config, copy, delete,
+                                          * reset by commit, discard
+                                          */
+    int                     de_empty;    /* Empty on read from file, xmldb_readfile and xmldb_put sets it */
+    int                     de_candidate; /* Is shared/private candidate */
+    enum xmldb_cache_status de_cache_status; /* Per-datastore cache/file policy:
+                                              * INMEM: no file sync; FILE: file only; FILE_INMEM: both */
 };
+
+/* Local variables */
+/*! Map from string to int for xmldb cache status, matches YANG typedef xmldb_cache_status */
+static const map_str2int xcmap[] = {
+    {"file",       XMLDB_CACHE_FILE},
+    {"inmem",      XMLDB_CACHE_INMEM},
+    {"file-inmem", XMLDB_CACHE_FILE_INMEM},
+    {NULL, -1}
+};
+
+/* Forward declarations */
+static int xmldb_free(db_elmnt *de);
+
+/*! Map from datastore cache status starings into ints
+ *
+ * @param[in] str  String representation of xmldb cache keywords
+ * @retval    int  Integer representation of xmldb cache keywords
+ */
+static int
+xmldb_cache_str2key(const char *str)
+{
+    return clicon_str2int(xcmap, str);
+}
+
+/*! Map from datastore cache status keywords ints to strings
+ *
+ * @param[in] int  Integer representation of YANG keywords
+ * @retval    str  String representation of YANG keywords
+ */
+static const char *
+xmldb_cache_key2str(int keyword)
+{
+    return clicon_int2str(xcmap, keyword);
+}
 
 /*-------------- Access functions ----------------*/
 /*! Get datastore name
@@ -253,35 +288,28 @@ xmldb_candidate_set(db_elmnt *de,
     return 0;
 }
 
-/*! Get volatile flag of datastore cache
+/*! Get per-datastore cache/file policy
  *
- * Whether to sync cache to disk on every update (ie xmldb_put)
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @retval     1     Volatile
- * @retval     0     Sync to disc
- * @retval    -1     Error (datastore does not exist)
+ * @param[in]  de   XMLDB element
+ * @retval     Cache status enum value
  */
-int
-xmldb_volatile_get(db_elmnt *de)
+enum xmldb_cache_status
+xmldb_cache_status_get(db_elmnt *de)
 {
-    return de->de_volatile;
+    return de->de_cache_status;
 }
 
-/*! Set datastore status of datastore cache
+/*! Set per-datastore cache/file policy
  *
- * Whether to sync cache to disk on every update (ie xmldb_put)
- * @param[in]  h     Clixon handle
- * @param[in]  db    Database name
- * @param[in]  value 0 to dump to file, 1 to keep in-mem
- * @retval     0     OK
- * @retval    -1     Error (datastore does not exist)
+ * @param[in]  de      XMLDB element
+ * @param[in]  status  Cache status
+ * @retval     0       OK
  */
 int
-xmldb_volatile_set(db_elmnt *de,
-                   int       value)
+xmldb_cache_status_set(db_elmnt              *de,
+                       enum xmldb_cache_status status)
 {
-    de->de_volatile = value;
+    de->de_cache_status = status;
     return 0;
 }
 
@@ -297,9 +325,14 @@ db_elmnt *
 xmldb_new(clixon_handle h,
           const char   *db)
 {
-    db_elmnt *de = NULL;
+    db_elmnt                *de = NULL;
+    db_elmnt                *de_old = NULL;
+    enum xmldb_cache_status  cache_status = XMLDB_CACHE_FILE_INMEM;
 
     clixon_debug(CLIXON_DBG_DATASTORE, "New: %s", db);
+    /* Preserve cache_status from any existing entry (set by xmldb_connect) */
+    if ((de_old = xmldb_find(h, db)) != NULL)
+        cache_status = xmldb_cache_status_get(de_old);
     if ((de = calloc(1, sizeof(*de))) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
         goto done;
@@ -310,6 +343,10 @@ xmldb_new(clixon_handle h,
         de = NULL;
         goto done;
     }
+    de->de_cache_status = cache_status;
+    /* Free old entry before replacing it in the hash */
+    if (de_old != NULL)
+        xmldb_free(de_old);
     clicon_hash_add(clicon_db_elmnt(h), de->de_name, &de, sizeof(de));
  done:
     return de;
@@ -470,6 +507,7 @@ xmldb_db2subdir(clixon_handle h,
 
 /*! Connect to a datastore plugin, allocate resources to be used in API calls
  *
+ * Reads CLICON_XMLDB_CACHE_STATUS list from config and sets per-datastore cache policy.
  * @param[in]  h    Clixon handle
  * @retval     0    OK
  * @retval    -1    Error
@@ -477,7 +515,44 @@ xmldb_db2subdir(clixon_handle h,
 int
 xmldb_connect(clixon_handle h)
 {
-    return 0;
+    int                      retval = -1;
+    cxobj                   *xconf;
+    cxobj                   *xe = NULL;
+    char                    *name;
+    char                    *statusstr;
+    db_elmnt                *de;
+    enum xmldb_cache_status  status;
+    int                      ix = 0;
+
+    if ((xconf = clicon_conf_xml(h)) == NULL)
+        goto ok;
+    /* Iterate CLICON_XMLDB_CACHE_STATUS list entries */
+    while ((xe = xml_child_iter(xconf, &ix, CX_ELMNT)) != NULL){
+        if (strcmp(xml_name(xe), "CLICON_XMLDB_CACHE_STATUS") != 0)
+            continue;
+        if ((name = xml_find_body(xe, "name")) == NULL)
+            continue;
+        if ((statusstr = xml_find_body(xe, "status")) == NULL){
+            status = XMLDB_CACHE_FILE_INMEM;
+        }
+        else {
+            if ((status = xmldb_cache_str2key(statusstr)) < 0){
+                clixon_err(OE_XML, 0, "Invalid xmldb cache status '%s'", statusstr);
+                goto done;
+            }
+        }
+        /* Create datastore entry if it does not yet exist */
+        if ((de = xmldb_find(h, name)) == NULL){
+            if ((de = xmldb_new(h, name)) == NULL)
+                goto done;
+        }
+        xmldb_cache_status_set(de, status);
+        clixon_debug(CLIXON_DBG_DATASTORE, "datastore %s cache_status=%s", name, xmldb_cache_key2str(status));
+    }
+ ok:
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Disconnect from a datastore plugin and deallocate resources
@@ -638,6 +713,11 @@ xmldb_copy_de(clixon_handle h,
         }
         if ((x2 = xml_dup(x1)) == NULL)
             goto done;
+        /* FILE source: x1 was freshly loaded and detached from de_xml; free it */
+        if (xmldb_cache_status_get(de1) == XMLDB_CACHE_FILE){
+            xml_free(x1);
+            x1 = NULL;
+        }
     }
     else if (x1 == NULL){  /* free x2 and set to NULL */
         xml_free(x2);
@@ -651,6 +731,11 @@ xmldb_copy_de(clixon_handle h,
         }
         if ((x2 = xml_dup(x1)) == NULL)
             goto done;
+        /* FILE source: x1 was freshly loaded and detached from de_xml; free it */
+        if (xmldb_cache_status_get(de1) == XMLDB_CACHE_FILE){
+            xml_free(x1);
+            x1 = NULL;
+        }
     }
     else  if (x2 == NULL){ /* create x2 and copy from x1 */
         if ((x2 = xml_new(xml_name(x1), NULL, CX_ELMNT)) == NULL)
@@ -669,11 +754,12 @@ xmldb_copy_de(clixon_handle h,
             goto done;
     }
     de2->de_xml = x2;
-    /* If destination is not volatile, then copy file, or dump from cache if
-     * src is volatile
+    /* File handling based on destination cache status:
+     * FILE / FILE_INMEM: write to file. INMEM: skip file write.
+     * If destination is file-only, also discard the in-mem copy afterwards.
      */
-    if (!de2->de_volatile){
-        if (de1->de_volatile){
+    if (xmldb_cache_status_get(de2) != XMLDB_CACHE_INMEM){
+        if (xmldb_cache_status_get(de1) == XMLDB_CACHE_INMEM){
             if (xmldb_populate(h, to) < 0)
                 goto done;
             if (xmldb_write_cache2file(h, to) < 0)
@@ -681,6 +767,13 @@ xmldb_copy_de(clixon_handle h,
         }
         else if (xmldb_copy_file(h, from, to) < 0)
             goto done;
+        /* FILE-only: discard in-mem cache after writing to disk */
+        if (xmldb_cache_status_get(de2) == XMLDB_CACHE_FILE){
+            if (de2->de_xml != NULL){
+                xml_free(de2->de_xml);
+                de2->de_xml = NULL;
+            }
+        }
     }
     retval = 0;
  done:
@@ -850,8 +943,15 @@ xmldb_exists(clixon_handle h,
     int         retval = -1;
     char       *filename = NULL;
     struct stat sb;
+    db_elmnt   *de;
 
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "%s", db);
+    /* INMEM datastores have no file; treat as existing if entry is registered */
+    if ((de = xmldb_find(h, db)) != NULL &&
+        xmldb_cache_status_get(de) == XMLDB_CACHE_INMEM){
+        retval = 1;
+        goto done;
+    }
     if (xmldb_db2file(h, db, &filename) < 0)
         goto done;
     if (lstat(filename, &sb) < 0)
@@ -1050,6 +1150,11 @@ xmldb_create(clixon_handle h,
             xml_free(xt);
             de->de_xml = NULL;
         }
+    }
+    /* INMEM datastores have no backing file */
+    if (de != NULL && xmldb_cache_status_get(de) == XMLDB_CACHE_INMEM){
+        retval = 0;
+        goto done;
     }
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
         if (check_create_multidir(h, db) < 0)

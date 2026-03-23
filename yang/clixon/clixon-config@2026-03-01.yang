@@ -3,6 +3,9 @@ module clixon-config {
     namespace "http://clicon.org/config";
     prefix cc;
 
+    import ietf-datastores {
+        prefix ds;
+    }
     import clixon-restconf {
         prefix clrc;
     }
@@ -54,6 +57,7 @@ module clixon-config {
         description
             "Added options:
                 CLICON_VALIDATE_TARGET_STATE
+                CLICON_XMLDB_CACHE_STATUS
              Released in Clixon 7.8";
     }
     revision 2025-12-01 {
@@ -503,6 +507,21 @@ module clixon-config {
             bit file {
                 position 3;
                 description "Log to file. By default clixon.log int current directory";
+            }
+        }
+    }
+    typedef xmldb_cache_status {
+        description
+            "Datastore cache status: file, in-mem or both";
+        type enumeration{
+            enum file {
+                description "File only";
+            }
+            enum inmem {
+                description "In-mem only";
+            }
+            enum file-inmem {
+                description "Both file and in-mem";
             }
         }
     }
@@ -1316,6 +1335,22 @@ module clixon-config {
                  ietf-netconf-private-candidate:private candidate should
                  also be enabled.
                  If false, use shared candidates for all sessions";
+        }
+        list CLICON_XMLDB_CACHE_STATUS {
+            description
+                "List cache and file status for datastores.
+                 A persistent datastore should be stored on file, wheras a volatile can be in-mem.
+                 Running is typically both, candidate may be in-mem only, startup typically file-only";
+            key name;
+            leaf name {
+                description
+                    "Name of datastore";
+                type ds:datastore-ref;
+            }
+            leaf status {
+                type xmldb_cache_status;
+                default file_inmem;
+            }
         }
         leaf CLICON_XML_CHANGELOG {
             type boolean;

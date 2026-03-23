@@ -555,9 +555,10 @@ validate_common(clixon_handle       h,
         xmldb_cache_get(de) != NULL){
         if (xmldb_populate(h, db) < 0)
             goto done;
-        if (!xmldb_volatile_get(de))
+        if (xmldb_cache_status_get(de) != XMLDB_CACHE_INMEM){
             if (xmldb_write_cache2file(h, db) < 0)
                 goto done;
+            }
     }
     /* This is the state we are going to */
     if ((ret = xmldb_get0(h, db, YB_MODULE, NULL, "/", 0, 0, &td->td_target, NULL, xret)) < 0)
@@ -858,7 +859,7 @@ backend_update(clixon_handle h,
             goto done;
         if (xmldb_populate(h, db1) < 0) // ??
             goto done;
-        if (!xmldb_volatile_get(de1))
+        if (xmldb_cache_status_get(de1) != XMLDB_CACHE_INMEM)
             if (xmldb_write_cache2file(h, db1) < 0)
                 goto done;
         /* Reset candidate-orig to running */
@@ -1449,9 +1450,6 @@ xmldb_candidate_new(clixon_handle h,
     db = cbuf_get(cb);
     if ((de = xmldb_new(h, db)) == NULL)
         goto done;
-#ifdef XMLDB_CANDIDATE_INMEM
-    xmldb_volatile_set(de, 1);
-#endif
     xmldb_candidate_set(de, 1);
     if (xmldb_copy(h, "running", db) < 0)
         goto done;
