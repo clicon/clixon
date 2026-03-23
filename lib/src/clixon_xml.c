@@ -1835,6 +1835,11 @@ xml_child_rm(cxobj *xp,
     xp->x_childvec->xv_len--;
     if (i < (int)xv_len(xp))
         memmove(&xv_vec(xp)[i], &xv_vec(xp)[i+1], (xv_len(xp)-i)*sizeof(cxobj*));
+    /* Free childvec when last child is removed to reclaim memory */
+    if (xv_len(xp) == 0){
+        free(xp->x_childvec);
+        xp->x_childvec = NULL;
+    }
 #ifdef XML_EXPLICIT_INDEX
     if (xml_type(xc) == CX_ELMNT){
         if (xml_search_index_p(xc))
