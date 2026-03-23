@@ -2802,7 +2802,7 @@ yang_deviation(yang_stmt *ys,
                 }
                 if (_yang_use_orig && yang_orig_get(ytarget) != NULL && uses_orig_ptr(kw))
                     ;
-                else {
+                else if (ytc != NULL) {
                     /* Remove old */
                     if (ys_prune_self(ytc) < 0)
                         goto done;
