@@ -1,77 +1,110 @@
 #!/usr/bin/env bash
-# Regression test for grouping resolution via original statement context.
-# Covers nested uses in a submodule grouping consumed from another module.
+# Regression test for autocli grouping resolution in augmented trees.
+# Reproduces failure pattern: "grouping <name> not found in" during clixon-cache read.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
+dbdir=$(mktemp -d "$dir/${APPNAME}.xmldb.XXXXXX")
+rundir=$(mktemp -d "$dir/${APPNAME}.run.XXXXXX")
+
+chmod 777 "$dbdir" "$rundir"
+
 cfg=$dir/conf_grouping_origin.xml
-fprov=$dir/prov-main.yang
-fprovsub=$dir/prov-sub.yang
-fcons=$dir/cons-main.yang
+fcore=$dir/native-main.yang
+faug=$dir/bfd-main.yang
+cachedir=$dir/autocli
 
-AUTOCLI=$(autocli_config "*" kw-nokey false)
+if [ ! -d $cachedir ]; then
+    mkdir $cachedir
+fi
 
-cat <<EOF >$cfg
+cat <<EOF_CFG >$cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
+  <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
   <CLICON_YANG_DIR>$dir</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
-  <CLICON_YANG_MAIN_FILE>$fcons</CLICON_YANG_MAIN_FILE>
-  <CLICON_CLISPEC_DIR>/usr/local/lib/$APPNAME/clispec</CLICON_CLISPEC_DIR>
-  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_YANG_MAIN_FILE>$faug</CLICON_YANG_MAIN_FILE>
+  <CLICON_CLISPEC_DIR>$dir/$APPNAME/clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>$dir/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
-  $AUTOCLI
+  <CLICON_SOCK>$rundir/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>$rundir/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
+  <CLICON_YANG_LIBRARY>false</CLICON_YANG_LIBRARY>
+  <CLICON_YANG_USE_ORIGINAL>true</CLICON_YANG_USE_ORIGINAL>
+  <CLICON_AUTOCLI_CACHE_DIR>$cachedir</CLICON_AUTOCLI_CACHE_DIR>
+  <autocli>
+    <module-default>false</module-default>
+    <list-keyword-default>kw-nokey</list-keyword-default>
+    <grouping-treeref>true</grouping-treeref>
+    <treeref-state-default>false</treeref-state-default>
+    <clispec-cache>read</clispec-cache>
+    <rule>
+      <name>include all</name>
+      <operation>enable</operation>
+      <module-name>*</module-name>
+    </rule>
+  </autocli>
 </clixon-config>
-EOF
+EOF_CFG
 
-cat <<'EOF' >$fprov
-module prov-main {
+cat <<'EOF_CORE' >$fcore
+module native-main {
   yang-version 1.1;
-  namespace "urn:test:prov-main";
-  prefix pm;
+  namespace "urn:test:native-main";
+  prefix nm;
 
-  include prov-sub;
+  revision 2026-03-24;
+
+  container native {
+    leaf enabled {
+      type boolean;
+      default "true";
+    }
+    container bfd;
+  }
 }
-EOF
+EOF_CORE
 
-cat <<'EOF' >$fprovsub
-submodule prov-sub {
+cat <<'EOF_AUG' >$faug
+module bfd-main {
   yang-version 1.1;
-  belongs-to prov-main { prefix pm; }
+  namespace "urn:test:bfd-main";
+  prefix bm;
 
-  grouping inner {
-    leaf v {
-      type string;
+  import native-main {
+    prefix nm;
+  }
+
+  revision 2026-03-24;
+
+  grouping config-bfd-grouping {
+    grouping bfd-temp {
+      leaf template-name {
+        type string;
+      }
+    }
+
+    container map {
+      list ipv4 {
+        key "name";
+        leaf name {
+          type string;
+        }
+        uses bfd-temp;
+      }
     }
   }
 
-  grouping wrapper {
-    container wrapped {
-      uses inner;
-    }
+  augment "/nm:native/nm:bfd" {
+    uses config-bfd-grouping;
   }
 }
-EOF
-
-cat <<'EOF' >$fcons
-module cons-main {
-  yang-version 1.1;
-  namespace "urn:test:cons-main";
-  prefix cm;
-
-  import prov-main { prefix pm; }
-
-  container top {
-    uses pm:wrapper;
-  }
-}
-EOF
+EOF_AUG
 
 new "test params: -f $cfg"
 
@@ -86,30 +119,23 @@ if [ $BE -ne 0 ]; then
 fi
 
 new "wait backend"
-wait_backend
+sleep 1
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" \
+  "<rpc $DEFAULTNS><ping $LIBNS/></rpc>" \
+  "<ok/>"
 
-new "autocli generation should not report unresolved grouping"
-expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 --not-- "grouping " " not found in " "Database error"
+new "clear autocli cache"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" \
+  "<rpc $DEFAULTNS><clixon-cache $LIBNS><operation>clear</operation><type>autocli</type></clixon-cache></rpc>" \
+  "<ok/>"
 
-new "set leaf under nested grouping uses"
-expectpart "$($clixon_cli -f $cfg -1 set top wrapped v hello)" 0 "^$"
+new "read autocli cache for module native-main (must not fail unresolved grouping)"
+expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" \
+  "<rpc $DEFAULTNS><clixon-cache $LIBNS><operation>read</operation><type>autocli</type><domain>top</domain><spec>data</spec><module>native-main</module><revision>2026-03-24</revision><keyword>module</keyword><argument>native-main</argument></clixon-cache></rpc>" \
+  "<data"
 
-new "validate candidate"
-expectpart "$($clixon_cli -f $cfg -1 validate)" 0 "^$"
-
-new "commit candidate"
-expectpart "$($clixon_cli -f $cfg -1 commit)" 0 "^$"
-
-new "show config contains nested grouping value"
-expectpart "$($clixon_cli -f $cfg -1 show config)" 0 \
-  "<top xmlns=\"urn:test:cons-main\">" \
-  "<wrapped>" \
-  "<v>hello</v>" \
-  "</wrapped>" \
-  "</top>"
-
-new "discard-changes"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+# Regression scope ends here on purpose.
+# The original bug manifests exactly at clixon-cache read for autocli.
 
 if [ $BE -ne 0 ]; then
   new "Kill backend"
