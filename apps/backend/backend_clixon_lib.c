@@ -104,7 +104,7 @@ from_client_debug(clixon_handle h,
 
     clixon_debug_init(h, level); /* 0: dont debug, 1:debug */
     setlogmask(LOG_UPTO(level?LOG_DEBUG:LOG_INFO)); /* for syslog */
-    clixon_log(h, LOG_NOTICE, "%s debug:%d", __func__, clixon_debug_get());
+    clixon_log(h, LOG_NOTICE, "%s debug: 0x%x", __func__, clixon_debug_get());
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
  ok:
     retval = 0;

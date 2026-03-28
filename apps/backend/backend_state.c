@@ -481,13 +481,13 @@ clixon_stats_datastore_get(clixon_handle  h,
                            xml_stats_enum xml_type,
                            cbuf          *cb)
 {
-    int            retval = -1;
-    cxobj         *xt = NULL; /* should not be freed */
-    uint64_t       nr = 0;
-    size_t         sz = 0;
-    cxobj         *xn = NULL;
-    db_elmnt      *de;
-    int            ret;
+    int       retval = -1;
+    cxobj    *xt = NULL; /* should not be freed */
+    uint64_t  nr = 0;
+    size_t    sz = 0;
+    cxobj    *xn = NULL;
+    db_elmnt *de;
+    int       ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "%s", dbname);
     /* This is the db cache */
@@ -575,6 +575,9 @@ clixon_backend_stats(clixon_handle  h,
     yang_stmt *ymodule;
     yang_stmt *ydomain;
     cxobj     *xt = NULL;
+    char     **keys = NULL;
+    size_t     klen;
+    int        i;
 
     cprintf(cbret, "<global xmlns=\"%s\">", CLIXON_LIB_NS);
     nr=0;
@@ -585,13 +588,12 @@ clixon_backend_stats(clixon_handle  h,
     cprintf(cbret, "<yangnr>%" PRIu64 "</yangnr>", nr);
     cprintf(cbret, "</global>");
     cprintf(cbret, "<datastores xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (clixon_stats_datastore_get(h, "running", xml_type, cbret) < 0)
+    if (clicon_hash_keys(clicon_db_elmnt(h), &keys, &klen) < 0)
         goto done;
-    if (clixon_stats_datastore_get(h, "candidate", xml_type, cbret) < 0)
-        goto done;
-    if (if_feature(h, "ietf-netconf", "startup"))
-	if (clixon_stats_datastore_get(h, "startup", xml_type, cbret) < 0)
-	    goto done;
+    for (i = 0; i < klen; i++){
+        if (clixon_stats_datastore_get(h, keys[i], xml_type, cbret) < 0)
+            goto done;
+    }
     cprintf(cbret, "</datastores>");
     if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
         clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
