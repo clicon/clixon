@@ -1601,6 +1601,70 @@ translatenumber(uint64_t   inr,
     return 0;
 }
 
+/*! Print a two-line column header for the statistics tables
+ *
+ * Column width is 12. Names longer than 12 are split: first line shows chars
+ * 0..11, second line shows chars 12..23 (right-aligned in a 12-wide field).
+ * A blank second line is only printed if any name exceeds 12 characters.
+ * @param[in]  label    Left-hand label column (16-wide)
+ * @param[in]  col1hdr  First numeric column header (e.g. "Total")
+ * @param[in]  xp       <datastores> XML node to iterate for datastore names
+ */
+static void
+stats_print_header(const char *label,
+                   const char *col1hdr,
+                   cxobj      *xp)
+{
+    cxobj *x;
+    char  *name;
+    int    ix;
+    int    need2 = 0;
+
+    /* Check if any name exceeds 12 chars */
+    if (xp != NULL){
+        ix = 0;
+        while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(x), "datastore") != 0)
+                continue;
+            name = xml_find_body(x, "name");
+            if (name && strlen(name) > 12){
+                need2 = 1;
+                break;
+            }
+        }
+    }
+    /* Line 1: first 12 chars of each name */
+    cligen_output(stdout, "%-16s %12s", label, col1hdr);
+    if (xp != NULL){
+        ix = 0;
+        while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(x), "datastore") != 0)
+                continue;
+            name = xml_find_body(x, "name");
+            if (name)
+                cligen_output(stdout, " %12.12s", name);
+        }
+    }
+    cligen_output(stdout, "\n");
+    if (!need2)
+        return;
+    /* Line 2: chars 12..23 of each name (blank for short names) */
+    cligen_output(stdout, "%-16s %12s", "", "");
+    if (xp != NULL){
+        ix = 0;
+        while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
+            if (strcmp(xml_name(x), "datastore") != 0)
+                continue;
+            name = xml_find_body(x, "name");
+            if (name && strlen(name) > 12)
+                cligen_output(stdout, " %12.12s", name + 12);
+            else
+                cligen_output(stdout, " %12s", "");
+        }
+    }
+    cligen_output(stdout, "\n");
+}
+
 /*! CLI callback show memory statistics (and numbers)
  *
  * mempry in KiB
@@ -1771,19 +1835,9 @@ cli_show_statistics(clixon_handle h,
             xret_all = xret;
             xret = NULL;
             /* --- XML per-type table --- */
-            /* Print header: Total first, then per-datastore (names truncated to 12) */
-            cligen_output(stdout, "%-16s %12s", "XML memory", "Total");
-            if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
-                ix = 0;
-                while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
-                    if (strcmp(xml_name(x), "datastore") != 0)
-                        continue;
-                    name = xml_find_body(x, "name");
-                    if (name)
-                        cligen_output(stdout, " %12.12s", name);
-                }
-            }
-            cligen_output(stdout, "\n");
+            /* Print two-line header: Total first, then per-datastore */
+            stats_print_header("XML memory", "Total",
+                               xml_find_type(xret_all, NULL, "datastores", CX_ELMNT));
             /* Per-type rows */
             for (ti = 0; xtypenames[ti]; ti++){
                 cbuf_reset(cb);
@@ -1853,8 +1907,8 @@ cli_show_statistics(clixon_handle h,
             tsz0 = tsz;
             tsz = 0;
             /* --- XML nr (count) table --- */
-            cligen_output(stdout, "%-16s", "XML objects");
-            cligen_output(stdout, "\n");
+            stats_print_header("XML objects", "Total",
+                               xml_find_type(xret_all, NULL, "datastores", CX_ELMNT));
             for (ti = 0; xtypenames[ti]; ti++){
                 cbuf_reset(cb);
                 cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
