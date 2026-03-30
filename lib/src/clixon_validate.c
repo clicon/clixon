@@ -1780,8 +1780,19 @@ xml_yang_validate_all1(clixon_handle h,
         if ((ret = xml_yang_mount_get(h, xt, &vl, NULL, NULL)) < 0)
             goto done;
         /* Check if validate beyond mountpoints */
-        if (ret == 1 && vl == VL_NONE)
-            goto ok;
+        if (ret == 1){
+            if (vl == VL_NONE)
+                goto ok;
+            /* Race-condition: mount-get gives "potential" validation, but before it actually gets mounted, the validation
+             * is done and fails because of missing yang spec. We check if the yang spec is not yet an actual mount point,
+             * and if so, skip validation (unless skip unknown data already)
+             */
+            if (clicon_option_bool(h, "CLICON_YANG_UNKNOWN_ANYDATA") == 0 &&
+                (yt = xml_spec(xt)) != NULL &&
+                yang_flag_get(yt, YANG_FLAG_MTPOINT) == 0x0) {
+                goto ok;
+            }
+        }
     }
     /* if not given by argument (overide) use default link
        and !Node has a config sub-statement and it is false */
