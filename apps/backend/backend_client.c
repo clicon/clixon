@@ -1911,6 +1911,8 @@ from_client(int   s,
     if (clixon_msg_rcv11(s, cbuf_get(cbce), 0, &cb, &eof) < 0)
         goto done;
     if (eof){
+        release_all_dbs(h, ce, ce->ce_id);
+        stream_ss_delete_all(h, ce_event_cb, (void*)ce);
         backend_client_rm(h, ce);
         netconf_monitoring_counter_inc(h, "dropped-sessions");
     }
