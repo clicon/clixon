@@ -191,6 +191,7 @@ compile_pattern2regexp(clixon_handle h,
     cg_var *rcv; /* regexp cv */
     void   *re = NULL;
     char   *pattern;
+    yang_stmt *ymod;
     int     ret;
 
     pcv = NULL;
@@ -200,8 +201,6 @@ compile_pattern2regexp(clixon_handle h,
         if ((ret = regex_compile(h, pattern, &re)) < 0)
             goto done;
         if (ret == 0){
-            yang_stmt *ymod;
-
             clixon_err(OE_YANG, 0, "regexp compile fail: \"%s\"", pattern);
             if (regex_free(h, re) < 0)
                 goto done;

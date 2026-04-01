@@ -26,6 +26,9 @@ Expected: May 2026
   * New callback mechanism in the CLI added to verify expansion of all symbols
   * Enable with `CLICON_NACM_AUTOCLI`
   * User-guide: https://clixon-docs.readthedocs.io/en/latest/cli.html#nacm-for-autocli
+* New: gRPC/gNMI
+  * Prototype, no TLS
+  * See: https://clixon-docs.readthedocs.io/en/latest/grpc-gnmi.html
 * New: XPath translate()
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183

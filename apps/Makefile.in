@@ -37,6 +37,7 @@ srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
 with_restconf	= @with_restconf@
 enable_netsnmp	= @enable_netsnmp@
+enable_grpc	= @enable_grpc@
 
 SHELL	= /bin/sh
 
@@ -51,6 +52,11 @@ endif
 ifdef enable_netsnmp
 ifeq ($(enable_netsnmp),yes)
 SUBDIRS += snmp
+endif
+endif
+ifdef enable_grpc
+ifeq ($(enable_grpc),yes)
+SUBDIRS += grpc
 endif
 endif
 

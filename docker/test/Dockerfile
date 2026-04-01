@@ -42,6 +42,9 @@ RUN apk add --update git make build-base gcc flex bison curl-dev
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
+# For grpc/gnmi
+RUN apk add --update protobuf-dev protobuf-c-dev
+
 # For groupadd/groupdel
 RUN apk add --update shadow
 
@@ -77,7 +80,7 @@ WORKDIR /clixon/clixon
 COPY clixon .
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/local --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ -without-restconf
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/local --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --enable-grpc --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ -without-restconf
 RUN make
 RUN make DESTDIR=/clixon/build install
 
@@ -135,6 +138,9 @@ RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
 RUN echo "trap2sink     localhost public 162" >> /etc/snmp/snmpd.conf
 RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
+
+# For grpc/gnmi
+RUN apk add protobuf-c
 
 # Test-specific (for test scripts)
 RUN apk add --update sudo curl procps grep make bash expect openssh coreutils

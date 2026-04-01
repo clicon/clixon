@@ -74,6 +74,7 @@ module clixon-lib {
             "Added:
                 Extended stats rpc with xml-type paramater
                 Added xml-stats-type to : error-message
+                Added grpc as transport
              Released in Clixon 7.8";
     }
     revision 2025-12-01 {
@@ -412,6 +413,11 @@ module clixon-lib {
     identity cli {
         description
             "A CLI session";
+        base ncm:transport;
+    }
+    identity grpc {
+        description
+            "A gRPC/gNMI session";
         base ncm:transport;
     }
     extension ignore-compare {

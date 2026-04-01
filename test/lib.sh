@@ -80,6 +80,9 @@ testname=
 # If set to 0, override starting of clixon_snmp in test (you bring your own)
 : ${SN:=1}
 
+# If set to 0, override starting of clixon_grpc in test (you bring your own)
+: ${GR:=1}
+
 # Namespace: netconf base
 BASENS='urn:ietf:params:xml:ns:netconf:base:1.0'
 
@@ -201,6 +204,11 @@ BUSER=clicon
 : ${clixon_snmp:=clixon_snmp}
 
 : ${clixon_snmp_pidfile:="/var/tmp/clixon_snmp.pid"}
+
+#: ${clixon_grpc:=clixon_grpc}
+: ${clixon_grpc:=$(which clixon_grpc 2>/dev/null)}
+
+: ${GRPC_PORT:=9339}
 
 # Source the site-specific definitions for test script variables, if site.sh
 # exists. The variables defined in site.sh override any variables of the same
@@ -693,6 +701,50 @@ function wait_snmp()
     while [ ! -f ${clixon_snmp_pidfile} ]; do
         if [ $i -ge $DEMLOOP ]; then
             err1 "snmp timeout $DEMWAIT seconds"
+        fi
+        sleep $DEMSLEEP
+        let i++;
+    done
+}
+
+# Start gRPC/gNMI daemon in background
+# Sets GRPCPID
+function start_grpc(){
+    $clixon_grpc -D $DBG $* </dev/null &> /var/tmp/grpc.log &
+    if [ $? -ne 0 ]; then
+        err1 "expected 0" "$?"
+    fi
+    GRPCPID=$!
+}
+
+# Stop gRPC daemon by PID
+function stop_grpc_pre(){
+    sudo pkill -f clixon_grpc
+}
+
+function stop_grpc(){
+    if [ -n "$GRPCPID" ]; then
+        sudo kill $GRPCPID 2>/dev/null
+        if [ $valgrindtest -eq 5 ]; then
+            sleep 1
+            checkvalgrind
+        else
+            wait $GRPCPID 2>/dev/null
+        fi
+        GRPCPID=
+    fi
+}
+
+# Wait for gRPC daemon to accept TCP connections on GRPC_PORT
+# @see start_grpc
+function wait_grpc(){
+    let i=0;
+    while ! (echo > /dev/tcp/localhost/${GRPC_PORT}) 2>/dev/null; do
+        if [ $i -ge $DEMLOOP ]; then
+            if [ -f /var/tmp/grpc.log ]; then
+                cat /var/tmp/grpc.log
+            fi
+            err1 "grpc timeout $DEMWAIT seconds"
         fi
         sleep $DEMSLEEP
         let i++;

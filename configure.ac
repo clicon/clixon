@@ -116,6 +116,7 @@ AC_SUBST(LINKAGE)
 AC_SUBST(with_libcurl)
 AC_SUBST(with_restconf)  # Set to native or fcgi -> compile apps/restconf
 AC_SUBST(enable_netsnmp) # Enable build of apps/snmp
+AC_SUBST(enable_grpc)    # Enable build of apps/grpc
 AC_SUBST(HAVE_LIBNGHTTP2,false) # consider using neutral constant such as with-http2
 AC_SUBST(HAVE_HTTP1,false)
 AC_SUBST(with_libxml2)
@@ -359,6 +360,26 @@ if test "$enable_netsnmp" = "yes"; then
     AC_MSG_RESULT(Generated YANGs from MIB files are expected to be in ${MIB_GENERATED_YANG_DIR})
 fi
 
+# gRPC/gNMI northbound interface
+AC_ARG_ENABLE(grpc, AS_HELP_STRING([--enable-grpc],[Enable gRPC/gNMI northbound interface]),[
+   if test "$enableval" = no; then
+      enable_grpc=no
+   else
+      enable_grpc=yes
+   fi
+  ],
+  [ enable_grpc=no])
+AC_MSG_RESULT(checking grpc is enabled: $enable_grpc)
+
+if test "$enable_grpc" = "yes"; then
+   AC_CHECK_LIB(protobuf-c, protobuf_c_message_pack,, AC_MSG_ERROR([libprotobuf-c is required for gRPC]))
+   AC_CHECK_HEADERS(protobuf-c/protobuf-c.h,[], AC_MSG_ERROR([protobuf-c headers are missing]))
+   AC_CHECK_PROG(PROTOC_C, protoc-c, protoc-c)
+   if test -z "$PROTOC_C"; then
+      AC_MSG_ERROR([protoc-c is required to compile .proto files for gRPC])
+   fi
+fi
+
 # In 7.8 native xml_child_each_wrapper is disabled by default which wastes one ptr in the xml struct
 # but makes calls to xml_child_each keep their pre-7.8 performance
 # This can be enabled by --enable-xml-child-each-wrapper in which xml_child_each uses a wrapper to xml_child_iter
@@ -501,6 +522,7 @@ AC_CONFIG_FILES([Makefile
 	  apps/netconf/Makefile
 	  apps/restconf/Makefile
   	  apps/snmp/Makefile
+          apps/grpc/Makefile
 	  include/Makefile
 	  etc/Makefile
 	  etc/clixonrc

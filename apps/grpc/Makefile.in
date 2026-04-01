@@ -1,0 +1,166 @@
+#
+# ***** BEGIN LICENSE BLOCK *****
+# 
+# Copyright (C) 2026 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+#
+# This file is part of CLIXON
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Alternatively, the contents of this file may be used under the terms of
+# the GNU General Public License Version 3 or later (the "GPL"),
+# in which case the provisions of the GPL are applicable instead
+# of those above. If you wish to allow use of your version of this file only
+# under the terms of the GPL, and not to allow others to
+# use your version of this file under the terms of Apache License version 2, 
+# indicate your decision by deleting the provisions above and replace them with
+# the notice and other provisions required by the GPL. If you do not delete
+# the provisions above, a recipient may use your version of this file under
+# the terms of any one of the Apache License version 2 or the GPL.
+#
+# ***** END LICENSE BLOCK *****
+#
+# Makefile for clixon_grpc - gRPC/gNMI northbound interface
+#
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+CC		= @CC@
+CFLAGS  	= @CFLAGS@ 
+LINKAGE         = @LINKAGE@
+
+ifeq ($(HOST_VENDOR),apple)
+INSTALLFLAGS =
+else
+INSTALLFLAGS = @INSTALLFLAGS@
+endif
+
+LDFLAGS 	= @LDFLAGS@
+
+prefix 		= @prefix@
+datarootdir	= @datarootdir@
+exec_prefix 	= @exec_prefix@
+bindir 		= @bindir@
+libdir		= @libdir@
+sbindir 	= @sbindir@
+mandir		= @mandir@
+libexecdir	= @libexecdir@
+localstatedir	= @localstatedir@
+sysconfdir	= @sysconfdir@
+includedir	= @includedir@
+HOST_VENDOR     = @host_vendor@
+
+SH_SUFFIX	= @SH_SUFFIX@
+LIBSTATIC_SUFFIX = @LIBSTATIC_SUFFIX@
+CLIXON_MAJOR    = @CLIXON_VERSION_MAJOR@
+CLIXON_MINOR    = @CLIXON_VERSION_MINOR@
+
+# Use this clixon lib for linking
+ifeq ($(LINKAGE),dynamic)
+	CLIXON_LIB	= libclixon$(SH_SUFFIX).$(CLIXON_MAJOR).$(CLIXON_MINOR)
+else
+	CLIXON_LIB	= libclixon$(LIBSTATIC_SUFFIX)
+endif
+
+# For dependency
+LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB) 
+
+LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ -lm
+LIBS         += -lprotobuf-c -lnghttp2 -lssl -lcrypto
+
+CPPFLAGS  	= @CPPFLAGS@
+
+ifeq ($(LINKAGE),dynamic)
+CPPFLAGS  	+= -fPIC
+endif
+
+INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+
+# protoc-c compiler for .proto -> .pb-c.{c,h}
+PROTOC_C	= protoc-c
+PROTO_INCDIR	= /usr/include
+
+# Application
+APPL	  = clixon_grpc
+
+# Generated protobuf sources (google well-known types + gNMI)
+GOOGLE_PROTO_SRC = google/protobuf/any.pb-c.c google/protobuf/descriptor.pb-c.c google/protobuf/duration.pb-c.c
+GOOGLE_PROTO_HDR = $(GOOGLE_PROTO_SRC:.c=.h)
+PROTO_SRC = gnmi.pb-c.c gnmi_ext.pb-c.c
+PROTO_HDR = $(PROTO_SRC:.c=.h)
+ALL_PROTO_SRC = $(GOOGLE_PROTO_SRC) $(PROTO_SRC)
+ALL_PROTO_HDR = $(GOOGLE_PROTO_SRC:.c=.h) $(PROTO_HDR)
+
+# Application source
+APPSRC    =
+APPSRC   += grpc_main.c
+APPSRC   += grpc_nghttp2.c
+APPSRC   += grpc_gnmi.c
+APPSRC   += $(ALL_PROTO_SRC)
+
+APPOBJ    = $(APPSRC:.c=.o)
+
+all:	 $(ALL_PROTO_SRC) $(APPL)
+
+# Generate C code from google well-known .proto types
+google/protobuf/%.pb-c.c google/protobuf/%.pb-c.h: $(PROTO_INCDIR)/google/protobuf/%.proto
+	@mkdir -p google/protobuf
+	$(PROTOC_C) --c_out=. -I $(PROTO_INCDIR) $<
+
+# Generate C code from gNMI .proto files
+%.pb-c.c %.pb-c.h: proto/%.proto $(GOOGLE_PROTO_SRC)
+	$(PROTOC_C) --c_out=. -I proto -I $(PROTO_INCDIR) $<
+
+# Dependency of clixon library (LIBDEPS)
+$(top_srcdir)/lib/src/$(CLIXON_LIB):
+	(cd $(top_srcdir)/lib/src && $(MAKE) $(MFLAGS) $(CLIXON_LIB))
+
+clean:
+	rm -f *.core $(APPL) $(APPOBJ) *.o 
+	rm -f $(PROTO_SRC) $(PROTO_HDR)
+	rm -rf google/
+	rm -f *.gcda *.gcno *.gcov # coverage
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+install:	$(APPL)
+	install -d -m 0755 $(DESTDIR)$(sbindir)
+	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
+	install -d -m 0755 $(DESTDIR)$(datarootdir)/clixon/proto
+	install -m 0644 proto/gnmi.proto proto/gnmi_ext.proto $(DESTDIR)$(datarootdir)/clixon/proto
+
+install-include:
+
+uninstall:
+	rm -f $(DESTDIR)$(sbindir)/$(APPL)
+	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/gnmi.proto
+	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/gnmi_ext.proto
+
+.SUFFIXES:
+.SUFFIXES: .c .o
+
+.c.o:
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_grpc\" $(CPPFLAGS) $(CFLAGS) -c $<
+
+google/protobuf/%.o: google/protobuf/%.c
+	$(CC) $(INCLUDES) -D__PROGRAM__=\"clixon_grpc\" $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+$(APPL) : $(APPOBJ) $(LIBDEPS)
+	$(CC) $(LDFLAGS) $^ $(LIBS) -o $@
+
+TAGS:
+	find . -name '*.[chyl]' -print | etags -
+
+depend:
+	$(CC) $(DEPENDFLAGS) @DEFS@ $(INCLUDES) $(CFLAGS) -MM $(APPSRC) > .depend

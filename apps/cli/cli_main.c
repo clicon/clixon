@@ -380,7 +380,7 @@ usage(clixon_handle h,
             "\t-l (s|e|o|n|f<file>) \tLog on (s)yslog, std(e)rr, std(o)ut, (n)one or (f)ile (stderr is default)\n"
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-F <file> \tRead commands from file (default stdin)\n"
-            "\t-1\t\tDo not enter interactive mode\n"
+            "\t-1\t\tOneshot: connect to backend and exit, do not enter interactive mode\n"
             "\t-s\t\tDisable output scrolling\n"
             "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
             "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"

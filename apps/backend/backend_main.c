@@ -402,7 +402,7 @@ usage(clixon_handle h,
             "\t-a UNIX|IPv4|IPv6  Internal backend socket family\n"
             "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)(default: %s)\n"
             "\t-P <file>\tPid filename (default: %s)\n"
-            "\t-1\t\tRun once and then quit (dont wait for events)\n"
+            "\t-1\t\tOneshot: Run once and then quit (dont wait for events)\n"
             "\t-s <mode>\tSpecify backend startup mode: none|startup|running|init)\n"
             "\t-c <file>\tLoad extra XML configuration file, but do not commit.\n"
             "\t-q \t\tQuit startup directly after upgrading and print result on stdout\n"

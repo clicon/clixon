@@ -45,6 +45,9 @@ RUN apk add --update fcgi-dev
 # For netsnmp
 RUN apk add --update net-snmp net-snmp-dev
 
+# For grpc/gnmi
+RUN apk add --update protobuf-dev protobuf-c-dev
+
 # For groupadd/groupdel
 RUN apk add --update shadow
 
@@ -85,7 +88,7 @@ RUN adduser -D -H -G www-data www-data
 RUN apk add --update nginx
 
 # Configure, build and install clixon
-RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/local --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ --with-restconf=fcgi
+RUN ./configure --prefix=/usr/local --sysconfdir=/etc --with-cligen=/clixon/build/usr/local --with-yang-standard-dir=/usr/local/share/yang/standard --enable-netsnmp --enable-grpc --with-mib-generated-yang-dir=/usr/local/share/mib-yangs/ --with-restconf=fcgi
 RUN make
 RUN make DESTDIR=/clixon/build install
 
@@ -144,6 +147,9 @@ RUN echo "agentXSocket  unix:/var/run/snmp.sock" >> /etc/snmp/snmpd.conf
 RUN echo "agentxperms   777 777" >> /etc/snmp/snmpd.conf
 RUN echo "trap2sink     localhost public 162" >> /etc/snmp/snmpd.conf
 RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
+
+# For grpc/gnmi
+RUN apk add protobuf-c
 
 # Need to add www user manually, but group www-data already exists on Alpine
 RUN adduser -D -H -G www-data www-data

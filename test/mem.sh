@@ -48,8 +48,13 @@ function memonce(){
             : ${DEMWAIT:=15} # valgrind snmp needs some time to get up
             clixon_snmp="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no  --child-silent-after-fork=yes --log-file=$valgrindfile clixon_snmp"
             ;;
+        'grpc')
+            valgrindtest=5 # This means grpc valgrind test
+            : ${DEMWAIT:=15} # valgrind grpc needs some time to get up
+            clixon_grpc="/usr/bin/valgrind --num-callers=50 --leak-check=full --show-leak-kinds=all --suppressions=./valgrind-clixon.supp --track-fds=yes --trace-children=no --child-silent-after-fork=yes --log-file=$valgrindfile clixon_grpc"
+            ;;
         *)
-            echo "usage: $0 backend|restconf|cli|netconf|snmp" # valgrind memleak checks
+            echo "usage: $0 backend|restconf|cli|netconf|snmp|grpc" # valgrind memleak checks
             rm -f $valgrindfile
             exit -1
             ;;
@@ -98,16 +103,16 @@ function println(){
 }
 
 if [ -z "$*" ]; then
-    cmds="backend restconf cli netconf snmp"
+    cmds="backend restconf cli netconf snmp grpc"
 else
     cmds=$*
 fi
 
 # First run sanity
 for c in $cmds; do
-    if [ $c != backend -a $c != restconf -a $c != cli -a $c != netconf -a $c != snmp ]; then
+    if [ $c != backend -a $c != restconf -a $c != cli -a $c != netconf -a $c != snmp -a $c != grpc ]; then
         echo "c:$c"
-        echo "usage: $0 [backend||restconf|cli|netconf|snmp]+"
+        echo "usage: $0 [backend||restconf|cli|netconf|snmp|grpc]+"
         echo "          with no args run all"
         exit -1
     fi
