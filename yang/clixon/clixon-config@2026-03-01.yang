@@ -58,6 +58,7 @@ module clixon-config {
             "Added options:
                 CLICON_VALIDATE_TARGET_STATE
                 CLICON_XMLDB_CACHE_STATUS
+                CLICON_NACM_AUTOCLI
              Released in Clixon 7.8";
     }
     revision 2025-12-01 {
@@ -1466,7 +1467,7 @@ module clixon-config {
                 "Verify nacm user credentials with unix socket peer cred.
                  This means nacm user must match unix user accessing the backend
                  socket according to the nacm_cred_mode enum:
-                 none: sont check users
+                 none: dont check users
                  exact: Only exact match between peer user and nacm user
                  except: Exact match except some users that can act as proxy for other users
                  ";
@@ -1492,6 +1493,25 @@ module clixon-config {
                  that the NACM recovery session is used to edit an empty config.
                  If this option is set, Clixon disables NACM if a datastore does NOT contain a
                  NACM config on load.";
+        }
+        leaf CLICON_NACM_AUTOCLI {
+            type boolean;
+            default false;
+            description
+                "Enable NACM rules for autocli.
+                 If set, the autocli will not expand commands the user does not have read-access to,
+                 nor can such commands be entered and evaluated.
+                 These are implemented by a local cli callback mechanism in the cli which retrieves allowed or
+                 not permitted paths from the backend.
+                 They are 'soft' in the way that they could in principle be bypassed locally (by re-programming).
+                 However, the NACM rules themeselves are enforced.
+                 To understand this more clearly, assume a syntax 'a <x>' with a NACM deny rule on 'a':
+                 The backend will deny any access to values of <x> but allow access of the symbol 'a' iteslf.
+                 The reason is that <x> is in the XML config and protected by NACM, while 'a' is in public YANG,
+                 accessible in many ways.
+                 Therefore, this option extends the NACM rules to the YANG domain, but only locally in the CLI,
+                 as a support in the UI, not as strict enforcement.
+                 Note: Does not separate read/write/exec access to the data, only 'read' access is used.";
         }
         leaf CLICON_MODULE_SET_ID {
             type string;

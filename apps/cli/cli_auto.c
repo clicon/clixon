@@ -734,6 +734,206 @@ autocli_trees_default(clixon_handle h)
     return retval;
 }
 
+/*! Recursively prepend parent CO_COMMAND names to path_cb
+ *
+ * Climbs co_up() chain and writes ancestor names as /name path components
+ * in root-first order.  CO_VARIABLE nodes (list key variables) are skipped.
+ *
+ * @param[in]  co      Start node
+ * @param[in]  path_cb Output buffer
+ */
+static void
+nacm_prepend_parents(cg_obj *co,
+                     cbuf   *path_cb)
+{
+    cg_obj *parent = co_up(co);
+
+    if (parent == NULL)
+        return;
+    nacm_prepend_parents(parent, path_cb);
+    if (parent->co_type == CO_COMMAND)
+        cprintf(path_cb, "/%s", parent->co_command);
+}
+
+/*! CLIgen treeref-flags callback: mark YANG data nodes with CO_FLAGS_TREEREF
+ *
+ * Implements the application-side logic for CLIgen's treeref-flags mechanism.
+ * CO_FLAGS_TREEREF is set on all copies produced within the YANG basemodel tree
+ * (AUTOCLI_TREENAME) and any tree transitively referenced from it.
+ * This flag allows nacm_is_yang_node to cheaply identify YANG data nodes.
+ *
+ * @param[in]  h         CLIgen handle
+ * @param[in]  treename  Name of the tree being expanded
+ * @param[in]  inherit   Flags from the enclosing expansion
+ * @param[out] flagsp    Flags to OR onto all copies within this expansion
+ * @retval     0         OK
+ */
+static int
+clixon_treeref_flags_cb(cligen_handle h,
+                        const char   *treename,
+                        uint32_t      inherit,
+                        uint32_t     *flagsp)
+{
+    if ((inherit & CO_FLAGS_TREEREF) ||
+        strcmp(treename, AUTOCLI_TREENAME) == 0)
+        *flagsp = CO_FLAGS_TREEREF;
+    else
+        *flagsp = 0;
+    return 0;
+}
+
+/*! Return 1 if co is a YANG data node that should be NACM-filtered
+ *
+ * Two paths:
+ * - Fast: CO_FLAGS_TREEREF is set on TOPOFTREE copies from @basemodel at expand time.
+ * - Slow: for originals in @basemodel reached by navigating deeper into the tree,
+ *   walk to root and check if the root is in the "basemodel" parse tree.
+ *
+ * CLI spec nodes (set, show, …) are rooted in the CLI spec parse tree, not in
+ * "basemodel", and therefore return 0.
+ *
+ * @param[in]  h   CLIgen handle
+ * @param[in]  co  Candidate node
+ * @retval     1   Is a YANG data node
+ * @retval     0   Is a CLI spec node (do not filter)
+ */
+static int
+nacm_is_yang_node(cligen_handle h,
+                  cg_obj       *co)
+{
+    cg_obj     *top;
+    pt_head    *ph;
+    parse_tree *pt;
+
+    /* Fast path: marked at expansion time for all TOPOFTREE copies from @basemodel */
+    if (co_flags_get(co, CO_FLAGS_TREEREF))
+        return 1;
+    /* Slow path: originals in @basemodel reached by navigating into the yang tree */
+    top = co;
+    while (co_up(top) != NULL)
+        top = co_up(top);
+    if ((ph = cligen_ph_find(h, AUTOCLI_TREENAME)) == NULL)
+        return 0;
+    if ((pt = cligen_ph_parsetree_get(ph)) == NULL)
+        return 0;
+    return co_find_one(pt, top->co_command) != NULL;
+}
+
+/*! Return 1 if co is rooted in the @basemodel parse tree (an original yang tree node)
+ *
+ * Used only by nacm_build_yang_path to check whether co_up of a TOPOFTREE copy
+ * still lies within @basemodel (e.g. "config" for a mountpoint copy) or has
+ * escaped to the CLI spec tree (e.g. "set" for a top-level @basemodel copy).
+ *
+ * @param[in]  h   CLIgen handle
+ * @param[in]  co  Node to check
+ * @retval     1   Node is rooted in @basemodel
+ * @retval     0   Node is in CLI spec (not @basemodel)
+ */
+static int
+nacm_is_in_yang_tree(cligen_handle h,
+                     cg_obj       *co)
+{
+    cg_obj     *top;
+    pt_head    *ph;
+    parse_tree *pt;
+
+    top = co;
+    while (co_up(top) != NULL)
+        top = co_up(top);
+    if ((ph = cligen_ph_find(h, AUTOCLI_TREENAME)) == NULL)
+        return 0;
+    if ((pt = cligen_ph_parsetree_get(ph)) == NULL)
+        return 0;
+    return co_find_one(pt, top->co_command) != NULL;
+}
+
+/*! Build the full YANG schema path for candidate node co
+ *
+ * Builds a path like "/devices/device/address" by walking co's parent chain.
+ * Works correctly in normal mode, CLI edit mode, and across YANG mount points.
+ *
+ * For CO_FLAGS_TOPOFTREE copies two cases arise:
+ * - co_up points to a CLI spec node (e.g. "set"): the copy is a top-level @basemodel
+ *   node (e.g. "secret").  co_up escapes the yang tree so use co_treeref_orig whose
+ *   parent chain lives inside @basemodel (co_up = NULL for root nodes), giving path
+ *   simply "/secret".
+ * - co_up points to an original @basemodel node (e.g. "config"): the copy came from a
+ *   nested treeref (@mountpoint inside @basemodel).  co_up is still in the yang tree,
+ *   so walk co_up directly to get the full path "/devices/device/config/interfaces".
+ *
+ * @param[in]  h       CLIgen handle
+ * @param[in]  co      Candidate cligen object (CO_COMMAND, CO_FLAGS_TREEREF set)
+ * @param[out] path_cb Buffer to write path into
+ */
+static void
+nacm_build_yang_path(cligen_handle h,
+                     cg_obj       *co,
+                     cbuf         *path_cb)
+{
+    cg_obj *parent;
+
+    /* For TOPOFTREE copies: if co_up has escaped the yang tree (CLI spec node),
+     * use co_treeref_orig so the path stays within @basemodel. */
+    if (co_flags_get(co, CO_FLAGS_TOPOFTREE) && co->co_treeref_orig != NULL){
+        parent = co_up(co);
+        if (parent == NULL || !nacm_is_in_yang_tree(h, parent))
+            co = co->co_treeref_orig;
+    }
+    nacm_prepend_parents(co, path_cb);
+    cprintf(path_cb, "/%s", co->co_command);
+}
+
+
+/*! CLIgen node filter callback: hide NACM-denied nodes from tab-completion
+ *
+ * Called by CLIgen for each candidate CO_COMMAND node during expand/completion.
+ * Builds the full YANG schema path directly from co's parent chain within
+ * @basemodel — this works in both normal mode and CLI edit mode without any
+ * hard-coded depth values.
+ *
+ * @param[in]  h    CLIgen handle
+ * @param[in]  co   Candidate cligen object being considered
+ * @param[in]  cvv  Accumulated matched tokens so far (unused for path building)
+ * @param[in]  arg  nacm_autocli_filter_t *
+ * @param[out] skip Set to 1 to exclude this node
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+clixon_nacm_node_filter(cligen_handle h,
+                        cg_obj       *co,
+                        cvec         *cvv,
+                        void         *arg,
+                        int          *skip)
+{
+    nacm_autocli_filter_t *naf = (nacm_autocli_filter_t *)arg;
+    cbuf                  *path_cb = NULL;
+    int                    retval = -1;
+
+    if (co->co_type != CO_COMMAND)  /* don't filter variable nodes */
+        return 0;
+    if (naf == NULL || !nacm_autocli_filter_active(naf))
+        return 0;
+    /* Only filter YANG data nodes; CLI spec nodes (set, show, …) must not be
+     * filtered even if the NACM policy is deny-default. */
+    if (!nacm_is_yang_node(h, co))
+        goto ok;
+    if ((path_cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    nacm_build_yang_path(h, co, path_cb);
+    if (nacm_autocli_yang_skip(cbuf_get(path_cb), naf, skip) < 0)
+        goto done;
+ ok:
+    retval = 0;
+ done:
+    if (path_cb)
+        cbuf_free(path_cb);
+    return retval;
+}
+
 /*! Generate autocli, ie if enabled, generate clispec from YANG and add to cligen parse-trees
  *
  * Generate clispec (basemodel) from YANG dataspec and add to the set of cligen trees
@@ -748,14 +948,15 @@ autocli_trees_default(clixon_handle h)
 int
 autocli_start(clixon_handle h)
 {
-    int             retval = -1;
-    yang_stmt      *yspec;
-    int             enable = 0;
-    autocli_cache_t cache = AUTOCLI_CACHE_DISABLED;
-    cxobj          *xylib = NULL;
-    cxobj          *xylib1 = NULL; /* malloced */
-    cxobj          *xmodset;
-    char           *treename = AUTOCLI_TREENAME;
+    int                       retval = -1;
+    yang_stmt                *yspec;
+    int                       enable = 0;
+    autocli_cache_t           cache = AUTOCLI_CACHE_DISABLED;
+    cxobj                    *xylib = NULL;
+    cxobj                    *xylib1 = NULL; /* malloced */
+    cxobj                    *xmodset;
+    char                     *treename = AUTOCLI_TREENAME;
+    nacm_autocli_filter_t    *naf = NULL;
 
     clixon_debug(CLIXON_DBG_CLI, "");
     if (cligen_ph_find(cli_cligen(h), treename) != NULL){
@@ -770,6 +971,11 @@ autocli_start(clixon_handle h)
     }
     /* Init yang2cli */
     if (yang2cli_init(h) < 0)
+        goto done;
+    /* Register treeref-flags callback so CLIgen marks copies from the YANG
+     * basemodel tree (and any tree transitively referenced from it) with
+     * CO_FLAGS_TREEREF.  Used by nacm_is_yang_node for fast YANG node detection. */
+    if (cligen_treeref_flags_fn_set(cli_cligen(h), clixon_treeref_flags_cb) < 0)
         goto done;
     if (autocli_cache(h, &cache, NULL) < 0)
         goto done;
@@ -801,6 +1007,18 @@ autocli_start(clixon_handle h)
         xml_sort(xmodset);
         if (yang2cli_yanglib(h, yang_argument_get(yspec), xylib1, treename) < 0)
             goto done;
+        /* Register NACM node-filter callback so CLIgen hides denied nodes at
+         * completion time.  The filter is fetched once from the backend and
+         * stored locally; CLIgen calls it for every candidate node during ?/Tab. */
+        if (clicon_option_bool(h, "CLICON_NACM_AUTOCLI")){
+            if (clixon_rpc_nacm_autocli_filter(h, &naf) < 0)
+                goto done;
+            if (nacm_autocli_filter_active(naf)){
+                if (cligen_node_filter_set(cli_cligen(h), clixon_nacm_node_filter, naf) < 0)
+                    goto done;
+                naf = NULL; /* handed over to CLIgen handle; freed on exit */
+            }
+        }
         break;
     }
     /* Create pre-5.5 tree-refs for backward compatibility */
@@ -809,7 +1027,26 @@ autocli_start(clixon_handle h)
  ok:
     retval = 0;
  done:
+    if (naf)
+        nacm_autocli_filter_free(naf);
     if (xylib1)
         xml_free(xylib1);
     return retval;
+}
+
+/*! Free all autocli resources
+ *
+ * @param[in]  h        Clixon handle
+ */
+int
+autocli_exit(clixon_handle h)
+{
+    nacm_autocli_filter_t *naf = NULL;
+
+    clicon_data_cvec_del(h, "cli-edit-cvv");;
+    clicon_data_cvec_del(h, "cli-edit-filter");;
+    if (cligen_node_filter_get(cli_cligen(h), NULL, (void*)&naf) == 0 &&
+        naf != NULL)
+        nacm_autocli_filter_free(naf);
+    return 0;
 }

@@ -69,6 +69,19 @@ int verify_nacm_user(clixon_handle h, enum nacm_credentials_t cred, const char *
 int nacm_init(clixon_handle h);
 int nacm_exit(clixon_handle h);
 
+/*! NACM autocli filter: controls which YANG nodes appear in CLI completion */
+typedef struct nacm_autocli_filter {
+    int    naf_deny_default; /* 1 = read-default is "deny", 0 = "permit" */
+    cvec  *naf_paths;        /* normalized paths without module prefixes or predicates:
+                              * if deny_default=0: explicitly denied paths
+                              * if deny_default=1: explicitly permitted paths */
+} nacm_autocli_filter_t;
+
+int  nacm_autocli_filter_build(const char *username, cxobj *xnacm, nacm_autocli_filter_t **nafp);
+int  nacm_autocli_filter_active(nacm_autocli_filter_t *naf);
+int  nacm_autocli_yang_skip(const char *node_path, nacm_autocli_filter_t *naf, int *skip);
+void nacm_autocli_filter_free(nacm_autocli_filter_t *naf);
+
 /* 7.4 Backward compatible */
 #define nacm_datanode_read(h, xt, xvec, xlen, u, xn) nacm_datanode_read1((h), (xt), (u), (xn))
 

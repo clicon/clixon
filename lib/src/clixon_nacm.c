@@ -80,9 +80,6 @@
 #include "clixon_yang_parse_lib.h"
 #include "clixon_nacm.h"
 
-/* NACM namespace for use with xml namespace contexts and xpath */
-#define NACM_NS "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
-
 /*! Add user to list of NACM proxyusers that may represent other users
  *
  * Typical case is restconf daemon which makes its own authentication
@@ -1575,6 +1572,320 @@ nacm_init(clixon_handle h)
     retval = 0;
  done:
     return retval;
+}
+
+/*! Normalize a NACM path by stripping namespace prefixes
+ *
+ * /oc-sys:contexts/oc-sys:context -> /contexts/context
+ * Paths with predicates are left unchanged (caller should detect and skip)
+ * @param[in]  path0  Input path with optional namespace prefixes
+ * @retval     str    Malloced normalized path string, caller frees
+ * @retval     NULL   Error
+ */
+static char *
+nacm_path_normalize(const char *path0)
+{
+    cbuf       *cb = NULL;
+    char       *path = NULL;
+    char       *str;
+    char       *tok;
+    char       *colon;
+    char       *retval = NULL;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if ((path = strdup(path0)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    str = path;
+    while ((tok = strsep(&str, "/")) != NULL){
+        if (*tok == '\0')
+            continue;
+        colon = strchr(tok, ':');
+        cprintf(cb, "/%s", colon ? colon + 1 : tok);
+    }
+    retval = strdup(cbuf_get(cb));
+    if (retval == NULL)
+        clixon_err(OE_UNIX, errno, "strdup");
+ done:
+    if (path)
+        free(path);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! Build autocli NACM filter for a user from the NACM XML tree
+ *
+ * Collects simple NACM read rules (no predicates) for the user's groups.
+ * Rules with XPath predicates (e.g. /x/y[key='v']) are skipped since they
+ * cannot be mapped to YANG schema nodes.
+ *
+ * @param[in]  username  User name
+ * @param[in]  xnacm     Top-level nacm XML element (may be NULL if NACM disabled)
+ * @param[out] nafp      Filter struct (NULL if NACM disabled or no rules), caller frees
+ * @retval     0         OK
+ * @retval    -1         Error
+ * @see nacm_autocli_filter_free
+ */
+int
+nacm_autocli_filter_build(const char             *username,
+                          cxobj                  *xnacm,
+                          nacm_autocli_filter_t **nafp)
+{
+    int                    retval = -1;
+    nacm_autocli_filter_t *naf = NULL;
+    cvec                  *nsc = NULL;
+    char                  *enable_nacm;
+    char                  *read_default;
+    cxobj                **gvec = NULL;
+    size_t                 glen = 0;
+    cxobj                **rlistvec = NULL;
+    size_t                 rlistlen = 0;
+    cxobj                **rvec = NULL;
+    size_t                 rlen = 0;
+    cxobj                 *rlist;
+    cxobj                 *xrule;
+    char                  *path0;
+    char                  *path = NULL;
+    char                  *action;
+    char                  *access_operations;
+    int                    i;
+    int                    j;
+    int                    k;
+    char                  *gname;
+
+    *nafp = NULL;
+    if (xnacm == NULL || username == NULL)
+        goto ok;
+
+    /* Check enable-nacm flag */
+    enable_nacm = xml_find_body(xnacm, "enable-nacm");
+    if (enable_nacm && strcmp(enable_nacm, "false") == 0)
+        goto ok;
+
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+        goto done;
+
+    if ((naf = calloc(1, sizeof(*naf))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    if ((naf->naf_paths = cvec_new(0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+
+    /* Determine read-default */
+    read_default = xml_find_body(xnacm, "read-default");
+    naf->naf_deny_default = (read_default && strcmp(read_default, "deny") == 0) ? 1 : 0;
+
+    /* 1. Find user's groups */
+    if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+        goto done;
+
+    /* 2. Find all rule-lists */
+    if (xpath_vec(xnacm, nsc, "rule-list", &rlistvec, &rlistlen) < 0)
+        goto done;
+
+    /* 3. For each rule-list, check if it applies to user's group */
+    for (i = 0; i < (int)rlistlen; i++){
+        rlist = rlistvec[i];
+        /* Check if any user group matches this rule-list's groups */
+        for (j = 0; j < (int)glen; j++){
+            gname = xml_find_body(gvec[j], "name");
+            if (gname == NULL)
+                continue;
+            /* rule-list group may be '*' (all groups) or specific name */
+            if (xpath_first(rlist, nsc, ".[group='*']") != NULL)
+                break;
+            if (xpath_first(rlist, nsc, ".[group='%s']", gname) != NULL)
+                break;
+        }
+        if (j == (int)glen)
+            continue; /* no match */
+
+        /* 4. Iterate rules in this rule-list */
+        if (rvec)
+            free(rvec);
+        rvec = NULL;
+        if (xpath_vec(rlist, nsc, "rule", &rvec, &rlen) < 0)
+            goto done;
+        for (k = 0; k < (int)rlen; k++){
+            xrule = rvec[k];
+            /* Check access-operations includes read */
+            access_operations = xml_find_body(xrule, "access-operations");
+            if (!match_access(access_operations, "read", NULL))
+                continue;
+            /* Get action */
+            action = xml_find_body(xrule, "action");
+            if (action == NULL)
+                continue;
+            /* A rule with no path and permit action grants unrestricted read access:
+             * return NULL (no filter) so the user sees the full CLI tree */
+            path0 = xml_find_body(xrule, "path");
+            if (path0 == NULL){
+                if (strcmp(action, "permit") == 0)
+                    goto ok; /* unrestricted: return naf=NULL */
+                continue;
+            }
+            if (xml_find_body(xrule, "rpc-name") || xml_find_body(xrule, "notification-name"))
+                continue;
+            /* Skip paths with predicates - cannot map to YANG schema */
+            if (strchr(path0, '[') != NULL)
+                continue;
+            /* Normalize path: strip namespace prefixes */
+            if (path)
+                free(path);
+            path = NULL;
+            if ((path = nacm_path_normalize(path0)) == NULL)
+                goto done;
+            /* Add to the appropriate set:
+             * deny_default=0: collect deny paths
+             * deny_default=1: collect permit paths */
+            if ((naf->naf_deny_default == 0 && strcmp(action, "deny") == 0) ||
+                (naf->naf_deny_default == 1 && strcmp(action, "permit") == 0)){
+                cg_var *cv;
+                if ((cv = cvec_add(naf->naf_paths, CGV_STRING)) == NULL){
+                    clixon_err(OE_UNIX, errno, "cvec_add");
+                    goto done;
+                }
+                if (cv_string_set(cv, path) == NULL){
+                    clixon_err(OE_UNIX, errno, "cv_string_set");
+                    goto done;
+                }
+            }
+        }
+    }
+    *nafp = naf;
+    naf = NULL;
+ ok:
+    retval = 0;
+ done:
+    if (path)
+        free(path);
+    if (gvec)
+        free(gvec);
+    if (rlistvec)
+        free(rlistvec);
+    if (rvec)
+        free(rvec);
+    if (nsc)
+        cvec_free(nsc);
+    if (naf)
+        nacm_autocli_filter_free(naf);
+    return retval;
+}
+
+/*! Check if a YANG node should be hidden from CLI autocomplete due to NACM
+ *
+ * The caller is responsible for building node_path incrementally as the YANG
+ * tree is traversed, avoiding repeated parent-chain walks.
+ *
+ * @param[in]  node_path  Schema path of node, local names only, e.g. "/if:interfaces/if:interface"
+ * @param[in]  naf        NACM autocli filter (from nacm_autocli_filter_build)
+ * @param[out] skip       Set to 1 if node should be hidden, 0 if visible
+ * @retval     0          OK
+ * @retval    -1          Error
+ */
+int
+nacm_autocli_yang_skip(const char            *node_path,
+                       nacm_autocli_filter_t *naf,
+                       int                   *skip)
+{
+    cg_var *cv;
+    char   *filter_path;
+    size_t  node_len;
+    size_t  filter_len;
+
+    *skip = 0;
+    if (naf == NULL || node_path == NULL || *node_path == '\0')
+        return 0;
+
+    node_len = strlen(node_path);
+
+    if (naf->naf_deny_default == 0){
+        /* read-default=permit: hide nodes with explicit deny */
+        cv = NULL;
+        while ((cv = cvec_each(naf->naf_paths, cv)) != NULL){
+            filter_path = cv_string_get(cv);
+            if (filter_path && strcmp(filter_path, node_path) == 0){
+                *skip = 1;
+                break;
+            }
+        }
+    }
+    else{
+        /* read-default=deny: show only nodes with explicit permit (or ancestors/descendants) */
+        int visible = 0;
+        cv = NULL;
+        while ((cv = cvec_each(naf->naf_paths, cv)) != NULL){
+            filter_path = cv_string_get(cv);
+            if (filter_path == NULL)
+                continue;
+            filter_len = strlen(filter_path);
+            /* Exact match: this node is explicitly permitted */
+            if (strcmp(filter_path, node_path) == 0){
+                visible = 1;
+                break;
+            }
+            /* node_path is a prefix of filter_path (ancestor of permitted node):
+             * show so user can navigate down to the permitted node */
+            if (node_len < filter_len &&
+                strncmp(filter_path, node_path, node_len) == 0 &&
+                filter_path[node_len] == '/'){
+                visible = 1;
+                break;
+            }
+            /* filter_path is a prefix of node_path (descendant of permitted node):
+             * show because it's under a permitted subtree */
+            if (filter_len < node_len &&
+                strncmp(node_path, filter_path, filter_len) == 0 &&
+                node_path[filter_len] == '/'){
+                visible = 1;
+                break;
+            }
+        }
+        *skip = visible ? 0 : 1;
+    }
+    return 0;
+}
+
+/*! Free NACM autocli filter
+ *
+ * @param[in]  naf  Filter to free (may be NULL)
+ */
+void
+nacm_autocli_filter_free(nacm_autocli_filter_t *naf)
+{
+    if (naf == NULL)
+        return;
+    if (naf->naf_paths)
+        cvec_free(naf->naf_paths);
+    free(naf);
+}
+
+/*! Return non-zero if NACM autocli filter will actually restrict CLI nodes
+ *
+ * A filter is active if:
+ * - read-default is "deny" (all nodes hidden unless explicitly permitted), or
+ * - read-default is "permit" and there is at least one explicit deny path
+ *
+ * @param[in]  naf  NACM autocli filter (may be NULL)
+ * @retval     1    Filter is active: clispec must be generated per-user
+ * @retval     0    Filter is inactive: unfiltered cached clispec may be used
+ */
+int
+nacm_autocli_filter_active(nacm_autocli_filter_t *naf)
+{
+    if (naf == NULL)
+        return 0;
+    if (naf->naf_deny_default)
+        return 1;
+    return cvec_len(naf->naf_paths) > 0;
 }
 
 /*! Exit NACM module

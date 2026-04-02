@@ -22,6 +22,10 @@ Expected: May 2026
 
 ### Features
 
+* New: [How to hide elements from the data model using NACM?](https://github.com/clicon/clixon/issues/463)
+  * New callback mechanism in the CLI added to verify expansion of all symbols
+  * Enable with `CLICON_NACM_AUTOCLI`
+  * User-guide: https://clixon-docs.readthedocs.io/en/latest/cli.html#nacm-for-autocli
 * New: XPath translate()
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
@@ -44,6 +48,7 @@ Expected: May 2026
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
    * Added `CLICON_XMLDB_CACHE_STATUS`
+   * Added `CLICON_NACM_AUTOCLI`
 * New `clixon-lib@2026-03-01.yang` revision
    * Extended stats rpc with `xml-type` parameter
 

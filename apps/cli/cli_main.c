@@ -184,8 +184,7 @@ cli_terminate(clixon_handle h)
         cvec_free(nsctx);
     if ((x = clicon_conf_xml(h)) != NULL)
         xml_free(x);
-    clicon_data_cvec_del(h, "cli-edit-cvv");;
-    clicon_data_cvec_del(h, "cli-edit-filter");;
+    autocli_exit(h);
     xpath_optimize_exit();
     /* Delete all plugins, and RPC callbacks */
     clixon_plugin_module_exit(h);
@@ -784,7 +783,7 @@ main(int    argc,
     {
         int enable;
         /* Create autocli from YANG,
-           If not autocli enabled is true, you can start it later from a cli callback by calling autocli_start(h) */
+           If not autocli enabled is true, you can start it later from a cli callback by calling autocli_start( h) */
         if (autocli_enabled(h, &enable) < 0)
             goto done;
         if (!enable)

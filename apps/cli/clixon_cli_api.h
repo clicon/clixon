@@ -141,6 +141,7 @@ int cli_auto_create(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_del(clixon_handle h, cvec *cvv, cvec *argv);
 int cli_auto_sub_enter(clixon_handle h, cvec *cvv, cvec *argv);
 int autocli_start(clixon_handle h);
+int autocli_exit(clixon_handle h);
 
 int cli_pagination(clixon_handle h, cvec *cvv, cvec *argv);
 

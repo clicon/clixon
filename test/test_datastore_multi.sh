@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Datastore split test, eg x_db has x.d/ directory with subdirs
 # Also test cache behavour, that unmodified subtrees are not touched
-# For now subdirs only enabled for mointpoints, so this test is with mountpoints as well
+# For now subdirs only enabled for mountpoints, so this test is with mountpoints as well
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi

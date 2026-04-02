@@ -57,6 +57,8 @@
 #define CLIXON_LIB_PREFIX  "cl"
 #define CLIXON_AUTOCLI_NS  "http://clicon.org/autocli"
 #define CLIXON_RESTCONF_NS "http://clicon.org/restconf"
+/* NACM namespace for use with xml namespace contexts and xpath */
+#define NACM_NS "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 /*
  * Types

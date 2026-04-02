@@ -288,14 +288,13 @@ cache_autocli_read_gen_write(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (stat(filename, &fstat) < 0) { /* File does not exist */
+    if (stat(filename, &fstat) < 0){ /* File does not exist: generate and save */
         if ((ret = cache_autocli_generate(h, dir, domain, spec, module, revision, keyword, argument, cbdata, cbret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
         if (cache_autocli_write(h, filename, cbuf_get(cbdata)) < 0)
             goto done;
-        /* XXX Or skip this and just read it ? */
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><data xmlns=\"%s\">",
                 NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS);
         if (xml_chardata_cbuf_append(cbret, 0, cbuf_get(cbdata)) < 0){
@@ -304,7 +303,7 @@ cache_autocli_read_gen_write(clixon_handle h,
         }
         cprintf(cbret, "</data></rpc-reply>");
     }
-    else{
+    else{ /* File exists: read from cache */
         if ((f = fopen(filename, "r")) == NULL){
             clixon_err(OE_UNIX, errno, "fopen(%s)", filename);
             goto done;

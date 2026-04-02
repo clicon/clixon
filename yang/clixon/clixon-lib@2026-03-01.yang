@@ -864,4 +864,29 @@ module clixon-lib {
             }
         }
     }
+    rpc nacm-autocli-filter-get {
+        description
+            "Return the NACM autocli filter for the current session user.
+             The CLI client calls this once at session start and uses the filter
+             in a local CLIgen node-filter callback to hide NACM-denied nodes
+             from tab-completion.";
+        output {
+            container nacm-autocli-filter {
+                description "NACM filter; empty if no restrictions apply.";
+                leaf deny-default {
+                    description
+                        "1 if read-default is deny (show only permitted paths),
+                         0 if read-default is permit (hide only denied paths).";
+                    type uint8;
+                }
+                leaf-list path {
+                    description
+                        "Normalized schema path (no namespace prefixes).
+                         If deny-default=0: explicitly denied paths.
+                         If deny-default=1: explicitly permitted paths.";
+                    type string;
+                }
+            }
+        }
+    }
 }

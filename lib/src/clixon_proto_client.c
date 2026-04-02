@@ -83,6 +83,7 @@
 #include "clixon_xml_sort.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
+#include "clixon_nacm.h"
 #include "clixon_proto_client.h"
 
 #define PERSIST_ID_XML_FMT "<persist-id>%s</persist-id>"
@@ -2418,6 +2419,101 @@ clicon_rpc_restart_plugin(clixon_handle h,
  done:
     if (cb)
         cbuf_free(cb);
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
+/*! Fetch NACM autocli filter from backend for the current session user
+ *
+ * Sends a nacm-autocli-filter-get RPC to the backend and deserializes the
+ * result into a nacm_autocli_filter_t.  Returns NULL filter (nafp=NULL) if
+ * no restrictions apply for this user.
+ * @param[in]  h     Clixon handle
+ * @param[out] nafp  Malloced filter, or NULL if no filtering needed.
+ *                   Caller must free with nacm_autocli_filter_free()
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+int
+clixon_rpc_nacm_autocli_filter(clixon_handle          h,
+                                nacm_autocli_filter_t **nafp)
+{
+    int                    retval = -1;
+    cbuf                  *cb = NULL;
+    cxobj                 *xrpc = NULL;
+    cxobj                 *xret = NULL;
+    cxobj                 *xerr;
+    cxobj                 *xreply;
+    cxobj                 *xnaf;
+    cxobj                 *xchild;
+    char                  *username;
+    char                  *str;
+    nacm_autocli_filter_t *naf = NULL;
+    cg_var                *cv;
+    int                    ix;
+
+    *nafp = NULL;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+    cprintf(cb, ">");
+    cprintf(cb, "<nacm-autocli-filter-get xmlns=\"%s\"/>", CLIXON_LIB_NS);
+    cprintf(cb, "</rpc>");
+    if (clicon_rpc_msg(h, cb, &xret) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "nacm-autocli-filter-get");
+        goto done;
+    }
+    if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) == NULL)
+        goto ok;
+    if ((xnaf = xml_find_type(xreply, NULL, "nacm-autocli-filter", CX_ELMNT)) == NULL)
+        goto ok;
+    /* Empty container means no filtering */
+    if (xml_child_nr_type(xnaf, CX_ELMNT) == 0)
+        goto ok;
+    if ((naf = calloc(1, sizeof(*naf))) == NULL){
+        clixon_err(OE_UNIX, errno, "calloc");
+        goto done;
+    }
+    if ((naf->naf_paths = cvec_new(0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    if ((str = xml_find_body(xnaf, "deny-default")) != NULL)
+        naf->naf_deny_default = atoi(str);
+    ix = 0;
+    while ((xchild = xml_child_iter(xnaf, &ix, CX_ELMNT)) != NULL){
+        if (strcmp(xml_name(xchild), "path") != 0)
+            continue;
+        if ((str = xml_body(xchild)) == NULL)
+            continue;
+        if ((cv = cvec_add(naf->naf_paths, CGV_STRING)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_add");
+            goto done;
+        }
+        cv_string_set(cv, str);
+    }
+    *nafp = naf;
+    naf = NULL;
+ ok:
+    retval = 0;
+ done:
+    if (naf)
+        nacm_autocli_filter_free(naf);
+    if (cb)
+        cbuf_free(cb);
+    if (xrpc)
+        xml_free(xrpc);
     if (xret)
         xml_free(xret);
     return retval;

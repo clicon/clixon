@@ -970,6 +970,55 @@ from_client_translate_format(clixon_handle h,
     return retval;
 }
 
+/*! Return NACM autocli filter for the current session user
+ *
+ * Called by CLI clients to fetch the filter once at session start. The filter
+ * is then used locally in the CLIgen node-filter callback to hide denied nodes
+ * from tab-completion without generating per-user clispecs on the server.
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     Callback argument (not used)
+ * @param[in]  regarg  User argument given at rpc_callback_register() (not used)
+ * @retval     1       OK
+ * @retval     0       Fail, rpc error returned in cbret
+ * @retval    -1       Error
+ */
+static int
+from_client_nacm_autocli_filter(clixon_handle h,
+                                 cxobj        *xe,
+                                 cbuf         *cbret,
+                                 void         *arg,
+                                 void         *regarg)
+{
+    int                    retval = -1;
+    nacm_autocli_filter_t *naf = NULL;
+    cxobj                 *xnacm;
+    char                  *username;
+    cg_var                *cv = NULL;
+
+    if ((xnacm = clicon_nacm_cache(h)) != NULL &&
+        (username = clicon_username_get(h)) != NULL){
+        if (nacm_autocli_filter_build(username, xnacm, &naf) < 0)
+            goto done;
+    }
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+    cprintf(cbret, "<nacm-autocli-filter xmlns=\"%s\">", CLIXON_LIB_NS);
+    if (nacm_autocli_filter_active(naf)){
+        cprintf(cbret, "<deny-default>%d</deny-default>", naf->naf_deny_default);
+        cv = NULL;
+        while ((cv = cvec_each(naf->naf_paths, cv)) != NULL)
+            cprintf(cbret, "<path>%s</path>", cv_string_get(cv));
+    }
+    cprintf(cbret, "</nacm-autocli-filter>");
+    cprintf(cbret, "</rpc-reply>");
+    retval = 1;
+ done:
+    if (naf)
+        nacm_autocli_filter_free(naf);
+    return retval;
+}
+
 /*! Init clixon lib rpc:s
  *
  * @param[in]  h     Clixon handle
@@ -1001,6 +1050,9 @@ backend_clixon_lib_init(clixon_handle h)
         goto done;
     if (rpc_callback_register(h, from_client_translate_format, NULL,
                               CLIXON_LIB_NS, "translate-format") < 0)
+        goto done;
+    if (rpc_callback_register(h, from_client_nacm_autocli_filter, NULL,
+                              CLIXON_LIB_NS, "nacm-autocli-filter-get") < 0)
         goto done;
 
     retval = 0;

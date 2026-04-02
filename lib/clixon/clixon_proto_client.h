@@ -42,6 +42,10 @@
 #ifndef _CLIXON_PROTO_CLIENT_H_
 #define _CLIXON_PROTO_CLIENT_H_
 
+/* Forward declaration: avoid including clixon_nacm.h from this header */
+struct nacm_autocli_filter;
+typedef struct nacm_autocli_filter nacm_autocli_filter_t;
+
 int clicon_rpc_msg(clixon_handle h, cbuf *cbsend, cxobj **xret0);
 int clicon_rpc_msg_persistent(clixon_handle h, cbuf *cbsend, cxobj **xret0, int *sock0);
 int clicon_rpc_netconf(clixon_handle h, char *xmlst, cxobj **xret, int *sp);
@@ -70,6 +74,7 @@ int clicon_rpc_debug(clixon_handle h, int level);
 int clicon_rpc_restconf_debug(clixon_handle h, int level);
 int clicon_hello_req(clixon_handle h, char *transport, char *source_host, uint32_t *id);
 int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, const char *domain, const char *spec, const char *module, const char *revision, const char *keyword, const char *argument, cbuf *data);
+int clixon_rpc_nacm_autocli_filter(clixon_handle h, nacm_autocli_filter_t **nafp);
 int clixon_rpc_config_path_info(clixon_handle h, const char *api_path, int strict, const char *xpath, cvec *nsc0,
                                 int leafref_refer, const char *body, cxobj *xtop,
                                 char **api_path1, char **xpath1, cvec **nsc1,
