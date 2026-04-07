@@ -43,16 +43,15 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# Standard IETF
-files=$(find ${YANG_STANDARD_DIR}/ietf/RFC -type f -name "*.yang")
+# Standard IETF,
+# Except:
+#  - ietf-template: may not be parsable
+#  - ietf-yang-types: older version will break init load of newer clixon ietf-yang-library
+files=$(find ${YANG_STANDARD_DIR}/ietf/RFC -type f -name "*.yang" -not -name "ietf-template*.yang" -not -name "ietf-yang-types@2010-09-24.yang")
 for f in $files; do
     if [ -n "$(head -1 $f|grep '^module')" ]; then
-        # Mask old revision
-        if [ $f = ${YANG_STANDARD_DIR}/ietf/RFC/ietf-yang-types@2010-09-24.yang ]; then
-            continue;
-        fi
         new "$clixon_cli -D $DBG -1f $cfg -y $f show version"
-        expectpart "$($clixon_cli -D $DBG -1f $cfg -y $f show version)" 0 "${CLIXON_VERSION}"
+        expectpart "$($clixon_cli -D $DBG -1f $cfg -o CLICON_YANG_MAIN_FILE=$f show version)" 0 "${CLIXON_VERSION}"
     fi
 done
 

@@ -1813,7 +1813,8 @@ data_def_stmt : container_stmt       { _PARSE_DEBUG("data-def-stmt -> container-
               ;
 
 /* short-case */
-short_case_stmt : container_stmt   { _PARSE_DEBUG("short-case-substmt -> container-stmt"); }
+short_case_stmt : choice_stmt        { _PARSE_DEBUG("short-case-substmt -> choice-stmt"); }
+                | container_stmt     { _PARSE_DEBUG("short-case-substmt -> container-stmt"); }
                 | leaf_stmt          { _PARSE_DEBUG("short-case-substmt -> leaf-stmt"); }
                 | leaf_list_stmt     { _PARSE_DEBUG("short-case-substmt -> leaf-list-stmt"); }
                 | list_stmt          { _PARSE_DEBUG("short-case-substmt -> list-stmt"); }
