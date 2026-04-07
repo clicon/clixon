@@ -176,7 +176,7 @@ cmpstringp(const void *p1,
  * @param[in] dbglevel Debug level
  * @retval    0        OK
  * @retval   -1        Error
- * @note CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_MIB are treated specially since they are lists
+ * @note CLICON_FEATURE, CLICON_YANG_DIR, CLICON_XMLDB_CACHE_STATUS and CLICON_SNMP_MIB are treated specially since they are lists
  * @note sub-config structs not shown: eg autocli/restconf
  * @see clicon_option_dump1  different formats
  * @see cli_show_options
@@ -211,7 +211,7 @@ clicon_option_dump(clixon_handle h,
         else
             clixon_debug(dbglevel, "%s = NULL", keys[i]);
     }
-    /* Next print CLICON_FEATURE, CLICON_YANG_DIR and CLICON_SNMP_DIR from config tree
+    /* Next print CLICON_FEATURE, CLICON_YANG_DIR, CLICON_XMLDB_CACHE_STATUS, and CLICON_SNMP_DIR from config tree
      * Since they are lists they are placed in the config tree.
      */
     xconf = clicon_conf_xml(h);
@@ -226,6 +226,12 @@ clicon_option_dump(clixon_handle h,
         if (strcmp(xml_name(x), "CLICON_FEATURE") != 0)
             continue;
         clixon_debug(dbglevel, "%s =\t \"%s\"", xml_name(x), xml_body(x));
+    }
+    ix = 0;
+    while ((x = xml_child_iter(xconf, &ix, CX_ELMNT)) != NULL) {
+        if (strcmp(xml_name(x), "CLICON_XMLDB_CACHE_STATUS") != 0)
+            continue;
+        clixon_debug(dbglevel, "%s =\t \"%s\" \"%s\"", xml_name(x), xml_find_body(x, "name"), xml_find_body(x, "status"));
     }
     ix = 0;
     while ((x = xml_child_iter(xconf, &ix, CX_ELMNT)) != NULL) {
@@ -351,6 +357,7 @@ parse_configfile_one(clixon_handle h,
  * @param[in]  xe  Source XML (merge this to xt)
  * @retval     0   OK
  * @retval    -1   Error
+ * One could have used xml_merge, but there are several special conditions
  */
 static int
 merge_control_xml(clixon_handle h,
@@ -363,21 +370,49 @@ merge_control_xml(clixon_handle h,
     cxobj *xec;
     cxobj *xtc;
     cxobj *x;
+    int    ix;
+    char *key1;
+    char *key2;
 
-    /* One could have used xml_merge, but there are several special conditions */
-    int ixec = 0;
-    while ((xec = xml_child_iter(xe, &ixec, CX_ELMNT)) != NULL) {
+
+    ix = 0;
+    while ((xec = xml_child_iter(xe, &ix, CX_ELMNT)) != NULL) {
         if ((name = xml_name(xec)) == NULL)
             continue;
+
         if ((body = xml_body(xec)) == NULL){
+            /* Special case for cache-status which is a list, merge may replace existing */
+            if (strcmp(name, "CLICON_XMLDB_CACHE_STATUS") == 0){
+                if ((key1 = xml_find_body(xec, "name")) != NULL){
+                    int ix2 = 0;
+                    while ((xtc = xml_child_iter(xt, &ix2, CX_ELMNT)) != NULL) {
+                        if (strcmp(xml_name(xtc), name) == 0 &&
+                            (key2 = xml_find_body(xtc, "name")) != NULL &&
+                            strcmp(key1, key2) == 0){
+                            if (xml_rm_children(xtc, -1) < 0)
+                                goto done;
+                            if (xml_copy(xec, xtc) < 0)
+                                goto done;
+                            break;
+                        }
+                    }
+                    if (xtc == NULL){ /* Copy and add to master */
+                        if ((x = xml_dup(xec)) == NULL)
+                            goto done;
+                        if (xml_addsub(xt, x) < 0)
+                            goto done;
+                    }
+                }
+                continue;
+            }
+            /* This is for containers such as autocli/restconf that are completely replaced */
             if ((xtc = xml_find_type(xt, NULL, name, CX_ELMNT)) != NULL){
                 if (xml_rm_children(xtc, -1) < 0)
                     goto done;
                 if (xml_copy(xec, xtc) < 0)
                     goto done;
             }
-            else{
-                /* Copy and add to master */
+            else{ /* Copy and add to master */
                 if ((x = xml_dup(xec)) == NULL)
                     goto done;
                 if (xml_addsub(xt, x) < 0)
@@ -554,6 +589,8 @@ parse_configfile(clixon_handle  h,
             continue;
         if (strcmp(name,"CLICON_YANG_DIR")==0)
             continue;
+        if (strcmp(name,"CLICON_XMLDB_CACHE_STATUS") == 0)
+            continue;
         if (strcmp(name,"CLICON_SNMP_MIB")==0)
             continue;
         if (clicon_hash_add(copt,
@@ -606,6 +643,10 @@ clicon_option_add(clixon_handle h,
 
     if ((xconfig = clicon_conf_xml(h)) == NULL){
         clixon_err(OE_UNIX, ENOENT, "option %s not found (clicon_conf_xml_set has not been called?)", name);
+        goto done;
+    }
+    if (strcmp(name, "CLICON_XMLDB_CACHE_STATUS")==0){
+        clixon_err(OE_UNIX, 0, "option %s cannot be set since it is a list with key/value", name);
         goto done;
     }
     if (strcmp(name, "CLICON_FEATURE")==0 ||
