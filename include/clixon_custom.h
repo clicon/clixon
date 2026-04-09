@@ -316,7 +316,12 @@
  */
 #undef YANGLIB_MODSET_NAME_DEFAULT
 
-/*! Use iterators for xml_child_each and xml_child_iter, remaining code that doe not work properly
+/*! Optimize validation by skipping some checks, for debug
  *
+ * SKIP_VALIDATE_UNIQUE: skip unique/duplicate check
+ * SKIP_VALIDATE_MANDATORY: skip check of mandatory elements
+ * SKIP_VALIDATE_MUST: skip check of YANG "must" statements
  */
-#define XML_CHILD_USE_ITER
+#undef SKIP_VALIDATE_UNIQUE
+#undef SKIP_VALIDATE_MANDATORY
+#undef SKIP_VALIDATE_MUST

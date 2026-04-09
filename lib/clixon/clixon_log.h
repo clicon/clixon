@@ -86,5 +86,6 @@ uint16_t clixon_logflags_get(void);
 int      clixon_logflags_set(uint16_t flags);
 int      clixon_log_str(int level, char *msg);
 int      clixon_log_fn(clixon_handle h, int user, int level, cxobj *x, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
+int      clixon_log_timestamp(clixon_handle h, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 
 #endif  /* _CLIXON_LOG_H_ */

@@ -91,6 +91,9 @@ static int _log_openlog = 0;
 /* Truncate debug strings to this length. 0 means unlimited */
 static int _log_trunc = 0;
 
+/*! Initial timestamp*/
+static struct timeval _log_t0 = {0, 0};
+
 /*! Mapping between Clixon debug symbolic names <--> bitfields
  *
  * Also inclode shorthands: s|e|o|f|n
@@ -166,6 +169,7 @@ clixon_log_init(clixon_handle h,
          */
         openlog(ident, LOG_PID | LOG_NDELAY, LOG_USER);
     }
+    gettimeofday(&_log_t0, NULL);
     return 0;
 }
 
@@ -221,7 +225,7 @@ clixon_log_opt(char c)
  * @param[in]   filename   File to log to
  * @retval      0          OK
  * @retval     -1          Error
- * @see clixon_debug_init where a strean
+ * @see clixon_debug_init
  */
 int
 clixon_log_file(const char *filename)
@@ -342,7 +346,7 @@ slogtime(void)
 
 /*! Make a logging call to syslog (or stderr).
  *
- * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. Thisis OR:d with facility == LOG_USER
+ * @param[in]   level log level, eg LOG_DEBUG,LOG_INFO,...,LOG_EMERG. This is OR:d with facility == LOG_USER
  * @param[in]   msg   Message to print as argv (may be modified)
  * This is the _only_ place the actual syslog (or stderr) logging is made in clicon,..
  * @note syslog makes its own filtering, but if log to stderr we do it here
@@ -449,6 +453,47 @@ clixon_log_fn(clixon_handle h,
     /* Actually log it */
     clixon_log_str(level, cbuf_get(cb));
  ok:
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
+/*! Log a timestamp from start in seconds.milliseconds
+ *
+ * @param[in] h   Clixon handle
+ * @param[in] msg Message to print before timestamp
+ * @retval    0   OK
+ * @retval   -1   Error
+ */
+int
+clixon_log_timestamp(clixon_handle h,
+                     const char   *msg, ...)
+{
+    int            retval = -1;
+    va_list        ap;
+    struct timeval t1;
+    struct timeval dt;
+    cbuf          *cb = NULL;
+    uint64_t       ms;
+    uint32_t       sec;
+    uint32_t       msec;
+
+    if ((cb = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    gettimeofday(&t1, NULL);
+    timersub(&t1, &_log_t0, &dt);
+    ms = dt.tv_sec * 1000 + dt.tv_usec / 1000;
+    sec = ms / 1000;
+    msec = ms % 1000;
+    va_start(ap, msg);
+    vcprintf(cb, msg, ap);
+    va_end(ap);
+    cprintf(cb, ": %u.%03u", sec, msec);
+    clixon_log_str(LOG_INFO, cbuf_get(cb));
     retval = 0;
  done:
     if (cb)

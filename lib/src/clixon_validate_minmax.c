@@ -258,6 +258,9 @@ check_unique_list_direct(cxobj     *x,
     int       dupl;
     int       ix;
 
+#ifdef SKIP_VALIDATE_UNIQUE
+    return 1;
+#endif
     /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
      * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
      * This second case COULD be optimized if binary insert is made on the vec vector.

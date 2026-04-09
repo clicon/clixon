@@ -1841,10 +1841,15 @@ xml_yang_validate_all1(clixon_handle h,
                 goto done;
             goto fail;
         }
+#ifdef SKIP_VALIDATE_MANDATORY
+        if (0)
+            check_mandatory(xt, yt, xret);
+#else
         if ((ret = check_mandatory(xt, yt, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
+#endif
         /* Node-specific validation */
         switch (yang_keyword_get(yt)){
         case Y_ANYXML:
@@ -1888,6 +1893,9 @@ xml_yang_validate_all1(clixon_handle h,
         while ((yc = yn_iter(yt, &inext)) != NULL) {
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
+#ifdef SKIP_VALIDATE_MUST
+            continue;
+#endif
             /* Deviate non-supported, see yang_deviation */
             if (yang_flag_get(yc, YANG_FLAG_NOT_SUPPORT))
                 continue;
