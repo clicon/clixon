@@ -95,6 +95,10 @@ struct vec_order {
     size_t        vo_slen;   /* Length of vo_strvec (is actually global to vector) */
 };
 
+/* Forward declarations */
+static int vec_free(struct vec_order *vec, size_t vlen);
+static int cmp_list_qsort(const void *arg1, const void *arg2);
+
 /*! New element last in list, check if already exists if so return -1
  *
  * @param[in]  vec   Vector of existing entries (new is last)
@@ -243,36 +247,131 @@ check_unique_list_direct(cxobj     *x,
                          yang_stmt *yu,
                          cxobj    **xret)
 {
-    int       retval = -1;
-    cg_var   *cvi; /* unique node name */
-    cxobj    *xi;
-    char    **vec = NULL; /* 2xmatrix */
-    cxobj   **xvec = NULL;
-    int       clen;
-    int       i;
-    int       v;
-    char     *bi;
-    int       sorted;
-    char     *str;
-    cvec     *cvk;
-    int       dupl;
-    int       ix;
+    int               retval = -1;
+    cg_var           *cvi;
+    cxobj            *xi;
+    char            **vec = NULL; /* flat key matrix (sorted path) */
+    cxobj           **xvec = NULL;
+    int               clen;
+    int               i;
+    int               v;
+    char             *bi;
+    int               sorted;
+    char             *str;
+    cvec             *cvk;
+    int               dupl;
+    int               ix;
+#ifdef UNIQUE_LIST_SORT_OPTIMIZE
+    struct vec_order *ovec = NULL; /* vec_order array (unsorted path) */
+    size_t            ovlen = 0;
+#endif
 
 #ifdef SKIP_VALIDATE_UNIQUE
     return 1;
 #endif
-    /* If list and is sorted by system, then it is assumed elements are in key-order which is optimized
-     * Other cases are "unique" constraint or list sorted by user which is quadratic in complexity
-     * This second case COULD be optimized if binary insert is made on the vec vector.
+    /* If list sorted by system, elements are in key order: O(N) check vs. predecessor.
+     * Other cases (unique constraint or user-ordered) are quadratic in the unoptimized path.
      */
     sorted = (yang_keyword_get(yu) == Y_LIST &&
               yang_find(y, Y_ORDERED_BY, "user") == NULL);
     cvk = yang_cvec_get(yu);
-    /* nr of unique elements to check */
-    if ((clen = cvec_len(cvk)) == 0){
-        /* No keys: no checks necessary */
+    if ((clen = cvec_len(cvk)) == 0)
+        goto ok;
+
+#ifdef UNIQUE_LIST_SORT_OPTIMIZE
+    if (!sorted) {
+        /* User-ordered or unique constraint.
+         * Phase 1: collect all entries — O(N).
+         * Phase 2: sort by key values using qsort — O(N log N).
+         * Phase 3: linear scan of adjacent pairs for duplicates — O(N).
+         */
+
+        /* Pre-check: bail early if any key uses a multi-level path */
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL){
+            str = cv_string_get(cvi);
+            if (index(str, '/') != NULL){
+                yang_stmt *ymod = ys_module(y);
+#ifdef YANG_UNIQUE_MULTI_IGNORE
+                clixon_log(NULL, LOG_WARNING,
+                           "%s: %d: Warning: Module %s %s: Ignoring multiple descendant nodes %s",
+                           __func__, __LINE__,
+                           yang_argument_get(ymod),
+                           yang_argument_get(y),
+                           yang_argument_get(yu));
+                goto ok;
+#else
+                clixon_err(OE_YANG, 0,
+                           "NYI: Module %s %s: Multiple descendant nodes %s",
+                           yang_argument_get(ymod),
+                           yang_argument_get(y),
+                           yang_argument_get(yu));
+                goto done;
+#endif
+            }
+        }
+        /* Phase 1: collect */
+        xml_enumerate_children(xt);
+        ix = ix0;
+        do {
+            if ((ovec = realloc(ovec, (ovlen+1)*sizeof(*ovec))) == NULL){
+                clixon_err(OE_UNIX, errno, "realloc");
+                goto done;
+            }
+            ovec[ovlen].vo_xml = x;
+            ovec[ovlen].vo_slen = clen;
+            if ((ovec[ovlen].vo_strvec = calloc(clen, sizeof(char*))) == NULL){
+                clixon_err(OE_UNIX, errno, "calloc");
+                ovlen++; /* include in vec_free */
+                goto done;
+            }
+            cvi = NULL;
+            v = 0;
+            while ((cvi = cvec_each(cvk, cvi)) != NULL){
+                /* RFC7950 Sec 7.8.3.1: entries without all referenced leafs are skipped */
+                str = cv_string_get(cvi);
+                if ((xi = xml_find(x, str)) == NULL)
+                    break;
+                if ((bi = xml_body(xi)) == NULL)
+                    break;
+                ovec[ovlen].vo_strvec[v++] = bi;
+            }
+            if (cvi != NULL){
+                /* Missing key value: discard this entry */
+                free(ovec[ovlen].vo_strvec);
+                ovec[ovlen].vo_strvec = NULL;
+            }
+            else {
+                ovlen++;
+            }
+            x = xml_child_iter(xt, &ix, CX_ELMNT);
+        } while (x && y == xml_spec(x));
+
+        if (ovlen > 1){
+            /* Phase 2: sort */
+            qsort(ovec, ovlen, sizeof(*ovec), cmp_list_qsort);
+            /* Phase 3: scan adjacent pairs */
+            for (i = 1; i < (int)ovlen; i++){
+                for (v = 0; v < clen; v++){
+                    if (ovec[i-1].vo_strvec[v] == NULL ||
+                        strcmp(ovec[i-1].vo_strvec[v], ovec[i].vo_strvec[v]) != 0)
+                        break;
+                }
+                if (v == clen){ /* all keys equal: duplicate */
+                    if (xret && netconf_data_not_unique_xml(xret, ovec[i].vo_xml, cvk) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+        }
         goto ok;
     }
+#endif /* UNIQUE_LIST_SORT_OPTIMIZE */
+
+    /* sorted=1 path (system-ordered list): elements arrive in key order, so only compare
+     * each entry against its immediate predecessor — O(N) overall.
+     * Also used as fallback for unsorted path when UNIQUE_LIST_SORT_OPTIMIZE is not set.
+     */
     /* Vector of key values, k00,k01,..,k0n,k10,k11,..
      * Ie, if nr of keys is n, and nr of children is m, then length is n*m
      * x need not be child 0, which could make the vector larger than necessary */
@@ -292,7 +391,6 @@ check_unique_list_direct(cxobj     *x,
         xvec[i] = x;
         cvi = NULL;
         v = 0; /* index in each tuple */
-        /* XXX Quadratic if clen > 1 */
         while ((cvi = cvec_each(cvk, cvi)) != NULL){
             /* RFC7950: Sec 7.8.3.1: entries that do not have value for all
              * referenced leafs are not taken into account */
@@ -334,13 +432,16 @@ check_unique_list_direct(cxobj     *x,
         i++;
     } while (x && y == xml_spec(x));  /* stop if list ends, others may follow */
  ok:
-    /* It would be possible to cache vec here as an optimization */
     retval = 1;
  done:
     if (xvec)
         free(xvec);
     if (vec)
         free(vec);
+#ifdef UNIQUE_LIST_SORT_OPTIMIZE
+    if (ovec)
+        vec_free(ovec, ovlen);
+#endif
     return retval;
  fail:
     retval = 0;

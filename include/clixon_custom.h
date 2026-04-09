@@ -316,6 +316,17 @@
  */
 #undef YANGLIB_MODSET_NAME_DEFAULT
 
+/*! Optimize check_unique_list_direct for user-ordered lists and unique constraints
+ *
+ * The unsorted path (triggered by Y_UNIQUE statements and user-ordered lists) previously
+ * called check_insert_duplicate for each new entry, doing a linear scan of all prior entries
+ * and resulting in O(N²) total comparisons.
+ * When defined, all entries are first collected into a vec_order array (O(N)), sorted with
+ * qsort using cmp_list_qsort (O(N log N)), then adjacent pairs are scanned for duplicates (O(N)).
+ * The sorted=1 path (system-ordered list key check) is already O(N) and is not affected.
+ */
+#define UNIQUE_LIST_SORT_OPTIMIZE
+
 /*! Optimize validation by skipping some checks, for debug
  *
  * SKIP_VALIDATE_UNIQUE: skip unique/duplicate check
