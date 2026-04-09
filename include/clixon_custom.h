@@ -316,7 +316,31 @@
  */
 #undef YANGLIB_MODSET_NAME_DEFAULT
 
-/*! Use iterators for xml_child_each and xml_child_iter, remaining code that doe not work properly
+/*! Optimize check_unique_list_direct for user-ordered lists and unique constraints
  *
+ * The unsorted path (triggered by Y_UNIQUE statements and user-ordered lists) previously
+ * called check_insert_duplicate for each new entry, doing a linear scan of all prior entries
+ * and resulting in O(N²) total comparisons.
+ * When defined, all entries are first collected into a vec_order array (O(N)), sorted with
+ * qsort using cmp_list_qsort (O(N log N)), then adjacent pairs are scanned for duplicates (O(N)).
+ * The sorted=1 path (system-ordered list key check) is already O(N) and is not affected.
  */
-#define XML_CHILD_USE_ITER
+#define OPTIMIZE_UNIQUE_LIST_SORT
+
+/*! Optimize check_mandatory by skipping the yn_iter loop for leaf/leaf-list nodes
+ *
+ * Leaf and leaf-list YANG nodes can only have type/units/default/config/mandatory/must/when
+ * as children — never Y_CHOICE or data nodes — so check_mandatory's loop is always a no-op
+ * for them. Skip it entirely since leaves are the most common validated node type.
+ */
+#define OPTIMIZE_MANDATORY_LEAF_SKIP
+
+/*! Optimize validation by skipping some checks, for debug
+ *
+ * SKIP_VALIDATE_UNIQUE: skip unique/duplicate check
+ * SKIP_VALIDATE_MANDATORY: skip check of mandatory elements
+ * SKIP_VALIDATE_MUST: skip check of YANG "must" statements
+ */
+#undef SKIP_VALIDATE_UNIQUE
+#undef SKIP_VALIDATE_MANDATORY
+#undef SKIP_VALIDATE_MUST

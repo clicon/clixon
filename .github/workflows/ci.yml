@@ -5,6 +5,7 @@ on:
     branches:
        - master
        - test-actions
+       - optimize-cpu
   pull_request:
     branches: [ master ]
 
