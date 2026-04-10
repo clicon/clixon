@@ -1364,6 +1364,20 @@ check_mandatory(cxobj     *xt,
         clixon_err(OE_YANG, EINVAL, "yt is not config true");
         goto done;
     }
+#ifdef OPTIMIZE_MANDATORY_LEAF_SKIP
+    /* Leaf, leaf-list, anyxml and anydata nodes can only have metadata as YANG children
+     * (type/units/default/config/mandatory/must/when) — never Y_CHOICE or data nodes —
+     * so the loop below is always a no-op for them. Skip it entirely. */
+    switch (yang_keyword_get(yt)) {
+    case Y_LEAF:
+    case Y_LEAF_LIST:
+    case Y_ANYXML:
+    case Y_ANYDATA:
+        goto ok;
+    default:
+        break;
+    }
+#endif /* OPTIMIZE_MANDATORY_LEAF_SKIP */
     if (yang_keyword_get(yt) == Y_LIST){
         if ((ret = check_list_key(xt, yt, xret)) < 0)
             goto done;
@@ -1372,6 +1386,46 @@ check_mandatory(cxobj     *xt,
     }
     inext = 0;
     while ((yc = yn_iter(yt, &inext)) != NULL) {
+#ifdef OPTIMIZE_MANDATORY_LEAF_SKIP
+        /* Only data-node children can be mandatory. Skip metadata children (type, must,
+         * when, description, etc.) immediately to avoid the yang_xml_mandatory overhead
+         * (xml_new + xpath eval + xml_purge) for nodes that always return 0.
+         * Y_CHOICE is handled fully inline; the continue avoids the redundant second
+         * yang_xml_mandatory call it received in the original code. */
+        switch (yang_keyword_get(yc)) {
+        case Y_CHOICE:
+            if (yang_xml_mandatory(xt, yc)){
+                ix = 0;
+                while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
+                    if ((y = xml_spec(x)) != NULL &&
+                        (yp = yang_choice(y)) != NULL &&
+                        yp == yc){
+                        break; /* leave loop with x set */
+                    }
+                }
+                if (x == NULL){
+                    /* @see RFC7950: 15.6 Error Message for Data That Violates
+                     * a Mandatory "choice" Statement */
+                    if (xret && netconf_missing_choice_xml(xret, xt, yang_argument_get(yc), NULL) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+            /* Check mandatory nodes in case according to RFC7950 7.9.4 */
+            if ((ret = check_mandatory_case(xt, yc, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+            continue;
+        case Y_LEAF:
+        case Y_CONTAINER:
+        case Y_ANYDATA:
+        case Y_ANYXML:
+            break; /* these can be mandatory: fall through to yang_xml_mandatory */
+        default:
+            continue; /* metadata/grouping/list/etc — yang_xml_mandatory always 0 */
+        }
+#else
         /* Choice is more complex because of choice/case structure and possibly hierarchical */
         if (yang_keyword_get(yc) == Y_CHOICE){
             if (yang_xml_mandatory(xt, yc)){
@@ -1397,6 +1451,7 @@ check_mandatory(cxobj     *xt,
             if (ret == 0)
                 goto fail;
         }
+#endif /* OPTIMIZE_MANDATORY_LEAF_SKIP */
         if ((ret = yang_xml_mandatory(xt, yc)) < 0) /* Rest of yangs are immediate children */
             goto done;
         if (ret == 0)
@@ -1437,6 +1492,9 @@ check_mandatory(cxobj     *xt,
             break;
         } /* switch */
     }
+#ifdef OPTIMIZE_MANDATORY_LEAF_SKIP
+ ok:
+#endif /* OPTIMIZE_MANDATORY_LEAF_SKIP */
     retval = 1;
  done:
     if (cb)

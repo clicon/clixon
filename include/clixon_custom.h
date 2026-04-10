@@ -325,7 +325,15 @@
  * qsort using cmp_list_qsort (O(N log N)), then adjacent pairs are scanned for duplicates (O(N)).
  * The sorted=1 path (system-ordered list key check) is already O(N) and is not affected.
  */
-#define UNIQUE_LIST_SORT_OPTIMIZE
+#define OPTIMIZE_UNIQUE_LIST_SORT
+
+/*! Optimize check_mandatory by skipping the yn_iter loop for leaf/leaf-list nodes
+ *
+ * Leaf and leaf-list YANG nodes can only have type/units/default/config/mandatory/must/when
+ * as children — never Y_CHOICE or data nodes — so check_mandatory's loop is always a no-op
+ * for them. Skip it entirely since leaves are the most common validated node type.
+ */
+#define OPTIMIZE_MANDATORY_LEAF_SKIP
 
 /*! Optimize validation by skipping some checks, for debug
  *

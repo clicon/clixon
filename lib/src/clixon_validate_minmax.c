@@ -261,7 +261,7 @@ check_unique_list_direct(cxobj     *x,
     cvec             *cvk;
     int               dupl;
     int               ix;
-#ifdef UNIQUE_LIST_SORT_OPTIMIZE
+#ifdef OPTIMIZE_UNIQUE_LIST_SORT
     struct vec_order *ovec = NULL; /* vec_order array (unsorted path) */
     size_t            ovlen = 0;
 #endif
@@ -278,7 +278,7 @@ check_unique_list_direct(cxobj     *x,
     if ((clen = cvec_len(cvk)) == 0)
         goto ok;
 
-#ifdef UNIQUE_LIST_SORT_OPTIMIZE
+#ifdef OPTIMIZE_UNIQUE_LIST_SORT
     if (!sorted) {
         /* User-ordered or unique constraint.
          * Phase 1: collect all entries — O(N).
@@ -366,11 +366,11 @@ check_unique_list_direct(cxobj     *x,
         }
         goto ok;
     }
-#endif /* UNIQUE_LIST_SORT_OPTIMIZE */
+#endif /* OPTIMIZE_UNIQUE_LIST_SORT */
 
     /* sorted=1 path (system-ordered list): elements arrive in key order, so only compare
      * each entry against its immediate predecessor — O(N) overall.
-     * Also used as fallback for unsorted path when UNIQUE_LIST_SORT_OPTIMIZE is not set.
+     * Also used as fallback for unsorted path when OPTIMIZE_UNIQUE_LIST_SORT is not set.
      */
     /* Vector of key values, k00,k01,..,k0n,k10,k11,..
      * Ie, if nr of keys is n, and nr of children is m, then length is n*m
@@ -438,7 +438,7 @@ check_unique_list_direct(cxobj     *x,
         free(xvec);
     if (vec)
         free(vec);
-#ifdef UNIQUE_LIST_SORT_OPTIMIZE
+#ifdef OPTIMIZE_UNIQUE_LIST_SORT
     if (ovec)
         vec_free(ovec, ovlen);
 #endif
