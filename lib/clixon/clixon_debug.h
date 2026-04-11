@@ -78,6 +78,7 @@
 #define CLIXON_DBG_RPC		0x00008000	/* RPC handling */
 #define CLIXON_DBG_STREAM	0x00010000	/* Notification streams */
 #define CLIXON_DBG_PARSE	0x00020000	/* Parser: XML,YANG, etc */
+#define CLIXON_DBG_VALIDATE	0x00040000	/* Validate config wrt YANG */
 
 /* External applications */
 #define CLIXON_DBG_APP		0x00100000	/* External application */

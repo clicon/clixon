@@ -74,6 +74,7 @@ module clixon-lib {
             "Added:
                 Extended stats rpc with xml-type paramater
                 Added xml-stats-type to : error-message
+                debug flag: validate
              Released in Clixon 7.8";
     }
     revision 2025-12-01 {
@@ -291,6 +292,10 @@ module clixon-lib {
             bit parse {
                 description "Parser: XML,YANG, etc";
                 position 17;
+            }
+            bit validate {
+                description "Validate config wrt YANG";
+                position 18;
             }
             bit app {
                 description "External applications";

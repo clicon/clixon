@@ -22,6 +22,7 @@ Expected: May 2026
 
 ### Features
 
+* New debug log: `validate`
 * New: [How to hide elements from the data model using NACM?](https://github.com/clicon/clixon/issues/463)
   * New callback mechanism in the CLI added to verify expansion of all symbols
   * Enable with `CLICON_NACM_AUTOCLI`
