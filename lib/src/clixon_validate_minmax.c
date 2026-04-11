@@ -266,9 +266,6 @@ check_unique_list_direct(cxobj     *x,
     size_t            ovlen = 0;
 #endif
 
-#ifdef SKIP_VALIDATE_UNIQUE
-    return 1;
-#endif
     /* If list sorted by system, elements are in key order: O(N) check vs. predecessor.
      * Other cases (unique constraint or user-ordered) are quadratic in the unoptimized path.
      */

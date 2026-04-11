@@ -909,16 +909,22 @@ EOF
 # - expected command return value (0 if OK)
 # - stdin input1  This is NOT encoded, eg preamble/hello
 # - stdin input2  This gets chunked encoding
-# - expect1 stdout outcome, can be partial and contain regexps
+# - expect1 stdout outcome, can be partial and contain regexps (grep -Go)
 # - expect2 stdout outcome This gets chunked encoding, must be complete netconf message
+# - [--not-- <negative-match> ...]  Additional positive/negative grep matches on raw output
+# Supports --not-- separator (like expectpart): strings before it must match,
+# strings after it must NOT match.
 # Use this if you want regex eg  ^foo$
 function expecteof_netconf(){
-  cmd=$1
-  retval=$2
-  input1=$3
-  input2=$4
-  expect1=$5
-  expect2=$6
+  local cmd=$1
+  local retval=$2
+  local input1=$3
+  local input2=$4
+  local expect1=$5
+  local expect2=$6
+  local inputenc expectenc
+  local ret r match
+  local positive i
 
   if [ -n "${input2}" ]; then
       inputenc=$(chunked_framing "${input2}")
@@ -931,26 +937,18 @@ function expecteof_netconf(){
       expectenc=""
   fi
 
-#  echo "input1:$input1"
-#  echo "input2:$input2"
-#  echo "inputenc:$inputenc"
-#  echo "expect1:$expect1"
-#  echo "expect2:$expect2"
-#  echo "expectenc:$expectenc"
-# Do while read stuff
-  ret=$($cmd <<EOF 
+  ret=$($cmd <<EOF
 ${input1}${inputenc}
 EOF
- )
-  r=$? 
+)
+  r=$?
 
   if [ $r != $retval ]; then
       echo -e "\e[31m\nError ($r != $retval) in Test$testnr [$testname]:"
       echo -e "\e[0m:"
       exit -1
   fi
-  # If error dont match output strings (why not?)
-  # Match if both are empty string
+  # Match expect1 (grep -Go, partial/regex match on raw output)
   if [ -z "$ret" -a -z "$expect1" ]; then
       : # null
   else
@@ -960,20 +958,35 @@ EOF
           err "$expect1" "$ret"
       fi
   fi
+  # Match expect2 (chunked-framing encoded, line-by-line fixed-string match)
   if [ -z "$ret" -a -z "$expectenc" ]; then
       : # null
   else
       while read i
       do
-          # -F fixed strings
-          # -G basic regexp
-          # r=$(echo "$ret" | grep --null -Go "$i")
           r=$(echo "$ret" | grep --null -Fo "$i")
           match=$?
           if [ $match -ne 0 ]; then
               err "$expectenc" "$ret"
           fi
       done <<< "$expectenc"
+  fi
+  # Process optional --not-- variadic args (args 7+)
+  if [ $# -gt 6 ]; then
+      positive=true
+      for i in "${@:7}"; do
+          if [ "$i" = "--not--" ]; then
+              positive=false
+          else
+              r=$(echo "$ret" | grep --null -Go "$i")
+              match=$?
+              if $positive; then
+                  if [ $match -ne 0 ]; then err "$i" "$ret"; fi
+              else
+                  if [ $match -eq 0 ]; then err "--not-- $i" "$ret"; fi
+              fi
+          fi
+      done
   fi
 }
 

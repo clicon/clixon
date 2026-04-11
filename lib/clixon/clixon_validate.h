@@ -52,6 +52,23 @@ int xml_yang_validate_all_state(clixon_handle h, cxobj *xt, int state, cxobj **x
 int xml_yang_validate_exit(clixon_handle h);
 int rpc_reply_check(clixon_handle h, const char *rpcname, cbuf *cbret);
 
+/*! Options for transaction-aware (incremental) validation
+ *
+ * When non-NULL, enables skipping of certain validation checks on provably
+ * unchanged nodes, using XML change flags set by compute_diffs().
+ *
+ * Fields:
+ *   vtd_has_dels  Non-zero if the transaction has deletions (td_dlen > 0).
+ *                 When true, leafref checks on unchanged nodes cannot be
+ *                 skipped because a deletion elsewhere may invalidate a
+ *                 previously-valid reference.
+ */
+typedef struct {
+    int vtd_has_dels; /* Non-zero if transaction has deletions */
+} validate_td_opts_t;
+
+int xml_yang_validate_all_state_td(clixon_handle h, cxobj *xt, int state, validate_td_opts_t *opts, cxobj **xret);
+
 /*-- Backward compatible 7.7 --*/
 static inline int
 xml_yang_validate_all_top(clixon_handle h,

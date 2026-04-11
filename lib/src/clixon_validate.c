@@ -1810,10 +1810,11 @@ xml_yang_validate_leaf_union(clixon_handle h,
  * @see xml_yang_validate_rpc
  */
 static int
-xml_yang_validate_all1(clixon_handle h,
-                       cxobj        *xt,
-                       int           state,
-                       cxobj       **xret)
+xml_yang_validate_all1(clixon_handle       h,
+                       cxobj              *xt,
+                       int                 state,
+                       validate_td_opts_t *opts,
+                       cxobj             **xret)
 {
     int        retval = -1;
     yang_stmt *yt;  /* yang node associated with xt */
@@ -1899,15 +1900,35 @@ xml_yang_validate_all1(clixon_handle h,
                 goto done;
             goto fail;
         }
-#ifdef SKIP_VALIDATE_MANDATORY
-        if (0)
-            check_mandatory(xt, yt, xret);
-#else
-        if ((ret = check_mandatory(xt, yt, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-#endif
+        /* Skip mandatory check if opts says so and this node is unchanged.
+         * XML_FLAG_CHANGE is set on a node and all its ancestors whenever any
+         * descendant is added/modified/deleted by compute_diffs(). If neither
+         * CHANGE nor ADD is set, the subtree is untouched and mandatory
+         * constraints verified in a prior commit remain valid.
+         *
+         * IMPORTANT: deletion flags are only set on the SOURCE (running) tree,
+         * not on the TARGET (candidate) tree. So if a mandatory child was
+         * deleted from a list entry in candidate, the target entry has no
+         * XML_FLAG_CHANGE — we would incorrectly skip it.
+         * Therefore: when vtd_has_dels is set (any deletions exist), do NOT
+         * skip mandatory checks, as we cannot determine from target flags alone
+         * whether a mandatory child was removed.
+         */
+        if (opts != NULL &&
+            !opts->vtd_has_dels &&
+            !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD))){
+            /* Skip mandatory check — subtree unchanged and no deletions */
+            clixon_debug(CLIXON_DBG_VALIDATE, "%s: skip mandatory: %s (unchanged)",
+                         __func__, xml_name(xt));
+        }
+        else {
+            clixon_debug(CLIXON_DBG_VALIDATE, "%s: check mandatory: %s",
+                         __func__, xml_name(xt));
+            if ((ret = check_mandatory(xt, yt, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
         /* Node-specific validation */
         switch (yang_keyword_get(yt)){
         case Y_ANYXML:
@@ -1951,9 +1972,6 @@ xml_yang_validate_all1(clixon_handle h,
         while ((yc = yn_iter(yt, &inext)) != NULL) {
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
-#ifdef SKIP_VALIDATE_MUST
-            continue;
-#endif
             /* Deviate non-supported, see yang_deviation */
             if (yang_flag_get(yc, YANG_FLAG_NOT_SUPPORT))
                 continue;
@@ -2008,7 +2026,7 @@ xml_yang_validate_all1(clixon_handle h,
     while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (!state && (yc = xml_spec(x)) != NULL && yang_config(yc) == 0)
             continue; /* skip if non-config */
-        if ((ret = xml_yang_validate_all1(h, x, state, xret)) < 0)
+        if ((ret = xml_yang_validate_all1(h, x, state, opts, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -2056,10 +2074,10 @@ xml_yang_validate_all(clixon_handle h,
 
 #ifdef LEAFREF_OPTIMIZE
     leafref_opt_init(h);
-    retval = xml_yang_validate_all1(h, xt, state, xret);
+    retval = xml_yang_validate_all1(h, xt, state, NULL, xret);
     leafref_opt_exit(h);
 #else
-    retval = xml_yang_validate_all1(h, xt, state, xret);
+    retval = xml_yang_validate_all1(h, xt, state, NULL, xret);
 #endif
     return retval;
 }
@@ -2096,6 +2114,58 @@ xml_yang_validate_all_state(clixon_handle h,
     if ((ret = xml_yang_validate_minmax(xt, 0, xret)) < 1)
         return ret;
     return 1;
+}
+
+/*! Transaction-aware variant of xml_yang_validate_all_state
+ *
+ * Like xml_yang_validate_all_state but accepts incremental-validation options
+ * derived from a transaction diff.  When opts is non-NULL, the mandatory check
+ * is skipped for nodes that carry neither XML_FLAG_CHANGE nor XML_FLAG_ADD,
+ * i.e. nodes whose subtree is provably unchanged since the last commit.
+ *
+ * Called from generic_validate() in the commit path after compute_diffs() has
+ * set XML change flags on td->td_target.
+ *
+ * @param[in]  h     Clixon handle
+ * @param[in]  xt    XML tree to validate (td->td_target or subtree thereof)
+ * @param[in]  state 0: ignore state, 1: also validate state (non-config)
+ * @param[in]  opts  Incremental-validation options; NULL means full validation
+ * @param[out] xret  Error XML tree (if ret == 0). Free with xml_free after use
+ * @retval     1     Validation OK
+ * @retval     0     Validation failed (xret set)
+ * @retval    -1     Error
+ */
+int
+xml_yang_validate_all_state_td(clixon_handle       h,
+                               cxobj              *xt,
+                               int                 state,
+                               validate_td_opts_t *opts,
+                               cxobj             **xret)
+{
+    cxobj     *x;
+    yang_stmt *y;
+    int        ix;
+    int        ret;
+    int        retval = -1;
+
+    ix = 0;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
+        if (!state && (y = xml_spec(x)) != NULL && yang_config(y) == 0)
+            continue; /* skip if non-config */
+#ifdef LEAFREF_OPTIMIZE
+        leafref_opt_init(h);
+        ret = xml_yang_validate_all1(h, x, state, opts, xret);
+        leafref_opt_exit(h);
+#else
+        ret = xml_yang_validate_all1(h, x, state, opts, xret);
+#endif
+        if (ret < 1)
+            return ret;
+    }
+    if ((ret = xml_yang_validate_minmax(xt, 0, xret)) < 1)
+        return ret;
+    retval = 1;
+    return retval;
 }
 
 /*! Exit validation module

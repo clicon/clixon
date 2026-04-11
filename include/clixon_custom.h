@@ -335,12 +335,9 @@
  */
 #define OPTIMIZE_MANDATORY_LEAF_SKIP
 
-/*! Optimize validation by skipping some checks, for debug
+/*! Enable incremental validation, ie only check if subtree has changed
  *
- * SKIP_VALIDATE_UNIQUE: skip unique/duplicate check
- * SKIP_VALIDATE_MANDATORY: skip check of mandatory elements
- * SKIP_VALIDATE_MUST: skip check of YANG "must" statements
+ * Implemented so far: mandatory
+ * Note, only some calls use this since a pre-step is to compute diffs
  */
-#undef SKIP_VALIDATE_UNIQUE
-#undef SKIP_VALIDATE_MANDATORY
-#undef SKIP_VALIDATE_MUST
+#define VALIDATE_INCREMENTAL

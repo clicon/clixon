@@ -31,8 +31,13 @@ Expected: May 2026
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
 * New xmldb-cache-status: inmem, file and file-inmem to configure each datastore cache behavior
+* Optimization of XML config validation
+  * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
+  * Optimized mandatory check by skipping several nodes
+  * Added incremental validation when tree has changed, as follows
+    * Mandatory checks
+    * Deleted node check could be improved, it makes checks if _any_ node has been deleted
 * Optimization of XML config memory footprint
-  * Reduction by more than 50%, down to between 38% - 48% of original size depending on config
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
     * Condensed type, sort index, flags and prefix length into a single 64-bit field
