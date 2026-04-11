@@ -97,15 +97,29 @@ generic_validate(clixon_handle       h,
                  transaction_data_t *td,
                  cxobj             **xret)
 {
-    int        retval = -1;
-    cxobj     *x2;
-    int        i;
-    cbuf      *cb = NULL;
-    int        ret;
+    int                retval = -1;
+    cxobj             *x2;
+    int                i;
+    cbuf              *cb = NULL;
+    int                ret;
+#ifdef VALIDATE_INCREMENTAL
+    validate_td_opts_t opts = {0,};
 
-    /* All entries */
-    if ((ret = xml_yang_validate_all_state(h, td->td_target, 0, xret)) < 0)
+    /* Build incremental-validation options from the transaction diff.
+     * vtd_has_dels is set when there are deletions: in that case leafref
+     * checks on unchanged nodes cannot be skipped (future work), but for
+     * now it is carried for completeness.
+     * XXX I am unsure if this covers all cases
+     */
+    opts.vtd_has_dels = (td->td_dlen > 0);
+
+    /* All entries — use td-aware variant to skip mandatory on unchanged nodes */
+    if ((ret = xml_yang_validate_all_state_td(h, td->td_target, 0, &opts, xret)) < 0)
         goto done;
+#else
+    if ((ret = xml_yang_validate_all_state_td(h, td->td_target, 0, NULL, xret)) < 0)
+        goto done;
+#endif
     if (ret == 0)
         goto fail;
     /* changed entries */
