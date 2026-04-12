@@ -22,6 +22,9 @@ Expected: May 2026
 
 ### Features
 
+* New: A new XML flag: `XML_FLAG_DEL_ANC` has been added to the diff implementation, the new flag marks node in the target tree
+  that a node has been deleted below it. This is similar to XML_FLAG_CHANGE, but for delete only. Previously this info was avialable
+  in the `source` tree only, where the actual delete node still exists.
 * New debug log: `validate`
 * New: [How to hide elements from the data model using NACM?](https://github.com/clicon/clixon/issues/463)
   * New callback mechanism in the CLI added to verify expansion of all symbols
@@ -37,9 +40,9 @@ Expected: May 2026
 * Optimization of XML config validation
   * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
   * Optimized mandatory check by skipping several nodes
-  * Added incremental validation when tree has changed, as follows
-    * Mandatory checks
-    * Deleted node check could be improved, it makes checks if _any_ node has been deleted
+  * Added incremental validation when tree has changed, of the following YANG checks:
+    * Mandatory
+    * Minmax/unique/duplicates
 * Optimization of XML config memory footprint
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct

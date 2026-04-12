@@ -337,7 +337,7 @@
 
 /*! Enable incremental validation, ie only check if subtree has changed
  *
- * Implemented so far: mandatory
+ * Implemented so far: mandatory and minmax
  * Note, only some calls use this since a pre-step is to compute diffs
  */
 #define VALIDATE_INCREMENTAL

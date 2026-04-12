@@ -1906,18 +1906,16 @@ xml_yang_validate_all1(clixon_handle       h,
          * CHANGE nor ADD is set, the subtree is untouched and mandatory
          * constraints verified in a prior commit remain valid.
          *
-         * IMPORTANT: deletion flags are only set on the SOURCE (running) tree,
-         * not on the TARGET (candidate) tree. So if a mandatory child was
-         * deleted from a list entry in candidate, the target entry has no
-         * XML_FLAG_CHANGE — we would incorrectly skip it.
-         * Therefore: when vtd_has_dels is set (any deletions exist), do NOT
-         * skip mandatory checks, as we cannot determine from target flags alone
-         * whether a mandatory child was removed.
+         * For deletions: XML_FLAG_DEL_ANC is propagated into the TARGET tree
+         * ancestors of deleted nodes in compute_diffs() so that the skip is
+         * not applied to nodes where a child was removed in candidate.
+         * A separate flag (rather than XML_FLAG_CHANGE) is used to avoid
+         * affecting other logic that reads XML_FLAG_CHANGE.
          */
         if (opts != NULL &&
-            !opts->vtd_has_dels &&
-            !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD))){
-            /* Skip mandatory check — subtree unchanged and no deletions */
+            !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD) ||
+              xml_flag(xt, XML_FLAG_DEL_ANC))){
+            /* Skip mandatory check — subtree unchanged */
             clixon_debug(CLIXON_DBG_VALIDATE, "%s: skip mandatory: %s (unchanged)",
                          __func__, xml_name(xt));
         }
@@ -1972,6 +1970,10 @@ xml_yang_validate_all1(clixon_handle       h,
         while ((yc = yn_iter(yt, &inext)) != NULL) {
             if (yang_keyword_get(yc) != Y_MUST)
                 continue;
+            clixon_debug(CLIXON_DBG_VALIDATE, "MUST %s %d %s\n",
+                         yang_filename_get(ys_module(yc)),
+                         yang_linenum_get(yc),
+                         yang_argument_get(yc));
             /* Deviate non-supported, see yang_deviation */
             if (yang_flag_get(yc, YANG_FLAG_NOT_SUPPORT))
                 continue;
@@ -2033,11 +2035,25 @@ xml_yang_validate_all1(clixon_handle       h,
     }
     /* Check unique and min-max after choice test for example*/
     if (yang_config(yt) != 0){
-        /* Checks if next level contains any unique list constraints */
-        if ((ret = xml_yang_validate_minmax(xt, 1, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
+        /* Skip minmax/unique check if opts says so and this node is unchanged.
+         * The same flag condition as for mandatory applies: if neither
+         * XML_FLAG_CHANGE, XML_FLAG_ADD nor XML_FLAG_DEL_ANC is set on this
+         * node, no children were added, removed or changed, so the count and
+         * uniqueness constraints still hold from the prior commit.
+         */
+        if (opts != NULL &&
+            !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD) ||
+              xml_flag(xt, XML_FLAG_DEL_ANC))){
+            clixon_debug(CLIXON_DBG_VALIDATE, "skip minmax: %s (unchanged)", xml_name(xt));
+        }
+        else {
+            clixon_debug(CLIXON_DBG_VALIDATE, "check minmax: %s", xml_name(xt));
+            /* Checks if next level contains any unique list constraints */
+            if ((ret = xml_yang_validate_minmax(xt, 1, xret)) < 0)
+                goto done;
+            if (ret == 0)
+                goto fail;
+        }
     }
  ok:
     retval = 1;
