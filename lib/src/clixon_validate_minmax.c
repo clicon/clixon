@@ -922,7 +922,8 @@ xml_yang_validate_minmax(cxobj  *xt,
     /* check-minmax of previous list */
     if (ret &&
         yprev &&
-        (yang_keyword_get(yprev) == Y_LEAF || yang_keyword_get(yprev) == Y_LEAF_LIST)){
+        (yang_keyword_get(yprev) == Y_LEAF ||
+         yang_keyword_get(yprev) == Y_LEAF_LIST)){
         /* Check if the list length violates min/max */
         if ((ret = check_minmax(xt, yprev, nr, xret)) < 0)
             goto done;

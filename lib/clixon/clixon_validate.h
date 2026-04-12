@@ -57,14 +57,12 @@ int rpc_reply_check(clixon_handle h, const char *rpcname, cbuf *cbret);
  * When non-NULL, enables skipping of certain validation checks on provably
  * unchanged nodes, using XML change flags set by compute_diffs().
  *
- * Fields:
- *   vtd_has_dels  Non-zero if the transaction has deletions (td_dlen > 0).
- *                 When true, leafref checks on unchanged nodes cannot be
- *                 skipped because a deletion elsewhere may invalidate a
- *                 previously-valid reference.
+ * XML_FLAG_CHANGE is propagated into the TARGET tree ancestors of deleted
+ * nodes by compute_diffs() via find_target_equiv(), so only XML_FLAG_CHANGE
+ * and XML_FLAG_ADD need to be checked to decide whether to skip.
  */
 typedef struct {
-    int vtd_has_dels; /* Non-zero if transaction has deletions */
+    int vtd_reserved; /* Reserved for future extension */
 } validate_td_opts_t;
 
 int xml_yang_validate_all_state_td(clixon_handle h, cxobj *xt, int state, validate_td_opts_t *opts, cxobj **xret);
