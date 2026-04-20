@@ -117,7 +117,6 @@ const map_str2int xpopmap[] = {
  * XPATH xs -> prefix2 + name2
  * Unless name2=*, if name1 != name2 -> fail
  * Lookup(prefix1, XML) -> ns1
- * Lookup(prefix2, NSC) -> ns2
  * if ns1 = NULL -> fail
  * if ns2 = NULL -> fail (see  XPATH_NS_ACCEPT_UNRESOLVED)
  * if ns1 = ns2 -> match
@@ -125,6 +124,7 @@ const map_str2int xpopmap[] = {
  * @param[in] x     XML sub-tree given by the the context node
  * @param[in] xs    XPath stack of type XP_NODE or XP_NODE_FN
  * @param[in] nsc   XML Namespace context as given by xpath_vec_ctx()
+ * @param[in] ns2   Pre-resolved XPath namespace (xml_nsctx_get(nsc, xs->xs_s0)), or NULL
  * @retval    1     Match
  * @retval    0     No match
  * @retval   -1     Error
@@ -132,37 +132,33 @@ const map_str2int xpopmap[] = {
 static int
 nodetest_eval_namespace(cxobj      *x,
                         xpath_tree *xs,
-                        cvec       *nsc)
+                        cvec       *nsc,
+                        const char *ns2)
 {
     int   retval = -1;
     char *name1;
     char *prefix1;
-    char *prefix2;
     char *name2;
     char *ns1 = NULL; /* xml namespace */
-    char *ns2 = NULL; /* xpath namespace */
 
     /* Namespaces is s0, name is s1 */
-    if (strcmp(xs->xs_s1, "*")==0)
+    if (strcmp(xs->xs_s1, "*") == 0)
         goto ok;
-    /* XML x ->  prefix1 + name1 */
-    prefix1 = xml_prefix(x);
-    name1 = xml_name(x);
-    /* XPATH xs -> prefix2 + name2 */
-    prefix2 = xs->xs_s0;
     name2 = xs->xs_s1;
-    clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%s %s", name1, name2);
     if (strcmp(name2, "*") != 0){
+        name1 = xml_name(x);
         /* if name1 != name2 -> fail */
         if (strcmp(name1, name2) != 0)
             goto fail;
     }
+    /* XML x ->  prefix1 + name1 */
+    prefix1 = xml_prefix(x);
     /* get namespace of xml tree */
     if (xml2ns(x, prefix1, &ns1) < 0)
         goto done;
     if (ns1 == NULL)
         goto fail;
-    ns2 = xml_nsctx_get(nsc, prefix2);
+    /* ns2 is pre-resolved: xml_nsctx_get(nsc, xs->xs_s0) */
     if (ns2 == NULL){
 #ifdef XPATH_NS_ACCEPT_UNRESOLVED
         goto ok;
@@ -265,10 +261,11 @@ nodetest_eval_localonly(cxobj      *x,
 
 /*! Make a nodetest
  *
- * @param[in] x     XML node
- * @param[in] xs    XPath stack of type XP_NODE or XP_NODE_FN
- * @param[in] nsc   XML Namespace context
+ * @param[in] x         XML node
+ * @param[in] xs        XPath stack of type XP_NODE or XP_NODE_FN
+ * @param[in] nsc       XML Namespace context
  * @param[in] localonly  Skip prefix and namespace tests (non-standard)
+ * @param[in] ns2       Pre-resolved XPath namespace for xs (xml_nsctx_get(nsc, xs->xs_s0)), or NULL
  * @retval    1     Match
  * @retval    0     No match
  * @retval   -1     Error
@@ -279,7 +276,8 @@ static int
 nodetest_eval(cxobj      *x,
               xpath_tree *xs,
               cvec       *nsc,
-              int         localonly)
+              int         localonly,
+              const char *ns2)
 {
     int   retval = 0; /* NB: no match is default (not error) */
 
@@ -289,7 +287,7 @@ nodetest_eval(cxobj      *x,
         else if (nsc == NULL)
             retval = nodetest_eval_prefixonly(x, xs);
         else
-            retval = nodetest_eval_namespace(x, xs, nsc);
+            retval = nodetest_eval_namespace(x, xs, nsc, ns2);
     }
     else if (xs->xs_type == XP_NODE_FN){
         switch (xs->xs_int){
@@ -313,6 +311,7 @@ nodetest_eval(cxobj      *x,
  * @param[in]  flags
  * @param[in]  nsc        XML Namespace context
  * @param[in]  localonly  Skip prefix and namespace tests (non-standard)
+ * @param[in]  ns2        Pre-resolved XPath namespace for nodetest, or NULL
  * @param[out] vec0
  * @param[out] vec0len
  * @retval     0          OK
@@ -325,6 +324,7 @@ nodetest_recursive(cxobj      *xn,
                    uint16_t    flags,
                    cvec       *nsc,
                    int         localonly,
+                   const char *ns2,
                    cxobj    ***vec0,
                    size_t     *vec0len)
 {
@@ -335,14 +335,14 @@ nodetest_recursive(cxobj      *xn,
 
     int ixsub = 0;
     while ((xsub = xml_child_iter(xn, &ixsub, node_type)) != NULL) {
-        if (nodetest_eval(xsub, nodetest, nsc, localonly) == 1){
+        if (nodetest_eval(xsub, nodetest, nsc, localonly, ns2) == 1){
             clixon_debug(CLIXON_DBG_XPATH | CLIXON_DBG_DETAIL, "%x %x", flags, xml_flag(xsub, flags));
             if (flags==0x0 || xml_flag(xsub, flags))
                 if (cxvec_append(xsub, &vec, &veclen) < 0)
                     goto done;
             //      continue; /* Don't go deeper */
         }
-        if (nodetest_recursive(xsub, nodetest, node_type, flags, nsc, localonly, &vec, &veclen) < 0)
+        if (nodetest_recursive(xsub, nodetest, node_type, flags, nsc, localonly, ns2, &vec, &veclen) < 0)
             goto done;
     }
     retval = 0;
@@ -386,10 +386,14 @@ xp_eval_step(xp_ctx     *xc0,
     xpath_tree *nodetest = xs->xs_c0;
     xp_ctx     *xc = NULL;
     int         ret;
+    const char *ns2 = NULL;
 
     /* Create new xc */
     if ((xc = ctx_dup(xc0)) == NULL)
         goto done;
+    /* Pre-resolve XPath namespace for nodetest to avoid per-node lookup */
+    if (!localonly && nsc != NULL && nodetest != NULL && nodetest->xs_type == XP_NODE)
+        ns2 = xml_nsctx_get(nsc, nodetest->xs_s0);
     switch (xs->xs_int){
     case A_ANCESTOR:
         break;
@@ -413,7 +417,7 @@ xp_eval_step(xp_ctx     *xc0,
         if (xc->xc_descendant){
             for (i=0; i<xc->xc_size; i++){
                 xv = xc->xc_nodeset[i];
-                if (nodetest_recursive(xv, nodetest, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+                if (nodetest_recursive(xv, nodetest, CX_ELMNT, 0x0, nsc, localonly, ns2, &vec, &veclen) < 0)
                     goto done;
             }
             xc->xc_descendant = 0;
@@ -427,11 +431,15 @@ xp_eval_step(xp_ctx     *xc0,
 
                 xv = xc->xc_nodeset[i];
                 x = NULL;
-                if ((ret = xpath_optimize_check(xs, xv, &vec0, &veclen0)) < 0)
+                if ((ret = xpath_optimize_check(xs, xv, xc, &vec0, &veclen0)) < 0)
                     goto done;
                 if (ret == 1){
                     for (j=0; j<veclen0; j++){
+#ifdef XPATH_LIST_OPTIMIZE
+                        if (cxvec_append(vec0[j], &vec, &veclen) < 0)
+#else
                         if (cxvec_append(vec0[0], &vec, &veclen) < 0)
+#endif
                             goto done;
                     }
                     if (vec0)
@@ -442,7 +450,7 @@ xp_eval_step(xp_ctx     *xc0,
                     while ((x = xml_child_iter(xv, &ix, CX_ELMNT)) != NULL) {
                         /* xs->xs_c0 is nodetest */
                         if (nodetest == NULL ||
-                            nodetest_eval(x, nodetest, nsc, localonly) == 1){
+                            nodetest_eval(x, nodetest, nsc, localonly, ns2) == 1){
                             if (cxvec_append(x, &vec, &veclen) < 0)
                                 goto done;
                         }
@@ -457,7 +465,7 @@ xp_eval_step(xp_ctx     *xc0,
     case A_DESCENDANT_OR_SELF:
         for (i=0; i<xc->xc_size; i++){
             xv = xc->xc_nodeset[i];
-            if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+            if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, ns2, &vec, &veclen) < 0)
                 goto done;
         }
         for (i=0; i<veclen; i++){
@@ -473,7 +481,7 @@ xp_eval_step(xp_ctx     *xc0,
     case A_DESCENDANT:
         for (i=0; i<xc->xc_size; i++){
             xv = xc->xc_nodeset[i];
-            if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, &vec, &veclen) < 0)
+            if (nodetest_recursive(xv, xs->xs_c0, CX_ELMNT, 0x0, nsc, localonly, ns2, &vec, &veclen) < 0)
                 goto done;
         }
         ctx_nodeset_replace(xc, vec, veclen);
@@ -1257,6 +1265,14 @@ xp_eval(xp_ctx     *xc,
     int        ix;
 
     // ctx_print(stderr, xc, xpath_tree_int2str(xs->xs_type));
+#ifdef XPATH_CURRENT_OPTIMIZE
+    /* Cache hit: sub-expression was previously evaluated with this xc_initial */
+    if (xs->xs_cached_result != NULL && xs->xs_cached_initial == xc->xc_initial) {
+        if ((*xrp = ctx_dup((xp_ctx *)xs->xs_cached_result)) == NULL)
+            goto done;
+        goto ok;
+    }
+#endif
     /* Pre-actions before check first child c0
      */
     switch (xs->xs_type){
@@ -1280,6 +1296,10 @@ xp_eval(xp_ctx     *xc,
     case XP_STEP:    /* XP_NODE is first argument -not called explicitly */
         if (xp_eval_step(xc, xs, nsc, localonly, xrp) < 0)
             goto done;
+#ifdef XPATH_CURRENT_OPTIMIZE
+        if (*xrp && xc->xc_invariant)
+            (*xrp)->xc_invariant = 1;
+#endif
         goto ok; /* Skip generic child traverse */
         break;
     case XP_PRED:
@@ -1540,10 +1560,20 @@ xp_eval(xp_ctx     *xc,
         goto done;
     }
     if (xr2){
+#ifdef XPATH_CURRENT_OPTIMIZE
+        /* Binary op: invariant if both operands are invariant */
+        if (xr0 && xr0->xc_invariant && xr1 && xr1->xc_invariant)
+            xr2->xc_invariant = 1;
+#endif
         *xrp = xr2;
         xr2 = NULL;
     }
     else if (xr1){
+#ifdef XPATH_CURRENT_OPTIMIZE
+        /* use_xr0 path: invariant if leading context is invariant */
+        if (use_xr0 && xr0 && xr0->xc_invariant)
+            xr1->xc_invariant = 1;
+#endif
         *xrp = xr1;
         xr1 = NULL;
     }
@@ -1554,6 +1584,14 @@ xp_eval(xp_ctx     *xc,
         }
  ok:
     // ctx_print(stderr, *xrp, xpath_tree_int2str(xs->xs_type));
+#ifdef XPATH_CURRENT_OPTIMIZE
+    /* Cache store: only for invariant results not yet cached */
+    if (*xrp != NULL && (*xrp)->xc_invariant && xs->xs_cached_result == NULL) {
+        xs->xs_cached_initial = xc->xc_initial;
+        if ((xs->xs_cached_result = ctx_dup(*xrp)) == NULL)
+            goto done;
+    }
+#endif
     retval = 0;
  done:
     if (xr2)

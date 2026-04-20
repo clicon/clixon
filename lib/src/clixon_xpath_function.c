@@ -166,6 +166,9 @@ xp_function_current(xp_ctx            *xc0,
     if (cxvec_append(xc->xc_initial, &vec, &veclen) < 0)
         goto done;
     ctx_nodeset_replace(xc, vec, veclen);
+#ifdef XPATH_CURRENT_OPTIMIZE
+    xc->xc_invariant = 1;
+#endif
     *xrp = xc;
     xc = NULL;
     retval = 0;
