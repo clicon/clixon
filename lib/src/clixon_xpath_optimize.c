@@ -68,6 +68,7 @@
 #include "clixon_xml_sort.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_xpath_function.h"
 #include "clixon_xpath_optimize.h"
 
 #ifdef XPATH_LIST_OPTIMIZE
@@ -160,17 +161,19 @@ xpath_optimize_init(xpath_tree **xm,
 
 /*! Recursive function to loop over all EXPR and pattern match them
  *
- * @param[in]  xt    XPath tree of type PRED
- * @param[in]  xepat Pattern matching XPath tree of type EXPR
- * @param[out] cvk   Vector of <keyname>:<keyval> pairs
- * @retval     1     Match
- * @retval     0     No match
- * @retval    -1     Error
+ * @param[in]  xt        XPath tree of type PRED
+ * @param[in]  xepat     Pattern matching XPath tree of type EXPR
+ * @param[in]  xc        XPath context (for current() evaluation)
+ * @param[out] cvk       Vector of <keyname>:<keyval> pairs
+ * @retval     1         Match
+ * @retval     0         No match
+ * @retval    -1         Error
  * @see xpath_optimize_init
  */
 static int
 loop_preds(xpath_tree *xt,
            xpath_tree *xepat,
+           xp_ctx     *xc,
            cvec       *cvk)
 {
     int          retval = -1;
@@ -181,7 +184,7 @@ loop_preds(xpath_tree *xt,
     int          ret;
 
     if (xt->xs_type == XP_PRED && xt->xs_c0){
-        if ((ret = loop_preds(xt->xs_c0, xepat, cvk)) < 0)
+        if ((ret = loop_preds(xt->xs_c0, xepat, xc, cvk)) < 0)
             goto done;
         if (ret == 0)
             goto ok;
@@ -198,10 +201,18 @@ loop_preds(xpath_tree *xt,
             goto done;
         }
         cv_name_set(cvi, vec[0]->xs_s1);
-        if (vec[1]->xs_type == XP_PRIME_NR)
+        /* value may be current() — evaluate to initial context node string value */
+        if (vec[1]->xs_type == XP_PRIME_FN && vec[1]->xs_int == XPATHFN_CURRENT){
+            if (xc == NULL || xc->xc_initial == NULL)
+                goto ok;
+            cv_string_set(cvi, xml_body(xc->xc_initial));
+        }
+        else if (vec[1]->xs_type == XP_PRIME_NR)
             cv_string_set(cvi, vec[1]->xs_strnr);
-        else
+        else if (vec[1]->xs_type == XP_PRIME_STR)
             cv_string_set(cvi, vec[1]->xs_s0);
+        else
+            goto ok; /* unknown expression type, bail to regular eval */
     }
     retval = 1;
  done:
@@ -217,10 +228,8 @@ loop_preds(xpath_tree *xt,
  *
  * @param[in]  xt     XPath tree
  * @param[in]  xv     XML base node
+ * @param[in]  xc     XPath evaluation context (for current() lookup)
  * @param[out] xvec   Array of found nodes
- * @param[out] xlen   Len of xvec
- * @param[out] key
- * @param[out] keyval
  * @retval     1      Match
  * @retval     0      No match - use non-optimized lookup
  * @retval    -1      Error
@@ -230,6 +239,7 @@ loop_preds(xpath_tree *xt,
 static int
 xpath_list_optimize_fn(xpath_tree  *xt,
                        cxobj       *xv,
+                       xp_ctx      *xc,
                        clixon_xvec *xvec)
 {
     int          retval = -1;
@@ -244,8 +254,6 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     xpath_tree  *xtp;
     cvec        *cvk = NULL; /* vector of index keys */
     cg_var      *cvi;
-    int          i;
-    yang_stmt   *ypp;
     int          ret;
 
     /* revert to non-optimized if no yang */
@@ -254,12 +262,6 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     /* or if not config data (state data should not be ordered) */
     if (yang_config_ancestor(yp) == 0)
         goto ok;
-    /* Check that there is no "outer" list. */
-    ypp = yp;
-    do {
-        if (yang_keyword_get(ypp) == Y_LIST)
-            goto ok;
-    } while((ypp = yang_parent_get(ypp)) != NULL);
     /* Check yang and that only a list with key as index is a special case can do bin search 
      * That is, ONLY check optimize cases of this type:_x[_y='_z']
      * Should we extend this simple example and have more cases (all cases?)
@@ -288,19 +290,41 @@ xpath_list_optimize_fn(xpath_tree  *xt,
         clixon_err(OE_YANG, errno, "cvec_new");
         goto done;
     }
-    if ((ret = loop_preds(xtp, xem, cvk)) < 0)
+    if ((ret = loop_preds(xtp, xem, xc, cvk)) < 0)
         goto done;
     if (ret == 0)
         goto ok;
-
     if (cvec_len(cvv) != cvec_len(cvk))
         goto ok;
-    i = 0;
-    cvi = NULL;
-    while ((cvi = cvec_each(cvk, cvi)) != NULL) {
-        if (strcmp(cv_name_get(cvi), cv_string_get(cvec_i(cvv,i))))
+    {   /* Reorder cvk to match YANG key order (cvv) so binary search works regardless
+         * of the predicate order in the XPath expression */
+        cvec   *cvk_ordered = NULL;
+        cg_var *cvfound;
+        cg_var *cvnew;
+        int     match = 1;
+
+        if ((cvk_ordered = cvec_new(0)) == NULL){
+            clixon_err(OE_YANG, errno, "cvec_new");
+            goto done;
+        }
+        cvi = NULL;
+        while ((cvi = cvec_each(cvv, cvi)) != NULL) {
+            if ((cvfound = cvec_find(cvk, cv_string_get(cvi))) == NULL){
+                match = 0;
+                break;
+            }
+            if ((cvnew = cvec_add(cvk_ordered, CGV_STRING)) == NULL){
+                clixon_err(OE_YANG, errno, "cvec_add");
+                cvec_free(cvk_ordered);
+                goto done;
+            }
+            cv_name_set(cvnew, cv_string_get(cvi));
+            cv_string_set(cvnew, cv_string_get(cvfound));
+        }
+        cvec_free(cvk);
+        cvk = cvk_ordered;
+        if (!match)
             goto ok;
-        i++;
     }
     /* Use 2a form since yc already given to compute cvk */
     if (clixon_xml_find_index(xv, yp, NULL, name, cvk, xvec) < 0)
@@ -316,10 +340,14 @@ xpath_list_optimize_fn(xpath_tree  *xt,
     retval = 0;
     goto done;
 }
-#endif /* XPATH_LIST_OPTIMIZE */
 
 /*! Identify XPath special cases and if match, use binary search.
  *
+ * @param[in]  xs     XPath step tree
+ * @param[in]  xv     XML context node (parent of list entries)
+ * @param[in]  xc     XPath evaluation context (for current() lookup)
+ * @param[out] xvec0  Result vector
+ * @param[out] xlen0  Result length
  * @retval  1  Optimization made, special case, use x (found if != NULL)
  * @retval  0  Dont optimize: not special case, do normal processing
  * @retval -1  Error
@@ -328,10 +356,10 @@ xpath_list_optimize_fn(xpath_tree  *xt,
 int
 xpath_optimize_check(xpath_tree *xs,
                      cxobj      *xv,
+                     xp_ctx     *xc,
                      cxobj    ***xvec0,
                      int        *xlen0)
 {
-#ifdef XPATH_LIST_OPTIMIZE
     int          retval = -1;
     clixon_xvec *xvec = NULL;
     int          ret;
@@ -341,7 +369,7 @@ xpath_optimize_check(xpath_tree *xs,
     else if ((xvec = clixon_xvec_new()) == NULL)
         goto done;
     /* Glue code since xpath code uses (old) cxobj ** and search code uses (new) clixon_xvec */
-    else if ((ret = xpath_list_optimize_fn(xs, xv, xvec)) < 0)
+    else if ((ret = xpath_list_optimize_fn(xs, xv, xc, xvec)) < 0)
         goto done;
     else if (ret == 1){
         if (xvec0 && *xvec0){
@@ -361,7 +389,15 @@ xpath_optimize_check(xpath_tree *xs,
     if (xvec)
         clixon_xvec_free(xvec);
     return retval;
-#else
-    return 0; /* use regular code */
-#endif
 }
+#else /* XPATH_LIST_OPTIMIZE */
+int
+xpath_optimize_check(xpath_tree *xs,
+                     cxobj      *xv,
+                     xp_ctx     *xc,
+                     cxobj    ***xvec0,
+                     int        *xlen0)
+{
+    return 0; /* use regular code */
+}
+#endif /* XPATH_LIST_OPTIMIZE */

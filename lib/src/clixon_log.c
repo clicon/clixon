@@ -147,7 +147,7 @@ clixon_logdst_str2key(const char *str)
  * @param[in]  flags   Log destination bitmask
  * @retval     0       OK
  * @code
- *  clixon_log_init(__PROGRAM__, LOG_INFO, CLIXON_LOG_STDERR); 
+ *  clixon_log_init(__PROGRAM__, LOG_INFO, CLIXON_LOG_STDERR);
  * @endcode
  */
 int
@@ -460,15 +460,18 @@ clixon_log_fn(clixon_handle h,
     return retval;
 }
 
-/*! Log a timestamp from start in seconds.milliseconds
+/*! Log a timestamp from start in seconds.microseconds
  *
- * @param[in] h   Clixon handle
- * @param[in] msg Message to print before timestamp
- * @retval    0   OK
- * @retval   -1   Error
+ * @param[in]  h         Clixon handle
+ * @param[out] timestamp Timestamp from start in us
+ * @param[in]  msg       Message to print before timestamp
+ * @retval     0         OK
+ * @retval    -1         Error
+ * @note wraps around at
  */
 int
 clixon_log_timestamp(clixon_handle h,
+                     uint64_t     *timestamp,
                      const char   *msg, ...)
 {
     int            retval = -1;
@@ -476,9 +479,6 @@ clixon_log_timestamp(clixon_handle h,
     struct timeval t1;
     struct timeval dt;
     cbuf          *cb = NULL;
-    uint64_t       ms;
-    uint32_t       sec;
-    uint32_t       msec;
 
     if ((cb = cbuf_new()) == NULL){
         fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
@@ -486,14 +486,13 @@ clixon_log_timestamp(clixon_handle h,
     }
     gettimeofday(&t1, NULL);
     timersub(&t1, &_log_t0, &dt);
-    ms = dt.tv_sec * 1000 + dt.tv_usec / 1000;
-    sec = ms / 1000;
-    msec = ms % 1000;
     va_start(ap, msg);
     vcprintf(cb, msg, ap);
     va_end(ap);
-    cprintf(cb, ": %u.%03u", sec, msec);
+    cprintf(cb, ": %u.%06u", (unsigned int)dt.tv_sec, (unsigned int)dt.tv_usec);
     clixon_log_str(LOG_INFO, cbuf_get(cb));
+    if (timestamp)
+        *timestamp = ((uint64_t)dt.tv_sec)*1000000 + dt.tv_usec;
     retval = 0;
  done:
     if (cb)

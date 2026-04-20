@@ -34,6 +34,8 @@ Expected: May 2026
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
 * New xmldb-cache-status: inmem, file and file-inmem to configure each datastore cache behavior
+* Optimization of XPath evaluation
+  * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
 * Optimization of XML config validation
   * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
   * Optimized mandatory check by skipping several nodes

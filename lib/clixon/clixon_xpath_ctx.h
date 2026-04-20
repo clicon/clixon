@@ -88,6 +88,9 @@ struct xp_ctx{
     cxobj          *xc_initial; /* RFC 7960 10.1.1 extension: for current() */
     int             xc_descendant;  /* // */
     /* NYI: a set of variable bindings, set of namespace declarations */
+#ifdef XPATH_CURRENT_OPTIMIZE
+    int             xc_invariant;   /* result depends only on xc_initial (current()) */
+#endif
 };
 typedef struct xp_ctx xp_ctx;
 

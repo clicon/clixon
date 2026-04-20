@@ -231,10 +231,10 @@ typedef enum xml_stats_enum xml_stats_enum;
 #define XML_FLAG_BODYKEY  0x100 /* Text parsing key to be translated from body to key */
 #define XML_FLAG_ANYDATA  0x200 /* Treat as anydata, eg mount-points before bound */
 #define XML_FLAG_CACHE_DIRTY 0x400 /* This part of XML tree is not synced to disk */
-#define XML_FLAG_SKIP      0x800 /* Node is skipped in xml_diff */
-#define XML_FLAG_DENY     0x1000 /* Marked as read denied by NACM  */
-#define XML_FLAG_DEL_ANC  0x2000 /* Target-tree ancestor of a deleted node (for incremental mandatory check) */
-//#define XML_FLAG_DEL_ANC  XML_FLAG_CHANGE
+#define XML_FLAG_SKIP        0x800 /* Node is skipped in xml_diff */
+#define XML_FLAG_DENY        0x1000 /* Marked as read denied by NACM  */
+#define XML_FLAG_DEL_ANC     XML_FLAG_CHANGE /* Target-tree ancestor of a deleted node (possibly unique hex?)
+                                                (for incremental mandatory check) */
 
 /*
  * Prototypes
