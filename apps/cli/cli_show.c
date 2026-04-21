@@ -686,6 +686,8 @@ cli_show_common(clixon_handle    h,
     cbuf   *cb = NULL;
     yang_stmt *yspec0 = NULL;
     int        ret;
+    int        i;
+    cxobj     *xp;
 
     if (state && strcmp(db, "running") != 0){
         clixon_err(OE_FATAL, 0, "Show state only for running database, not %s", db);
@@ -737,14 +739,23 @@ cli_show_common(clixon_handle    h,
     if (xpath_vec(xt, nsc, "%s", &vec, &veclen, xpath) < 0)
         goto done;
     if (veclen){
-        // XXX vec not needed?
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        if (format == FORMAT_NETCONF){
-            if (clixon_rpc_translate_format(h, FORMAT_XML, xpath, nsc, xt, pretty, skiptop, cli_aware, prepend, cb) < 0)
+        if (format == FORMAT_JSON){
+            if (xml2json_cbuf_vec(cb, vec, veclen, pretty, skiptop) < 0)
                 goto done;
+            cligen_output(stdout, "%s", cbuf_get(cb));
+        }
+        else if (format == FORMAT_NETCONF){
+            for (i = 0; i < (int)veclen; i++){
+                xp = vec[i];
+                if (xml_type(xp) != CX_ELMNT)
+                    continue;
+                if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
+                    goto done;
+            }
             cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
                           NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
             cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
@@ -756,8 +767,29 @@ cli_show_common(clixon_handle    h,
             cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
         }
         else {
-            if (clixon_rpc_translate_format(h, format, xpath, nsc, xt, pretty, skiptop, cli_aware, prepend, cb) < 0)
-                goto done;
+            for (i = 0; i < (int)veclen; i++){
+                xp = vec[i];
+                if (xml_type(xp) != CX_ELMNT)
+                    continue;
+                switch (format){
+                case FORMAT_XML:
+                    if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
+                        goto done;
+                    if (!pretty && i == (int)veclen-1)
+                        cprintf(cb, "\n");
+                    break;
+                case FORMAT_TEXT:
+                    if (clixon_text2cbuf(cb, xp, 0, skiptop, cli_aware) < 0)
+                        goto done;
+                    break;
+                case FORMAT_CLI:
+                    if (clixon_cli2cbuf(h, cb, xp, prepend, skiptop) < 0)
+                        goto done;
+                    break;
+                default:
+                    break;
+                }
+            }
             cligen_output(stdout, "%s", cbuf_get(cb));
         }
     }
