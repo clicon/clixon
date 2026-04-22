@@ -1608,11 +1608,13 @@ translatenumber(uint64_t   inr,
  * A blank second line is only printed if any name exceeds 12 characters.
  * @param[in]  label    Left-hand label column (16-wide)
  * @param[in]  col1hdr  First numeric column header (e.g. "Total")
+ * @param[in]  verbose  Print all datastores, otherwise only running and candidates
  * @param[in]  xp       <datastores> XML node to iterate for datastore names
  */
 static void
 stats_print_header(const char *label,
                    const char *col1hdr,
+                   const int   verbose,
                    cxobj      *xp)
 {
     cxobj *x;
@@ -1627,6 +1629,8 @@ stats_print_header(const char *label,
             if (strcmp(xml_name(x), "datastore") != 0)
                 continue;
             name = xml_find_body(x, "name");
+            if (!verbose && strcmp(name, "running") != 0 && strncmp(name, "candidate", strlen("candidate")) != 0)
+                continue;
             if (name && strlen(name) > 12){
                 need2 = 1;
                 break;
@@ -1641,6 +1645,8 @@ stats_print_header(const char *label,
             if (strcmp(xml_name(x), "datastore") != 0)
                 continue;
             name = xml_find_body(x, "name");
+            if (!verbose && strcmp(name, "running") != 0 && strncmp(name, "candidate", strlen("candidate")) != 0)
+                continue;
             if (name)
                 cligen_output(stdout, " %12.12s", name);
         }
@@ -1656,6 +1662,8 @@ stats_print_header(const char *label,
             if (strcmp(xml_name(x), "datastore") != 0)
                 continue;
             name = xml_find_body(x, "name");
+            if (!verbose && strcmp(name, "running") != 0 && strncmp(name, "candidate", strlen("candidate")) != 0)
+                continue;
             if (name && strlen(name) > 12)
                 cligen_output(stdout, " %12.12s", name + 12);
             else
@@ -1669,7 +1677,7 @@ stats_print_header(const char *label,
  *
  * mempry in KiB
  * @param[in]  h     Clixon handle
- * @param[in]  cvv   Vector of cli string and instantiated variables could be "detail", "cli", "backend"
+ * @param[in]  cvv   Vector of cli string and instantiated variables could be cli, backend, detail, verbose
  * @param[in]  argv  Arguments given at the callback
  * @retval     0     OK
  * @retval    -1     Error
@@ -1688,6 +1696,7 @@ cli_show_statistics(clixon_handle h,
     int         cli = 0;
     int         backend = 0;
     int         detail = 0;
+    int         verbose = 0;
     int         ix;
     pt_head    *ph;
     parse_tree *pt;
@@ -1713,6 +1722,8 @@ cli_show_statistics(clixon_handle h,
     char        valbuf[32];
 
     detail = cvec_find(cvv, "detail") != NULL;
+    verbose = cvec_find(cvv, "verbose") != NULL;
+    fprintf(stderr, "cli_show_statistics: detail=%d verbose=%d\n", detail, verbose);
     cli = cvec_find(cvv, "cli") != NULL;
     backend = cvec_find(cvv, "backend") != NULL;
     if (cli == 0 && backend == 0){
@@ -1836,7 +1847,7 @@ cli_show_statistics(clixon_handle h,
             xret = NULL;
             /* --- XML per-type table --- */
             /* Print two-line header: Total first, then per-datastore */
-            stats_print_header("XML memory", "Total",
+            stats_print_header("XML memory", "Total", verbose,
                                xml_find_type(xret_all, NULL, "datastores", CX_ELMNT));
             /* Per-type rows */
             for (ti = 0; xtypenames[ti]; ti++){
@@ -1863,6 +1874,9 @@ cli_show_statistics(clixon_handle h,
                     ix = 0;
                     while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                         if (strcmp(xml_name(x), "datastore") != 0)
+                            continue;
+                        name = xml_find_body(x, "name");
+                        if (!verbose && strcmp(name, "running") != 0 && strncmp(name, "candidate", strlen("candidate")) != 0)
                             continue;
                         parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                         tsz += sz;
@@ -1891,6 +1905,9 @@ cli_show_statistics(clixon_handle h,
                 while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                     if (strcmp(xml_name(x), "datastore") != 0)
                         continue;
+                    name = xml_find_body(x, "name");
+                    if (!verbose && strcmp(name, "running") != 0 && strncmp(name, "candidate", strlen("candidate")) != 0)
+                        continue;
                     parse_uint64(xml_find_body(x, "size"), &sz, NULL);
                     tsz += sz;
                     translatenumber(sz, &u64, &unit);
@@ -1906,30 +1923,56 @@ cli_show_statistics(clixon_handle h,
             cb2 = NULL;
             tsz0 = tsz;
             tsz = 0;
-            /* --- XML nr (count) table --- */
-            stats_print_header("XML objects", "Total",
-                               xml_find_type(xret_all, NULL, "datastores", CX_ELMNT));
-            for (ti = 0; xtypenames[ti]; ti++){
-                cbuf_reset(cb);
-                cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
-                cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-                cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
-                cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
-                cprintf(cb, ">");
-                cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
-                cprintf(cb, "<xml-type>%s</xml-type>", xtypenames[ti]);
-                cprintf(cb, "</stats>");
-                cprintf(cb, "</rpc>");
-                if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
-                    goto done;
-                if (xml_rootchild(xret, 0, &xret) < 0)
-                    goto done;
+            if (verbose) {
+                /* --- XML nr (count) table --- */
+                stats_print_header("XML objects", "Total", verbose,
+                                   xml_find_type(xret_all, NULL, "datastores", CX_ELMNT));
+                for (ti = 0; xtypenames[ti]; ti++){
+                    cbuf_reset(cb);
+                    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+                    cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+                    cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, clicon_username_get(h));
+                    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+                    cprintf(cb, ">");
+                    cprintf(cb, "<stats xmlns=\"%s\">", CLIXON_LIB_NS);
+                    cprintf(cb, "<xml-type>%s</xml-type>", xtypenames[ti]);
+                    cprintf(cb, "</stats>");
+                    cprintf(cb, "</rpc>");
+                    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
+                        goto done;
+                    if (xml_rootchild(xret, 0, &xret) < 0)
+                        goto done;
+                    if ((cb2 = cbuf_new()) == NULL){
+                        clixon_err(OE_PLUGIN, errno, "cbuf_new");
+                        goto done;
+                    }
+                    tnr = 0;
+                    if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
+                        ix = 0;
+                        while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
+                            if (strcmp(xml_name(x), "datastore") != 0)
+                                continue;
+                            parse_uint64(xml_find_body(x, "nr"), &nr, NULL);
+                            tnr += nr;
+                            snprintf(valbuf, sizeof(valbuf), "%" PRIu64, nr);
+                            cprintf(cb2, " %12s", valbuf);
+                        }
+                    }
+                    snprintf(valbuf, sizeof(valbuf), "%" PRIu64, tnr);
+                    cligen_output(stdout, "%-16s %12s%s\n",
+                                  xtypenames[ti], valbuf, cbuf_get(cb2));
+                    cbuf_free(cb2);
+                    cb2 = NULL;
+                    xml_free(xret);
+                    xret = NULL;
+                }
+                /* Total nr row from "all" response */
                 if ((cb2 = cbuf_new()) == NULL){
                     clixon_err(OE_PLUGIN, errno, "cbuf_new");
                     goto done;
                 }
                 tnr = 0;
-                if ((xp = xml_find_type(xret, NULL, "datastores", CX_ELMNT)) != NULL){
+                if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
                     ix = 0;
                     while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
                         if (strcmp(xml_name(x), "datastore") != 0)
@@ -1942,34 +1985,10 @@ cli_show_statistics(clixon_handle h,
                 }
                 snprintf(valbuf, sizeof(valbuf), "%" PRIu64, tnr);
                 cligen_output(stdout, "%-16s %12s%s\n",
-                              xtypenames[ti], valbuf, cbuf_get(cb2));
+                              "Total", valbuf, cbuf_get(cb2));
                 cbuf_free(cb2);
                 cb2 = NULL;
-                xml_free(xret);
-                xret = NULL;
             }
-            /* Total nr row from "all" response */
-            if ((cb2 = cbuf_new()) == NULL){
-                clixon_err(OE_PLUGIN, errno, "cbuf_new");
-                goto done;
-            }
-            tnr = 0;
-            if ((xp = xml_find_type(xret_all, NULL, "datastores", CX_ELMNT)) != NULL){
-                ix = 0;
-                while ((x = xml_child_iter(xp, &ix, CX_ELMNT)) != NULL) {
-                    if (strcmp(xml_name(x), "datastore") != 0)
-                        continue;
-                    parse_uint64(xml_find_body(x, "nr"), &nr, NULL);
-                    tnr += nr;
-                    snprintf(valbuf, sizeof(valbuf), "%" PRIu64, nr);
-                    cprintf(cb2, " %12s", valbuf);
-                }
-            }
-            snprintf(valbuf, sizeof(valbuf), "%" PRIu64, tnr);
-            cligen_output(stdout, "%-16s %12s%s\n",
-                          "Total", valbuf, cbuf_get(cb2));
-            cbuf_free(cb2);
-            cb2 = NULL;
             tsz0 = tsz;
             tsz = 0;
             /* --- YANG section --- */

@@ -638,7 +638,6 @@ restconf_native_terminate(clixon_handle h)
             SSL_CTX_free(rn->rn_ctx);
         free(rn);
     }
-    EVP_cleanup();
     return 0;
 }
 

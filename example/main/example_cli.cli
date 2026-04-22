@@ -131,7 +131,7 @@ show("Show a particular state of the system"){
         clixon-example("Show clixon-example yang spec"), show_yang("clixon-example");
     }		   
     memory("Show memory usage") {
-      [<detail:string keyword:detail>] [<cli:string keyword:cli>]  [<backend:string keyword:backend>], cli_show_statistics();
+      [<detail:string keyword:detail>] [<verbose:string keyword:verbose>] [<cli:string keyword:cli>]  [<backend:string keyword:backend>], cli_show_statistics();
          @|example_pipe, cli_show_statistics();
     }
     sessions("Show client sessions"), cli_show_sessions();{
