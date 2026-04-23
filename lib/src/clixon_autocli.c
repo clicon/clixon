@@ -627,6 +627,7 @@ autocli_cache(clixon_handle    h,
     int    retval = -1;
     cxobj *xautocli;
     char  *str;
+    int    cache_type;
 
     if ((xautocli = clicon_conf_autocli(h)) == NULL){
         clixon_err(OE_YANG, 0, "No clixon-autocli");
@@ -636,8 +637,16 @@ autocli_cache(clixon_handle    h,
         clixon_err(OE_XML, EINVAL, "No clispec-cache rule");
         goto done;
     }
+    if ((cache_type = autocli_cache_str2int(str)) < 0){
+        if (strcmp(str, "readwrite") == 0 || strcmp(str, "write") == 0){
+            clixon_err(OE_XML, 0, "clispec-cache value \"%s\" is obsolete, use \"read\" or \"disabled\"", str);
+            goto done;
+        }
+        clixon_err(OE_XML, 0, "Invalid clispec-cache value: \"%s\"", str);
+        goto done;
+    }
     if (type)
-        *type = autocli_cache_str2int(str);
+        *type = cache_type;
     if (dir)
         *dir = clicon_option_str(h, "CLICON_AUTOCLI_CACHE_DIR");
     retval = 0;
