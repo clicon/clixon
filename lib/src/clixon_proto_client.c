@@ -1228,8 +1228,12 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
         cprintf(cb, "<direction>%s</direction>", direction);
     if (sort)
         cprintf(cb, "<sort>%s</sort>", sort);
-    if (where)
-        cprintf(cb, "<where>%s</where>", where);
+    if (where) {
+        cprintf(cb, "<where>");
+        if (xml_chardata_cbuf_append(cb, 0, where) < 0)
+            goto done;
+        cprintf(cb, "</where>");
+    }
     cprintf(cb, "</list-pagination>");
     cprintf(cb, "</get>");
     cprintf(cb, "</rpc>");

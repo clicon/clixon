@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <ctype.h>
 #include <limits.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -65,6 +66,38 @@
 
 /* Forward */
 static int api_data_pagination(clixon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
+
+/*! Validate 'where' pagination parameter against safe key-predicate character set
+ *
+ * Per draft-ietf-netconf-list-pagination the 'where' value is a key-predicate
+ * expression of the form: name='val' [and name='val' ...].
+ * Reject any character outside that grammar to block XPath injection.
+ * Characters permitted outside quoted strings: [A-Za-z0-9_:.-= \t]
+ * Single- and double-quoted string contents are passed through unchanged.
+ * @retval  0  Safe
+ * @retval -1  Unsafe character detected
+ */
+static int
+where_predicate_valid(const char *where)
+{
+    const char *p = where;
+    char        q = 0;
+
+    while (*p) {
+        if (q) {
+            if (*p == q)
+                q = 0;
+        } else if (*p == '\'' || *p == '"') {
+            q = *p;
+        } else if (!isalnum((unsigned char)*p) &&
+                   *p != '_' && *p != ':' && *p != '-' &&
+                   *p != '.' && *p != '=' && *p != ' ' && *p != '\t') {
+            return -1;
+        }
+        p++;
+    }
+    return q ? -1 : 0;   /* unterminated string literal is also invalid */
+}
 
 /*! Filter top-level data nodes based on "fields" query parameter (RFC 8040 Sec 4.8.3)
  *
@@ -589,6 +622,14 @@ api_data_pagination(clixon_handle  h,
     direction = cvec_find_str(qvec, "direction");
     sort = cvec_find_str(qvec, "sort-by");
     where = cvec_find_str(qvec, "where");
+    if (where != NULL && where_predicate_valid(where) < 0) {
+        if (netconf_bad_attribute_xml(&xerr, "application", "where",
+                                      "Invalid characters in where predicate") < 0)
+            goto done;
+        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
+            goto done;
+        goto ok;
+    }
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
                                      depth, NULL, offset, limit, direction, sort, where,
                                      &xret) < 0){
