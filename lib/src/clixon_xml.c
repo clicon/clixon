@@ -898,6 +898,7 @@ xml_value_set(cxobj      *xn,
  * @param[in]  val   appended value, null-terminated string, copied by function
  * @retval     new value
  * @retval     NULL  on error with clicon-err set, or if value is set to NULL
+ * @note  Slow, due to many strlen, avoid this in iterative loops
  */
 int
 xml_value_append(cxobj      *xn,

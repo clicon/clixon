@@ -1908,9 +1908,8 @@ clixon_rpc_clixon_cache(clixon_handle h,
                         cbuf         *cbdata)
 {
     int        retval = -1;
-    cxobj     *xrpc = NULL;
     cxobj     *xret = NULL;
-    cxobj     *xerr;
+    cxobj     *xerr = NULL;
     cxobj     *xreply;
     char      *username;
     uint32_t   session_id;
@@ -1955,14 +1954,7 @@ clixon_rpc_clixon_cache(clixon_handle h,
         cprintf(cb, "<argument>%s</argument>", argument);
     cprintf(cb, "</clixon-cache>");
     cprintf(cb, "</rpc>");
-    /* Create XML from cbuf */
-    if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec, &xrpc, &xerr)) < 0)
-        goto done;
-    if (ret == 0)
-        goto done; // XXX
-    if (xml_rootchild(xrpc, 0, &xrpc) < 0)
-        goto done;
-    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Debug");
@@ -1990,8 +1982,6 @@ clixon_rpc_clixon_cache(clixon_handle h,
  done:
     if (cb)
         cbuf_free(cb);
-    if (xrpc)
-        xml_free(xrpc);
     if (xret)
         xml_free(xret);
     return retval;
@@ -2042,7 +2032,6 @@ clixon_rpc_config_path_info(clixon_handle h,
     yang_stmt *yspec0;
     uint32_t   session_id;
     char      *username;
-    cxobj     *xrpc = NULL;
     cxobj     *xret = NULL;
     cxobj     *xe;
     cxobj     *xerr = NULL;
@@ -2105,14 +2094,7 @@ clixon_rpc_config_path_info(clixon_handle h,
     }
     cprintf(cb, "</config-path-info>");
     cprintf(cb, "</rpc>");
-    /* Create XML from cbuf */
-    if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec0, &xrpc, &xerr)) < 0)
-        goto done;
-    if (ret == 0)
-        goto done;
-    if (xml_rootchild(xrpc, 0, &xrpc) < 0)
-        goto done;
-    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xe, "Debug");
@@ -2191,8 +2173,6 @@ clixon_rpc_config_path_info(clixon_handle h,
  done:
     if (cb)
         cbuf_free(cb);
-    if (xrpc)
-        xml_free(xrpc);
     if (xret)
         xml_free(xret);
     if (xerr)
@@ -2257,7 +2237,6 @@ clixon_rpc_translate_format(clixon_handle    h,
     uint32_t   session_id;
     char      *username;
     cbuf      *cb = NULL;
-    cxobj     *xrpc = NULL;
     cxobj     *xret = NULL;
     cxobj     *xe;
     cxobj     *xn;
@@ -2313,13 +2292,7 @@ clixon_rpc_translate_format(clixon_handle    h,
     cprintf(cb, "</xml>");
     cprintf(cb, "</translate-format>");
     cprintf(cb, "</rpc>");
-    if ((ret = clixon_xml_parse_string1(h, cbuf_get(cb), YB_NONE, yspec0, &xrpc, &xerr)) < 0)
-        goto done;
-    if (ret == 0)
-        goto done;
-    if (xml_rootchild(xrpc, 0, &xrpc) < 0)
-        goto done;
-    if (clicon_rpc_netconf_xml(h, xrpc, &xret, NULL) < 0)
+    if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
         goto done;
     if ((xe = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xe, "Debug");
@@ -2359,8 +2332,6 @@ clixon_rpc_translate_format(clixon_handle    h,
  done:
     if (cb)
         cbuf_free(cb);
-    if (xrpc)
-        xml_free(xrpc);
     if (xret)
         xml_free(xret);
     if (xerr)

@@ -104,39 +104,55 @@ clixon_xml_parseerror(void *_xy,
     return;
 }
 
+/*! Flush accumulated body content from xy_cbuf to a CX_BODY child of xy_xparent
+ *
+ * Called before any context transition that changes xy_xparent, to ensure
+ * accumulated CHARDATA/WHITESPACE tokens are attached to the correct parent.
+ * No-op if nothing has been accumulated.
+ * @param[in]  xy    XML parser yacc handler struct
+ * @retval     0     OK
+ * @retval    -1     Error
+ */
+static int
+xml_parse_flush_content(clixon_xml_yacc *xy)
+{
+    int    retval = -1;
+    cxobj *xn;
+
+    if (cbuf_len(xy->xy_cbuf) == 0){
+        retval = 0;
+        goto done;
+    }
+    if ((xn = xml_new("body", xy->xy_xparent, CX_BODY)) == NULL)
+        goto done;
+    if (xml_value_append(xn, cbuf_get(xy->xy_cbuf)) < 0)
+        goto done;
+    cbuf_reset(xy->xy_cbuf);
+    retval = 0;
+  done:
+    return retval;
+}
+
 /*! Parse XML content, eg chars between >...<
  *
+ * Tokens are accumulated in xy_cbuf; a body node is created by
+ * xml_parse_flush_content() at the next context transition.
  * @param[in]  xy
- * @param[in]  encoded set if ampersand encoded
+ * @param[in]  encoded set if ampersand-encoded numeric character reference (&#N; or &#xN;)
  * @param[in]  str     Body string, direct pointer (copy before use, dont free)
  * @retval     0       OK
  * @retval    -1       Error
- * Note that we dont handle escaped characters correctly
- * there may also be some leakage here on NULL return
  */
 static int
 xml_parse_content(clixon_xml_yacc *xy,
                   int              encoded,
-                  char            *str)
+                  const char      *str)
 {
-    int    retval = -1;
-    cxobj *xn = xy->xy_xelement;
-    cxobj *xp = xy->xy_xparent;
-
-    xy->xy_xelement = NULL; /* init */
-    if (xn == NULL){
-        if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
-            goto done;
-    }
     if (encoded)
-        if (xml_value_append(xn, "&") < 0)
-            goto done;
-    if (xml_value_append(xn, str) < 0)
-        goto done;
-    xy->xy_xelement = xn;
-    retval = 0;
-  done:
-    return retval;
+        cprintf(xy->xy_cbuf, "&%s", str);
+    else
+        cprintf(xy->xy_cbuf, "%s", str);
+    return 0;
 }
 
 /*! Add whitespace
@@ -151,31 +167,21 @@ xml_parse_whitespace(clixon_xml_yacc *xy,
                      char            *str)
 {
     int    retval = -1;
-    cxobj *xn = xy->xy_xelement;
     cxobj *xp = xy->xy_xparent;
     int    i;
 
-    xy->xy_xelement = NULL; /* init */
-    /* If there is an element already, only add one whitespace child 
-     * otherwise, keep all whitespace. See code in xml_parse_bslash
-     * Note that this xml element is not aware of YANG yet. 
+    /* If there is an element child already, skip whitespace.
+     * Note that this xml element is not aware of YANG yet.
      * For example, if xp is LEAF then a body child is OK, but if xp is CONTAINER
-     * then the whitespace body is pretty-prints and should be stripped (later)
+     * then the whitespace body is pretty-print and should be stripped (later).
      */
     for (i=0; i<xml_child_nr(xp); i++){
         if (xml_type(xml_child_i(xp, i)) == CX_ELMNT)
             goto ok; /* Skip if already element */
     }
-    if (xn == NULL){
-        if ((xn = xml_new("body", xp, CX_BODY)) == NULL)
-            goto done;
-    }
-    if (xml_value_append(xn, str) < 0)
-        goto done;
-    xy->xy_xelement = xn;
+    cprintf(xy->xy_cbuf, "%s", str);
  ok:
     retval = 0;
-  done:
     return retval;
 }
 
@@ -238,6 +244,9 @@ xml_parse_prefixed_name(clixon_xml_yacc *xy,
     cxobj     *xp;      /* xml parent */
 
     xp = xy->xy_xparent;
+    /* Flush any accumulated body content before attaching a new child element */
+    if (xml_parse_flush_content(xy) < 0)
+        goto done;
     if ((x = xml_new(name, xp, CX_ELMNT)) == NULL)
         goto done;
     /* Cant check namespaces here since local xmlns attributes loaded after */
@@ -270,6 +279,9 @@ xml_parse_endslash_pre(clixon_xml_yacc *xy)
 static int
 xml_parse_endslash_mid(clixon_xml_yacc *xy)
 {
+    /* Flush accumulated body content before navigating up to parent */
+    if (xml_parse_flush_content(xy) < 0)
+        return -1;
     if (xy->xy_xelement != NULL)
         xy->xy_xelement = xml_parent(xy->xy_xelement);
     else

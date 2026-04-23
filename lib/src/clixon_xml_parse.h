@@ -54,6 +54,7 @@ struct clixon_xml_parse_yacc {
     int         xy_lex_state;    /* lex return state */
     cxobj     **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
     size_t      xy_xlen;         /* Length of xy_xvec */
+    cbuf       *xy_cbuf;         /* Accumulator for body/content tokens (flushed at context change) */
 };
 typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
 

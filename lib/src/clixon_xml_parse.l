@@ -192,6 +192,9 @@ clixon_xml_parsel_init(clixon_xml_yacc *xy)
   xy->xy_lexbuf = yy_scan_string (xy->xy_parse_string);
   if (0)
     yyunput(0, "");  /* XXX: just to use unput to avoid warning  */
+  if ((xy->xy_cbuf = cbuf_new()) == NULL){
+      return -1;
+  }
   return 0;
 }
 
@@ -201,6 +204,9 @@ clixon_xml_parsel_exit(clixon_xml_yacc *xy)
 {
    yy_delete_buffer(xy->xy_lexbuf);
    clixon_xml_parselex_destroy();  /* modern */
-
+   if (xy->xy_cbuf){
+       cbuf_free(xy->xy_cbuf);
+       xy->xy_cbuf = NULL;
+   }
   return 0;
 }
