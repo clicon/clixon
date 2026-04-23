@@ -48,32 +48,35 @@ typedef struct nacm_autocli_filter nacm_autocli_filter_t;
 
 int clicon_rpc_msg(clixon_handle h, cbuf *cbsend, cxobj **xret0);
 int clicon_rpc_msg_persistent(clixon_handle h, cbuf *cbsend, cxobj **xret0, int *sock0);
-int clicon_rpc_netconf(clixon_handle h, char *xmlst, cxobj **xret, int *sp);
+int clicon_rpc_netconf(clixon_handle h, const char *xmlst, cxobj **xret, int *sp);
 int clicon_rpc_netconf_xml(clixon_handle h, cxobj *xml, cxobj **xret, int *sp);
-int clixon_rpc_get_config1(clixon_handle h, char *username, char *db, char *xpath, cvec *nsc, char *defaults, yang_bind yb ,cxobj **xret);
-int clicon_rpc_edit_config(clixon_handle h, char *db, enum operation_type op,
-                           char *xml);
-int clicon_rpc_copy_config(clixon_handle h, char *db1, char *db2);
-int clicon_rpc_delete_config(clixon_handle h, char *db);
-int clicon_rpc_lock(clixon_handle h, char *db);
-int clicon_rpc_unlock(clixon_handle h, char *db);
-int clixon_rpc_get1(clixon_handle h, char *xpath, cvec *nsc, netconf_content content, int32_t depth, char *defaults, yang_bind yb, cxobj **xret);
-int clicon_rpc_get_pageable_list(clixon_handle h, char *datastore, char *xpath,
-                                 cvec *nsc, netconf_content content, int32_t depth, char *defaults,
+int clixon_rpc_get_config1(clixon_handle h, const char *username, const char *db, const char *xpath, cvec *nsc,
+                           const char *defaults, yang_bind yb ,cxobj **xret);
+int clicon_rpc_edit_config(clixon_handle h, const char *db, enum operation_type op, const char *xml);
+int clicon_rpc_copy_config(clixon_handle h, const char *db1, const char *db2);
+int clicon_rpc_delete_config(clixon_handle h, const char *db);
+int clicon_rpc_lock(clixon_handle h, const char *db);
+int clicon_rpc_unlock(clixon_handle h, const char *db);
+int clixon_rpc_get1(clixon_handle h, const char *xpath, cvec *nsc, netconf_content content, int32_t depth,
+                    const char *defaults, yang_bind yb, cxobj **xret);
+int clicon_rpc_get_pageable_list(clixon_handle h, const char *datastore, const char *xpath,
+                                 cvec *nsc, netconf_content content, int32_t depth, const char *defaults,
                                  uint32_t offset, uint32_t limit,
-                                 char *direction, char *sort, char *where,
+                                 const char *direction, const char *sort, const char *where,
                                  cxobj **xt);
 int clicon_rpc_close_session(clixon_handle h);
 int clicon_rpc_kill_session(clixon_handle h, uint32_t session_id);
-int clicon_rpc_validate(clixon_handle h, char *db);
-int clicon_rpc_commit(clixon_handle h, int confirmed, int cancel, uint32_t timeout, char *persist, char *persist_id);
+int clicon_rpc_validate(clixon_handle h, const char *db);
+int clicon_rpc_commit(clixon_handle h, int confirmed, int cancel, uint32_t timeout, const char *persist, const char *persist_id);
 int clicon_rpc_discard_changes(clixon_handle h);
 int clicon_rpc_update(clixon_handle h);
-int clicon_rpc_create_subscription(clixon_handle h, char *stream, char *filter, int *s);
+int clicon_rpc_create_subscription(clixon_handle h, const char *stream, const char *filter, int *s);
 int clicon_rpc_debug(clixon_handle h, int level);
 int clicon_rpc_restconf_debug(clixon_handle h, int level);
 int clicon_hello_req(clixon_handle h, char *transport, char *source_host, uint32_t *id);
-int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, const char *domain, const char *spec, const char *module, const char *revision, const char *keyword, const char *argument, cbuf *data);
+int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, const char *domain, const char *spec,
+                            const char *module, const char *revision, const char *keyword, const char *argument,
+                            cbuf *data);
 int clixon_rpc_nacm_autocli_filter(clixon_handle h, nacm_autocli_filter_t **nafp);
 int clixon_rpc_config_path_info(clixon_handle h, const char *api_path, int strict, const char *xpath, cvec *nsc0,
                                 int leafref_refer, const char *body, cxobj *xtop,
@@ -82,16 +85,16 @@ int clixon_rpc_config_path_info(clixon_handle h, const char *api_path, int stric
 int clixon_rpc_api_path2xml(clixon_handle h, const char *api_path, const char *body, cxobj *xtop, char **xpath, cvec **nsc);
 int clixon_rpc_translate_format(clixon_handle h, enum format_enum format, const char *xpath, cvec *nsc,
                                 cxobj *xt, int pretty, int skiptop, int cli_aware, const char *prepend, cbuf *cb);
-int clicon_rpc_restart_plugin(clixon_handle h, char *plugin);
+int clicon_rpc_restart_plugin(clixon_handle h, const char *plugin);
 
 /*-- Backward compatible 7.6 --*/
 static inline int
 clicon_rpc_get_config(clixon_handle h,
-                      char         *username,
-                      char         *db,
-                      char         *xpath,
+                      const char   *username,
+                      const char   *db,
+                      const char   *xpath,
                       cvec         *nsc,
-                      char         *defaults,
+                      const char   *defaults,
                       cxobj       **xt)
 {
     return clixon_rpc_get_config1(h, username, db, xpath, nsc, defaults, YB_MODULE, xt);
@@ -99,11 +102,11 @@ clicon_rpc_get_config(clixon_handle h,
 
 static inline int
 clicon_rpc_get(clixon_handle   h,
-               char           *xpath,
+               const char     *xpath,
                cvec           *nsc,
                netconf_content content,
                int32_t         depth,
-               char           *defaults,
+               const char     *defaults,
                cxobj         **xt)
 {
     return clixon_rpc_get1(h, xpath, nsc, content, depth, defaults, YB_MODULE, xt);

@@ -445,7 +445,7 @@ session_id_check(clixon_handle h,
  */
 int
 clicon_rpc_netconf(clixon_handle h,
-                   char         *xmlstr,
+                   const char   *xmlstr,
                    cxobj       **xret,
                    int          *sp)
 {
@@ -583,11 +583,11 @@ clicon_rpc_netconf_xml(clixon_handle  h,
  */
 int
 clixon_rpc_get_config1(clixon_handle h,
-                       char         *username,
-                       char         *db,
-                       char         *xpath,
+                       const char   *username,
+                       const char   *db,
+                       const char   *xpath,
                        cvec         *nsc,
-                       char         *defaults,
+                       const char   *defaults,
                        yang_bind     yb,
                        cxobj       **xt)
 {
@@ -709,9 +709,9 @@ clixon_rpc_get_config1(clixon_handle h,
  */
 int
 clicon_rpc_edit_config(clixon_handle       h,
-                       char               *db,
+                       const char         *db,
                        enum operation_type op,
-                       char               *xmlstr)
+                       const char         *xmlstr)
 {
     int      retval = -1;
     cbuf    *cb = NULL;
@@ -770,8 +770,8 @@ clicon_rpc_edit_config(clixon_handle       h,
  */
 int
 clicon_rpc_copy_config(clixon_handle h,
-                       char         *db1,
-                       char         *db2)
+                       const char   *db1,
+                       const char   *db2)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -824,7 +824,7 @@ clicon_rpc_copy_config(clixon_handle h,
  */
 int
 clicon_rpc_delete_config(clixon_handle h,
-                         char         *db)
+                         const char   *db)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -873,7 +873,7 @@ clicon_rpc_delete_config(clixon_handle h,
  */
 int
 clicon_rpc_lock(clixon_handle h,
-                char         *db)
+                const char   *db)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -922,7 +922,7 @@ clicon_rpc_lock(clixon_handle h,
  */
 int
 clicon_rpc_unlock(clixon_handle h,
-                  char         *db)
+                  const char   *db)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -1001,11 +1001,11 @@ clicon_rpc_unlock(clixon_handle h,
  */
 int
 clixon_rpc_get1(clixon_handle   h,
-                char           *xpath,
+                const char     *xpath,
                 cvec           *nsc, /* namespace context for filter */
                 netconf_content content,
                 int32_t         depth,
-                char           *defaults,
+                const char     *defaults,
                 yang_bind       yb,
                 cxobj         **xt)
 {
@@ -1146,17 +1146,17 @@ clixon_rpc_get1(clixon_handle   h,
  */
 int
 clicon_rpc_get_pageable_list(clixon_handle   h,
-                             char           *datastore,
-                             char           *xpath,
+                             const char     *datastore,
+                             const char     *xpath,
                              cvec           *nsc, /* namespace context for xpath */
                              netconf_content content,
                              int32_t         depth,
-                             char           *defaults,
+                             const char     *defaults,
                              uint32_t        offset,
                              uint32_t        limit,
-                             char           *direction,
-                             char           *sort,
-                             char           *where,
+                             const char     *direction,
+                             const char     *sort,
+                             const char     *where,
                              cxobj         **xt)
 {
     int        retval = -1;
@@ -1406,7 +1406,7 @@ clicon_rpc_kill_session(clixon_handle h,
  */
 int
 clicon_rpc_validate(clixon_handle h,
-                    char         *db)
+                    const char   *db)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -1466,8 +1466,8 @@ clicon_rpc_commit(clixon_handle h,
                   int           confirmed,
                   int           cancel,
                   uint32_t      timeout,
-                  char         *persist,
-                  char         *persist_id)
+                  const char   *persist,
+                  const char   *persist_id)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
@@ -1617,8 +1617,8 @@ clicon_rpc_discard_changes(clixon_handle h)
  */
 int
 clicon_rpc_create_subscription(clixon_handle h,
-                               char         *stream,
-                               char         *filter,
+                               const char   *stream,
+                               const char   *filter,
                                int          *s0)
 {
     int      retval = -1;
@@ -2350,7 +2350,7 @@ clixon_rpc_translate_format(clixon_handle    h,
  */
 int
 clicon_rpc_restart_plugin(clixon_handle h,
-                          char         *plugin)
+                          const char   *plugin)
 {
     int      retval = -1;
     cxobj   *xret = NULL;
