@@ -82,9 +82,9 @@ struct errvec{
 };
 
 struct err_state{
-    int  es_category;
-    int  es_subnr;
-    char es_reason[ERR_STRLEN];
+    int   es_category;
+    int   es_subnr;
+    char *es_reason;   /* strdup of _err_reason at save time */
 };
 
 /* Clixon error category callbacks provides a way to specialize
@@ -115,7 +115,7 @@ static int  _err_category         = 0;
 static int  _err_subnr      = 0;
 
 /* Clixon error reason */
-static char _err_reason[ERR_STRLEN] = {0, };
+static cbuf *_err_reason = NULL;
 
 /*
  * Error descriptions. Must stop with NULL element.
@@ -159,6 +159,11 @@ clixon_err_init(clixon_handle h)
         return -1;
     }
     _err_clixon_h = h;
+    if (_err_reason == NULL &&
+        (_err_reason = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        return -1;
+    }
     return 0;
 }
 
@@ -193,7 +198,7 @@ clixon_err_subnr(void)
 char *
 clixon_err_reason(void)
 {
-    return _err_reason;
+    return _err_reason ? cbuf_get(_err_reason) : "";
 }
 
 static char *
@@ -225,7 +230,8 @@ clixon_err_reset(void)
 {
     _err_category = 0;
     _err_subnr = 0;
-    memset(_err_reason, 0, ERR_STRLEN);
+    if (_err_reason)
+        cbuf_reset(_err_reason);
     return 0;
 }
 
@@ -271,14 +277,20 @@ clixon_err_args(clixon_handle h,
                 const int     line,
                 int           category,
                 int           suberr,
-                char         *msg)
+                const char   *msg)
 {
     int                     retval = -1;
     struct clixon_err_cats *cec;
     cbuf                   *cb = NULL;
 
     /* Set the global variables */
-    strncpy(_err_reason, msg, ERR_STRLEN-1);
+    if (_err_reason == NULL &&
+        (_err_reason = cbuf_new()) == NULL){
+        fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+        goto done;
+    }
+    cbuf_reset(_err_reason);
+    cprintf(_err_reason, "%s", msg);
     _err_category = category;
     _err_subnr = suberr;
     /* Check category callbacks as defined in clixon_err_cat_reg */
@@ -448,7 +460,13 @@ clixon_err_fn(clixon_handle h,
         goto done;
     va_end(ap);
     if (cb != NULL){ /* Customized: expand clixon_err_args */
-        strncpy(_err_reason, cbuf_get(cb), ERR_STRLEN-1);
+        if (_err_reason == NULL &&
+            (_err_reason = cbuf_new()) == NULL){
+            fprintf(stderr, "cbuf_new: %s\n", strerror(errno));
+            goto done;
+        }
+        cbuf_reset(_err_reason);
+        cprintf(_err_reason, "%s", cbuf_get(cb));
         _err_category = category;
         _err_subnr = suberr;
         clixon_log_fn(h, 0, LOG_ERR, NULL, "%s", cbuf_get(cb));
@@ -490,7 +508,11 @@ clixon_err_save(void)
         return NULL;
     es->es_category = _err_category;
     es->es_subnr = _err_subnr;
-    strncpy(es->es_reason, _err_reason, ERR_STRLEN);
+    es->es_reason = strdup(_err_reason ? cbuf_get(_err_reason) : "");
+    if (es->es_reason == NULL){
+        free(es);
+        return NULL;
+    }
     return (void*)es;
 }
 
@@ -504,7 +526,15 @@ clixon_err_restore(void* handle)
     if ((es = (struct err_state *)handle) != NULL){
         _err_category = es->es_category;
         _err_subnr = es->es_subnr;
-        strcpy(_err_reason, es->es_reason);
+        if (_err_reason == NULL &&
+            (_err_reason = cbuf_new()) == NULL){
+            free(es->es_reason);
+            free(es);
+            return -1;
+        }
+        cbuf_reset(_err_reason);
+        cprintf(_err_reason, "%s", es->es_reason);
+        free(es->es_reason);
         free(es);
     }
     return 0;
@@ -542,6 +572,10 @@ clixon_err_exit(void)
     while ((cec = _err_cat_list) != NULL){
         DELQ(cec, _err_cat_list, clixon_err_cats *);
         free(cec);
+    }
+    if (_err_reason){
+        cbuf_free(_err_reason);
+        _err_reason = NULL;
     }
     return 0;
 }

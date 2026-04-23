@@ -48,8 +48,6 @@
 /*
  * Constants
  */
-#define ERR_STRLEN 256
-
 /* Special error number for clicon_suberrno
  * For catching xml parse errors as exceptions
  */
