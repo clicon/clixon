@@ -85,12 +85,13 @@ struct yang_stmt {
                                         Following stmts have cv:s:
                                         Y_FEATURE: boolean true or false
                                         Y_CONFIG: boolean true or false
-                                        Y_LEAF: for default value
-                                        Y_LEAF_LIST,
+                                        Y_LEAF:      default value
+                                        Y_LEAF_LIST: default value
                                         Y_MAX_ELEMENTS:
                                         Y_MIN_ELEMENTS: inte
                                         Y_MANDATORY: boolean true or false
-                                        Y_MUST: dependency depth: depth >= 0 walk up 'depth' ancestors
+                                        Y_MUST:   dependency depth: depth >= 0 walk up 'depth' ancestors
+                                        Y_PATH:   (leafref type): dependency depth: depth >= 0 walk up 'depth' ancestors
                                         Y_REQUIRE_INSTANCE: true or false
                                         Y_FRACTION_DIGITS for fraction-digits
                                         Y_REVISION (uint32)

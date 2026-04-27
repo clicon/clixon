@@ -43,6 +43,7 @@ Expected: May 2026
   * Optimized mandatory check by skipping several nodes
 * Added incremental validation when tree has changed, of the following YANG checks:
   * Must, with parse-time depth dependency analysis of XPaths
+  * Leafrefs, using same XPath depth dependency analysis
   * Mandatory
   * Minmax/unique/duplicates
 * Optimization of XML config memory footprint

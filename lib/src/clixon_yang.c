@@ -3767,24 +3767,25 @@ must_depth_walk(xpath_tree *xs,
     }
 }
 
-/*! Parse must xpath and cache depth/abspath info on ys_cv
+/*! Parse an XPath string and cache ancestor depth on ys_cv
  *
- * Stores an int32 cv on the Y_MUST yang_stmt:
- * - -1 : must expression contains an absolute path (cannot skip)
- * - >= 0: maximum ancestor depth of relative must expression
- * @param[in]  h    Clixon handle
- * @param[in]  ys   Y_MUST yang statement
+ * Shared helper used by both Y_MUST and Y_PATH (leafref) to store the
+ * maximum ancestor (../  ) depth needed for the incremental skip logic.
+ *
+ * Stores an int32 cv on the yang_stmt:
+ * - -1  : expression contains an absolute path — cannot skip
+ * - >= 0: maximum ancestor depth of the relative expression
+ * @param[in]  ys   Y_MUST or Y_PATH yang statement
  * @retval     0    OK
  * @retval    -1    Error
  */
 static int
-ys_populate_must(clixon_handle h,
-                 yang_stmt    *ys)
+ys_populate_xpath_depth(yang_stmt *ys)
 {
-    int         retval  = -1;
+    int         retval   = -1;
     const char *xpath;
-    xpath_tree *xptree  = NULL;
-    cg_var     *cv      = NULL;
+    xpath_tree *xptree   = NULL;
+    cg_var     *cv       = NULL;
     int         maxdepth = 0;
     int         abspath  = 0;
     int32_t     stored;
@@ -3866,8 +3867,15 @@ ys_populate(yang_stmt    *ys,
             goto done;
         break;
     case Y_MUST:
-        if (ys_populate_must(h, ys) < 0)
+        if (ys_populate_xpath_depth(ys) < 0)
             goto done;
+        break;
+    case Y_PATH:
+#ifdef VALIDATE_INCREMENTAL
+        /* Cache leafref path depth for incremental skip; see validate_leafref */
+        if (ys_populate_xpath_depth(ys) < 0)
+            goto done;
+#endif
         break;
     case Y_UNIQUE:
         if (ys_populate_unique(h, ys) < 0)

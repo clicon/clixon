@@ -1824,6 +1824,9 @@ xml_yang_validate_all1(clixon_handle h,
     int32_t    mustdepth;
     cxobj     *xanc;
     int        mustd;
+    yang_stmt *ypath;     /* Y_PATH for leafref skip */
+    cg_var    *leafcv;    /* cached depth cv on Y_PATH */
+    int32_t    leafdepth; /* leafref ../ depth (-1 = no skip) */
 #endif
     int        ret;
 
@@ -1935,6 +1938,34 @@ xml_yang_validate_all1(clixon_handle h,
             if (yang_type_get(yt, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
                 goto done;
             if (strcmp(yang_argument_get(yc), "leafref") == 0){
+#ifdef VALIDATE_INCREMENTAL
+                /* Incremental skip: if the common ancestor (reached by walking up
+                 * the leafref path's ../ depth) has no CHANGE/ADD/DEL_ANC, then
+                 * neither the source leaf nor any target under that ancestor changed.
+                 * Only applies to relative paths (depth >= 1); absolute paths are -1.
+                 */
+                if (incrml &&
+                    (ypath = yang_find(yc, Y_PATH, NULL)) != NULL &&
+                    (leafcv = yang_cv_get(ypath)) != NULL &&
+                    (leafdepth = cv_int32_get(leafcv)) >= 1){
+                    xanc = xt;
+                    for (mustd = 0; mustd < leafdepth && xanc != NULL; mustd++)
+                        xanc = xml_parent(xanc);
+                    if (xanc != NULL &&
+                        !(xml_flag(xanc, XML_FLAG_CHANGE) ||
+                          xml_flag(xanc, XML_FLAG_ADD) ||
+                          xml_flag(xanc, XML_FLAG_DEL_ANC))){
+                        clixon_debug(CLIXON_DBG_VALIDATE,
+                                     "%s: skip leafref: %s (ancestor unchanged)",
+                                     __func__, yang_argument_get(ypath));
+                        break; /* break switch: skip leafref, continue to minmax/must */
+                    }
+                }
+#endif /* VALIDATE_INCREMENTAL */
+#ifdef VALIDATE_INCREMENTAL
+                clixon_debug(CLIXON_DBG_VALIDATE, "%s: check leafref: %s", __func__,
+                             (ypath = yang_find(yc, Y_PATH, NULL)) ? yang_argument_get(ypath) : "?");
+#endif /* VALIDATE_INCREMENTAL */
                 if ((ret = validate_leafref(xt, yt, yc, xret)) < 0)
                     goto done;
                 if (ret == 0)
