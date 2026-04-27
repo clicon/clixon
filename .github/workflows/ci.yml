@@ -30,6 +30,7 @@ jobs:
       run: (cd example; make)
     - name: install example
       run: (cd example; sudo make install)
+
   ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
     steps:
@@ -51,99 +52,6 @@ jobs:
       run: (cd example; make)
     - name: install example
       run: (cd example; sudo make install)
-
-  docker-alpine-test-1:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docker/test
-    steps:
-    - uses: actions/checkout@v5
-    # 2) Inline of make test, but without configure
-    - name: in-line clone
-      run: git clone file://$(realpath ../..)
-    - name: openconfig
-      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
-    - name: yangmodels1
-      run: mkdir -p yang/standard
-    - name: yangmodels2
-      run: (cd yang; git init;)
-    - name: yangmodels3
-      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
-    - name: yangmodels4
-      run: (cd yang; git config core.sparseCheckout true)
-    - name: yangmodels5
-      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
-    - name: yangmodels6
-      run: (cd yang; git pull origin main)
-    - name: make docker
-      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
-    - name: start container
-      run: ./start.sh
-    - name: run test a-m,o,x-y
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh test_g*.sh test_h*.sh test_i*.sh test_j*.sh test_l*.sh test_m*.sh test_o*.sh test_x*.sh test_y*.sh" ./sum.sh'
-
-  docker-alpine-test-2:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docker/test
-    steps:
-    - uses: actions/checkout@v5
-    # 2) Inline of make test, but without configure
-    - name: in-line clone
-      run: git clone file://$(realpath ../..)
-    - name: openconfig
-      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
-    - name: yangmodels1
-      run: mkdir -p yang/standard
-    - name: yangmodels2
-      run: (cd yang; git init;)
-    - name: yangmodels3
-      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
-    - name: yangmodels4
-      run: (cd yang; git config core.sparseCheckout true)
-    - name: yangmodels5
-      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
-    - name: yangmodels6
-      run: (cd yang; git pull origin main)
-    - name: make docker
-      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
-    - name: start container
-      run: ./start.sh
-    - name: run test n,p
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_n*.sh test_p*.sh" ./sum.sh'
-
-  docker-alpine-test-3:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docker/test
-    steps:
-    - uses: actions/checkout@v5
-    # 2) Inline of make test, but without configure
-    - name: in-line clone
-      run: git clone file://$(realpath ../..)
-    - name: openconfig
-      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
-    - name: yangmodels1
-      run: mkdir -p yang/standard
-    - name: yangmodels2
-      run: (cd yang; git init;)
-    - name: yangmodels3
-      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
-    - name: yangmodels4
-      run: (cd yang; git config core.sparseCheckout true)
-    - name: yangmodels5
-      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
-    - name: yangmodels6
-      run: (cd yang; git pull origin main)
-    - name: make docker
-      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test  .
-    - name: start container
-      run: ./start.sh
-    - name: run test r-w
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh test_s*.sh test_t*.sh test_u*.sh test_w*.sh" ./sum.sh'
 
   docker-alpine-test-fcgi-r:
     runs-on: ubuntu-latest
@@ -175,3 +83,178 @@ jobs:
       run: ./start.sh
     - name: run test r
       run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
+
+  docker-alpine-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: in-line clone
+      run: git clone file://$(realpath ../..)
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: yangmodels1
+      run: mkdir -p yang/standard
+    - name: yangmodels2
+      run: (cd yang; git init;)
+    - name: yangmodels3
+      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
+    - name: yangmodels4
+      run: (cd yang; git config core.sparseCheckout true)
+    - name: yangmodels5
+      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
+    - name: yangmodels6
+      run: (cd yang; git pull origin main)
+    - name: make docker
+      run: sudo docker build -f Dockerfile.native -t clixon/clixon-test .
+    - name: save docker image
+      run: sudo docker save clixon/clixon-test | gzip > /tmp/clixon-test.tar.gz
+    - name: upload docker image
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp/clixon-test.tar.gz
+        retention-days: 1
+
+  docker-alpine-test-1:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test a-f
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh" ./sum.sh'
+
+  docker-alpine-test-2:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test n
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_n*.sh" ./sum.sh'
+
+  docker-alpine-test-3:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test p
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_p*.sh" ./sum.sh'
+
+  docker-alpine-test-4:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test r
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
+
+  docker-alpine-test-5:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test os
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_o*.sh test_s*.sh" ./sum.sh'
+
+  docker-alpine-test-6:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test ijtuw
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_i*.sh test_j*.sh test_t*.sh test_u*.sh test_w*.sh" ./sum.sh'
+
+  docker-alpine-test-7:
+    needs: docker-alpine-build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@v5
+    - name: download docker image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-native
+        path: /tmp
+    - name: load docker image
+      run: sudo docker load < /tmp/clixon-test.tar.gz
+    - name: start container
+      run: ./start.sh
+    - name: run test ghlmxy
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_g*.sh test_h*.sh test_l*sh test_m*.sh test_x*.sh test_y*.sh" ./sum.sh'
+
