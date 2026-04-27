@@ -299,7 +299,7 @@ leafref_opt_cache_new(yang_stmt *ys,
  * @param[out] search Can do binary search (or not)
  * @param[out] x0p    First object hit, if searchable
  * @retval     0      OK
- * @note only binary search if xvec have the same parent, this could probably be implemented
+ * @see https://github.com/clicon/clixon/issues/669
  */
 static int
 leafref_opt_search_detect(cxobj **xvec,
@@ -311,11 +311,14 @@ leafref_opt_search_detect(cxobj **xvec,
     cxobj     *x0;
     cxobj     *xp;
     cxobj     *x0p;
+    cxobj     *xpp = NULL;  /* grandparent of x0 (parent of list entry), for list case */
     yang_stmt *y;
     yang_stmt *y0;
     yang_stmt *yp;
+    yang_stmt *y0p = NULL;  /* YANG spec of x0p (list), for list case */
     cvec      *cvk;
     int        i;
+    int        is_list = 0; /* 1=list key, 0=leaf-list */
 
     x0 = NULL;
     x0p = NULL;
@@ -324,7 +327,6 @@ leafref_opt_search_detect(cxobj **xvec,
         x = xvec[i];
         if ((xp = xml_parent(x)) == NULL)
             break;
-        // XXX Maybe we could do this in xpath code if we use xpath_vec_ctx instead
         if ((y = xml_spec(x)) == NULL)
             break;
         if (i == 0){
@@ -339,14 +341,29 @@ leafref_opt_search_detect(cxobj **xvec,
                      (cvk = yang_cvec_get(yp)) != NULL &&
                      cvec_len(cvk) == 1){
                 /* Only allow single key lists */
+                is_list = 1;
+                y0p = yp;
+                xpp = xml_parent(xp);
             }
             else
                 break;
         }
-        else if (y0 != y || x0p != xp)
+        else if (y0 != y)
             break;
+        else if (is_list){
+            /* For list keys: different list entries (x0p != xp) are acceptable as long as
+             * they belong to the same list type and share the same parent container.
+             * match_leafref_child_list searches via xml_parent(x0p), so grandparent equality suffices.
+             */
+            if (xml_spec(xp) != y0p || xml_parent(xp) != xpp)
+                break;
+        }
+        else {
+            /* For leaf-list: all items must be direct siblings under the same parent */
+            if (x0p != xp)
+                break;
+        }
     }
-    // Does not work in some cases for LISTs
     if (i == xlen && x0 != NULL && xml_parent(x0) && xml_spec(x0)){
         *search = 1;
         *x0pp = x0;

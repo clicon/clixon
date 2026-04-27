@@ -97,6 +97,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [List binary search is broken](https://github.com/clicon/clixon/issues/669)
 * Fixed: [cli description should be enumeration's desc not the leaf's. for yang enum type](https://github.com/clicon/clixon/issues/183)
 * Fixed: [CLI: union leafref not supported in completion](https://github.com/clicon/clixon/issues/558)
 * Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)

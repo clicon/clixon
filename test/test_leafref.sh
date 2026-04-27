@@ -232,6 +232,28 @@ expectpart "$($clixon_cli -1f $cfg -l o set default-address custom eth3)" 0 "^$"
 new "cli leafref validate expect custom errmsg"
 expectpart "$($clixon_cli -1f $cfg -l o validate)" 255 "The interface is not found eth3: instance-required : /if:interfaces/if:interface/if:name"
 
+# Issue #669: leafref binary search detect broken when list entries have different XML parents.
+# The sender list has key "name" and template leafref to /sender/name.
+# With multiple senders, xvec contains group-name leafs from distinct list entries
+# (different parent pointers), which used to disable the binary search optimization.
+new "issue 669: discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "issue 669: add three senders"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><sender xmlns=\"urn:example:clixon\"><name>s1</name></sender><sender xmlns=\"urn:example:clixon\"><name>s2</name></sender><sender xmlns=\"urn:example:clixon\"><name>s3</name><template>s1</template></sender></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "issue 669: validate with valid leafref to list key (multiple list entries)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "issue 669: set template to non-existing sender"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><sender xmlns=\"urn:example:clixon\"><name>s3</name><template>no-such-sender</template></sender></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "issue 669: validate with invalid leafref to list key (expect failure)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-error>" ""
+
+new "issue 669: discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
