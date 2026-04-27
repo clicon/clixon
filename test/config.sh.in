@@ -104,5 +104,6 @@ MIBDIRS=/usr/share/snmp/mibs:mibs:@MIB_GENERATED_YANG_DIR@
 SSH_BIN=@SSH_BIN@
 
 # gRPC/gNMI
+enable_grpc=@enable_grpc@
 GRPC_PORT=9339
 GRPC_PROTO_DIR=@DATADIR@/clixon/proto

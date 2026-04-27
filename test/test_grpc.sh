@@ -19,6 +19,12 @@ fyang=$dir/example.yang
 fyang2=$dir/example-aug.yang
 fstate=$dir/state.xml
 
+if [ "${enable_grpc}" != "yes" ]; then
+    echo "...skipped: must run with --enable-grpc"
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
+
 # Skip if clixon_grpc not installed
 : ${clixon_grpc:=$(which clixon_grpc 2>/dev/null)}
 if [ -z "$clixon_grpc" ]; then

@@ -37,13 +37,6 @@ Expected: May 2026
   * Reduction by more than 50%, down to between 38% - 48% of original size depending on config
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
-    * Condensed type, sort index, flags and prefix length into a single 64-bit field
-    * Unified body value and child vector into a 64-bit single union
-    * Combined prefix and name into one field, removed name from xml-body
-    * Moved child vector into separate sidecar struct
-    * Removed x_up_candidate and replaced it with ptr map
-    * Moved explicit search-index to ptr map
-    * Removed in-struct iterator
   * Changed child iterator API: use xml_childiter() instead of xml_child_each()
     * Configure with `--enable-child-each-wrapper option` to enable optimization
 
