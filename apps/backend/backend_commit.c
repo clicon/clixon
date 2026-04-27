@@ -103,10 +103,8 @@ generic_validate(clixon_handle       h,
     cbuf              *cb = NULL;
     int                ret;
 #ifdef VALIDATE_INCREMENTAL
-    validate_td_opts_t opts = {0,};
-
     /* All entries — use td-aware variant to skip mandatory on unchanged nodes */
-    if ((ret = xml_yang_validate_all_state_td(h, td->td_target, 0, &opts, xret)) < 0)
+    if ((ret = xml_yang_validate_all_state_td(h, td->td_target, 0, 1, xret)) < 0)
         goto done;
 #else
     if ((ret = xml_yang_validate_all_state_td(h, td->td_target, 0, NULL, xret)) < 0)

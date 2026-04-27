@@ -1364,7 +1364,6 @@ check_mandatory(cxobj     *xt,
         clixon_err(OE_YANG, EINVAL, "yt is not config true");
         goto done;
     }
-#ifdef OPTIMIZE_MANDATORY_LEAF_SKIP
     /* Leaf, leaf-list, anyxml and anydata nodes can only have metadata as YANG children
      * (type/units/default/config/mandatory/must/when) — never Y_CHOICE or data nodes —
      * so the loop below is always a no-op for them. Skip it entirely. */
@@ -1377,7 +1376,6 @@ check_mandatory(cxobj     *xt,
     default:
         break;
     }
-#endif /* OPTIMIZE_MANDATORY_LEAF_SKIP */
     if (yang_keyword_get(yt) == Y_LIST){
         if ((ret = check_list_key(xt, yt, xret)) < 0)
             goto done;
@@ -1386,7 +1384,6 @@ check_mandatory(cxobj     *xt,
     }
     inext = 0;
     while ((yc = yn_iter(yt, &inext)) != NULL) {
-#ifdef OPTIMIZE_MANDATORY_LEAF_SKIP
         /* Only data-node children can be mandatory. Skip metadata children (type, must,
          * when, description, etc.) immediately to avoid the yang_xml_mandatory overhead
          * (xml_new + xpath eval + xml_purge) for nodes that always return 0.
@@ -1425,33 +1422,6 @@ check_mandatory(cxobj     *xt,
         default:
             continue; /* metadata/grouping/list/etc — yang_xml_mandatory always 0 */
         }
-#else
-        /* Choice is more complex because of choice/case structure and possibly hierarchical */
-        if (yang_keyword_get(yc) == Y_CHOICE){
-            if (yang_xml_mandatory(xt, yc)){
-                ix = 0;
-                while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
-                    if ((y = xml_spec(x)) != NULL &&
-                        (yp = yang_choice(y)) != NULL &&
-                        yp == yc){
-                        break; /* leave loop with x set */
-                    }
-                }
-                if (x == NULL){
-                    /* @see RFC7950: 15.6 Error Message for Data That Violates
-                     * a Mandatory "choice" Statement */
-                    if (xret && netconf_missing_choice_xml(xret, xt, yang_argument_get(yc), NULL) < 0)
-                        goto done;
-                    goto fail;
-                }
-            }
-            /* Check mandatory nodes in case according to RFC7950 7.9.4 */
-            if ((ret = check_mandatory_case(xt, yc, xret)) < 0)
-                goto done;
-            if (ret == 0)
-                goto fail;
-        }
-#endif /* OPTIMIZE_MANDATORY_LEAF_SKIP */
         if ((ret = yang_xml_mandatory(xt, yc)) < 0) /* Rest of yangs are immediate children */
             goto done;
         if (ret == 0)
@@ -1492,9 +1462,7 @@ check_mandatory(cxobj     *xt,
             break;
         } /* switch */
     }
-#ifdef OPTIMIZE_MANDATORY_LEAF_SKIP
  ok:
-#endif /* OPTIMIZE_MANDATORY_LEAF_SKIP */
     retval = 1;
  done:
     if (cb)
@@ -1790,17 +1758,18 @@ xml_yang_validate_leaf_union(clixon_handle h,
 
 /*! Validate a single XML node with yang specification for all (not only added) entries
  *
- * @param[in]  h     Clixon handle
- * @param[in]  xt    XML node to be validated
- * @param[in]  state 0: ignore state, 1: also validate state (non-config)
- * @param[out] xret  Error XML tree (if retval=0). Free with xml_free after use
- * @retval     1     Validation OK
- * @retval     0     Validation failed (cbret set)
- * @retval    -1     Error
+ * @param[in]  h      Clixon handle
+ * @param[in]  xt     XML node to be validated
+ * @param[in]  state  Also validate state, otherwise only config data
+ * @param[in]  incrml Incremental validation based on XML flag values.  0 means full validatation
+ * @param[out] xret   Error XML tree (if retval=0). Free with xml_free after use
+ * @retval     1      Validation OK
+ * @retval     0      Validation failed (cbret set)
+ * @retval    -1      Error
  * @code
  *   cxobj *x;
  *   cbuf *xret = NULL;
- *   if ((ret = xml_yang_validate_all(h, x, 0, &xret)) < 0)
+ *   if ((ret = xml_yang_validate_all(h, x, 0, 0, &xret)) < 0)
  *      err;
  *   if (ret == 0)
  *      fail;
@@ -1810,11 +1779,11 @@ xml_yang_validate_leaf_union(clixon_handle h,
  * @see xml_yang_validate_rpc
  */
 static int
-xml_yang_validate_all1(clixon_handle       h,
-                       cxobj              *xt,
-                       int                 state,
-                       validate_td_opts_t *opts,
-                       cxobj             **xret)
+xml_yang_validate_all1(clixon_handle h,
+                       cxobj        *xt,
+                       int           state,
+                       int           incrml,
+                       cxobj       **xret)
 {
     int        retval = -1;
     yang_stmt *yt;  /* yang node associated with xt */
@@ -1833,6 +1802,12 @@ xml_yang_validate_all1(clixon_handle       h,
     int        saw_node = 0;
     int        inext;
     int        ix;
+#ifdef VALIDATE_INCREMENTAL
+    cg_var    *mustcv;
+    int32_t    mustdepth;
+    cxobj     *xanc;
+    int        mustd;
+#endif
     int        ret;
 
     if (clicon_option_bool(h, "CLICON_YANG_SCHEMA_MOUNT")){
@@ -1912,7 +1887,7 @@ xml_yang_validate_all1(clixon_handle       h,
          * A separate flag (rather than XML_FLAG_CHANGE) is used to avoid
          * affecting other logic that reads XML_FLAG_CHANGE.
          */
-        if (opts != NULL &&
+        if (incrml &&
             !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD) ||
               xml_flag(xt, XML_FLAG_DEL_ANC))){
             /* Skip mandatory check — subtree unchanged */
@@ -1977,12 +1952,38 @@ xml_yang_validate_all1(clixon_handle       h,
             /* Deviate non-supported, see yang_deviation */
             if (yang_flag_get(yc, YANG_FLAG_NOT_SUPPORT))
                 continue;
+            xpath = yang_argument_get(yc);
+#ifdef VALIDATE_INCREMENTAL
+            /* Incremental optimization: skip must if relevant ancestor unchanged.
+             * ys_populate_must() stored the max parent-step depth (or -1 for
+             * absolute paths) as an int32 cv on the Y_MUST yang_stmt.
+             * If depth >= 0 and opts is set, walk up 'depth' ancestors; if none
+             * of them carry CHANGE/ADD/DEL_ANC the subtree is untouched and the
+             * must result is guaranteed the same as in the prior commit.
+             */
+            if (incrml && 
+                (mustcv = yang_cv_get(yc)) != NULL){
+                if ((mustdepth = cv_int32_get(mustcv)) >= 0) {
+                    /* Walk up mustdepth ancestors (0 = xt itself) */
+                    xanc = xt;
+                    for (mustd = 0; mustd < mustdepth && xanc != NULL; mustd++)
+                        xanc = xml_parent(xanc);
+                    if (xanc != NULL &&
+                        !(xml_flag(xanc, XML_FLAG_CHANGE) ||
+                          xml_flag(xanc, XML_FLAG_ADD) ||
+                          xml_flag(xanc, XML_FLAG_DEL_ANC))){
+                        clixon_debug(CLIXON_DBG_VALIDATE,
+                                     "%s: skip must: %s (ancestor unchanged)",
+                                     __func__, xpath);
+                        continue;
+                    }
+                }
+            }
+#endif /* VALIDATE_INCREMENTAL */
             if (!saw_node)
                 clixon_debug_xml(CLIXON_DBG_XPATH, xt, "");
             saw_node = 1;
-
-            xpath = yang_argument_get(yc); /* "must" has xpath argument */
-            clixon_debug(CLIXON_DBG_XPATH, "xpath '%s'", xpath);
+            clixon_debug(CLIXON_DBG_VALIDATE, "%s: check must: %s", __func__, xpath);
             /* the context node is the node in the accessible tree for
              * which the "must" statement is defined.
              * The set of namespace declarations is the set of all "import" statements'
@@ -2028,7 +2029,7 @@ xml_yang_validate_all1(clixon_handle       h,
     while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
         if (!state && (yc = xml_spec(x)) != NULL && yang_config(yc) == 0)
             continue; /* skip if non-config */
-        if ((ret = xml_yang_validate_all1(h, x, state, opts, xret)) < 0)
+        if ((ret = xml_yang_validate_all1(h, x, state, incrml, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -2041,7 +2042,7 @@ xml_yang_validate_all1(clixon_handle       h,
          * node, no children were added, removed or changed, so the count and
          * uniqueness constraints still hold from the prior commit.
          */
-        if (opts != NULL &&
+        if (incrml &&
             !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD) ||
               xml_flag(xt, XML_FLAG_DEL_ANC))){
             clixon_debug(CLIXON_DBG_VALIDATE, "skip minmax: %s (unchanged)", xml_name(xt));
@@ -2090,10 +2091,10 @@ xml_yang_validate_all(clixon_handle h,
 
 #ifdef LEAFREF_OPTIMIZE
     leafref_opt_init(h);
-    retval = xml_yang_validate_all1(h, xt, state, NULL, xret);
+    retval = xml_yang_validate_all1(h, xt, state, 0, xret);
     leafref_opt_exit(h);
 #else
-    retval = xml_yang_validate_all1(h, xt, state, NULL, xret);
+    retval = xml_yang_validate_all1(h, xt, state, 0, xret);
 #endif
     return retval;
 }
@@ -2142,21 +2143,21 @@ xml_yang_validate_all_state(clixon_handle h,
  * Called from generic_validate() in the commit path after compute_diffs() has
  * set XML change flags on td->td_target.
  *
- * @param[in]  h     Clixon handle
- * @param[in]  xt    XML tree to validate (td->td_target or subtree thereof)
- * @param[in]  state 0: ignore state, 1: also validate state (non-config)
- * @param[in]  opts  Incremental-validation options; NULL means full validation
- * @param[out] xret  Error XML tree (if ret == 0). Free with xml_free after use
- * @retval     1     Validation OK
- * @retval     0     Validation failed (xret set)
- * @retval    -1     Error
+ * @param[in]  h      Clixon handle
+ * @param[in]  xt     XML tree to validate (td->td_target or subtree thereof)
+ * @param[in]  state  Also validate state, otherwise only config data
+ * @param[in]  incrml Incremental-validation based on XML flag value.; 0 means full validatation
+ * @param[out] xret   Error XML tree (if ret == 0). Free with xml_free after use
+ * @retval     1      Validation OK
+ * @retval     0      Validation failed (xret set)
+ * @retval    -1      Error
  */
 int
-xml_yang_validate_all_state_td(clixon_handle       h,
-                               cxobj              *xt,
-                               int                 state,
-                               validate_td_opts_t *opts,
-                               cxobj             **xret)
+xml_yang_validate_all_state_td(clixon_handle h,
+                               cxobj        *xt,
+                               int           state,
+                               int           incrml,
+                               cxobj       **xret)
 {
     cxobj     *x;
     yang_stmt *y;
@@ -2170,10 +2171,10 @@ xml_yang_validate_all_state_td(clixon_handle       h,
             continue; /* skip if non-config */
 #ifdef LEAFREF_OPTIMIZE
         leafref_opt_init(h);
-        ret = xml_yang_validate_all1(h, x, state, opts, xret);
+        ret = xml_yang_validate_all1(h, x, state, incrml, xret);
         leafref_opt_exit(h);
 #else
-        ret = xml_yang_validate_all1(h, x, state, opts, xret);
+        ret = xml_yang_validate_all1(h, x, state, incrml, xret);
 #endif
         if (ret < 1)
             return ret;

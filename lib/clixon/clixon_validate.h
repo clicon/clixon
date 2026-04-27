@@ -51,21 +51,7 @@ int xml_yang_validate_all(clixon_handle h, cxobj *xt, int state, cxobj **xret);
 int xml_yang_validate_all_state(clixon_handle h, cxobj *xt, int state, cxobj **xret);
 int xml_yang_validate_exit(clixon_handle h);
 int rpc_reply_check(clixon_handle h, const char *rpcname, cbuf *cbret);
-
-/*! Options for transaction-aware (incremental) validation
- *
- * When non-NULL, enables skipping of certain validation checks on provably
- * unchanged nodes, using XML change flags set by compute_diffs().
- *
- * XML_FLAG_CHANGE is propagated into the TARGET tree ancestors of deleted
- * nodes by compute_diffs() via find_target_equiv(), so only XML_FLAG_CHANGE
- * and XML_FLAG_ADD need to be checked to decide whether to skip.
- */
-typedef struct {
-    int vtd_reserved; /* Reserved for future extension */
-} validate_td_opts_t;
-
-int xml_yang_validate_all_state_td(clixon_handle h, cxobj *xt, int state, validate_td_opts_t *opts, cxobj **xret);
+int xml_yang_validate_all_state_td(clixon_handle h, cxobj *xt, int state, int incrml, cxobj **xret);
 
 /*-- Backward compatible 7.7 --*/
 static inline int

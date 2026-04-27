@@ -191,7 +191,7 @@
  * file originally parsed, and not the linenr of the file where the grouping is used.
  * If not set, reduces memory with 8 bytes per yang-stmt.
  */
-#define YANG_SPEC_LINENR
+#undef YANG_SPEC_LINENR
 
 /*! Effort to clear system-only config data from candidate cache after commit
  *
@@ -263,7 +263,6 @@
  * If a result of an XPath lookup contain elements that are part of the same
  * LEAFLIST or LIST AND that list is ordered-by-system, then one can
  * use binary search on that list instead of linear.
- * LEAFREF_OPT_CACHE must be enabled
  * Caveat: to find out whether all elements are one list a relatively costly
  * loop is made once per yang, this could possibly change and the loop could
  * be improved.
@@ -330,28 +329,10 @@
  */
 #undef YANGLIB_MODSET_NAME_DEFAULT
 
-/*! Optimize check_unique_list_direct for user-ordered lists and unique constraints
- *
- * The unsorted path (triggered by Y_UNIQUE statements and user-ordered lists) previously
- * called check_insert_duplicate for each new entry, doing a linear scan of all prior entries
- * and resulting in O(N²) total comparisons.
- * When defined, all entries are first collected into a vec_order array (O(N)), sorted with
- * qsort using cmp_list_qsort (O(N log N)), then adjacent pairs are scanned for duplicates (O(N)).
- * The sorted=1 path (system-ordered list key check) is already O(N) and is not affected.
- */
-#define OPTIMIZE_UNIQUE_LIST_SORT
-
-/*! Optimize check_mandatory by skipping the yn_iter loop for leaf/leaf-list nodes
- *
- * Leaf and leaf-list YANG nodes can only have type/units/default/config/mandatory/must/when
- * as children — never Y_CHOICE or data nodes — so check_mandatory's loop is always a no-op
- * for them. Skip it entirely since leaves are the most common validated node type.
- */
-#define OPTIMIZE_MANDATORY_LEAF_SKIP
-
 /*! Enable incremental validation, ie only check if subtree has changed
  *
- * Implemented so far: mandatory and minmax
+ * Implemented: mandatory, must and minmax/unique
+ * Must relies on pre-compute (parse-time) XPath depth analysis
  * Note, only some calls use this since a pre-step is to compute diffs
  */
 #define VALIDATE_INCREMENTAL

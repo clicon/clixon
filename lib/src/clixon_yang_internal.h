@@ -90,6 +90,7 @@ struct yang_stmt {
                                         Y_MAX_ELEMENTS:
                                         Y_MIN_ELEMENTS: inte
                                         Y_MANDATORY: boolean true or false
+                                        Y_MUST: dependency depth: depth >= 0 walk up 'depth' ancestors
                                         Y_REQUIRE_INSTANCE: true or false
                                         Y_FRACTION_DIGITS for fraction-digits
                                         Y_REVISION (uint32)

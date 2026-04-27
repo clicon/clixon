@@ -37,20 +37,19 @@ Expected: May 2026
 * New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
 * Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
 * New xmldb-cache-status: inmem, file and file-inmem to configure each datastore cache behavior
-* Optimization of XPath evaluation
-  * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
 * Optimization of XML config validation
+  * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
   * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
   * Optimized mandatory check by skipping several nodes
-  * Added incremental validation when tree has changed, of the following YANG checks:
-    * Mandatory
-    * Minmax/unique/duplicates
+* Added incremental validation when tree has changed, of the following YANG checks:
+  * Must, with parse-time depth dependency analysis of XPaths
+  * Mandatory
+  * Minmax/unique/duplicates
 * Optimization of XML config memory footprint
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
   * Changed child iterator API: use xml_childiter() instead of xml_child_each()
     * Configure with `--enable-child-each-wrapper option` to enable optimization
-
 * show memory: Added detailed statistics for config datastores (CLI and RPC)
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`

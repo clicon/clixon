@@ -79,6 +79,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "clixon_xpath_parse.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
 #include "clixon_data.h"
@@ -3703,6 +3704,115 @@ ys_populate_module_submodule(clixon_handle h,
     return retval;
 }
 
+/*! Walk xpath AST to compute must depth info
+ *
+ * XP_RELLOCPATH is left-recursive: RELLOCPATH(c0=prev_path, c1=latest_step).
+ * For a path like `../../..` the three XP_STEP(A_PARENT) nodes are chained
+ * such that the output depth from c0 must become the input depth to c1.
+ * This function returns the "output depth" after processing its subtree so
+ * that callers can pass it to the next sibling.
+ *
+ * Sub-expressions inside predicates restart at depth=0 independently.
+ *
+ * @param[in]     xs       XPath tree node
+ * @param[in]     depth    Input depth (parent-step count accumulated so far)
+ * @param[in,out] maxdepth Maximum parent depth seen so far
+ * @param[in,out] abspath  Set to 1 if any absolute path (XP_ABSPATH) found
+ * @retval        int      Output depth after processing this node
+ */
+static int
+must_depth_walk(xpath_tree *xs,
+                int         depth,
+                int        *maxdepth,
+                int        *abspath)
+{
+    int d0;
+
+    if (xs == NULL)
+        return depth;
+    switch (xs->xs_type){
+    case XP_ABSPATH:
+        *abspath = 1;
+        must_depth_walk(xs->xs_c0, 0, maxdepth, abspath);
+        return 0;
+    case XP_RELLOCPATH:
+        /* Left-recursive path chain: c0 is the prefix path, c1 is the next
+         * step.  Pass the output depth of c0 as input depth to c1 so that
+         * consecutive ".." steps accumulate correctly. */
+        d0 = must_depth_walk(xs->xs_c0, depth, maxdepth, abspath);
+        return must_depth_walk(xs->xs_c1, d0, maxdepth, abspath);
+    case XP_STEP:
+        if (xs->xs_int == A_PARENT || xs->xs_int == A_ANCESTOR){
+            depth++;
+            if (depth > *maxdepth)
+                *maxdepth = depth;
+        }
+        else {
+            depth = 0;
+        }
+        /* XP_STEP's c1 holds predicates — independent sub-expression */
+        must_depth_walk(xs->xs_c1, 0, maxdepth, abspath);
+        return depth;
+    case XP_PRED:
+        /* Predicates chain in c0; expression in c1 is independent */
+        must_depth_walk(xs->xs_c0, depth, maxdepth, abspath);
+        must_depth_walk(xs->xs_c1, 0, maxdepth, abspath);
+        return depth;
+    default:
+        /* All other expression nodes (comparisons, function calls, etc.)
+         * are independent sub-expression roots; restart depth at 0. */
+        must_depth_walk(xs->xs_c0, 0, maxdepth, abspath);
+        must_depth_walk(xs->xs_c1, 0, maxdepth, abspath);
+        return 0;
+    }
+}
+
+/*! Parse must xpath and cache depth/abspath info on ys_cv
+ *
+ * Stores an int32 cv on the Y_MUST yang_stmt:
+ * - -1 : must expression contains an absolute path (cannot skip)
+ * - >= 0: maximum ancestor depth of relative must expression
+ * @param[in]  h    Clixon handle
+ * @param[in]  ys   Y_MUST yang statement
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+ys_populate_must(clixon_handle h,
+                 yang_stmt    *ys)
+{
+    int         retval  = -1;
+    const char *xpath;
+    xpath_tree *xptree  = NULL;
+    cg_var     *cv      = NULL;
+    int         maxdepth = 0;
+    int         abspath  = 0;
+    int32_t     stored;
+
+    xpath = yang_argument_get(ys);
+    if (xpath == NULL || xpath[0] == '\0')
+        goto ok;
+    if (xpath_parse(xpath, &xptree) < 0)
+        goto done;
+    must_depth_walk(xptree, 0, &maxdepth, &abspath);
+    stored = abspath ? -1 : (int32_t)maxdepth;
+    if ((cv = cv_new(CGV_INT32)) == NULL){
+        clixon_err(OE_UNIX, errno, "cv_new");
+        goto done;
+    }
+    cv_int32_set(cv, stored);
+    yang_cv_set(ys, cv);
+    cv = NULL;
+  ok:
+    retval = 0;
+  done:
+    if (cv)
+        cv_free(cv);
+    if (xptree)
+        xpath_tree_free(xptree);
+    return retval;
+}
+
 /*! Populate with cligen-variables, default values, etc. Sanity checks on complete tree.
  *
  * @param[in]  ys  Yang statement
@@ -3753,6 +3863,10 @@ ys_populate(yang_stmt    *ys,
         break;
     case Y_TYPE:
         if (ys_populate_type(h, ys) < 0)
+            goto done;
+        break;
+    case Y_MUST:
+        if (ys_populate_must(h, ys) < 0)
             goto done;
         break;
     case Y_UNIQUE:
