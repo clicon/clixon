@@ -12,7 +12,7 @@ jobs:
   ubuntu-build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -34,7 +34,7 @@ jobs:
   ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -59,7 +59,7 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
@@ -90,7 +90,7 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: in-line clone
       run: git clone file://$(realpath ../..)
     - name: openconfig
@@ -112,7 +112,7 @@ jobs:
     - name: save docker image
       run: sudo docker save clixon/clixon-test | gzip > /tmp/clixon-test.tar.gz
     - name: upload docker image
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: docker-native
         path: /tmp/clixon-test.tar.gz
@@ -125,9 +125,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -145,9 +145,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -165,9 +165,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -185,9 +185,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -205,9 +205,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -225,9 +225,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -245,9 +245,9 @@ jobs:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: download docker image
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
