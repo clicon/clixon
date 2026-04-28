@@ -659,8 +659,6 @@ netconf_application_rpc(clixon_handle h,
                 goto done;
             if (ret > 0 && (ret = xml_yang_validate_all_state(h, xoutput, 0, &xerr)) < 0)
                 goto done;
-            if (ret > 0 && (ret = xml_yang_validate_add(h, xoutput, &xerr)) < 0)
-                goto done;
             if (ret == 0){
                 if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
                     goto done;

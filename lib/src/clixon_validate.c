@@ -908,10 +908,6 @@ xml_yang_validate_rpc(clixon_handle h,
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
-        if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
-            goto done; /* error or validation fail */
-        if (ret == 0)
-            goto fail;
         if (expanddefault && xml_default_recurse(xn, 0, 0) < 0)
             goto done;
     }
@@ -967,10 +963,6 @@ xml_yang_validate_rpc_reply(clixon_handle h,
             goto fail;
         }
         if ((ret = xml_yang_validate_all(h, xn, 0, xret)) < 0)
-            goto done; /* error or validation fail */
-        if (ret == 0)
-            goto fail;
-        if ((ret = xml_yang_validate_add(h, xn, xret)) < 0)
             goto done; /* error or validation fail */
         if (ret == 0)
             goto fail;
@@ -1773,6 +1765,57 @@ xml_yang_validate_leaf_union(clixon_handle h,
     goto done;
 }
 
+/*! Incremental-aware choice case-exclusivity check for a single XML node
+ *
+ * Checks that no children from multiple cases of the same choice are present
+ * under the XML parent of @p xt.
+ * When incremental validation is active, skips nodes that are themselves
+ * unchanged (neither ADD nor CHANGE): an existing node was validated at the
+ * prior commit, so any conflict will be detected when the newly added or
+ * modified sibling is checked.  Nodes not under a Y_CHOICE/Y_CASE return OK
+ * immediately via check_choice_child().
+ * @param[in]  h      Clixon handle
+ * @param[in]  xt     XML node being validated
+ * @param[in]  yt     Yang spec of xt
+ * @param[in]  incrml Non-zero: apply incremental skip optimisation
+ * @param[out] xret   Error XML tree (if retval=0). Free with xml_free after use
+ * @retval     1      Validation OK
+ * @retval     0      Validation failed (xret set)
+ * @retval    -1      Error
+ */
+static int
+validate_choice1(clixon_handle h,
+                 cxobj        *xt,
+                 yang_stmt    *yt,
+                 int           incrml,
+                 cxobj       **xret)
+{
+    int    retval = -1;
+    int    ret;
+
+    /* Skip unchanged nodes: they were valid at the prior commit, and any
+     * conflict introduced by a new sibling is caught when that sibling
+     * is validated (it carries ADD/CHANGE). */
+    if (incrml &&
+        !xml_flag(xt, XML_FLAG_ADD) &&
+        !xml_flag(xt, XML_FLAG_CHANGE)){
+        clixon_debug(CLIXON_DBG_VALIDATE, "%s: skip choice: %s (unchanged)",
+                     __func__, xml_name(xt));
+        goto ok;
+    }
+    if ((ret = check_choice_child(xt, yt, xret)) < 0)
+        goto done;
+    if (ret == 0)
+        goto fail;
+  ok:
+    retval = 1;
+  done:
+    return retval;
+  fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Incremental-aware when-expression check for a single XML node
  *
  * Evaluates any "when" XPath condition.  Skips evaluation when the cached depth shows the common ancestor of all
@@ -1912,13 +1955,21 @@ validate_mandatory1(clixon_handle h,
 
 /*! Incremental-aware type validation for a Y_LEAF or Y_LEAF_LIST node
  *
- * Validates leafref, identityref, or union type constraints.
- *  - leafref:     Skip when the common ancestor at the cached ../ depth is unchanged.
- *  - identityref: skipped when the leaf itself is unchanged (ADD/CHANGE not
- *                 set); identityref validates only the value against the YANG
- *                 schema — no cross-references to other XML data nodes.
- *  - union:       always validated (may contain leafrefs whose common ancestor
- *                 depth would require inspecting all union type branches).
+ * Two-phase validation:
+ *
+ * Step 1 (all non-union types): value type and basic constraint check.
+ * Parses the leaf body using the YANG type cv template and calls ys_cv_validate.
+ * For leafref, ys_cv_validate resolves the path to the target type and validates
+ * the value against it (e.g. "'str' is not a number" for a uint32 target).
+ * Skip when the leaf is unchanged (ADD/CHANGE not set).
+ *
+ * Step 2 (leafref, identityref, union): cross-reference / structural checks.
+ *  - leafref:     existence check (validate_leafref).  Skipped via ancestor-depth
+ *                 cache when neither source nor target area changed.
+ *  - identityref: identity-derivation check (validate_identityref).  Skipped when
+ *                 the leaf is unchanged.
+ *  - union:       full union validation (xml_yang_validate_leaf_union), always run.
+ *
  * @param[in]  h      Clixon handle
  * @param[in]  xt     XML node being validated
  * @param[in]  yt     Yang spec of xt
@@ -1935,9 +1986,16 @@ validate_leaf_type1(clixon_handle h,
                     int           incrml,
                     cxobj       **xret)
 {
-    int        retval = -1;
-    yang_stmt *yc;
-    int        ret;
+    int            retval = -1;
+    yang_stmt     *yc;
+    char          *type_name;
+    cg_var        *cv     = NULL;
+    cg_var        *cv0;
+    char          *reason = NULL;
+    char          *body;
+    enum cv_type   cvtype;
+    cbuf          *cb     = NULL;
+    int            ret;
 #ifdef VALIDATE_INCREMENTAL
     yang_stmt *ypath;
     cg_var    *leafcv;
@@ -1948,7 +2006,91 @@ validate_leaf_type1(clixon_handle h,
 
     if (yang_type_get(yt, NULL, &yc, NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
-    if (strcmp(yang_argument_get(yc), "leafref") == 0){
+    type_name = yang_argument_get(yc);
+
+    /* Step 1: value type and basic constraint check for non-union types.
+     * ys_cv_validate resolves leafref paths to the target type, so a value
+     * that cannot be parsed as the target type (e.g. "str" for uint32) is
+     * caught here before the existence check in step 2.
+     * Skipped when the leaf is unchanged (neither ADD nor CHANGE).
+     */
+    if (strcmp(type_name, "union") != 0){
+        if (incrml &&
+            !xml_flag(xt, XML_FLAG_ADD) &&
+            !xml_flag(xt, XML_FLAG_CHANGE)){
+            clixon_debug(CLIXON_DBG_VALIDATE, "%s: skip type: %s (unchanged)",
+                         __func__, xml_name(xt));
+            /* Fall through to step 2 — cross-reference checks have own skips. */
+        }
+        else if ((cv0 = yang_cv_get(yt)) != NULL){
+            if ((cv = cv_dup(cv0)) == NULL){
+                clixon_err(OE_UNIX, errno, "cv_dup");
+                goto done;
+            }
+            if ((body = xml_body(xt)) == NULL){
+                cvtype = cv_type_get(cv);
+                if (cv_isint(cvtype) || cvtype == CGV_BOOL || cvtype == CGV_DEC64){
+                    if (xret && netconf_bad_element_xml(xret, "application",
+                                                        yang_argument_get(yt),
+                                                        "Invalid NULL value") < 0)
+                        goto done;
+                    goto fail;
+                }
+                if (cvtype != CGV_EMPTY && cvtype != CGV_VOID){
+                    if (cv_parse1("", cv, &reason) != 1){
+                        if (xret && netconf_bad_element_xml(xret, "application",
+                                                            yang_argument_get(yt),
+                                                            reason) < 0)
+                            goto done;
+                        goto fail;
+                    }
+                }
+            }
+            else {
+                if (cv_parse1(body, cv, &reason) != 1){
+                    if (xret && netconf_bad_element_xml(xret, "application",
+                                                        yang_argument_get(yt),
+                                                        reason) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+            /* For leafref with require-instance true (the default), skip
+             * ys_cv_validate: step 2 (validate_leafref) reports the RFC 7950
+             * mandated data-missing/instance-required error.  Only when
+             * require-instance is explicitly false does step 1 need to
+             * type-check the value (e.g. "str" targeting a uint32), since
+             * step 2 skips the existence check in that case.
+             */
+            if (strcmp(type_name, "leafref") != 0 ||
+                yang_find(yc, Y_REQUIRE_INSTANCE, NULL) != NULL){
+                if ((ret = ys_cv_validate(h, cv, yt, NULL, &reason)) < 0)
+                    goto done;
+                if (ret == 0){
+                    if ((cb = cbuf_new()) == NULL){
+                        clixon_err(OE_UNIX, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cb, "%s: ", reason);
+                    if (validate_errmsg(&cb, xt, yt) < 0)
+                        goto done;
+                    if (xret && netconf_bad_element_xml(xret, "application",
+                                                        yang_argument_get(yt),
+                                                        cbuf_get(cb)) < 0)
+                        goto done;
+                    goto fail;
+                }
+            }
+        }
+        /* Non-special types (not leafref/identityref) need no cross-reference
+         * check: step 1 covered all constraints. */
+        if (strcmp(type_name, "leafref") != 0 &&
+            strcmp(type_name, "identityref") != 0)
+            goto ok;
+    }
+
+    /* Step 2: type-specific cross-reference / structural checks */
+    if (strcmp(type_name, "leafref") == 0){
 #ifdef VALIDATE_INCREMENTAL
         /* Incremental skip: if the common ancestor (reached by walking up the
          * leafref path's ../ depth) has no CHANGE/ADD/DEL_ANC, then neither
@@ -1980,11 +2122,9 @@ validate_leaf_type1(clixon_handle h,
         if (ret == 0)
             goto fail;
     }
-    else if (strcmp(yang_argument_get(yc), "identityref") == 0){
-        /* identityref checks only the leaf value against the YANG schema
-         * (no cross-references to other XML data nodes); skip if this leaf
-         * was not added or modified in the current transaction.
-         */
+    else if (strcmp(type_name, "identityref") == 0){
+        /* Identity-derivation check.  Skip when the leaf is unchanged;
+         * ys_cv_validate in step 1 already checked string syntax. */
         if (incrml &&
             !xml_flag(xt, XML_FLAG_ADD) &&
             !xml_flag(xt, XML_FLAG_CHANGE)){
@@ -1998,7 +2138,7 @@ validate_leaf_type1(clixon_handle h,
         if (ret == 0)
             goto fail;
     }
-    else if (strcmp(yang_argument_get(yc), "union") == 0){
+    else if (strcmp(type_name, "union") == 0){
         /* Union may contain leafref branches whose common-ancestor depth cannot
          * be determined without walking all type alternatives; always validate. */
         if ((ret = xml_yang_validate_leaf_union(h, xt, yt, yc, xret)) < 0)
@@ -2009,6 +2149,12 @@ validate_leaf_type1(clixon_handle h,
   ok:
     retval = 1;
   done:
+    if (cv)
+        cv_free(cv);
+    if (reason)
+        free(reason);
+    if (cb)
+        cbuf_free(cb);
     return retval;
   fail:
     retval = 0;
@@ -2222,6 +2368,11 @@ xml_yang_validate_all1(clixon_handle h,
     if (yang_config(yt) != 0){
         /* when */
         if ((ret = validate_when1(h, xt, yt, incrml, xret)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+        /* choice case exclusivity */
+        if ((ret = validate_choice1(h, xt, yt, incrml, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

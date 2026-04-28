@@ -882,9 +882,6 @@ get_common(clixon_handle   h,
                                                1, /* Validate also state data */
                                                &xerr)) < 0)
             goto done;
-        if (ret > 0 &&
-            (ret = xml_yang_validate_add(h, xret, &xerr)) < 0)
-            goto done;
         if (ret == 0){
             clixon_debug_xml(CLIXON_DBG_BACKEND, xret, "VALIDATE_STATE");
             if (clixon_netconf_internal_error(xerr,

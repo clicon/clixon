@@ -98,12 +98,10 @@ generic_validate(clixon_handle       h,
                  cxobj             **xret)
 {
     int                retval = -1;
-    cxobj             *x2;
-    int                i;
     cbuf              *cb = NULL;
     int                ret;
 #ifdef VALIDATE_INCREMENTAL
-    /* All entries — use td-aware variant to skip mandatory on unchanged nodes */
+    /* All entries — use td-aware variant to skip checks on unchanged nodes */
     if ((ret = xml_yang_validate_all_state_td(h, td->td_target, 0, 1, xret)) < 0)
         goto done;
 #else
@@ -112,23 +110,6 @@ generic_validate(clixon_handle       h,
 #endif
     if (ret == 0)
         goto fail;
-    /* changed entries */
-    for (i=0; i<td->td_clen; i++){
-        x2 = td->td_tcvec[i]; /* target changed */
-        /* Should this be recursive? */
-        if ((ret = xml_yang_validate_add(h, x2, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-    }
-    /* added entries */
-    for (i=0; i<td->td_alen; i++){
-        x2 = td->td_avec[i];
-        if ((ret = xml_yang_validate_add(h, x2, xret)) < 0)
-            goto done;
-        if (ret == 0)
-            goto fail;
-    }
     // ok:
     retval = 1;
  done:

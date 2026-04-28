@@ -46,6 +46,7 @@ Expected: May 2026
   * Leafrefs, using same XPath depth dependency analysis
   * Mandatory
   * Minmax/unique/duplicates
+  * identityrefs
 * Optimization of XML config memory footprint
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
