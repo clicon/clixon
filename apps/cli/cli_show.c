@@ -676,15 +676,17 @@ cli_show_common(clixon_handle    h,
                 cvec            *nsc,
                 int              skiptop)
 {
-    int     retval = -1;
-    cxobj  *xt = NULL;
-    cxobj **vec = NULL;
-    size_t  veclen;
-    cxobj  *xe;
-    cxobj  *xerr = NULL;
-    int     cli_aware = 1;
-    cbuf   *cb = NULL;
+    int        retval = -1;
+    cxobj     *xt = NULL;
+    cxobj    **vec = NULL;
+    size_t     veclen;
+    cxobj     *xe;
+    cxobj     *xerr = NULL;
+    int        cli_aware = 1;
+    cbuf      *cb = NULL;
     yang_stmt *yspec0 = NULL;
+    cxobj     *xp;
+    int        i;
     int        ret;
 
     if (state && strcmp(db, "running") != 0){
@@ -742,9 +744,27 @@ cli_show_common(clixon_handle    h,
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
-        if (format == FORMAT_NETCONF){
-            if (clixon_rpc_translate_format(h, FORMAT_XML, xpath, nsc, xt, pretty, skiptop, cli_aware, prepend, cb) < 0)
-                goto done;
+        switch (format) {
+        case FORMAT_XML:
+            for (i = 0; i < (int)veclen; i++){
+                xp = vec[i];
+                if (xml_type(xp) != CX_ELMNT)
+                    continue;
+                if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
+                    goto done;
+                if (!pretty && i == (int)veclen-1)
+                    cprintf(cb, "\n");
+            }
+            cligen_output(stdout, "%s", cbuf_get(cb));
+            break;
+        case FORMAT_NETCONF:
+            for (i = 0; i < (int)veclen; i++){
+                xp = vec[i];
+                if (xml_type(xp) != CX_ELMNT)
+                    continue;
+                if (clixon_xml2cbuf1(cb, xp, 0, pretty, NULL, -1, skiptop, cli_aware, WITHDEFAULTS_REPORT_ALL) < 0)
+                    goto done;
+            }
             cligen_output(stdout, "<rpc xmlns=\"%s\" %s",
                           NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
             cligen_output(stdout, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
@@ -754,11 +774,12 @@ cli_show_common(clixon_handle    h,
                 cligen_output(stdout, "\n");
             cligen_output(stdout, "%s", cbuf_get(cb));
             cligen_output(stdout, "</config></edit-config></rpc>]]>]]>\n");
-        }
-        else {
+            break;
+        default:
             if (clixon_rpc_translate_format(h, format, xpath, nsc, xt, pretty, skiptop, cli_aware, prepend, cb) < 0)
                 goto done;
             cligen_output(stdout, "%s", cbuf_get(cb));
+            break;
         }
     }
     else if (format == FORMAT_JSON)
@@ -1562,7 +1583,7 @@ cli_pagination(clixon_handle h,
     return retval;
 }
 
-/* Transform uin64 to KiB / MiB / GiB / TiB and postfix
+/*! Transform uin64 to KiB / MiB / GiB / TiB and postfix
  *
  * @param[in]  inr  Input number
  * @param[out] onr  Translated number
