@@ -112,7 +112,7 @@ jobs:
     - name: save docker image
       run: sudo docker save clixon/clixon-test | gzip > /tmp/clixon-test.tar.gz
     - name: upload docker image
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: docker-native
         path: /tmp/clixon-test.tar.gz
@@ -127,7 +127,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
@@ -147,7 +147,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
@@ -167,7 +167,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
@@ -187,7 +187,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
@@ -207,7 +207,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
@@ -227,7 +227,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
@@ -247,7 +247,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: docker-native
         path: /tmp
