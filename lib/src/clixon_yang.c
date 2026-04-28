@@ -3877,6 +3877,13 @@ ys_populate(yang_stmt    *ys,
             goto done;
 #endif
         break;
+    case Y_WHEN:
+#ifdef VALIDATE_INCREMENTAL
+        /* Cache when xpath depth for incremental skip; see validate_when1 */
+        if (ys_populate_xpath_depth(ys) < 0)
+            goto done;
+#endif
+        break;
     case Y_UNIQUE:
         if (ys_populate_unique(h, ys) < 0)
             goto done;
