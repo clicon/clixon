@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: '0 2 * * 1'   # Weekly, Monday 02:00 UTC
   workflow_dispatch:       # Allow manual triggering
-    branches:
-       - master
-       - test-actions
 
 jobs:
   ubuntu-coverage:
@@ -21,11 +18,6 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y libssl-dev libnghttp2-dev libcurl4-openssl-dev lcov
-
-    - name: install clixon-util
-      run: |
-        git clone https://github.com/clicon/clixon-util.git
-        cd clixon-util && ./configure && make && sudo make install
 
     - name: sparse checkout yang standard models
       run: |
@@ -46,6 +38,11 @@ jobs:
 
     - name: make and install example
       run: cd example && make && sudo make install
+
+    - name: install clixon-util
+      run: |
+        git clone https://github.com/clicon/clixon-util.git
+        cd clixon-util && ./configure && make && sudo make install
 
     - name: create clicon user
       run: sudo useradd -r -M -s /usr/sbin/nologin clicon
