@@ -9,9 +9,15 @@ s="$_" ; . ./lib.sh || if [ "$s" = "$0" ]; then exit 0; else return 0; fi
 
 APPNAME=example
 
-cfg=$dir/conf_yang.xml
-clispec=$dir/clispec
+clispec=$dir/$APPNAME/clispec
 mkdir -p "$clispec"
+
+dbdir=$(mktemp -d "$dir/${APPNAME}.xmldb.XXXXXX")
+rundir=$(mktemp -d "$dir/${APPNAME}.run.XXXXXX")
+
+chmod 777 "$dbdir" "$rundir"
+
+cfg=$dir/conf_yang.xml
 
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -22,18 +28,18 @@ cat <<EOF > $cfg
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
   <CLICON_CLISPEC_DIR>$clispec</CLICON_CLISPEC_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
-  <CLICON_SOCK>$dir/$APPNAME.sock</CLICON_SOCK>
-  <CLICON_BACKEND_PIDFILE>$dir/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
-  <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
+  <CLICON_SOCK>$rundir/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>$rundir/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>$dbdir</CLICON_XMLDB_DIR>
 </clixon-config>
 EOF
 
-cat <<EOF > $dir/example_cli.cli
+cat <<EOF > $clispec/example_cli.cli
 CLICON_MODE="$APPNAME";
 CLICON_PROMPT="%U@%H %W> ";
 
 show("Show a particular state of the system"){
-    configuration("Show configuration"), cli_show_config("candidate", "xml", "/");
+    configuration("Show configuration"), cli_show_config("running", "xml", "/");
 }
 quit("Quit"), cli_quit();
 EOF
@@ -134,7 +140,7 @@ module Cisco-IOS-XR-um-aaa-task-user-cfg {
 }
 EOF
 
-cat <<'EOF' > $dir/startup_db
+cat <<'EOF' > $dbdir/startup_db
 <config>
   <aaa xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-lib-cfg">
     <usernames xmlns="http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-locald-cfg">
@@ -176,12 +182,15 @@ fi
 new "wait backend"
 wait_backend
 
-new "show configuration reproduces namespace collision"
-expectpart "$($clixon_cli -1 -f $cfg show configuration 2>&1)" 255 \
-    "Failed to find YANG spec of XML node: ten with parent: secret" \
-    "http://cisco.com/ns/yang/Cisco-IOS-XR-um-aaa-task-user-cfg" \
-    "Cisco-IOS-XR-aaa-locald-cfg@2022-11-28.yang" \
-    "<bad-element>ten</bad-element>"
+new "show configuration preserves namespace-specific secret leaves"
+expectpart "$($clixon_cli -1 -f $cfg show configuration 2>&1)" 0 \
+    "<aaa xmlns=\"http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-lib-cfg\">" \
+    "<usernames xmlns=\"http://cisco.com/ns/yang/Cisco-IOS-XR-aaa-locald-cfg\">" \
+    "<type>type10</type>" \
+    "<secret10>xx</secret10>" \
+    "<aaa xmlns=\"http://cisco.com/ns/yang/Cisco-IOS-XR-um-aaa-cfg\">" \
+    "<usernames xmlns=\"http://cisco.com/ns/yang/Cisco-IOS-XR-um-aaa-task-user-cfg\">" \
+    "<ten>xx</ten>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
