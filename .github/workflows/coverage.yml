@@ -1,0 +1,66 @@
+name: Clixon Coverage
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'   # Weekly, Monday 02:00 UTC
+  workflow_dispatch:       # Allow manual triggering
+    branches:
+       - master
+       - test-actions
+
+jobs:
+  ubuntu-coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: install cligen
+      run: git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install
+
+    - name: install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libssl-dev libnghttp2-dev lcov
+
+    - name: install clixon-util
+      run: |
+        git clone https://github.com/clicon/clixon-util.git
+        cd clixon-util && ./configure && make && sudo make install
+
+    - name: sparse checkout yang standard models
+      run: |
+        mkdir -p /tmp/yang && cd /tmp/yang
+        git init
+        git remote add -f origin https://github.com/YangModels/yang
+        git config core.sparseCheckout true
+        echo "standard/" >> .git/info/sparse-checkout
+        git pull origin main
+        sudo mkdir -p /usr/local/share/yang
+        sudo cp -r standard /usr/local/share/yang/
+
+    - name: configure with coverage
+      run: ./configure --with-yang-standard-dir=/usr/local/share/yang/standard CFLAGS="--coverage" LDFLAGS="--coverage"
+
+    - name: make and install
+      run: make -j10 && sudo make install install-include
+
+    - name: make and install example
+      run: cd example && make && sudo make install
+
+    - name: create clicon user
+      run: sudo useradd -r -M -s /usr/sbin/nologin clicon
+
+    - name: run all tests
+      run: cd test && detail=true ./sum.sh
+      continue-on-error: true
+
+    - name: generate lcov report
+      run: |
+        lcov --capture --directory . --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: upload to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: coverage.info
