@@ -20,6 +20,8 @@
 #  7. deny-default + permit /devices/device/settings/enabled (deeply nested): ancestor chain visible,
 #     sibling leaves hidden, correct leaf visible inside nested container
 #  8. CLICON_NACM_AUTOCLI=false: filtering disabled; denied nodes visible in CLI despite NACM deny rule
+#  9. read-default=deny, permit path with key predicate /devices/device[name='sample']: predicate stripped,
+#     schema path /devices/device used -> devices visible (regression: issue #673)
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -210,6 +212,10 @@ NACM_DENY_DEVICE_SETTINGS="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netcon
 
 # NACM config for Test 7: read-default=deny, permit only /devices/device/settings/enabled
 NACM_PERMIT_SETTINGS_ENABLED="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\"><enable-nacm>true</enable-nacm><read-default>deny</read-default><write-default>deny</write-default><exec-default>permit</exec-default>${NGROUPS}${NADMIN}<rule-list><name>limited-acl</name><group>limited</group><rule><name>permit-settings-enabled</name><module-name>example</module-name><path xmlns:ex=\"urn:example:clixon\">/ex:devices/ex:device/ex:settings/ex:enabled</path><access-operations>read</access-operations><action>permit</action></rule></rule-list></nacm>"
+
+# NACM config for Test 9: read-default=deny, permit /devices/device[name='sample'] (key predicate)
+# The predicate must be stripped and the schema path /devices/device used instead (issue #673)
+NACM_PERMIT_DEVICE_PREDICATE="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\"><enable-nacm>true</enable-nacm><read-default>deny</read-default><write-default>deny</write-default><exec-default>permit</exec-default>${NGROUPS}${NADMIN}<rule-list><name>limited-acl</name><group>limited</group><rule><name>permit-device-sample</name><module-name>example</module-name><path xmlns:ex=\"urn:example:clixon\">/ex:devices/ex:device[ex:name='sample']</path><access-operations>read</access-operations><action>permit</action></rule></rule-list></nacm>"
 
 new "test params: -f $cfg"
 
@@ -456,6 +462,28 @@ expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 --not-- "secr
 
 new "Test 8b: wilma - NACM_AUTOCLI=false: 'set ?' shows secret despite deny rule"
 expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -o CLICON_NACM_AUTOCLI=false -U wilma 2>&1)" 0 "secret"
+
+# --- Test 9: read-default=deny, permit path with key predicate (issue #673) ---
+# A NACM rule path like /ex:devices/ex:device[ex:name='sample'] must not be silently
+# skipped. The predicate should be stripped and the schema path /devices/device used.
+new "Test 9: Load NACM read-default=deny, permit /devices/device[name='sample'] (with predicate)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>$NACM_PERMIT_DEVICE_PREDICATE</config></edit-config></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Test 9 commit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><commit/></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Test 9a: wilma - 'set ?' shows devices (predicate stripped to schema path), NOT public/visible/mgmt/secret"
+expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 "devices" --not-- "public" --not-- "visible" --not-- "mgmt" --not-- "secret"
+
+new "Test 9b: wilma - 'set devices device x ?' shows address/description/settings (full device subtree)"
+expectpart "$(echo 'set devices device x ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 "address" "description" "settings"
+
+new "Test 9c: admin - 'set ?' shows all nodes"
+expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U admin 2>&1)" 0 "public" "visible" "devices" "mgmt" "secret"
 
 # --- Cleanup ---
 if [ $BE -ne 0 ]; then

@@ -1574,11 +1574,10 @@ nacm_init(clixon_handle h)
     return retval;
 }
 
-/*! Normalize a NACM path by stripping namespace prefixes
+/*! Normalize a NACM path by stripping namespace prefixes and key predicates
  *
- * /oc-sys:contexts/oc-sys:context -> /contexts/context
- * Paths with predicates are left unchanged (caller should detect and skip)
- * @param[in]  path0  Input path with optional namespace prefixes
+ * /oc-sys:contexts/oc-sys:context[oc-sys:name='x'] -> /contexts/context
+ * @param[in]  path0  Input path with optional namespace prefixes and predicates
  * @retval     str    Malloced normalized path string, caller frees
  * @retval     NULL   Error
  */
@@ -1590,6 +1589,8 @@ nacm_path_normalize(const char *path0)
     char       *str;
     char       *tok;
     char       *colon;
+    char       *bracket;
+    char       *name_part;
     char       *retval = NULL;
 
     if ((cb = cbuf_new()) == NULL){
@@ -1605,7 +1606,11 @@ nacm_path_normalize(const char *path0)
         if (*tok == '\0')
             continue;
         colon = strchr(tok, ':');
-        cprintf(cb, "/%s", colon ? colon + 1 : tok);
+        name_part = colon ? colon + 1 : tok;
+        /* Strip key predicate if present: context[name='x'] -> context */
+        if ((bracket = strchr(name_part, '[')) != NULL)
+            *bracket = '\0';
+        cprintf(cb, "/%s", name_part);
     }
     retval = strdup(cbuf_get(cb));
     if (retval == NULL)
@@ -1620,9 +1625,9 @@ nacm_path_normalize(const char *path0)
 
 /*! Build autocli NACM filter for a user from the NACM XML tree
  *
- * Collects simple NACM read rules (no predicates) for the user's groups.
- * Rules with XPath predicates (e.g. /x/y[key='v']) are skipped since they
- * cannot be mapped to YANG schema nodes.
+ * Collects NACM read rules for the user's groups.
+ * Rule paths are normalized: namespace prefixes and key predicates are stripped
+ * so that e.g. /ex:devices/ex:device[ex:name='x'] is treated as /devices/device.
  *
  * @param[in]  username  User name
  * @param[in]  xnacm     Top-level nacm XML element (may be NULL if NACM disabled)
@@ -1734,10 +1739,7 @@ nacm_autocli_filter_build(const char             *username,
             }
             if (xml_find_body(xrule, "rpc-name") || xml_find_body(xrule, "notification-name"))
                 continue;
-            /* Skip paths with predicates - cannot map to YANG schema */
-            if (strchr(path0, '[') != NULL)
-                continue;
-            /* Normalize path: strip namespace prefixes */
+            /* Normalize path: strip namespace prefixes and key predicates */
             if (path)
                 free(path);
             path = NULL;
