@@ -6415,7 +6415,7 @@ test "x$prefix" = xNONE && prefix=$ac_default_prefix
 # Pop CFLAGS for Makefiles
 CFLAGS=${TMPCFLAGS}
 
-ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile apps/grpc/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/example/Makefile docker/test/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
+ac_config_files="$ac_config_files Makefile lib/Makefile lib/src/Makefile lib/clixon/Makefile apps/Makefile apps/cli/Makefile apps/backend/Makefile apps/netconf/Makefile apps/restconf/Makefile apps/snmp/Makefile apps/grpc/Makefile include/Makefile etc/Makefile etc/clixonrc example/Makefile example/main/Makefile example/main/example.xml docker/Makefile docker/clixon-dev/Makefile docker/coverage/Makefile docker/example/Makefile docker/test/Makefile yang/Makefile yang/clixon/Makefile yang/mandatory/Makefile doc/Makefile test/Makefile test/config.sh test/cicd/Makefile test/vagrant/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -7123,6 +7123,7 @@ do
     "example/main/example.xml") CONFIG_FILES="$CONFIG_FILES example/main/example.xml" ;;
     "docker/Makefile") CONFIG_FILES="$CONFIG_FILES docker/Makefile" ;;
     "docker/clixon-dev/Makefile") CONFIG_FILES="$CONFIG_FILES docker/clixon-dev/Makefile" ;;
+    "docker/coverage/Makefile") CONFIG_FILES="$CONFIG_FILES docker/coverage/Makefile" ;;
     "docker/example/Makefile") CONFIG_FILES="$CONFIG_FILES docker/example/Makefile" ;;
     "docker/test/Makefile") CONFIG_FILES="$CONFIG_FILES docker/test/Makefile" ;;
     "yang/Makefile") CONFIG_FILES="$CONFIG_FILES yang/Makefile" ;;

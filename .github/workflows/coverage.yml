@@ -1,0 +1,46 @@
+name: Clixon Coverage
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'   # Weekly, Monday 02:00 UTC
+  workflow_dispatch:       # Allow manual triggering
+
+jobs:
+  docker-coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docker/coverage
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: inline clone clixon
+      run: git clone file://$(realpath ../..) clixon
+
+    - name: yangmodels sparse checkout
+      run: |
+        mkdir -p yang
+        cd yang
+        git init
+        git remote add -f origin https://github.com/YangModels/yang
+        git config core.sparseCheckout true
+        echo "standard/" >> .git/info/sparse-checkout
+        echo "experimental/" >> .git/info/sparse-checkout
+        git pull origin main
+
+    - name: build coverage image
+      run: sudo docker build -t clixon/coverage .
+
+    - name: run coverage container
+      run: sudo docker run --name clixon-coverage clixon/coverage
+
+    - name: extract coverage report
+      run: sudo docker cp clixon-coverage:/coverage.info coverage.info
+
+    - name: remove container
+      run: sudo docker rm clixon-coverage
+
+    - name: upload to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./docker/coverage/coverage.info

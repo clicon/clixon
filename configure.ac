@@ -531,6 +531,7 @@ AC_CONFIG_FILES([Makefile
     	  example/main/example.xml
 	  docker/Makefile
     	  docker/clixon-dev/Makefile
+          docker/coverage/Makefile
     	  docker/example/Makefile
   	  docker/test/Makefile
 	  yang/Makefile

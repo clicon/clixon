@@ -1,8 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # 
-# Copyright (C) 2017-2019 Olof Hagsand
-# Copyright (C) 2020-2022 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+# Copyright (C) 2025 Olof Hagsand and Rubicon Communications, LLC(Netgate)
 #
 # This file is part of CLIXON
 #
@@ -38,17 +37,12 @@
 VPATH       	= @srcdir@
 srcdir  	= @srcdir@
 top_srcdir  	= @top_srcdir@
-with_restconf	= @with_restconf@
-ifdef with_restconf
-DOCKERFILE      = Dockerfile.$(with_restconf)
-else
 DOCKERFILE      = Dockerfile
-endif
 
 #DOCKERFLAGS="--no-cache"
 
 # Example docker image. CHANGE THIS IF YOU PUSH
-IMG   = clixon/clixon-test
+IMG   = clixon/clixon-coverage
 
 SHELL	= /bin/sh
 
@@ -83,18 +77,8 @@ push:
 # Note tests will kill the daemons started in the start scrips
 # Note when start.sh is completed, the internal startsystem.sh script may still be running
 #      therefore the sleep 1 before tests start
-test: docker
+coverage: docker
 	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true ./sum.sh'
-
-mem: docker
-	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -t clixon-test bash -c 'sudo apk add --update valgrind valgrind-scripts; cd /usr/local/bin/test && ./mem.sh'
-
-# Special-purpose memory test for snmp
-memsnmp: docker
-	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
-	sudo docker exec -t clixon-test bash -c 'sudo apk add --update valgrind valgrind-scripts; cd /usr/local/bin/test && pattern=test_snmp*.sh ./mem.sh snmp'
 
 depend:
 
