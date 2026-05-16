@@ -167,13 +167,22 @@ populate_self_parent(clixon_handle h,
     yang_stmt *yspec1;
     yang_stmt *ymod;
     int        ret;
+    int        ns_resolved = 0;
 
     name = xml_name(xt);
     /* optimization for massive lists - use the first element as role model */
     if (xsibling &&
         xml_child_nr_type(xt, CX_ATTR) == 0){
-        y = xml_spec(xsibling);
-        goto set;
+        if ((y = xml_spec(xsibling)) != NULL){
+            if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
+                goto done;
+            ns_resolved++;
+            nsy = yang_find_mynamespace(y);
+            if (nsy != NULL && ns != NULL && strcmp(ns, nsy) == 0)
+                goto set;
+            y = NULL;
+            nsy = NULL;
+        }
     }
     if ((xp = xml_parent(xt)) == NULL){
         if (xerr &&
@@ -193,7 +202,8 @@ populate_self_parent(clixon_handle h,
         retval = 2;
         goto done;
     }
-    if (xml2ns(xt, xml_prefix(xt), &ns) < 0)
+    if (!ns_resolved &&
+        xml2ns(xt, xml_prefix(xt), &ns) < 0)
         goto done;
     /* Special case since action is not a datanode */
     if ((y = yang_find(yparent, Y_ACTION, name)) == NULL){
