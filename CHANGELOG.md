@@ -99,6 +99,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Empty values ​​in netconf](https://github.com/clicon/clixon/issues/674)
 * Fixed: [CLICON_NACM_AUTOCLI breaks existing NACM rules](https://github.com/clicon/clixon/issues/673)
 * Fixed: [List binary search is broken](https://github.com/clicon/clixon/issues/669)
 * Fixed: [cli description should be enumeration's desc not the leaf's. for yang enum type](https://github.com/clicon/clixon/issues/183)

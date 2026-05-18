@@ -46,7 +46,7 @@
 int xml_yang_validate_rpc(clixon_handle h, cxobj *xrpc, int expanddefault, cxobj **xret);
 int xml_yang_validate_rpc_reply(clixon_handle h, cxobj *xrpc, cxobj **xret);
 int xml_yang_validate_add(clixon_handle h, cxobj *xt, cxobj **xret);
-int xml_yang_validate_list_key_only(cxobj *xt, cxobj **xret);
+int xml_yang_validate_list_key_only(clixon_handle h, cxobj *xt, cxobj **xret);
 int xml_yang_validate_all(clixon_handle h, cxobj *xt, int state, cxobj **xret);
 int xml_yang_validate_all_state(clixon_handle h, cxobj *xt, int state, cxobj **xret);
 int xml_yang_validate_exit(clixon_handle h);
