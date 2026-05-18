@@ -127,7 +127,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -135,8 +135,8 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test a-f,n
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh test_n*.sh" ./sum.sh'
+    - name: run test d-f,n
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_d*.sh test_f*.sh test_n*.sh" ./sum.sh'
 
   docker-alpine-test-2:
     needs: docker-alpine-build
@@ -147,7 +147,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -155,8 +155,8 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test p,r
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_p*.sh test_r*.sh" ./sum.sh'
+    - name: run test rstu
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh test_s*.sh test_t*.sh test_u*.sh" ./sum.sh'
 
   docker-alpine-test-3:
     needs: docker-alpine-build
@@ -167,7 +167,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -175,8 +175,8 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test ijtouwos
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_i*.sh test_j*.sh test_t*.sh test_u*.sh test_w*.sh test_o*.sh test_s*.sh" ./sum.sh'
+    - name: run test ijopw
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_i*.sh test_j*.sh test_o*.sh test_p*.shtest_w*.sh" ./sum.sh'
 
   docker-alpine-test-4:
     needs: docker-alpine-build
@@ -187,7 +187,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: download docker image
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: docker-native
         path: /tmp
@@ -195,5 +195,5 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test ghlmxy
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_g*.sh test_h*.sh test_l*sh test_m*.sh test_x*.sh test_y*.sh" ./sum.sh'
+    - name: run test acghlmxy
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_g*.sh test_h*.sh test_l*sh test_m*.sh test_x*.sh test_y*.sh" ./sum.sh'
