@@ -59,4 +59,5 @@ jobs:
       with:
         files: ./docker/coverage/coverage-cligen.info
         disable_search: true
+        slug: clicon/cligen
         token: ${{ secrets.CLIGEN_CODECOV_TOKEN }}
