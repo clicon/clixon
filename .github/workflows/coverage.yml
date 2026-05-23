@@ -34,14 +34,23 @@ jobs:
     - name: run coverage container
       run: sudo docker run --name clixon-coverage clixon/coverage
 
-    - name: extract coverage report
-      run: sudo docker cp clixon-coverage:/coverage.info coverage.info
+    - name: extract clixon coverage report
+      run: sudo docker cp clixon-coverage:/coverage-clixon.info coverage-clixon.info
+
+    - name: extract cligen coverage report
+      run: sudo docker cp clixon-coverage:/coverage-cligen.info coverage-cligen.info
 
     - name: remove container
       run: sudo docker rm clixon-coverage
 
-    - name: upload to Codecov
+    - name: upload clixon coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        files: ./docker/coverage/coverage.info
+        files: ./docker/coverage/coverage-clixon.info
         token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: upload cligen coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./docker/coverage/coverage-cligen.info
+        token: ${{ secrets.CLIGEN_CODECOV_TOKEN }}

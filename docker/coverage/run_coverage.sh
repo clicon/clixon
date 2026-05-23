@@ -84,28 +84,55 @@ openssl req -x509 -config /tmp/ca.cnf -nodes -newkey rsa:2048 \
     -out /etc/ssl/certs/clixon-server-crt.pem \
     -days 365 2>/dev/null
 
+# Run CLIgen's own test suite first.  This seeds the /build/cligen .gcda files
+# with baseline CLIgen coverage before Clixon tests add more.
+cd /build/cligen
+make test || true
+
 # Run the full test suite; continue-on-error so we always generate coverage
 cd /usr/local/bin/test
 detail=true ./sum.sh || true
 
-# Generate lcov coverage report from instrumented build tree
+# Generate lcov coverage report from both instrumented build trees.
+# /build/cligen .gcda files contain accumulated data from:
+#   1. CLIgen's own make test (above)
+#   2. Clixon tests calling into libcligen.so (above)
+# This gives better CLIgen coverage than a cligen-only test run.
 cd /build/clixon
 lcov --capture \
-    --directory . \
-    --output-file /coverage.info \
+    --directory /build/clixon \
+    --directory /build/cligen \
+    --output-file /coverage-combined.info \
     --ignore-errors empty,unused 2>/dev/null || \
 lcov --capture \
-    --directory . \
-    --output-file /coverage.info
+    --directory /build/clixon \
+    --directory /build/cligen \
+    --output-file /coverage-combined.info
 
-# Strip system headers from the report
-lcov --remove /coverage.info '/usr/*' \
-    --output-file /coverage.info \
+# Strip system headers from the combined report
+lcov --remove /coverage-combined.info '/usr/*' \
+    --output-file /coverage-combined.info \
     --ignore-errors unused 2>/dev/null || \
-lcov --remove /coverage.info '/usr/*' \
-    --output-file /coverage.info
+lcov --remove /coverage-combined.info '/usr/*' \
+    --output-file /coverage-combined.info
+
+# Split into per-project reports for separate Codecov uploads
+lcov --extract /coverage-combined.info '/build/clixon/*' \
+    --output-file /coverage-clixon.info \
+    --ignore-errors unused 2>/dev/null || \
+lcov --extract /coverage-combined.info '/build/clixon/*' \
+    --output-file /coverage-clixon.info
+
+lcov --extract /coverage-combined.info '/build/cligen/*' \
+    --output-file /coverage-cligen.info \
+    --ignore-errors unused 2>/dev/null || \
+lcov --extract /coverage-combined.info '/build/cligen/*' \
+    --output-file /coverage-cligen.info
 
 # Print a brief summary to the container log
-lcov --list /coverage.info | tail -5
+echo "=== Clixon coverage ==="
+lcov --list /coverage-clixon.info | tail -5
+echo "=== CLIgen coverage ==="
+lcov --list /coverage-cligen.info | tail -5
 
-echo "Coverage report written to /coverage.info"
+echo "Coverage reports written to /coverage-clixon.info and /coverage-cligen.info"

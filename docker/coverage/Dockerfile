@@ -54,10 +54,11 @@ COPY yang .
 RUN mkdir -p /build
 WORKDIR /build
 
-# Clone and install CLIgen
+# Clone and install CLIgen with coverage flags so libcligen.so emits .gcda data
+# both when CLIgen's own tests run and when Clixon tests exercise the library.
 RUN git clone https://github.com/clicon/cligen.git
 WORKDIR /build/cligen
-RUN ./configure && make && make install
+RUN ./configure CFLAGS="--coverage" LDFLAGS="--coverage" && make && make install
 
 # Copy Clixon source (inline-cloned on host)
 RUN mkdir -p /build/clixon
@@ -99,8 +100,9 @@ RUN install *.supp /usr/local/bin/test
 # Allow all users to write gcda files into the build tree.
 # This is the key step: the backend process (running as clicon after privilege
 # drop) must be able to write coverage data back to the source directory.
-# /build/ is 755 (traversable), /build/clixon/ is made fully writable.
-RUN chmod -R 777 /build/clixon
+# /build/ is 755 (traversable), /build/clixon/ and /build/cligen/ are made
+# fully writable so both CLIgen and Clixon .gcda files accumulate correctly.
+RUN chmod -R 777 /build/clixon /build/cligen
 
 # Allow passwordless sudo for test scripts (tests use sudo to start the backend)
 RUN echo "ALL ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nopasswd
