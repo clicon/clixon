@@ -8,11 +8,15 @@ on:
 jobs:
   docker-coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/coverage
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
 
     - name: inline clone clixon
       run: git clone file://$(realpath ../..) clixon
@@ -44,13 +48,15 @@ jobs:
       run: sudo docker rm clixon-coverage
 
     - name: upload clixon coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354  # v6.0.1
       with:
         files: ./docker/coverage/coverage-clixon.info
+        disable_search: true
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: upload cligen coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354  # v6.0.1
       with:
         files: ./docker/coverage/coverage-cligen.info
+        disable_search: true
         token: ${{ secrets.CLIGEN_CODECOV_TOKEN }}

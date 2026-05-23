@@ -11,8 +11,12 @@ on:
 jobs:
   ubuntu-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -33,8 +37,12 @@ jobs:
 
   ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -55,11 +63,15 @@ jobs:
 
   docker-alpine-test-fcgi-r:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
@@ -86,11 +98,15 @@ jobs:
 
   docker-alpine-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: in-line clone
       run: git clone file://$(realpath ../..)
     - name: openconfig
@@ -112,7 +128,7 @@ jobs:
     - name: save docker image
       run: sudo docker save clixon/clixon-test | gzip > /tmp/clixon-test.tar.gz
     - name: upload docker image
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6.0.0
       with:
         name: docker-native
         path: /tmp/clixon-test.tar.gz
@@ -121,13 +137,17 @@ jobs:
   docker-alpine-test-1:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -141,13 +161,17 @@ jobs:
   docker-alpine-test-2:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -161,13 +185,17 @@ jobs:
   docker-alpine-test-3:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -181,13 +209,17 @@ jobs:
   docker-alpine-test-4:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
