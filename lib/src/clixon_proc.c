@@ -326,6 +326,75 @@ clixon_proc_socket_close(pid_t pid,
     return retval;
 }
 
+/*! Fork and exec a command, pipe its stdout and write filtered lines to a FILE
+ *
+ * Runs argv[0] with fork/execvp, pipes its stdout, and invokes filter_fn for
+ * each output line. Lines for which filter_fn returns non-zero are printed to f
+ * via cligen_output.
+ *
+ * @param[in]  argv       NULL-terminated argument vector; argv[0] is the program
+ * @param[in]  f          Output FILE (typically stdout)
+ * @param[in]  filter_fn  Callback: return 1 to print line, 0 to suppress. NULL prints all lines.
+ * @retval     0          OK
+ * @retval    -1          Error
+ */
+int
+clixon_proc_run_output(char *const argv[],
+                       FILE       *f,
+                       int       (*filter_fn)(const char *line))
+{
+    int    retval = -1;
+    int    pfd[2] = {-1, -1};
+    pid_t  pid = 0;
+    int    status;
+    FILE  *fp = NULL;
+    char   line[4096];
+
+    if (argv == NULL || argv[0] == NULL){
+        clixon_err(OE_UNIX, EINVAL, "argv is NULL");
+        goto done;
+    }
+    if (pipe(pfd) < 0){
+        clixon_err(OE_UNIX, errno, "pipe");
+        goto done;
+    }
+    if ((pid = fork()) < 0){
+        clixon_err(OE_UNIX, errno, "fork");
+        goto done;
+    }
+    if (pid == 0){ /* child */
+        close(pfd[0]);
+        if (dup2(pfd[1], STDOUT_FILENO) < 0)
+            _exit(1);
+        close(pfd[1]);
+        execvp(argv[0], argv);
+        _exit(1);
+    }
+    /* parent */
+    close(pfd[1]);
+    pfd[1] = -1;
+    if ((fp = fdopen(pfd[0], "r")) == NULL){
+        clixon_err(OE_UNIX, errno, "fdopen");
+        goto done;
+    }
+    pfd[0] = -1; /* owned by fp */
+    while (fgets(line, sizeof(line), fp) != NULL){
+        if (filter_fn == NULL || filter_fn(line))
+            cligen_output(f, "%s", line);
+    }
+    retval = 0;
+  done:
+    if (fp)
+        fclose(fp);
+    if (pfd[0] != -1)
+        close(pfd[0]);
+    if (pfd[1] != -1)
+        close(pfd[1]);
+    if (pid > 0)
+        waitpid(pid, &status, 0);
+    return retval;
+}
+
 /*! Fork and exec a sub-process, let it run and return pid
  *
  * @param[in]  h     Clixon handle

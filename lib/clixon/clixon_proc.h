@@ -67,6 +67,7 @@ typedef int (proc_cb_t)(clixon_handle    h,
  */
 int clixon_proc_socket(clixon_handle h, char *const argv[], int sock_flags, pid_t *pid, int *sock, int *sockerr);
 int clixon_proc_socket_close(pid_t pid, int sock);
+int clixon_proc_run_output(char *const argv[], FILE *f, int (*filter_fn)(const char *line));
 int clixon_process_pid(clixon_handle h, const char *name, pid_t *pid);
 int clixon_process_op_str2int(const char *opstr);
 int clixon_process_argv_get(clixon_handle h, const char *name, char ***argv, int *argc);
