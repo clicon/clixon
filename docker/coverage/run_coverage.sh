@@ -129,6 +129,13 @@ lcov --extract /coverage-combined.info '/build/cligen/*' \
 lcov --extract /coverage-combined.info '/build/cligen/*' \
     --output-file /coverage-cligen.info
 
+# Rebase paths so Codecov can map them to the respective GitHub repos.
+# Clixon source lives at the repo root, matching /build/clixon/ -> (empty).
+# CLIgen source lives at the cligen repo root; files are at the top level,
+# so /build/cligen/ must be stripped to leave bare filenames (e.g. cligen_match.c).
+sed -i 's|SF:/build/clixon/|SF:|g' /coverage-clixon.info
+sed -i 's|SF:/build/cligen/|SF:|g'  /coverage-cligen.info
+
 # Print a brief summary to the container log
 echo "=== Clixon coverage ==="
 lcov --list /coverage-clixon.info | tail -5
