@@ -22,6 +22,9 @@
 #  8. CLICON_NACM_AUTOCLI=false: filtering disabled; denied nodes visible in CLI despite NACM deny rule
 #  9. read-default=deny, permit path with key predicate /devices/device[name='sample']: predicate stripped,
 #     schema path /devices/device used -> devices visible (regression: issue #673)
+# 10. compress disabled (base case): NACM path /devices/device matches CLI /devices/device normally
+# 11. compress enabled: same NACM path /devices/device -> nacm_path_compress_apply strips 'devices' ->
+#     CLI path /device; wilma sees 'device' (not 'devices') in set ?
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -216,6 +219,11 @@ NACM_PERMIT_SETTINGS_ENABLED="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-net
 # NACM config for Test 9: read-default=deny, permit /devices/device[name='sample'] (key predicate)
 # The predicate must be stripped and the schema path /devices/device used instead (issue #673)
 NACM_PERMIT_DEVICE_PREDICATE="<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\"><enable-nacm>true</enable-nacm><read-default>deny</read-default><write-default>deny</write-default><exec-default>permit</exec-default>${NGROUPS}${NADMIN}<rule-list><name>limited-acl</name><group>limited</group><rule><name>permit-device-sample</name><module-name>example</module-name><path xmlns:ex=\"urn:example:clixon\">/ex:devices/ex:device[ex:name='sample']</path><access-operations>read</access-operations><action>permit</action></rule></rule-list></nacm>"
+
+# NACM config for Test 10/11: reuses NACM_PERMIT_DEVICE (already defined above)
+# Test 10: no compress, base case - /devices/device matches CLI /devices/device
+# Test 11: with compress rule - /devices/device compress-stripped to /device,
+#           must still match CLI /device (nacm_path_compress_apply)
 
 new "test params: -f $cfg"
 
@@ -484,6 +492,90 @@ expectpart "$(echo 'set devices device x ?' | $clixon_cli -f $cfg -U wilma 2>&1)
 
 new "Test 9c: admin - 'set ?' shows all nodes"
 expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U admin 2>&1)" 0 "public" "visible" "devices" "mgmt" "secret"
+
+# --- Test 10: compress disabled (base case) ---
+# NACM path /devices/device, no compress rule.
+# CLI tree has /devices/device so paths match without any transform.
+new "Test 10: Load NACM read-default=deny, permit /devices/device (no compress, base case)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>$NACM_PERMIT_DEVICE</config></edit-config></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Test 10 commit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><commit/></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Test 10a: wilma - 'set ?' shows devices (ancestor), NOT visible/public/secret/mgmt"
+expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 "devices" --not-- "visible" --not-- "public" --not-- "secret" --not-- "mgmt"
+
+new "Test 10b: wilma - 'set devices device x ?' shows address/description/settings"
+expectpart "$(echo 'set devices device x ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 "address" "description" "settings"
+
+new "Test 10c: admin - 'set ?' shows all nodes"
+expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U admin 2>&1)" 0 "devices" "visible" "public" "secret" "mgmt"
+
+# Restart backend with compress rule that strips containers whose only child is a list.
+# 'devices' has only 'device' list -> compressed: CLI tree has /device at top level.
+if [ $BE -ne 0 ]; then
+    new "Test 11: stop backend to reconfigure with compress rule"
+    stop_backend -f $cfg
+fi
+
+cat <<EOF > $cfd/autocli.xml
+<clixon-config xmlns="http://clicon.org/config">
+   <autocli>
+      <module-default>false</module-default>
+      <list-keyword-default>kw-nokey</list-keyword-default>
+      <grouping-treeref>true</grouping-treeref>
+      <treeref-state-default>false</treeref-state-default>
+      <rule>
+         <name>include example</name>
+         <operation>enable</operation>
+         <module-name>example*</module-name>
+      </rule>
+      <rule>
+         <name>compress single-child-list containers</name>
+         <operation>compress</operation>
+         <yang-keyword>container</yang-keyword>
+         <yang-keyword-child>list</yang-keyword-child>
+      </rule>
+      <clispec-cache>read</clispec-cache>
+   </autocli>
+</clixon-config>
+EOF
+
+if [ $BE -ne 0 ]; then
+    new "Test 11: start backend with compress rule"
+    start_backend -s init -f $cfg
+fi
+
+new "wait backend"
+wait_backend
+
+# --- Test 11: compress enabled ---
+# Same NACM rule /devices/device as Test 10.  With compress active, the
+# 'devices' container is stripped from the CLI tree so the CLI node path is
+# /device.  nacm_path_compress_apply must strip /devices from the filter
+# path too, yielding /device -> match.
+new "Test 11: Load same NACM read-default=deny, permit /devices/device (with compress)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><edit-config><target><candidate/></target><default-operation>replace</default-operation><config>$NACM_PERMIT_DEVICE</config></edit-config></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Test 11 commit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><commit/></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Test 11a: wilma - 'set ?' shows device (compressed, NOT devices), NOT visible/public/secret/mgmt"
+expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 "device" --not-- "devices" --not-- "visible" --not-- "public" --not-- "secret" --not-- "mgmt"
+
+new "Test 11b: wilma - 'set device x ?' shows address/description/settings"
+expectpart "$(echo 'set device x ?' | $clixon_cli -f $cfg -U wilma 2>&1)" 0 "address" "description" "settings"
+
+new "Test 11c: admin - 'set ?' shows device (compressed) plus mgmt/public/secret/visible"
+expectpart "$(echo 'set ?' | $clixon_cli -f $cfg -U admin 2>&1)" 0 "device" "mgmt" "public" "secret" "visible"
 
 # --- Cleanup ---
 if [ $BE -ne 0 ]; then

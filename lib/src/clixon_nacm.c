@@ -78,6 +78,7 @@
 #include "clixon_path.h"
 #include "clixon_xml_vec.h"
 #include "clixon_yang_parse_lib.h"
+#include "clixon_autocli.h"
 #include "clixon_nacm.h"
 
 /*! Add user to list of NACM proxyusers that may represent other users
@@ -1623,12 +1624,105 @@ nacm_path_normalize(const char *path0)
     return retval;
 }
 
+/*! Strip compress-rule-suppressed YANG nodes from a normalized path
+ *
+ * Walk each segment of the already-normalised path (no prefixes, no key
+ * predicates) against the YANG schema tree.  Any segment whose YANG node
+ * is "compressed away" by an autocli compress rule is omitted from the
+ * output.  Segments that are not found in the YANG tree are kept as-is so
+ * that the caller still gets a useful (if imperfect) path.
+ *
+ * Example:
+ *   YANG:  container interfaces { list interface { ... } }
+ *   Rule:  compress container whose only child is list
+ *   Input:  /interfaces/interface
+ *   Output: /interface
+ *
+ * @param[in]  h       Clixon handle (for autocli_compress access)
+ * @param[in]  path    Normalized path (no ns prefixes, no predicates)
+ * @param[in]  yspec   YANG specification top-level node
+ * @retval     str     Malloced path with compressed segments removed, caller frees
+ * @retval     NULL    Error
+ */
+static char *
+nacm_path_compress_apply(clixon_handle h,
+                         const char   *path,
+                         yang_stmt    *yspec)
+{
+    cbuf       *cb     = NULL;
+    char       *pcopy  = NULL;
+    char       *str;
+    char       *tok;
+    yang_stmt  *ycur   = yspec;
+    char       *retval = NULL;
+    int         compress;
+    yang_stmt  *ynext;
+    int         ix;
+    yang_stmt  *ymod;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if ((pcopy = strdup(path)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    str = pcopy;
+    while ((tok = strsep(&str, "/")) != NULL){
+        if (*tok == '\0')
+            continue;
+        /* Find this segment in the current YANG context.
+         * For the top-level (yspec), search across all modules. */
+        ynext = NULL;
+        if (yang_keyword_get(ycur) == Y_SPEC){
+            /* yspec level: search all modules */
+            ix = 0;
+            while ((ymod = yn_iter(ycur, &ix)) != NULL){
+                if (yang_keyword_get(ymod) != Y_MODULE &&
+                    yang_keyword_get(ymod) != Y_SUBMODULE)
+                    continue;
+                if ((ynext = yang_find_datanode(ymod, tok)) != NULL)
+                    break;
+            }
+        }
+        else {
+            ynext = yang_find_datanode(ycur, tok);
+        }
+        if (ynext == NULL){
+            /* Node not found in YANG — keep the segment and stay at same level */
+            cprintf(cb, "/%s", tok);
+            continue;
+        }
+        compress = 0;
+        if (autocli_compress(h, ynext, &compress) < 0)
+            goto done;
+        if (!compress)
+            cprintf(cb, "/%s", tok);
+        ycur = ynext;
+    }
+    if ((retval = strdup(cbuf_get(cb))) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+ done:
+    if (pcopy)
+        free(pcopy);
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
 /*! Build autocli NACM filter for a user from the NACM XML tree
  *
  * Collects NACM read rules for the user's groups.
  * Rule paths are normalized: namespace prefixes and key predicates are stripped
  * so that e.g. /ex:devices/ex:device[ex:name='x'] is treated as /devices/device.
+ * Autocli compress rules are then applied so that compressed YANG containers
+ * are removed from the path, matching the CLI node paths that nacm_build_yang_path
+ * produces (which walks the CLIgen tree where compressed nodes are absent).
  *
+ * @param[in]  h         Clixon handle (for autocli compress rules)
  * @param[in]  username  User name
  * @param[in]  xnacm     Top-level nacm XML element (may be NULL if NACM disabled)
  * @param[out] nafp      Filter struct (NULL if NACM disabled or no rules), caller frees
@@ -1637,7 +1731,8 @@ nacm_path_normalize(const char *path0)
  * @see nacm_autocli_filter_free
  */
 int
-nacm_autocli_filter_build(const char             *username,
+nacm_autocli_filter_build(clixon_handle           h,
+                          const char             *username,
                           cxobj                  *xnacm,
                           nacm_autocli_filter_t **nafp)
 {
@@ -1656,12 +1751,14 @@ nacm_autocli_filter_build(const char             *username,
     cxobj                 *xrule;
     char                  *path0;
     char                  *path = NULL;
+    char                  *pathc = NULL;
     char                  *action;
     char                  *access_operations;
     int                    i;
     int                    j;
     int                    k;
     char                  *gname;
+    yang_stmt             *yspec;
 
     *nafp = NULL;
     if (xnacm == NULL || username == NULL)
@@ -1745,6 +1842,19 @@ nacm_autocli_filter_build(const char             *username,
             path = NULL;
             if ((path = nacm_path_normalize(path0)) == NULL)
                 goto done;
+            /* Apply autocli compress rules: remove segments whose YANG nodes are
+             * compressed away, so the filter path matches what nacm_build_yang_path
+             * produces from the CLIgen tree (which lacks compressed nodes). */
+            if (pathc)
+                free(pathc);
+            pathc = NULL;
+            yspec = clicon_dbspec_yang(h);
+            if (yspec != NULL){
+                if ((pathc = nacm_path_compress_apply(h, path, yspec)) == NULL)
+                    goto done;
+            }
+            else
+                pathc = path; /* no yspec: use normalized path as-is */
             /* Add to the appropriate set:
              * deny_default=0: collect deny paths
              * deny_default=1: collect permit paths */
@@ -1755,7 +1865,7 @@ nacm_autocli_filter_build(const char             *username,
                     clixon_err(OE_UNIX, errno, "cvec_add");
                     goto done;
                 }
-                if (cv_string_set(cv, path) == NULL){
+                if (cv_string_set(cv, pathc) == NULL){
                     clixon_err(OE_UNIX, errno, "cv_string_set");
                     goto done;
                 }
@@ -1769,6 +1879,8 @@ nacm_autocli_filter_build(const char             *username,
  done:
     if (path)
         free(path);
+    if (pathc && pathc != path)
+        free(pathc);
     if (gvec)
         free(gvec);
     if (rlistvec)

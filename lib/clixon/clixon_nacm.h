@@ -77,7 +77,7 @@ typedef struct nacm_autocli_filter {
                               * if deny_default=1: explicitly permitted paths */
 } nacm_autocli_filter_t;
 
-int  nacm_autocli_filter_build(const char *username, cxobj *xnacm, nacm_autocli_filter_t **nafp);
+int  nacm_autocli_filter_build(clixon_handle h, const char *username, cxobj *xnacm, nacm_autocli_filter_t **nafp);
 int  nacm_autocli_filter_active(nacm_autocli_filter_t *naf);
 int  nacm_autocli_yang_skip(const char *node_path, nacm_autocli_filter_t *naf, int *skip);
 void nacm_autocli_filter_free(nacm_autocli_filter_t *naf);

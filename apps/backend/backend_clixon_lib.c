@@ -999,7 +999,7 @@ from_client_nacm_autocli_filter(clixon_handle h,
 
     if ((xnacm = clicon_nacm_cache(h)) != NULL &&
         (username = clicon_username_get(h)) != NULL){
-        if (nacm_autocli_filter_build(username, xnacm, &naf) < 0)
+        if (nacm_autocli_filter_build(h, username, xnacm, &naf) < 0)
             goto done;
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
