@@ -200,6 +200,7 @@
 #include "clixon_debug.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_yang_parse.h"
+#include "banned.h"
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
  * And then run the testcase with -D CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL
@@ -1869,8 +1870,9 @@ string        : qstrings { $$=$1;
 qstrings      : qstrings '+' qstring
                      {
                          int len = strlen($1);
-                         $$ = realloc($1, len + strlen($3) + 1);
-                         sprintf($$+len, "%s", $3);
+                         int len3 = strlen($3);
+                         $$ = realloc($1, len + len3 + 1);
+                         memcpy($$+len, $3, len3+1);
                          free($3);
                          _PARSE_DEBUG("qstrings-> qstrings '+' qstring");
                      }
@@ -1893,8 +1895,9 @@ qstring        : '"' ustring '"'  { $$=$2;
 ustring       : ustring CHARS
                      {
                          int len = strlen($1);
-                         $$ = realloc($1, len+strlen($2) + 1);
-                         sprintf($$+len, "%s", $2);
+                         int len2 = strlen($2);
+                         $$ = realloc($1, len+len2 + 1);
+                         memcpy($$+len, $2, len2+1);
                          _PARSE_DEBUG1("ustring-> string + CHARS(%s)", $2);
                          free($2);
                      }
@@ -1914,8 +1917,9 @@ identifier_str : id_qstrings { $$=$1;
 id_qstrings    : id_qstrings '+' id_qstring
                      {
                          int len = strlen($1);
-                         $$ = realloc($1, len + strlen($3) + 1);
-                         sprintf($$+len, "%s", $3);
+                         int len3 = strlen($3);
+                         $$ = realloc($1, len + len3 + 1);
+                         memcpy($$+len, $3, len3+1);
                          free($3);
                          _PARSE_DEBUG("id_qstrings-> id_qstrings '+' id_qstring");
                      }

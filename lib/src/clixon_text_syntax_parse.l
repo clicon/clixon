@@ -54,6 +54,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_text_syntax_parse.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _ts is added to arg list */
 #define YY_DECL int clixon_text_syntax_parselex(void *_ts)

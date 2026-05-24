@@ -114,6 +114,7 @@
 #include "clixon_debug.h"
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
+#include "banned.h"
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
  * And then run the testcase with -D 1

@@ -85,6 +85,7 @@
 #include "clixon_handle.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_parse.h"
+#include "banned.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0

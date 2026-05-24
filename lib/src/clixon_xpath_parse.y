@@ -132,6 +132,7 @@
 #include "clixon_xpath_function.h"
 #include "clixon_xpath_eval.h"
 #include "clixon_xpath_parse.h"
+#include "banned.h"
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
  * And then run the testcase with -D 1
@@ -563,8 +564,9 @@ functioncall : NCNAME '(' ')'
 
 string      : string CHARS  {
                          int len = strlen($1);
-                         $$ = realloc($1, len+strlen($2) + 1);
-                         sprintf($$+len, "%s", $2);
+                         int len2 = strlen($2);
+                         $$ = realloc($1, len+len2 + 1);
+                         memcpy($$+len, $2, len2+1);
                          free($2);
                          _PARSE_DEBUG("string-> string CHAR");
                }

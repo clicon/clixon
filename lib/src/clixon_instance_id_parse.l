@@ -70,6 +70,7 @@
 #include "clixon_debug.h"
 #include "clixon_path.h"
 #include "clixon_instance_id_parse.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
 #define YY_DECL int clixon_instance_id_parselex(void *_iy)

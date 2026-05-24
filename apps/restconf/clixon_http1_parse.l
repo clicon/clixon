@@ -64,6 +64,7 @@
 #include "restconf_lib.h"
 #include "restconf_native.h"
 #include "clixon_http1_parse.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
 #define YY_DECL int clixon_http1_parselex(void *_hy)

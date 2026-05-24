@@ -61,6 +61,7 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_json_parse.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
 #define YY_DECL int clixon_json_parselex(void *_yy)
