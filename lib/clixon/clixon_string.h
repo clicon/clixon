@@ -49,11 +49,13 @@
 static inline char * strdup4(char *str)
 {
     char *dup;
+    size_t slen;
     size_t len;
-    len = align4(strlen(str)+1);
+    slen = strlen(str)+1;
+    len = align4(slen);
     if ((dup = (char*) malloc(len)) == NULL)
         return NULL;
-    memcpy(dup, str, strlen(str)+1);
+    memcpy(dup, str, slen);
     return dup;
 }
 
