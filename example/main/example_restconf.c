@@ -78,7 +78,7 @@ b64_decode(const char *src,
            size_t      targsize)
 {
     int tarindex, state, ch;
-    char *pos;
+    const char *pos;
 
     state = 0;
     tarindex = 0;

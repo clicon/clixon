@@ -432,7 +432,7 @@ json_rpc_transform(clixon_handle  h,
     int        retval = -1;
     cbuf      *cb = NULL;
     yang_stmt *ymod = NULL;
-    char      *ptr;
+    const char *ptr;
     cxobj     *xerr = NULL; /* malloced must be freed */
     int        ret;
 

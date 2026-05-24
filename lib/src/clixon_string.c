@@ -95,7 +95,7 @@ clixon_strsep1(const char *string,
     int    i;
     size_t siz;
     const char *s;
-    char  *d;
+    const char *d;
 
     if ((s = string)==NULL)
         goto done;
@@ -211,7 +211,7 @@ clixon_strsep3(const char *string,
     int    i;
     size_t siz;
     const char *s;
-    char  *d;
+    const char *d;
     int    prev;
 
     if ((s = string)==NULL)
@@ -343,7 +343,7 @@ clixon_strsplit(const char *string,
                 char      **suffix)
 {
     int   retval = -1;
-    char *str;
+    const char *str;
 
     if ((str = strchr(string, delim)) == NULL){
         if (suffix && (*suffix = strdup(string)) == NULL){
