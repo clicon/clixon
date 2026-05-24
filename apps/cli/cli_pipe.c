@@ -62,6 +62,8 @@
 #include <sys/mount.h>
 #include <pwd.h>
 
+extern char **environ;
+
 /* cligen */
 #include <cligen/cligen.h>
 
@@ -85,19 +87,26 @@ pipe_arg_fn(clixon_handle h,
             char         *value)
 {
     int         retval = -1;
-    struct stat fstat;
+    struct stat st;
     char      **argv = NULL;
     int         i;
+    int         fd = -1;
 
     if (cmd == NULL || strlen(cmd) == 0){
         clixon_err(OE_PLUGIN, EINVAL, "cmd '%s' NULL or empty", cmd);
         goto done;
     }
-    if (stat(cmd, &fstat) < 0) {
-        clixon_err(OE_UNIX, errno, "stat(%s)", cmd);
+    /* Open the file before stat to close the TOCTOU window between
+     * the regular-file check and exec */
+    if ((fd = open(cmd, O_RDONLY)) < 0){
+        clixon_err(OE_UNIX, errno, "open(%s)", cmd);
         goto done;
     }
-    if (!S_ISREG(fstat.st_mode)){
+    if (fstat(fd, &st) < 0){
+        clixon_err(OE_UNIX, errno, "fstat(%s)", cmd);
+        goto done;
+    }
+    if (!S_ISREG(st.st_mode)){
         clixon_err(OE_UNIX, errno, "%s is not a regular file", cmd);
         goto done;
     }
@@ -112,8 +121,14 @@ pipe_arg_fn(clixon_handle h,
         argv[i++] = value;
     }
     argv[i++] = NULL;
-    retval = execv(cmd, argv);
+    if (fexecve(fd, argv, environ) < 0){
+        clixon_err(OE_UNIX, errno, "fexecve(%s)", cmd);
+        goto done;
+    }
+    retval = 0;
  done:
+    if (fd != -1)
+        close(fd);
     if (argv)
         free(argv);
     return retval;
