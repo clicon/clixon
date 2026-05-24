@@ -182,7 +182,7 @@ xml_search_index_head(cxobj *x)
  */
 /* Childvec sub-struct: header + flexible array of child pointers in one allocation */
 struct xmlvec {
-    uint32_t       xv_len;    /* number of children */
+    uint32_t       xv_len;    /* number of children limited to 4M */
     uint32_t       xv_max;    /* allocated capacity */
     struct xml    *xv_vec[];  /* flexible array member */
 };
@@ -1338,9 +1338,13 @@ xml_child_append(cxobj *xp,
     xv->xv_len++;
     if (xv->xv_len > xv->xv_max){
         if (xv->xv_len < XML_CHILDVEC_SIZE_THRESHOLD)
-            newmax = xv->xv_max ? 2*xv->xv_max : start;
+            newmax = xv->xv_max ? 2*(size_t)xv->xv_max : start;
         else
-            newmax = xv->xv_max + XML_CHILDVEC_SIZE_THRESHOLD;
+            newmax = (size_t)xv->xv_max + XML_CHILDVEC_SIZE_THRESHOLD;
+        if (newmax > UINT32_MAX){
+            clixon_err(OE_XML, ERANGE, "xml child vector overflow");
+            return -1;
+        }
         if ((xv = realloc(xv, sizeof(struct xmlvec) + newmax * sizeof(cxobj*))) == NULL){
             clixon_err(OE_XML, errno, "realloc");
             return -1;
@@ -1353,7 +1357,7 @@ xml_child_append(cxobj *xp,
 }
 
 /*! Insert child XML at specific position under XML parent
- * 
+ *
  * @param[in]  xp  Parent XML node
  * @param[in]  xc  Child XML node
  * @param[in]  pos Position
@@ -1385,9 +1389,13 @@ xml_child_insert_pos(cxobj *xp,
     xv->xv_len++;
     if (xv->xv_len > xv->xv_max){
         if (xv->xv_len < XML_CHILDVEC_SIZE_THRESHOLD)
-            newmax = xv->xv_max ? 2*xv->xv_max : XML_CHILDVEC_SIZE_START;
+            newmax = xv->xv_max ? 2*(size_t)xv->xv_max : XML_CHILDVEC_SIZE_START;
         else
-            newmax = xv->xv_max + XML_CHILDVEC_SIZE_THRESHOLD;
+            newmax = (size_t)xv->xv_max + XML_CHILDVEC_SIZE_THRESHOLD;
+        if (newmax > UINT32_MAX){
+            clixon_err(OE_XML, ERANGE, "xml child vector overflow");
+            return -1;
+        }
         if ((xv = realloc(xv, sizeof(struct xmlvec) + newmax * sizeof(cxobj*))) == NULL){
             clixon_err(OE_XML, errno, "realloc");
             return -1;

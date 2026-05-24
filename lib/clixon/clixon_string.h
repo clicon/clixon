@@ -48,12 +48,17 @@
 /*! A strdup version that aligns on 4 bytes. To avoid warning from valgrind */
 static inline char * strdup4(char *str)
 {
-    char *dup;
+    char  *dup;
+    size_t slen;
     size_t len;
-    len = align4(strlen(str)+1);
+
+    if (str == NULL)
+        return NULL;
+    slen = strlen(str);
+    len = align4(slen+1);
     if ((dup = (char*) malloc(len)) == NULL)
         return NULL;
-    memcpy(dup, str, strlen(str)+1);
+    memcpy(dup, str, slen+1);
     return dup;
 }
 

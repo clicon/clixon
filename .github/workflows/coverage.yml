@@ -47,6 +47,9 @@ jobs:
     - name: remove container
       run: sudo docker rm clixon-coverage
 
+    - name: get cligen HEAD commit
+      run: echo "CLIGEN_SHA=$(git ls-remote https://github.com/clicon/cligen.git HEAD | cut -f1)" >> $GITHUB_ENV
+
     - name: upload clixon coverage to Codecov
       uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354  # v6.0.1
       with:
@@ -60,4 +63,5 @@ jobs:
         files: ./docker/coverage/coverage-cligen.info
         disable_search: true
         slug: clicon/cligen
+        override_commit: ${{ env.CLIGEN_SHA }}
         token: ${{ secrets.CLIGEN_CODECOV_TOKEN }}
