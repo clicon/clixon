@@ -59,6 +59,7 @@
 #include "snmp_lib.h"
 #include "snmp_register.h"
 #include "snmp_handler.h"
+#include "banned.h"
 
 struct snmp_getnext_cache {
     cxobj         *sg_xml;

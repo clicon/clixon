@@ -70,6 +70,7 @@
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
+#include "banned.h"
 
 /*! Insert (escaped) strings into expand commands
  *

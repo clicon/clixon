@@ -75,6 +75,7 @@
 #include "clixon_cli_api.h"
 #include "cli_generate.h"
 #include "cli_common.h"
+#include "banned.h"
 
 /*
  * CLIXON CLI parse-tree workpoint API: Essentially a mirror of the cligen_wp_set() and similar functions

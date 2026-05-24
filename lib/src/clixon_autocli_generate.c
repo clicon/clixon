@@ -120,6 +120,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include "clixon_xpath_yang.h"
 #include "clixon_autocli.h"
 #include "clixon_autocli_generate.h"
+#include "banned.h"
 
 /* Forward declaration */
 static int yang2cli_leaf_var(clixon_handle h, yang_stmt *ys, yang_stmt *yreferred, char *helptext, cbuf *cb, int callback, int key_leaf, int leafref_refer);

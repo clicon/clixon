@@ -79,6 +79,7 @@
 #include "backend_cache.h"
 #include "backend_clixon_lib.h"
 #include "backend_plugin_restconf.h"
+#include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
 #define BACKEND_OPTS "hVD:f:E:l:C:d:p:b:Fza:u:P:1qs:c:U:g:y:Ao:"

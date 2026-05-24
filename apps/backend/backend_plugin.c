@@ -64,6 +64,7 @@
 #include "clixon_backend_plugin.h"
 #include "clixon_backend_client.h"
 #include "clixon_backend_commit.h"
+#include "banned.h"
 
 /*! Request plugins to reset system state
  *

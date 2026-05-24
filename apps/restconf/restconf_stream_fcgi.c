@@ -98,6 +98,7 @@
 #include "restconf_stream.h"
 #include "restconf_lib.h"
 #include "restconf_stream.h"
+#include "banned.h"
 
 /*
  * Constants

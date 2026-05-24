@@ -160,6 +160,7 @@
 
 #ifndef SOCK_NONBLOCK
 #include <fcntl.h>
+#include "banned.h"
 #define SOCK_NONBLOCK O_NONBLOCK
 #endif
 

@@ -77,6 +77,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_data.h"
+#include "banned.h"
 
 /*! Get generic clixon data on the form <name>=<val> where <val> is string
  *

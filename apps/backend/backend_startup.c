@@ -71,6 +71,7 @@
 #include "backend_handle.h"
 #include "clixon_backend_commit.h"
 #include "backend_startup.h"
+#include "banned.h"
 
 /*! Merge db1 into db2 without commit 
  *

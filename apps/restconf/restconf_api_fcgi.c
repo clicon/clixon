@@ -66,6 +66,7 @@
 
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
+#include "banned.h"
 
 /*! HTTP headers done, if there is a message body coming next
  *

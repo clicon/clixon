@@ -59,6 +59,7 @@
 
 #include "grpc_nghttp2.h"
 #include "grpc_gnmi.h"
+#include "banned.h"
 
 /*! Build gNMI CapabilityResponse and serialize it
  *

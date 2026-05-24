@@ -72,6 +72,7 @@ extern char **environ;
 
 #include "clixon_cli_api.h"
 #include "cli_pipe.h"
+#include "banned.h"
 
 /* General-purpose pipe output function
  *

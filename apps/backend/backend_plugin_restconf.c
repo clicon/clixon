@@ -56,6 +56,7 @@
 
 #include "clixon_backend_transaction.h"
 #include "backend_plugin_restconf.h"
+#include "banned.h"
 
 /*---------------------------------------------------------------------
  * Restconf process pseudo plugin

@@ -63,6 +63,7 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_methods_post.h"
+#include "banned.h"
 
 /*! Print location header from
  *

@@ -67,6 +67,7 @@
 #include "cli_plugin.h"
 #include "cli_handle.h"
 #include "cli_generate.h"
+#include "banned.h"
 
 /*
  * Constants
@@ -648,7 +649,7 @@ cli_prompt_get(clixon_handle h,
                 break;
             case 'T': /* TTY */
                 if(ttyname_r(fileno(stdin), tty, sizeof(tty)-1) < 0)
-                    strcpy(tty, "notty");
+                    memcpy(tty, "notty", sizeof("notty"));
                 cprintf(cb, "%s", tty);
                 break;
             case 'W': /* Last element of working path */

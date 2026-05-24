@@ -72,6 +72,7 @@
 
 #include "netconf_filter.h"
 #include "netconf_rpc.h"
+#include "banned.h"
 
 /*
  * <rpc [attributes]>

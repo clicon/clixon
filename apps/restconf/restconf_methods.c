@@ -76,6 +76,7 @@
 #include "restconf_methods_post.h"
 #include "restconf_methods_patch.h"
 #include "restconf_methods.h"
+#include "banned.h"
 
 /*! REST OPTIONS method
  *

@@ -54,6 +54,7 @@
 #include <net-snmp/agent/net-snmp-agent-includes.h>
 
 #include "snmp_lib.h"
+#include "banned.h"
 
 /* SNMP v2 notification OID
  */
@@ -462,7 +463,7 @@ get_all_streams_from_backend(clixon_handle    h,
                 clixon_err(OE_SNMP, errno, "calloc");
                 goto done;
             }
-            strcpy(st[cnt], stream_name);
+            memcpy(st[cnt], stream_name, strlen(stream_name)+1);
             cnt++;
         }
     }

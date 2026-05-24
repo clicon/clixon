@@ -64,6 +64,7 @@
 #include "clixon_backend_client.h"
 #include "backend_client.h"
 #include "backend_handle.h"
+#include "banned.h"
 
 /* header part is copied from struct clixon_handle in lib/src/clixon_handle.c */
 

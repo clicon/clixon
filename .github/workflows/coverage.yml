@@ -66,4 +66,5 @@ jobs:
         disable_search: true
         slug: clicon/cligen
         override_commit: ${{ env.CLIGEN_SHA }}
+        override_branch: master
         token: ${{ secrets.CLIGEN_CODECOV_TOKEN }}

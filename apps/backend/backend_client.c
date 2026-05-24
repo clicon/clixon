@@ -72,6 +72,7 @@
 #include "backend_get.h"
 #include "backend_cache.h"
 #include "backend_client.h"
+#include "banned.h"
 
 /*! Construct a client string description from client_entry information for logging
  *

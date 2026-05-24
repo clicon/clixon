@@ -69,6 +69,7 @@
 #include "cli_generate.h"
 #include "cli_common.h"
 #include "cli_handle.h"
+#include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
 #define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:o:"

@@ -73,6 +73,7 @@
 #include "backend_state.h"
 #include "backend_get.h"
 #include "backend_client.h"
+#include "banned.h"
 
 /*! Key values are checked for validity independent of user-defined callbacks
  *

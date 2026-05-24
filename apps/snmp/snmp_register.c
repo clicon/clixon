@@ -78,6 +78,7 @@
 #include "snmp_lib.h"
 #include "snmp_register.h"
 #include "snmp_handler.h"
+#include "banned.h"
 
 /*! Parse smiv2 extensions for YANG leaf
  *

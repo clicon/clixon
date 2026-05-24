@@ -84,7 +84,7 @@ ifeq ($(LINKAGE),dynamic)
 CPPFLAGS  	+= -fPIC
 endif
 
-INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+INCLUDES	= -I. -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
 # protoc-c compiler for .proto -> .pb-c.{c,h}
 PROTOC_C	= protoc-c

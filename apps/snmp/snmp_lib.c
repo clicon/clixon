@@ -75,6 +75,7 @@
 #include <clixon/clixon.h>
 
 #include "snmp_lib.h"
+#include "banned.h"
 
 /*
  * Local variables

@@ -68,6 +68,7 @@
 #include "restconf_methods.h"
 #include "restconf_methods_get.h"
 #include "restconf_methods_post.h"
+#include "banned.h"
 
 /*! Check if uri path denotes a restconf path
  *

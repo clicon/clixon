@@ -63,6 +63,7 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_methods_get.h"
+#include "banned.h"
 
 /* Forward */
 static int api_data_pagination(clixon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);

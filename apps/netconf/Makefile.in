@@ -82,7 +82,7 @@ ifeq ($(LINKAGE),dynamic)
 else
 	CPPFLAGS  	= @CPPFLAGS@
 endif
-INCLUDES	= -I. -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
+INCLUDES	= -I. -I$(top_srcdir)/lib/clixon -I$(top_srcdir)/lib/src -I$(top_srcdir)/lib -I$(top_srcdir)/include -I$(top_srcdir) @INCLUDES@
 
 # Name of application
 APPL	 = clixon_netconf

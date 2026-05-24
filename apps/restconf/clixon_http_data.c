@@ -66,6 +66,7 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "clixon_http_data.h"
+#include "banned.h"
 
 /* File extension <-> HTTP Content media mapping
  * File extensions (on the left) MIME types (to the right) 

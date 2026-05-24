@@ -73,6 +73,7 @@
 #include "backend_state.h"
 #include "clixon_backend_commit.h"
 #include "backend_clixon_lib.h"
+#include "banned.h"
 
 /*! Set debug level.
  *

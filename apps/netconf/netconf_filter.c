@@ -64,6 +64,7 @@
 
 #include "netconf_rpc.h"
 #include "netconf_filter.h"
+#include "banned.h"
 
 /* xf specifices a filter, and xn is an xml tree.
  * Select the part of xn that matches xf and return it.
