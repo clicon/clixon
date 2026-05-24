@@ -458,7 +458,10 @@ get_all_streams_from_backend(clixon_handle    h,
                     goto done;
                 }
             }
-            st[cnt] = calloc(strlen(stream_name)+1, sizeof(char));
+            if ((st[cnt] = calloc(strlen(stream_name)+1, sizeof(char))) == NULL){
+                clixon_err(OE_SNMP, errno, "calloc");
+                goto done;
+            }
             strcpy(st[cnt], stream_name);
             cnt++;
         }
