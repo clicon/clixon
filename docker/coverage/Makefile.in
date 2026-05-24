@@ -78,7 +78,15 @@ push:
 # Note when start.sh is completed, the internal startsystem.sh script may still be running
 #      therefore the sleep 1 before tests start
 coverage: docker
-	./cleanup.sh ; ./start.sh # kill (ignore error) and the start it
+	sudo docker run --name clixon-coverage-local $(IMG) || true
+	sudo docker cp clixon-coverage-local:/coverage-clixon.info coverage-clixon.info
+	sudo docker cp clixon-coverage-local:/coverage-cligen.info coverage-cligen.info
+	sudo docker cp clixon-coverage-local:/cligen-sha.txt cligen-sha.txt
+	sudo docker rm clixon-coverage-local
+	@echo "Reports: coverage-clixon.info coverage-cligen.info"
+	@echo "CLIgen SHA: $$(cat cligen-sha.txt)"
+	lcov --list coverage-clixon.info | tail -5
+	lcov --list coverage-cligen.info | tail -5
 
 depend:
 

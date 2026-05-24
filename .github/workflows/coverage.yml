@@ -44,11 +44,13 @@ jobs:
     - name: extract cligen coverage report
       run: sudo docker cp clixon-coverage:/coverage-cligen.info coverage-cligen.info
 
+    - name: extract cligen SHA from container
+      run: |
+        sudo docker cp clixon-coverage:/cligen-sha.txt /tmp/cligen-sha.txt
+        echo "CLIGEN_SHA=$(cat /tmp/cligen-sha.txt | tr -d '[:space:]')" >> $GITHUB_ENV
+
     - name: remove container
       run: sudo docker rm clixon-coverage
-
-    - name: get cligen HEAD commit
-      run: echo "CLIGEN_SHA=$(git ls-remote https://github.com/clicon/cligen.git HEAD | cut -f1)" >> $GITHUB_ENV
 
     - name: upload clixon coverage to Codecov
       uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354  # v6.0.1

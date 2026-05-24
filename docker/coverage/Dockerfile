@@ -59,6 +59,8 @@ WORKDIR /build
 RUN git clone https://github.com/clicon/cligen.git
 WORKDIR /build/cligen
 RUN ./configure CFLAGS="--coverage" LDFLAGS="--coverage" && make && make install
+# Record the exact SHA that was compiled so the workflow can pass it to Codecov
+RUN git rev-parse HEAD > /cligen-sha.txt
 
 # Copy Clixon source (inline-cloned on host)
 RUN mkdir -p /build/clixon
