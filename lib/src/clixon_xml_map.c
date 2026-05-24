@@ -81,6 +81,7 @@
 #include "clixon_xml_io.h"
 #include "clixon_proc.h"
 #include "clixon_xml_map.h"
+#include "banned.h"
 
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int

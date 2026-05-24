@@ -61,6 +61,7 @@
 #include "clixon_stream.h"
 #include "clixon_data.h"
 #include "clixon_options.h"
+#include "banned.h"
 
 #define CLIXON_MAGIC 0x99aafabe
 

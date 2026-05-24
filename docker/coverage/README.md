@@ -35,3 +35,16 @@ The coverage reports are uploaded automatically to
 `.github/workflows/coverage.yml`, which runs weekly (Monday 02:00 UTC)
 and can also be triggered manually via `workflow_dispatch`.
 
+## Manual upload (for cligen)
+
+cd to src/cligen:
+
+```bash
+codecov upload-coverage \
+      --token $CLIGEN_CODECOV_TOKEN \
+      --slug clicon/cligen
+      --sha $(cat cligen-sha.txt | tr -d '[:space:]')
+      --branch master
+      --disable-search
+      --file coverage-cligen.info
+```

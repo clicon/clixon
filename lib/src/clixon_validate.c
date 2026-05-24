@@ -83,6 +83,7 @@
 #include "clixon_xml_sort.h"
 #include "clixon_validate_minmax.h"
 #include "clixon_validate.h"
+#include "banned.h"
 
 #ifdef LEAFREF_OPTIMIZE
 

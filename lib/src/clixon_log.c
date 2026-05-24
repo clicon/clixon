@@ -71,6 +71,7 @@
 #include "clixon_xml_io.h"
 #include "clixon_yang_module.h"
 #include "clixon_plugin.h"
+#include "banned.h"
 
 /*
  * Local Variables

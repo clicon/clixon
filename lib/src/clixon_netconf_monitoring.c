@@ -67,6 +67,7 @@
 #include "clixon_data.h"
 #include "clixon_datastore.h"
 #include "clixon_netconf_monitoring.h"
+#include "banned.h"
 
 static int
 per_datastore(clixon_handle h,

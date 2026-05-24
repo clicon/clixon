@@ -80,6 +80,7 @@
 #include "clixon_yang_type.h"
 #include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
+#include "banned.h"
 
 /*
  * Local variables

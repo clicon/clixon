@@ -85,6 +85,7 @@
 #include "clixon_xml_io.h"
 #include "clixon_nacm.h"
 #include "clixon_proto_client.h"
+#include "banned.h"
 
 #define TIMEOUT_XML_FMT "<confirm-timeout>%u</confirm-timeout>"
 
@@ -1501,7 +1502,7 @@ clicon_rpc_commit(clixon_handle h,
             clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
             goto done;
         };
-        sprintf(timeout_xml, TIMEOUT_XML_FMT, timeout);
+        snprintf(timeout_xml, 10 + 1 + strlen(TIMEOUT_XML_FMT), TIMEOUT_XML_FMT, timeout);
     }
     if (session_id_check(h, &session_id) < 0)
         goto done;

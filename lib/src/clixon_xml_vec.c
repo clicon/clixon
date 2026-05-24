@@ -66,6 +66,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_vec.h"
+#include "banned.h"
 
 //typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 

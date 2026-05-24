@@ -78,6 +78,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_json.h"
 #include "clixon_json_parse.h"
+#include "banned.h"
 
 /* Let xml2json_cbuf_vec() return json array: [a,b].
    ALternative is to create a pseudo-object and return that: {top:{a,b}}

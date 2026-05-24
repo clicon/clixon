@@ -93,6 +93,7 @@
 #include <errno.h>
 
 #include "clixon_dispatcher.h"
+#include "banned.h"
 
 /* ===== utility routines ==== */
 

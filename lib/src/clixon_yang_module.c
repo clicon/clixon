@@ -83,6 +83,7 @@
 #include "clixon_plugin.h"
 #include "clixon_xml_map.h"
 #include "clixon_yang_parse_lib.h"
+#include "banned.h"
 
 /*! Create modstate structure
  *

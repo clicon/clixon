@@ -69,6 +69,7 @@
 #include "clixon_xpath.h"
 #include "clixon_xpath_function.h"
 #include "clixon_xpath_yang.h"
+#include "banned.h"
 
 /* Assume single yang node context */
 struct xp_yang_ctx{

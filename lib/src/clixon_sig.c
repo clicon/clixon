@@ -61,6 +61,7 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_sig.h"
+#include "banned.h"
 
 /*! Set a signal handler.
  *

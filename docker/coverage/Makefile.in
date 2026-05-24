@@ -85,8 +85,8 @@ coverage: docker
 	sudo docker rm clixon-coverage-local
 	@echo "Reports: coverage-clixon.info coverage-cligen.info"
 	@echo "CLIgen SHA: $$(cat cligen-sha.txt)"
-	lcov --list coverage-clixon.info | tail -5
-	lcov --list coverage-cligen.info | tail -5
+	lcov --ignore-errors format --list coverage-clixon.info | tail -5
+	lcov --ignore-errors format --list coverage-cligen.info | tail -5
 
 depend:
 

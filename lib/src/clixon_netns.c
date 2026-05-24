@@ -50,6 +50,7 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_netns.h"
+#include "banned.h"
 
 #ifdef HAVE_SETNS
 /*

@@ -91,6 +91,7 @@
 #include "clixon_yang_type.h"
 #include "clixon_yang_schema_mount.h"
 #include "clixon_yang_internal.h" /* internal included by this file only, not API */
+#include "banned.h"
 
 /* Context for matching an import by module name and capturing its prefix */
 struct import_mod_ctx {

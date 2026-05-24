@@ -76,6 +76,7 @@
 #include "clixon_xml_io.h"
 #include "clixon_xml_parse.h"
 #include "clixon_xml_nsctx.h"
+#include "banned.h"
 
 /*
  * Constants

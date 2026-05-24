@@ -66,6 +66,7 @@
 #include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_regex.h"
+#include "banned.h"
 
 /*-------------------------- POSIX translation -------------------------*/
 

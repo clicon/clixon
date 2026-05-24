@@ -85,6 +85,7 @@
 #include "clixon_xpath.h"
 #include "clixon_datastore.h"
 #include "clixon_xml_io.h"
+#include "banned.h"
 
 /*
  * Constants

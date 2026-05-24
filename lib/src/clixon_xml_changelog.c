@@ -78,6 +78,7 @@
 #include "clixon_xml_changelog.h"
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
+#include "banned.h"
 
 static int
 changelog_rename(clixon_handle h,

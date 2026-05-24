@@ -70,6 +70,7 @@
 #include "clixon_xml_default.h"
 #include "clixon_text_syntax.h"
 #include "clixon_text_syntax_parse.h"
+#include "banned.h"
 
 /* Size of json read buffer when reading from file*/
 #define BUFLEN 1024

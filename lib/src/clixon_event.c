@@ -70,6 +70,7 @@
 #include "clixon_options.h"
 #include "clixon_event_select.h"
 #include "clixon_event.h"
+#include "banned.h"
 
 /*
  * Constants

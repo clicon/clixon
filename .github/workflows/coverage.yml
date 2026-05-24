@@ -60,11 +60,13 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: upload cligen coverage to Codecov
-      uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354  # v6.0.1
-      with:
-        files: ./docker/coverage/coverage-cligen.info
-        disable_search: true
-        slug: clicon/cligen
-        override_commit: ${{ env.CLIGEN_SHA }}
-        override_branch: master
-        token: ${{ secrets.CLIGEN_CODECOV_TOKEN }}
+      run: |
+        curl -Os https://cli.codecov.io/latest/linux/codecov
+        chmod +x codecov
+        ./codecov upload-coverage \
+          --token ${{ secrets.CLIGEN_CODECOV_TOKEN }} \
+          --slug clicon/cligen \
+          --sha ${{ env.CLIGEN_SHA }} \
+          --branch master \
+          --disable-search \
+          --file ./docker/coverage/coverage-cligen.info

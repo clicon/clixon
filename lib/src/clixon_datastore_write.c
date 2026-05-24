@@ -87,6 +87,7 @@
 #include "clixon_datastore.h"
 #include "clixon_datastore_write.h"
 #include "clixon_datastore_read.h"
+#include "banned.h"
 
 /* Local types */
 /* Argument to apply for recursive call to xmldb_multi write calls

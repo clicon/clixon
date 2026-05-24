@@ -107,6 +107,7 @@
 #include "clixon_path.h"
 #include "clixon_api_path_parse.h"
 #include "clixon_instance_id_parse.h"
+#include "banned.h"
 
 /*! Given api-path, parse it, and return a clixon-path struct
  *

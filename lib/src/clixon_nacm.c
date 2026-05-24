@@ -80,6 +80,7 @@
 #include "clixon_yang_parse_lib.h"
 #include "clixon_autocli.h"
 #include "clixon_nacm.h"
+#include "banned.h"
 
 /*! Add user to list of NACM proxyusers that may represent other users
  *

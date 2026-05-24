@@ -63,6 +63,7 @@
 #include "clixon_xpath_ctx.h"
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
+#include "banned.h"
 
 /*
  * Variables

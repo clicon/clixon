@@ -78,6 +78,7 @@
 #include "clixon_yang_parse_lib.h"
 #include "clixon_plugin.h"
 #include "clixon_netconf_input.h"
+#include "banned.h"
 
 /* Mapping between RFC6243 withdefaults strings <--> ints
  */

@@ -91,6 +91,7 @@
 #include "clixon_xpath_optimize.h"
 #include "clixon_xpath_function.h"
 #include "clixon_xpath_eval.h"
+#include "banned.h"
 
 /* Mapping between XPath operator string <--> int  */
 const map_str2int xpopmap[] = {

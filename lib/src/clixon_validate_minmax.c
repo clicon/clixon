@@ -81,6 +81,7 @@
 #include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
 #include "clixon_validate_minmax.h"
+#include "banned.h"
 
 /*
  * Local types
