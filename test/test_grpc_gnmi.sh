@@ -106,6 +106,10 @@ module example {
                type uint32;
                mandatory true;
             }
+            leaf speed {
+               type uint32;
+               mandatory true;
+            }
          }
       }
    }
@@ -298,14 +302,16 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
 
 # -------------------------------------------------------------------
 # List tests: mandatory validation + CRUD
-# First try adding a list entry without the mandatory mtu leaf — this
-# should fail and leave the datastore unchanged.
-# Then add with mtu — should succeed.
+# The interface list has two mandatory leaves: mtu and speed.
+# First try adding a list entry with only mtu (missing mandatory speed)
+# — this should fail and leave the datastore unchanged.
+# Then set both mandatory leaves in one SetRequest — should succeed,
+# testing that validation runs after all updates are applied (not per-item).
 # -------------------------------------------------------------------
 
-new "gNMI Set list entry eth0 without mtu (expect mandatory validation error)"
+new "gNMI Set list entry eth0 without speed (expect mandatory validation error)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
-    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"name"}]},"val":{"string_val":"eth0"}}]}' \
+    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"mtu"}]},"val":{"uint_val":1500}}]}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
     73 "FailedPrecondition"
 
@@ -315,9 +321,31 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
     localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
     0 --not-- "example:network"
 
-new "gNMI Set list entry eth0 mtu=1500"
+# Two updates for the same list entry (mtu + speed) in one SetRequest.
+# Both are mandatory — validation must run after all updates are applied,
+# not per-item, so the complete candidate satisfies both mandatory constraints.
+# This mirrors the real-world case of e.g. BFD key-entry type + secret.
+new "gNMI Set list entry eth0 with mtu and speed in one SetRequest (multi-update transaction)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
-    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"mtu"}]},"val":{"uint_val":1500}}]}' \
+    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"mtu"}]},"val":{"uint_val":1500}},{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"speed"}]},"val":{"uint_val":1000}}]}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
+    0 "response"
+
+new "gNMI Get eth0 mtu and speed after multi-update SetRequest"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"path":[{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}}]}],"type":"ALL","encoding":"ASCII"}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
+    0 "1500" "1000"
+
+new "gNMI Set delete eth0 (cleanup after multi-update test)"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"delete":[{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}}]}]}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
+    0 "response"
+
+new "gNMI Set list entry eth0 mtu=1500 speed=1000"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"mtu"}]},"val":{"uint_val":1500}},{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"speed"}]},"val":{"uint_val":1000}}]}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
     0 "response"
 
@@ -333,9 +361,9 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
     localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
     0 "1500" --not-- "eth1"
 
-new "gNMI Set list entry eth1 mtu=9000"
+new "gNMI Set list entry eth1 mtu=9000 speed=10000"
 expectpart "$(grpcurl $GRPCURL_OPTS \
-    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth1"}},{"name":"mtu"}]},"val":{"uint_val":9000}}]}' \
+    -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth1"}},{"name":"mtu"}]},"val":{"uint_val":9000}},{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth1"}},{"name":"speed"}]},"val":{"uint_val":10000}}]}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
     0 "response"
 
