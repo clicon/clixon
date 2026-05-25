@@ -678,6 +678,9 @@ restconf_http1_process(restconf_conn *rc,
     int                   status;
     cbuf                 *cberr = NULL;
     int                   ret;
+    const char           *inbuf;
+    size_t                buflen;
+    int                   looks_http;
 
     h = rc->rc_h;
     if ((sd = restconf_stream_find(rc, 0)) == NULL){
@@ -705,13 +708,30 @@ restconf_http1_process(restconf_conn *rc,
         }
     }
     else {
-        /* multi-buffer for multiple reads 
+        /* multi-buffer for multiple reads
          * This is different from sd_indata that it is before and includes headers
          */
         if (cbuf_append_buf(sd->sd_inbuf, buf, n) < 0){
             clixon_err(OE_UNIX, errno, "cbuf_append");
             goto done;
         }
+        /* Wait for full header before parsing (#667). Only delay when the
+         * request line starts with a RESTCONF-accepted method; anything
+         * else (e.g. TLS handshake on an HTTP port) is left for the parser
+         * to reject with 400. Need >= 8 bytes (longest is "OPTIONS ") to
+         * classify; until then, assume incomplete and wait. */
+        inbuf = cbuf_get(sd->sd_inbuf);
+        buflen = cbuf_len(sd->sd_inbuf);
+        looks_http = buflen < 8 ||
+            strncmp(inbuf, "OPTIONS ", 8) == 0 ||
+            strncmp(inbuf, "HEAD ",    5) == 0 ||
+            strncmp(inbuf, "GET ",     4) == 0 ||
+            strncmp(inbuf, "POST ",    5) == 0 ||
+            strncmp(inbuf, "PUT ",     4) == 0 ||
+            strncmp(inbuf, "PATCH ",   6) == 0 ||
+            strncmp(inbuf, "DELETE ",  7) == 0;
+        if (looks_http && strstr(inbuf, "\r\n\r\n") == NULL)
+            goto ok;
         if (clixon_http1_parse_string(h, rc, cbuf_get(sd->sd_inbuf)) < 0){
             /* XXX This does not work for SSL */
             if (rc->rc_ssl){
