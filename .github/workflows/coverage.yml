@@ -69,4 +69,4 @@ jobs:
           --sha ${{ env.CLIGEN_SHA }} \
           --branch master \
           --disable-search \
-          --file ./docker/coverage/coverage-cligen.info
+          --file coverage-cligen.info
