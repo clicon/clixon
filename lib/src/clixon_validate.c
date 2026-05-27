@@ -318,6 +318,7 @@ leafref_opt_search_detect(cxobj **xvec,
     yang_stmt *yp;
     yang_stmt *y0p = NULL;  /* YANG spec of x0p (list), for list case */
     cvec      *cvk;
+    cg_var    *cvi;
     int        i;
     int        is_list = 0; /* 1=list key, 0=leaf-list */
 
@@ -340,8 +341,10 @@ leafref_opt_search_detect(cxobj **xvec,
             }
             else if (yang_keyword_get(yp) == Y_LIST &&
                      (cvk = yang_cvec_get(yp)) != NULL &&
-                     cvec_len(cvk) == 1){
-                /* Only allow single key lists */
+                     cvec_len(cvk) == 1 &&
+                     (cvi = cvec_i(cvk, 0)) != NULL &&
+                     strcmp(cv_string_get(cvi), yang_argument_get(y)) == 0){
+                /* Only allow single key lists where this leaf IS the key */
                 is_list = 1;
                 y0p = yp;
                 xpp = xml_parent(xp);
