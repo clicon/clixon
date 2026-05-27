@@ -7,9 +7,10 @@
 # immediately, and that a peer that stalls mid-header is closed by the
 # header-timeout.
 #
-# Uses bash /dev/tcp redirection rather than nc/netcat to avoid the
-# portability issues called out in lib.sh (BSD nc vs GNU netcat vs ncat vs
-# busybox nc all differ on -q/-N/-w).
+# Raw socket interaction is done via expect/Tcl rather than nc - clixon
+# tests already use expect (see test_pagination_expect.exp) and Tcl's
+# built-in socket gives us deterministic split-write semantics that no
+# nc/netcat variant offers portably.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -20,9 +21,11 @@ if ! ${HAVE_HTTP1}; then
     if [ "$s" = $0 ]; then exit 0; else return 0; fi
 fi
 
-# This test uses bash /dev/tcp redirections (already relied on by
-# wait_grpc in lib.sh). If the local bash was built without
-# --enable-net-redirections the test will fail loudly rather than skip.
+if ! command -v expect >/dev/null 2>&1; then
+    echo "...skipped: expect not installed"
+    rm -rf $dir
+    if [ "$s" = $0 ]; then exit 0; else return 0; fi
+fi
 
 # Pin to http and http/1 to keep the raw protocol bytes simple
 RCPROTO=http
@@ -93,54 +96,97 @@ fi
 new "wait restconf"
 wait_restconf
 
-# Send two halves of an HTTP request via bash /dev/tcp with a sleep between.
-# Args: $1 first half, $2 second half, $3 sleep seconds; prints response on stdout.
-function split_send()
+# Tcl helper: connect to localhost:80, write $1, sleep ms $2, write $3,
+# read response (up to 5s), print response on stdout. expect chosen over
+# nc/netcat to avoid -q/-N/-w portability differences.
+function tcl_split_send()
 {
-    local p1="$1" p2="$2" delay="$3" line resp=""
-    exec 3<>/dev/tcp/localhost/80
-    printf '%s' "$p1" >&3
-    sleep "$delay"
-    printf '%s' "$p2" >&3
-    while IFS= read -r -t 5 line <&3; do
-        resp="${resp}${line}"$'\n'
-    done
-    exec 3<&-
-    printf '%s' "$resp"
+    local p1="$1" delay_ms="$2" p2="$3"
+    expect <<EOF
+log_user 0
+set sock [socket localhost 80]
+fconfigure \$sock -translation binary -buffering none -blocking 0
+puts -nonewline \$sock "$p1"
+flush \$sock
+after $delay_ms
+puts -nonewline \$sock "$p2"
+flush \$sock
+set resp ""
+set deadline [expr {[clock milliseconds] + 5000}]
+while {[clock milliseconds] < \$deadline} {
+    set chunk [read \$sock]
+    if {[string length \$chunk] > 0} {
+        append resp \$chunk
+        if {[string match "*HTTP/1.1*\r\n*" \$resp]} { break }
+    }
+    after 50
+}
+close \$sock
+puts -nonewline \$resp
+EOF
 }
 
-# Build a >2KB Authorization header (base64 of 2200 random bytes -> ~2933 chars)
+# Build a >2KB Authorization header that will not fit in a single MSS.
 big=$(head -c 2200 /dev/urandom | base64 | tr -d '\n')
 
 new "split header arrives across two writes - expect 200 not 400"
-part1=$(printf 'GET /restconf HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer %s\r\n' "$big")
-part2=$(printf 'Accept: application/yang-data+xml\r\n\r\n')
-out=$(split_send "$part1" "$part2" 0.3)
+part1="GET /restconf HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer $big\r\n"
+part2="Accept: application/yang-data+xml\r\n\r\n"
+out=$(tcl_split_send "$part1" 300 "$part2")
 expectpart "$out" 0 "HTTP/1.1 200"
 
 new "non-HTTP bytes on HTTP port - expect 400, not stall"
-exec 3<>/dev/tcp/localhost/80
-printf '\x16\x03\x01\x00\x60\x01\x00\x00\x5c\x03\x03' >&3
-resp=""
-while IFS= read -r -t 5 line <&3; do
-    resp="${resp}${line}"$'\n'
-done
-exec 3<&-
-expectpart "$resp" 0 "HTTP/1.1 400"
+# TLS ClientHello magic - first byte 0x16, no method, no CRLF
+out=$(expect <<'EOF'
+log_user 0
+set sock [socket localhost 80]
+fconfigure $sock -translation binary -buffering none -blocking 0
+puts -nonewline $sock "\x16\x03\x01\x00\x60\x01\x00\x00\x5c\x03\x03"
+flush $sock
+set resp ""
+set deadline [expr {[clock milliseconds] + 5000}]
+while {[clock milliseconds] < $deadline} {
+    set chunk [read $sock]
+    if {[string length $chunk] > 0} {
+        append resp $chunk
+        if {[string match "*HTTP/1.1*\r\n*" $resp]} { break }
+    }
+    after 50
+}
+close $sock
+puts -nonewline $resp
+EOF
+)
+expectpart "$out" 0 "HTTP/1.1 400"
 
 new "partial header that never completes - server closes within timeout"
-t0=$(date +%s)
-exec 3<>/dev/tcp/localhost/80
-printf 'GET /restconf HTTP/1.1\r\nHost: localhost\r\n' >&3
-# Block until server closes the socket (returns EOF), bounded by read -t
-while IFS= read -r -t 20 line <&3; do : ; done
-exec 3<&-
-t1=$(date +%s)
-elapsed=$((t1 - t0))
-if [ $elapsed -ge 20 ]; then
+# Send the request line + one header, then hold the socket without sending
+# the final \r\n. The header-timeout (RESTCONF_HEADER_TIMEOUT_S = 10s) must
+# close us between 2 and 20 seconds.
+elapsed=$(expect <<'EOF'
+log_user 0
+set sock [socket localhost 80]
+fconfigure $sock -translation binary -buffering none -blocking 0
+set t0 [clock milliseconds]
+puts -nonewline $sock "GET /restconf HTTP/1.1\r\nHost: localhost\r\n"
+flush $sock
+# Wait for the server to close. Tcl 'eof' becomes true when the peer closes
+# AND we have drained the buffer.
+set deadline [expr {[clock milliseconds] + 20000}]
+while {[clock milliseconds] < $deadline} {
+    read $sock
+    if {[eof $sock]} { break }
+    after 100
+}
+set t1 [clock milliseconds]
+close $sock
+puts -nonewline [expr {($t1 - $t0) / 1000}]
+EOF
+)
+if [ -z "$elapsed" ] || [ "$elapsed" -ge 20 ]; then
     err1 "server did not close stalled connection within 20s (elapsed=${elapsed}s)"
 fi
-if [ $elapsed -lt 2 ]; then
+if [ "$elapsed" -lt 2 ]; then
     err1 "connection closed too quickly (elapsed=${elapsed}s); timeout may not have engaged"
 fi
 
