@@ -528,19 +528,19 @@ new "gNMI Get type=ALL (expect both config and state)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"path":[{"elem":[]}],"type":"ALL","encoding":"ASCII"}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
-    0 "config-leaf" "99"
+    0 "config-leaf" "uptime"
 
 new "gNMI Get type=CONFIG (expect config leaf, not state)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"path":[{"elem":[]}],"type":"CONFIG","encoding":"ASCII"}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
-    0 "config-leaf" --not-- "99"
+    0 "config-leaf" --not-- "uptime"
 
 new "gNMI Get type=STATE (expect state leaf, not config)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"path":[{"elem":[]}],"type":"STATE","encoding":"ASCII"}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
-    0 "99" --not-- "config-leaf"
+    0 "uptime" --not-- "config-leaf"
 
 # -------------------------------------------------------------------
 # Subscribe ONCE tests
