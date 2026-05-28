@@ -163,27 +163,28 @@ new "partial header that never completes - server closes within timeout"
 # Send the request line + one header, then hold the socket without sending
 # the final \r\n. The header-timeout (RESTCONF_HEADER_TIMEOUT_S = 10s) must
 # close us between 2 and 20 seconds.
-elapsed=$(expect <<'EOF'
+#
+# Time the close from bash, not from Tcl: Tcl's close on a non-blocking
+# socket whose peer just FIN'd can raise, terminating the script before any
+# puts reaches stdout (observed on alpine). The Tcl side just waits.
+t0=$(date +%s)
+expect <<'EOF' >/dev/null
 log_user 0
-set sock [socket localhost 80]
+if {[catch {socket localhost 80} sock]} { exit 0 }
 fconfigure $sock -translation binary -buffering none -blocking 0
-set t0 [clock milliseconds]
 puts -nonewline $sock "GET /restconf HTTP/1.1\r\nHost: localhost\r\n"
 flush $sock
-# Wait for the server to close. Tcl 'eof' becomes true when the peer closes
-# AND we have drained the buffer.
 set deadline [expr {[clock milliseconds] + 20000}]
 while {[clock milliseconds] < $deadline} {
-    read $sock
+    if {[catch {read $sock}]} { break }
     if {[eof $sock]} { break }
     after 100
 }
-set t1 [clock milliseconds]
-close $sock
-puts -nonewline [expr {($t1 - $t0) / 1000}]
+catch {close $sock}
 EOF
-)
-if [ -z "$elapsed" ] || [ "$elapsed" -ge 20 ]; then
+t1=$(date +%s)
+elapsed=$((t1 - t0))
+if [ "$elapsed" -ge 20 ]; then
     err1 "server did not close stalled connection within 20s (elapsed=${elapsed}s)"
 fi
 if [ "$elapsed" -lt 2 ]; then
