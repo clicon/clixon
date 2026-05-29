@@ -20,37 +20,38 @@
 ## 7.8.0
 29 May 2026
 
-The Clixon 7.8 release features optimized validation using incremental validation, a reduced XML config footprint alrge number of bugfixes and a prototype gRPC/gNMI implementation.
+The Clixon 7.8 release features optimized datastore YANG validation including incremental validation, a reduced XML config footprint, configurable datastore cache, many bugfixes and a prototype gRPC/gNMI implementation.
 
 ### Features
 
 * Optimization of datastore validation
-  * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
-  * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
-  * Optimized mandatory check by skipping several nodes
-* Incremental validation when tree has changed, of the following YANG checks:
-  * Must, with parse-time depth dependency analysis of XPaths
-  * Leafrefs, using same XPath depth dependency analysis
-  * Mandatory
-  * Minmax/unique/duplicates
-  * identityrefs
+  * Optimized validation
+    * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
+    * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
+    * Optimized mandatory check by skipping several nodes
+  * Incremental validation when tree has changed, of the following YANG checks:
+    * Must, with parse-time depth dependency analysis of XPaths
+    * Leafrefs, using same XPath depth dependency analysis
+    * Mandatory
+    * Minmax/unique/duplicates
+    * Identityrefs
 * Optimization of XML config memory footprint
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
   * Changed child iterator API: use xml_childiter() instead of xml_child_each()
     * Configure with `--enable-child-each-wrapper option` to enable optimization
 * New xmldb-cache-status:
-  * inmem, file and file-inmem to configure each datastore cache behavior
+  * You set cache behaviour of each datastore individually as one of inmem, file and file-inmem
+  * New option: `CLICON_XMLDB_CACHE_STATUS`
   * See: https://clixon-docs.readthedocs.io/en/latest/datastore.html#cache-modes
+* New: gRPC/gNMI prototype implementation
+  * No TLS, limited streaming
+  * See: https://clixon-docs.readthedocs.io/en/latest/grpc-gnmi.html
 * New: [How to hide elements from the data model using NACM?](https://github.com/clicon/clixon/issues/463)
   * New callback mechanism in the CLI added to verify expansion of all symbols
   * Enable with `CLICON_NACM_AUTOCLI`
   * User-guide: https://clixon-docs.readthedocs.io/en/latest/cli.html#nacm-for-autocli
-* New: gRPC/gNMI prototype implementation
-  * No TLS, limited streaming
-  * See: https://clixon-docs.readthedocs.io/en/latest/grpc-gnmi.html
 * New debug log: `validate`
-* New: XPath translate()
 
 ### API changes on existing protocol/config features
 
@@ -58,6 +59,7 @@ Users may have to change how they access the system
 
 * Changed example CLI show memory arguments to: `show mem [detail] [cli] [backend]`
 * CLI show memory: Added detailed statistics for config datastores (CLI and RPC)
+* Implemented XPath function `translate()`
 * New `clixon-config@2026-03-01.yang` revision
    * Added `CLICON_VALIDATE_TARGET_STATE`
    * Added `CLICON_XMLDB_CACHE_STATUS`
