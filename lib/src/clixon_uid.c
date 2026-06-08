@@ -68,6 +68,7 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_uid.h"
+#include "banned.h"
 
 /*! Translate group name to gid. Return -1 if error or not found.
  *

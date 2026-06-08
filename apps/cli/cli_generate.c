@@ -102,6 +102,7 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include "clixon_cli_api.h"
 #include "cli_plugin.h"
 #include "cli_generate.h"
+#include "banned.h"
 
 /*! Add cv with name to cvec
  *

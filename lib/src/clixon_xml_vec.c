@@ -66,6 +66,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
 #include "clixon_xml_vec.h"
+#include "banned.h"
 
 //typedef struct clixon_xml_vec clixon_xvec; /* struct defined in clicon_xml_vec.c */
 
@@ -78,9 +79,9 @@
  * Contiguous vector (not linked list) so that binary search can be done by direct index access
  */
 struct clixon_xml_vec {
-    cxobj **xv_vec;   /* Sorted vector of xml object pointers */
-    int     xv_len;   /* Length of vector */
-    int     xv_max;   /* Vector allocation */
+    cxobj  **xv_vec;   /* Sorted vector of xml object pointers */
+    uint32_t xv_len;   /* Length of vector */
+    uint32_t xv_max;   /* Vector allocation */
 };
 
 /*! Increment cxobj vector in an XML object vector
@@ -99,10 +100,20 @@ clixon_xvec_inc(clixon_xvec *xv)
     if (xv->xv_len > xv->xv_max){
         if (xv->xv_max < XVEC_MAX_DEFAULT)
             xv->xv_max = XVEC_MAX_DEFAULT;
-        else if (xv->xv_max < XVEC_MAX_THRESHOLD)
+        else if (xv->xv_max < XVEC_MAX_THRESHOLD){
+            if (xv->xv_max > UINT32_MAX / 2){
+                clixon_err(OE_XML, ERANGE, "xml vec overflow");
+                goto done;
+            }
             xv->xv_max *= 2;                  /* Double the space - exponential */
-        else
+        }
+        else{
+            if (xv->xv_max > UINT32_MAX - XVEC_MAX_THRESHOLD){
+                clixon_err(OE_XML, ERANGE, "xml vec overflow");
+                goto done;
+            }
             xv->xv_max += XVEC_MAX_THRESHOLD; /* Add - linear growth */
+        }
         if ((xv->xv_vec = realloc(xv->xv_vec, sizeof(cxobj *) * xv->xv_max)) == NULL){
             clixon_err(OE_XML, errno, "realloc");
             goto done;
@@ -197,7 +208,7 @@ cxobj*
 clixon_xvec_i(clixon_xvec *xv,
               int          i)
 {
-    if (i < xv->xv_len)
+    if (i >= 0 && (uint32_t)i < xv->xv_len)
         return xv->xv_vec[i];
     else
         return NULL;

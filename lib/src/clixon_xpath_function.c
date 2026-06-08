@@ -75,6 +75,7 @@
 #include "clixon_xpath.h"
 #include "clixon_xpath_eval.h"
 #include "clixon_xpath_function.h"
+#include "banned.h"
 
 /*! xpath function translation table
  *

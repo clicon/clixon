@@ -72,6 +72,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_sort.h"
 #include "clixon_xml_nsctx.h"
+#include "banned.h"
 
 /* Context for adding imports to a namespace context */
 struct nsctx_import_ctx {

@@ -81,6 +81,7 @@ There are some special lexical rules in https://www.w3.org/TR/xpath-10
 #include "clixon_xpath_parse.h"
 #include "clixon_xpath_function.h"
 #include "clixon_xpath_eval.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
 #define YY_DECL int clixon_xpath_parselex(void *_yy)

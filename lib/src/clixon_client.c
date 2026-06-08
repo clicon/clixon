@@ -70,6 +70,7 @@
 #include "clixon_proto.h"
 #include "clixon_proto_client.h"
 #include "clixon_client.h"
+#include "banned.h"
 
 /*
  * Constants

@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.8.0](#780) Expected: May 2026
+* [7.8.0](#780) 29 May 2026
 * [7.7.0](#770) 21 February 2026
 * [7.6.0](#760) 21 November 2025
 * [7.5.0](#750) 29 July 2025
@@ -18,53 +18,54 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.8.0
-Expected: May 2026
+29 May 2026
+
+The Clixon 7.8 release features optimized datastore YANG validation including incremental validation, a reduced XML config footprint, configurable datastore cache, many bugfixes and a prototype gRPC/gNMI implementation.
 
 ### Features
 
-* New: A new XML flag: `XML_FLAG_DEL_ANC` has been added to the diff implementation, the new flag marks node in the target tree
-  that a node has been deleted below it. This is similar to XML_FLAG_CHANGE, but for delete only. Previously this info was avialable
-  in the `source` tree only, where the actual delete node still exists.
-* New debug log: `validate`
-* New: [How to hide elements from the data model using NACM?](https://github.com/clicon/clixon/issues/463)
-  * New callback mechanism in the CLI added to verify expansion of all symbols
-  * Enable with `CLICON_NACM_AUTOCLI`
-  * User-guide: https://clixon-docs.readthedocs.io/en/latest/cli.html#nacm-for-autocli
-* New: gRPC/gNMI
-  * Prototype, no TLS
-  * See: https://clixon-docs.readthedocs.io/en/latest/grpc-gnmi.html
-* New: XPath translate()
-* New: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
-* Enumerated types now appear in CLI help texts, see eg https://github.com/clicon/clixon/issues/183
-* New xmldb-cache-status: inmem, file and file-inmem to configure each datastore cache behavior
-* Optimization of XML config validation
-  * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
-  * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
-  * Optimized mandatory check by skipping several nodes
-* Added incremental validation when tree has changed, of the following YANG checks:
-  * Must, with parse-time depth dependency analysis of XPaths
-  * Leafrefs, using same XPath depth dependency analysis
-  * Mandatory
-  * Minmax/unique/duplicates
-  * identityrefs
+* Optimization of datastore validation
+  * Optimized validation
+    * Cache evaluation of XPath sub-expressions rooted at current() across predicate iterations
+    * Optimized check_unique_list_direct for user-ordered lists and unique constraints from O(N2) to O(NlogN)
+    * Optimized mandatory check by skipping several nodes
+  * Incremental validation when tree has changed, of the following YANG checks:
+    * Must, with parse-time depth dependency analysis of XPaths
+    * Leafrefs, using same XPath depth dependency analysis
+    * Mandatory
+    * Minmax/unique/duplicates
+    * Identityrefs
 * Optimization of XML config memory footprint
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
   * Changed child iterator API: use xml_childiter() instead of xml_child_each()
     * Configure with `--enable-child-each-wrapper option` to enable optimization
-* show memory: Added detailed statistics for config datastores (CLI and RPC)
-* New `clixon-config@2026-03-01.yang` revision
-   * Added `CLICON_VALIDATE_TARGET_STATE`
-   * Added `CLICON_XMLDB_CACHE_STATUS`
-   * Added `CLICON_NACM_AUTOCLI`
-* New `clixon-lib@2026-03-01.yang` revision
-   * Extended stats rpc with `xml-type` parameter
+* New xmldb-cache-status:
+  * You set cache behaviour of each datastore individually as one of inmem, file and file-inmem
+  * New option: `CLICON_XMLDB_CACHE_STATUS`
+  * See: https://clixon-docs.readthedocs.io/en/latest/datastore.html#cache-modes
+* New: gRPC/gNMI prototype implementation
+  * No TLS, limited streaming
+  * See: https://clixon-docs.readthedocs.io/en/latest/grpc-gnmi.html
+* New: [How to hide elements from the data model using NACM?](https://github.com/clicon/clixon/issues/463)
+  * New callback mechanism in the CLI added to verify expansion of all symbols
+  * Enable with `CLICON_NACM_AUTOCLI`
+  * User-guide: https://clixon-docs.readthedocs.io/en/latest/cli.html#nacm-for-autocli
+* New debug log: `validate`
 
 ### API changes on existing protocol/config features
 
 Users may have to change how they access the system
 
 * Changed example CLI show memory arguments to: `show mem [detail] [cli] [backend]`
+* CLI show memory: Added detailed statistics for config datastores (CLI and RPC)
+* Implemented XPath function `translate()`
+* New `clixon-config@2026-03-01.yang` revision
+   * Added `CLICON_VALIDATE_TARGET_STATE`
+   * Added `CLICON_XMLDB_CACHE_STATUS`
+   * Added `CLICON_NACM_AUTOCLI`
+* New `clixon-lib@2026-03-01.yang` revision
+   * Extended stats rpc with `xml-type` parameter
 
 ### C/CLI-API changes on existing features
 
@@ -87,6 +88,11 @@ Developers may need to change their code
     ```
   * Run: `configure --enable-child-each-wrapper` after migration
   * Replace `xml_child_each_attr()` --> `xml_child_iter_attr()`
+* A new XML flag: `XML_FLAG_DEL_ANC` has been added
+  * Part of the optimized incremental validation
+  * The new flag marks node in the target tree that a node has been deleted below it.
+  * This is similar to XML_FLAG_CHANGE, but for delete only.
+  * Previously this info was avialable in the `source` tree only, where the actual delete node still exists.
 * Replace `volatile` API with more generic `cache-status` API:
   * Example changes:
     * `xmldb_volatile_get(de)` --> `xmldb_cache_status_get(de) == XMLDB_CACHE_INMEM`
@@ -99,12 +105,16 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Enumerated types now appear in CLI help texts](https://github.com/clicon/clixon/issues/183)
+* Fixed: [Default values for YANG leaf-list](https://github.com/clicon/clixon/issues/664)
+* Fixed: [Empty values ​​in netconf](https://github.com/clicon/clixon/issues/674)
+* Fixed: [CLICON_NACM_AUTOCLI breaks existing NACM rules](https://github.com/clicon/clixon/issues/673)
 * Fixed: [List binary search is broken](https://github.com/clicon/clixon/issues/669)
 * Fixed: [cli description should be enumeration's desc not the leaf's. for yang enum type](https://github.com/clicon/clixon/issues/183)
 * Fixed: [CLI: union leafref not supported in completion](https://github.com/clicon/clixon/issues/558)
 * Fixed: [leafref in new type no work in union type](https://github.com/clicon/clixon/issues/388)
 * Fixed: [Validation of YANG leafref within union does not work](https://github.com/clicon/clixon/issues/498)
-* Fixed: [leafref instance-required with state](https://github.com/clicon/clixon/issues/632
+* Fixed: [leafref instance-required with state](https://github.com/clicon/clixon/issues/632)
 
 ## 7.7.0
 21 February 2026

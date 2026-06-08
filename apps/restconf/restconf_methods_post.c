@@ -63,6 +63,7 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_methods_post.h"
+#include "banned.h"
 
 /*! Print location header from
  *
@@ -432,7 +433,7 @@ json_rpc_transform(clixon_handle  h,
     int        retval = -1;
     cbuf      *cb = NULL;
     yang_stmt *ymod = NULL;
-    char      *ptr;
+    const char *ptr;
     cxobj     *xerr = NULL; /* malloced must be freed */
     int        ret;
 

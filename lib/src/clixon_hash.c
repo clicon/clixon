@@ -100,6 +100,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_err.h"
+#include "banned.h"
 
 #define HASH_SIZE       1031    /* Number of hash buckets. Should be a prime */
 #define HASH_NO_PTR     SIZE_MAX

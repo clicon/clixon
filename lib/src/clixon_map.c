@@ -56,6 +56,7 @@
 #include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_string.h"
+#include "banned.h"
 
 /*! Map from int to string using str2int map
  *

@@ -70,6 +70,7 @@
 #include "clixon_xpath.h"
 #include "clixon_xpath_function.h"
 #include "clixon_xpath_optimize.h"
+#include "banned.h"
 
 #ifdef XPATH_LIST_OPTIMIZE
 static xpath_tree *_xmtop = NULL; /* pattern match tree top */

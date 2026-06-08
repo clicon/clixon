@@ -104,6 +104,7 @@
 #include "clixon_xpath.h"
 #include "clixon_xpath_parse.h"
 #include "clixon_xpath_eval.h"
+#include "banned.h"
 
 /* Use apostrophe(') in XPath literals, eg a/[x='foo'], not double-quotes(")
  * If not set, use ": a/[x="foo"]

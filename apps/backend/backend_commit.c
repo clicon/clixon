@@ -73,6 +73,7 @@
 #include "backend_state.h"
 #include "backend_get.h"
 #include "backend_client.h"
+#include "banned.h"
 
 /*! Key values are checked for validity independent of user-defined callbacks
  *
@@ -167,8 +168,11 @@ find_target_equiv(cxobj *xsrc,
 
         if (ys != NULL &&
             yang_keyword_get(ys) == Y_LIST){
-            /* For list entries: match by first key value.
-             * yang_cvec_get(Y_LIST) stores key names as cv_string_get, not cv_name_get */
+            /* For list entries: find the child of xt whose element name matches
+             * xsnode's name and whose first key child has the same value.
+             * E.g. for exportingProcess[name=vpp] under ipfix-config, iterate
+             * children of xt named "exportingProcess" and pick the one containing
+             * <name>vpp</name>. */
             cvec   *keycvv = yang_cvec_get(ys);
             cg_var *kv     = keycvv ? cvec_i(keycvv, 0) : NULL;
 
@@ -177,8 +181,22 @@ find_target_equiv(cxobj *xsrc,
                 const char *keyval;
 
                 if (keyname != NULL &&
-                    (keyval = xml_find_body(xsnode, keyname)) != NULL)
-                    xmatch = xml_find_body_obj(xt, keyname, keyval);
+                    (keyval = xml_find_body(xsnode, keyname)) != NULL){
+                    cxobj      *xc;
+                    int         ix2 = 0;
+
+                    while ((xc = xml_child_iter(xt, &ix2, CX_ELMNT)) != NULL){
+                        const char *bstr;
+
+                        if (strcmp(xml_name(xc), name) != 0)
+                            continue;
+                        bstr = xml_find_body(xc, keyname);
+                        if (bstr != NULL && strcmp(bstr, keyval) == 0){
+                            xmatch = xc;
+                            break;
+                        }
+                    }
+                }
             }
         }
         /* Fall back to simple name match */

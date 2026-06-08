@@ -85,6 +85,7 @@
 #include "clixon_xml_nsctx.h"
 #include "clixon_datastore.h"
 #include "clixon_datastore_read.h"
+#include "banned.h"
 
 #define handle(xh) (assert(text_handle_check(xh)==0),(struct text_handle *)(xh))
 

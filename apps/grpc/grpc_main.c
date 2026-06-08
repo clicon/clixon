@@ -56,6 +56,7 @@
 #include <clixon/clixon.h>
 
 #include "grpc_nghttp2.h"
+#include "banned.h"
 
 /* Command line options */
 #define GRPC_OPTS "hD:f:l:p:d1"

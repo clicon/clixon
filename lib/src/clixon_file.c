@@ -66,6 +66,7 @@
 #include "clixon_log.h"
 #include "clixon_debug.h"
 #include "clixon_file.h"
+#include "banned.h"
 
 /*! qsort "compar" for directory alphabetically sorting, see qsort(3)
  */

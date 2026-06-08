@@ -67,6 +67,7 @@
 #include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_yang_cardinality.h"
+#include "banned.h"
 
 /*
  * Types

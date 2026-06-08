@@ -75,6 +75,7 @@
 #include "clixon_yang_module.h"
 #include "clixon_xml_vec.h"
 #include "clixon_xml_sort.h"
+#include "banned.h"
 
 /*! Get xml body value as cligen variable
  *

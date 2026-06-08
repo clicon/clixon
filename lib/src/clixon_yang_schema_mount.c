@@ -123,6 +123,7 @@
 #include "clixon_xml_bind.h"
 #include "clixon_xml_nsctx.h"
 #include "clixon_yang_schema_mount.h"
+#include "banned.h"
 
 /*! Check if YANG node is a RFC 8528 YANG schema mount
  *

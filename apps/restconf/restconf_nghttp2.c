@@ -90,6 +90,7 @@
 #ifdef HAVE_LIBNGHTTP2          /* Ends at end-of-file */
 #include "restconf_nghttp2.h"   /* Restconf-openssl mode specific headers*/
 #include "clixon_http_data.h"
+#include "banned.h"
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 

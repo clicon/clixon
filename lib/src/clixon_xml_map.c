@@ -79,7 +79,9 @@
 #include "clixon_yang_type.h"
 #include "clixon_text_syntax.h"
 #include "clixon_xml_io.h"
+#include "clixon_proc.h"
 #include "clixon_xml_map.h"
+#include "banned.h"
 
 /*! Is attribute and is either of form xmlns="", or xmlns:x="" */
 int
@@ -1739,6 +1741,25 @@ purge_tagged_nodes(cxobj      *xn,
     return retval;
 }
 
+/*! Filter callback for diff output: skip file headers and hunk position markers
+ *
+ * @param[in]  line  One output line from diff
+ * @retval     1     Print this line
+ * @retval     0     Suppress this line
+ * @see clixon_compare_xmls
+ */
+static int
+diff_line_filter(const char *line)
+{
+    /* Skip the "--- file1" and "+++ file2" header lines */
+    if (strncmp(line, "---", 3) == 0 || strncmp(line, "+++", 3) == 0)
+        return 0;
+    /* Skip "@@ ... @@" hunk position markers */
+    if (strncmp(line, "@@", 2) == 0)
+        return 0;
+    return 1;
+}
+
 /*! Compare two dbs using XML. Write to file and run diff. Independent of YANG
  *
  * @param[in]  xc1     XML tree 1
@@ -1758,7 +1779,6 @@ clixon_compare_xmls(cxobj            *xc1,
     FILE  *f;
     char   filename1[MAXPATHLEN];
     char   filename2[MAXPATHLEN];
-    cbuf  *cb = NULL;
 
     snprintf(filename1, sizeof(filename1), "/tmp/cliconXXXXXX");
     snprintf(filename2, sizeof(filename2), "/tmp/cliconXXXXXX");
@@ -1804,20 +1824,14 @@ clixon_compare_xmls(cxobj            *xc1,
     }
     fclose(f);
     close(fd);
+    {
+        char *argv_diff[] = { "diff", "-dU", "1", filename1, filename2, NULL };
 
-    if ((cb = cbuf_new()) == NULL){
-        clixon_err(OE_CFG, errno, "cbuf_new");
-        goto done;
+        if (clixon_proc_run_output(argv_diff, stdout, diff_line_filter) < 0)
+            goto done;
     }
-    cprintf(cb, "diff -dU 1 %s %s |  grep -v @@ | sed 1,2d",
-            filename1, filename2);
-    if (system(cbuf_get(cb)) < 0)
-        goto done;
-
     retval = 0;
   done:
-    if (cb)
-        cbuf_free(cb);
     unlink(filename1);
     unlink(filename2);
     return retval;

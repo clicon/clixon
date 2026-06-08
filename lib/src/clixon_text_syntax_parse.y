@@ -83,6 +83,7 @@
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
 #include "clixon_text_syntax_parse.h"
+#include "banned.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0
@@ -170,7 +171,7 @@ strjoin(char *str0,
         clixon_err(OE_YANG, errno, "realloc");
         return NULL;
     }
-    strcpy(str0+len0, str1);
+    memcpy(str0+len0, str1, strlen(str1)+1);
     return str0;
 }
 

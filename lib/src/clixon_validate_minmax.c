@@ -81,6 +81,7 @@
 #include "clixon_xml_map.h"
 #include "clixon_xml_bind.h"
 #include "clixon_validate_minmax.h"
+#include "banned.h"
 
 /*
  * Local types
@@ -1252,11 +1253,16 @@ xml_duplicate_detect1(cxobj  *xt,
                 slen0 = clen;
                 vlen++;
             }
-            /* Special case of YANG unique statement */
-            if ((ret = xml_unique_detect(x, xt, ix, y, xret)) < 0)
-                goto done;
-            if (ret == 0)
-                goto fail;
+            /* Special case of YANG unique statement.
+             * Only check once per list type (first entry): check_unique_list_direct
+             * collects all entries from ix0 onward, so calling it per-entry is O(N^2 log N).
+             */
+            if (y != y0){
+                if ((ret = xml_unique_detect(x, xt, ix, y, xret)) < 0)
+                    goto done;
+                if (ret == 0)
+                    goto fail;
+            }
             break;
         case Y_LEAF_LIST:
             if (vlen > 0 && slen0 != 1){ /* Sanity check */

@@ -85,9 +85,8 @@
 #include "clixon_xml_io.h"
 #include "clixon_nacm.h"
 #include "clixon_proto_client.h"
+#include "banned.h"
 
-#define PERSIST_ID_XML_FMT "<persist-id>%s</persist-id>"
-#define PERSIST_XML_FMT "<persist>%s</persist>"
 #define TIMEOUT_XML_FMT "<confirm-timeout>%u</confirm-timeout>"
 
 /*! Create hello NETCONF message
@@ -1478,25 +1477,19 @@ clicon_rpc_commit(clixon_handle h,
     cxobj   *xerr;
     char    *username;
     uint32_t session_id;
-    char    *persist_id_xml = NULL;
-    char    *persist_xml = NULL;
+    char    *persist_id_enc = NULL;
+    char    *persist_enc = NULL;
     char    *timeout_xml = NULL;
     cbuf    *cb = NULL;
 
+    /* XML-encode persist_id and persist to prevent XML injection */
     if (persist_id) {
-        if ((persist_id_xml = malloc(strlen(persist_id) + strlen(PERSIST_ID_XML_FMT) + 1)) == NULL) {
-            clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+        if (xml_chardata_encode(&persist_id_enc, 0, "%s", persist_id) < 0)
             goto done;
-        }
-        sprintf(persist_id_xml, PERSIST_ID_XML_FMT, persist_id);
     }
-
     if (persist) {
-        if ((persist_xml = malloc(strlen(persist) + strlen(PERSIST_XML_FMT) + 1)) == NULL) {
-            clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
+        if (xml_chardata_encode(&persist_enc, 0, "%s", persist) < 0)
             goto done;
-        }
-        sprintf(persist_xml, PERSIST_XML_FMT, persist);
     }
 
     if (timeout > 0) {
@@ -1509,7 +1502,7 @@ clicon_rpc_commit(clixon_handle h,
             clixon_err(OE_UNIX, 0, "malloc: %s", strerror(errno));
             goto done;
         };
-        sprintf(timeout_xml, TIMEOUT_XML_FMT, timeout);
+        snprintf(timeout_xml, 10 + 1 + strlen(TIMEOUT_XML_FMT), TIMEOUT_XML_FMT, timeout);
     }
     if (session_id_check(h, &session_id) < 0)
         goto done;
@@ -1527,17 +1520,26 @@ clicon_rpc_commit(clixon_handle h,
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     if (cancel) {
-        cprintf(cb, "<cancel-commit>%s</cancel-commit>",
-                persist_id ? persist_id_xml : "");
+        if (persist_id_enc)
+            cprintf(cb, "<cancel-commit><persist-id>%s</persist-id></cancel-commit>",
+                    persist_id_enc);
+        else
+            cprintf(cb, "<cancel-commit/>");
     }
     else if (confirmed) {
-        cprintf(cb, "<commit><confirmed/>%s%s%s</commit>",
-                timeout ? timeout_xml : "",
-                persist_id ? persist_id_xml : "",
-                persist ? persist_xml : "");
+        cprintf(cb, "<commit><confirmed/>");
+        if (timeout)
+            cprintf(cb, "%s", timeout_xml);
+        if (persist_id_enc)
+            cprintf(cb, "<persist-id>%s</persist-id>", persist_id_enc);
+        if (persist_enc)
+            cprintf(cb, "<persist>%s</persist>", persist_enc);
+        cprintf(cb, "</commit>");
     } else {
-        cprintf(cb, "<commit>%s</commit>",
-                persist ? persist_xml : "");
+        if (persist_enc)
+            cprintf(cb, "<commit><persist>%s</persist></commit>", persist_enc);
+        else
+            cprintf(cb, "<commit/>");
     }
     cprintf(cb, "</rpc>");
     if (clicon_rpc_msg(h, cb, &xret) < 0)
@@ -1553,10 +1555,10 @@ clicon_rpc_commit(clixon_handle h,
         cbuf_free(cb);
     if (xret)
         xml_free(xret);
-    if (persist_id_xml)
-        free(persist_id_xml);
-    if (persist_xml)
-        free(persist_xml);
+    if (persist_id_enc)
+        free(persist_id_enc);
+    if (persist_enc)
+        free(persist_enc);
     if (timeout_xml)
         free(timeout_xml);
     return retval;

@@ -52,6 +52,7 @@
 #include "clixon_xml.h"
 #include "clixon_err.h"
 #include "clixon_digest.h"
+#include "banned.h"
 
 /*! Given null-terminated string, return malloced NULL_terminated SHA digest string in hex
  *

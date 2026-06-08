@@ -215,9 +215,6 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+xml' $RCPR
 
 if [ -n "$netcat" -a "${WITH_RESTCONF}" != "fcgi" ]; then
 
-#    new "restconf try fuzz crash"
-#    expectpart "$(${netcat} 127.0.0.1 80 < ~/tmp/crashes/id:000000,sig:06,src:000493+000365,op:splice,rep:8)" 0 "HTTP/$HVER 400"
-    
     new "netcat restconf GET initial datastore netcat"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 GET /restconf/data/example:a=0 HTTP/$HVER
@@ -227,7 +224,7 @@ Accept: application/yang-data+xml
 EOF
 )" 0 "HTTP/$HVER 200" "$XML"
 
-    new "netcat restconf XYZ not found"
+    new "netcat restconf XYZ not found 1"
     expectpart "$(${netcat} 127.0.0.1 80 <<EOF
 XYZ /restconf/data/example:a=0 HTTP/$HVER
 Host: localhost
@@ -259,7 +256,7 @@ EOF
     fi
 fi # netcat Cannot get to work on all platforms
 
-new "restconf XYZ not found"
+new "restconf XYZ not found 2"
 expectpart "$(curl $CURLOPTS -X XYS -H 'Accept: application/yang-data+xml' $RCPROTO://localhost/restconf/data/example:a=0)" 0 "HTTP/$HVER 404"
 
 new "restconf PUT not allowed"

@@ -65,6 +65,7 @@
 #include "restconf_methods.h"
 #include "restconf_methods_post.h"
 #include "restconf_methods_patch.h"
+#include "banned.h"
 
 #ifdef CLIXON_YANG_PATCH
 

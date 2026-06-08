@@ -68,6 +68,7 @@
 #include "restconf_http1.h"
 #include "clixon_http_data.h"
 #include "restconf_stream.h"
+#include "banned.h"
 
 /* Size of xml read buffer */
 #define BUFLEN 1024

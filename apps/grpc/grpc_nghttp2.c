@@ -61,6 +61,7 @@
 
 #include "grpc_gnmi.h"
 #include "grpc_nghttp2.h"
+#include "banned.h"
 
 /*! Per-stream state — accumulated headers and body for one gRPC call */
 typedef struct grpc_stream {

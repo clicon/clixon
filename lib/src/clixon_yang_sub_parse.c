@@ -58,6 +58,7 @@
 #include "clixon_err.h"
 #include "clixon_yang_sub_parse.h"
 #include "clixon_yang_schemanode_parse.h"
+#include "banned.h"
 
 /*! Invoke yang sub-parser on string
  *

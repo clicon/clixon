@@ -79,6 +79,7 @@
 #include "clixon_proc.h"
 #include "clixon_data.h"
 #include "clixon_plugin.h"
+#include "banned.h"
 
 /*
  * Private types

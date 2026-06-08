@@ -55,6 +55,7 @@
 #include "clixon_xml.h"
 #include "clixon_yang_sub_parse.h"
 #include "clixon_yang_schemanode_parse.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _if is added to arg list */
 #define YY_DECL int clixon_yang_schemanode_parselex(void *_if)

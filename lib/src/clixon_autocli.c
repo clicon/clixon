@@ -62,6 +62,7 @@
 #include "clixon_map.h"
 #include "clixon_err.h"
 #include "clixon_autocli.h"
+#include "banned.h"
 
 /* Mapping from YANG autocli-op to C enum */
 static const map_str2int autocli_op_map[] = {

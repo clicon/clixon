@@ -70,6 +70,7 @@
 #include "snmp_register.h"
 #include "snmp_stream.h"
 #include "snmp_handler.h"
+#include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
 #define SNMP_OPTS "hVD:f:l:C:o:z"

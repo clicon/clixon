@@ -55,6 +55,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_err.h"
+#include "banned.h"
 
 /*! Split string into a vector based on character delimiters. Using malloc
  *
@@ -95,7 +96,7 @@ clixon_strsep1(const char *string,
     int    i;
     size_t siz;
     const char *s;
-    char  *d;
+    const char *d;
 
     if ((s = string)==NULL)
         goto done;
@@ -112,7 +113,7 @@ clixon_strsep1(const char *string,
     }
     memset(vec, 0, siz);
     ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
-    strcpy(ptr, string);
+    memcpy(ptr, string, strlen(string)+1);
     i = 0;
     while ((p = strsep(&ptr, delim)) != NULL)
         vec[i++] = p;
@@ -164,7 +165,7 @@ clixon_strsep2(char       *str,
     }
     memset(vec, 0, sz);
     ptr = (char*)vec + (nr+1)* sizeof(char*); /* this is where ptr starts */
-    strcpy(ptr, str);
+    memcpy(ptr, str, strlen(str)+1);
     i = 0;
     s1 = ptr;
     vec[i++] = ptr;
@@ -211,7 +212,7 @@ clixon_strsep3(const char *string,
     int    i;
     size_t siz;
     const char *s;
-    char  *d;
+    const char *d;
     int    prev;
 
     if ((s = string)==NULL)
@@ -235,7 +236,7 @@ clixon_strsep3(const char *string,
     }
     memset(vec, 0, siz);
     ptr = (char*)vec + (nvec+1)* sizeof(char*); /* this is where ptr starts */
-    strcpy(ptr, string);
+    memcpy(ptr, string, strlen(string)+1);
     i = 0;
     while ((p = strsep(&ptr, delim)) != NULL){
         if (*p != '\0')
@@ -343,7 +344,7 @@ clixon_strsplit(const char *string,
                 char      **suffix)
 {
     int   retval = -1;
-    char *str;
+    const char *str;
 
     if ((str = strchr(string, delim)) == NULL){
         if (suffix && (*suffix = strdup(string)) == NULL){

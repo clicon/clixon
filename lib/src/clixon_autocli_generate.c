@@ -120,9 +120,10 @@ You can see which CLISPEC it generates via clixon_cli -D 2:
 #include "clixon_xpath_yang.h"
 #include "clixon_autocli.h"
 #include "clixon_autocli_generate.h"
+#include "banned.h"
 
 /* Forward declaration */
-static int yang2cli_leaf_var(clixon_handle h, yang_stmt *ys, yang_stmt *yreferred, char *helptext, cbuf *cb, int callback, int key_leaf);
+static int yang2cli_leaf_var(clixon_handle h, yang_stmt *ys, yang_stmt *yreferred, char *helptext, cbuf *cb, int callback, int key_leaf, int leafref_refer);
 
 /*! Encode mount-point using domain and spec
  *
@@ -236,6 +237,8 @@ gen_mtpoint_add(cbuf      *cb,
  * @retval     1      OK
  * @retval     0      Hide, dont show helptext etc
  * @retval    -1      Error
+ * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to
+ *                             expand_dbvar() to signal that leafrefs should be followed.
  * @see expand_dbvar  This is where the expand string is used
  * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
  */
@@ -246,6 +249,7 @@ cli_expand_var_generate(clixon_handle h,
                         int           options,
                         uint8_t       fraction_digits,
                         int           pre,
+                        int           leafref_refer,
                         cbuf         *cb)
 {
     int        retval = -1;
@@ -266,6 +270,8 @@ cli_expand_var_generate(clixon_handle h,
     cprintf(cb, " %s(\"candidate\",\"%s\"",
             GENERATE_EXPAND_XMLDB,
             api_path_fmt);
+    if (leafref_refer)
+        cprintf(cb, ",\"leafref-refer\"");
     if (gen_mtpoint_add(cb, ys) < 0)
         goto done;
     cprintf(cb, ")>");
@@ -1031,7 +1037,7 @@ yang2cli_leafref_var(clixon_handle h,
             goto done;
         }
         /* recursive call with new referred node */
-        if (yang2cli_leaf_var(h, ys, yref, helptext, cb, callback, key_leaf) < 0)
+        if (yang2cli_leaf_var(h, ys, yref, helptext, cb, callback, key_leaf, 1) < 0)
             goto done;
         goto skip;
     }
@@ -1045,11 +1051,14 @@ yang2cli_leafref_var(clixon_handle h,
 
 /*! Generate CLI code for Yang leaf statement to CLIgen variable
  *
- * @param[in]  h         Clixon handle
- * @param[in]  ys        Yang statement of original leaf
- * @param[in]  yreferred Yang statement of referred node for type (leafref)
- * @param[in]  helptext  CLI help text
- * @param[out] cb        Buffer where cligen code is written
+ * @param[in]  h             Clixon handle
+ * @param[in]  ys            Yang statement of original leaf
+ * @param[in]  yreferred     Yang statement of referred node for type (leafref)
+ * @param[in]  helptext      CLI help text
+ * @param[out] cb            Buffer where cligen code is written
+ * @param[in]  leafref_refer If set, the leaf is (reachable via) a leafref and the generated
+ *                           expand_dbvar variable should carry the 'leafref-refer' label so
+ *                           that expand_dbvar() follows the leafref when querying completions.
  * @retval     0         OK
  * @retval    -1         Error
  *
@@ -1070,7 +1079,8 @@ yang2cli_leaf_var(clixon_handle h,
                   char         *helptext,
                   cbuf         *cb,
                   int           callback,
-                  int           key_leaf)
+                  int           key_leaf,
+                  int           leafref_refer)
 {
     int           retval = -1;
     char         *origtype = NULL;
@@ -1145,8 +1155,17 @@ yang2cli_leaf_var(clixon_handle h,
         }
     }
     if (completionp){
+        /* leafref-refer: set when this node is a leafref or union (possibly containing
+         * leafrefs), or when called recursively from a leafref context (leafref_refer param).
+         * This marks the generated expand_dbvar as autocli-generated with leafref following.
+         * Note: also set when restype=="leafref" because yang_path_arg may fail to resolve the
+         * referred node client-side (e.g. grouping with submodule prefix scope); the backend
+         * handles leafref resolution independently. */
         if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
                                            options, fraction_digits, regular_value,
+                                           leafref_refer ||
+                                           strcmp(restype, "union") == 0 ||
+                                           strcmp(restype, "leafref") == 0,
                                            cb)) < 0)
             goto done;
         if (ret == 1)
@@ -1240,7 +1259,7 @@ yang2cli_leaf(clixon_handle h,
             cprintf(cb, "{"); /* termleaf label + extra level around leaf */
         }
     }
-    if (yang2cli_leaf_var(h, ys, ys, helptext, cb, callback, key_leaf) < 0)
+    if (yang2cli_leaf_var(h, ys, ys, helptext, cb, callback, key_leaf, 0) < 0)
         goto done;
     if (extralevel)
         cprintf(cb, "}\n");

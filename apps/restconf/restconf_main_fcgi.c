@@ -86,6 +86,7 @@
 #include "restconf_methods_get.h"
 #include "restconf_methods_post.h"
 #include "restconf_stream.h"
+#include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
 #define RESTCONF_OPTS "hVD:f:E:l:C:p:d:y:a:u:rW:R:t:o:"

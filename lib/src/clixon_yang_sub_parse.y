@@ -105,6 +105,7 @@
 #include "clixon_xml_vec.h"
 #include "clixon_data.h"
 #include "clixon_yang_sub_parse.h"
+#include "banned.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0

@@ -71,6 +71,7 @@
 #include "backend_handle.h"
 #include "clixon_backend_commit.h"
 #include "backend_client.h"
+#include "banned.h"
 
 /* 
  * Local types 

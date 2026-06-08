@@ -103,6 +103,31 @@ module example{
             }
         }
     }
+    /* leafref to non-key leaf in a list (bug: LEAFREF_OPTIMIZE binary search
+     * wrongly enabled for non-key leaves, causing false instance-required errors
+     * when the matching entry is not the first in xvec) */
+    list router {
+        key vrf-id;
+        unique area-tag;
+        leaf vrf-id {
+            type string;
+        }
+        leaf area-tag {
+            type string;
+        }
+    }
+    list iface {
+        key if-name;
+        leaf if-name {
+            type string;
+        }
+        leaf area-tag {
+            type leafref {
+                path "../../router/area-tag";
+                require-instance true;
+            }
+        }
+    }
 }
 EOF
 
@@ -252,6 +277,27 @@ new "issue 669: validate with invalid leafref to list key (expect failure)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-error>" ""
 
 new "issue 669: discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# Leafref to non-key leaf in a list: LEAFREF_OPTIMIZE binary search must not
+# be used when the target leaf is not the list key.  With two routers present
+# (key "vrf-id"), the target leaf "area-tag" is a non-key unique leaf.
+# Before the fix, lc_bin_search was set and leafref_opt_search only compared
+# the first cached element, causing a false instance-required error when the
+# matching router was not first in xvec.
+new "leafref non-key list: add two routers and one iface referencing second router area-tag"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><router xmlns=\"urn:example:clixon\"><vrf-id>default</vrf-id><area-tag>tag2</area-tag></router><router xmlns=\"urn:example:clixon\"><vrf-id>test</vrf-id><area-tag>tag1</area-tag></router><iface xmlns=\"urn:example:clixon\"><if-name>e1</if-name><area-tag>tag1</area-tag></iface></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref non-key list: validate expect OK (tag1 exists in second router)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref non-key list: update iface to non-existing area-tag"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><iface xmlns=\"urn:example:clixon\"><if-name>e1</if-name><area-tag>no-such-tag</area-tag></iface></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref non-key list: validate expect failure (no-such-tag not in any router)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-error>" ""
+
+new "leafref non-key list: discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 if [ $BE -ne 0 ]; then

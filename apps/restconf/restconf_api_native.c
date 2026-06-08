@@ -63,6 +63,7 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"  /* Virtual api */
 #include "restconf_native.h"
+#include "banned.h"
 
 /*! Add HTTP header field name and value to reply
  *

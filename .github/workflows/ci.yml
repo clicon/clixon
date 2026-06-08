@@ -11,8 +11,10 @@ on:
 jobs:
   ubuntu-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -33,8 +35,10 @@ jobs:
 
   ubuntu-build-restconf-fcgi:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
     # 1) checkout and compile natively (no test)
     - name: install cligen
       run: (git clone https://github.com/clicon/cligen.git && cd cligen && ./configure && make && sudo make install)
@@ -55,11 +59,13 @@ jobs:
 
   docker-alpine-test-fcgi-r:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
     # 2) Inline of make test, but without configure
     - name: in-line clone
       run: git clone file://$(realpath ../..)
@@ -86,11 +92,13 @@ jobs:
 
   docker-alpine-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
     - name: in-line clone
       run: git clone file://$(realpath ../..)
     - name: openconfig
@@ -112,7 +120,7 @@ jobs:
     - name: save docker image
       run: sudo docker save clixon/clixon-test | gzip > /tmp/clixon-test.tar.gz
     - name: upload docker image
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6.0.0
       with:
         name: docker-native
         path: /tmp/clixon-test.tar.gz
@@ -121,13 +129,17 @@ jobs:
   docker-alpine-test-1:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -135,19 +147,23 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test a-f
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_d*.sh test_f*.sh" ./sum.sh'
+    - name: run test d-f,nu
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_d*.sh test_f*.sh test_n*.sh test_u*.sh" ./sum.sh'
 
   docker-alpine-test-2:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -155,19 +171,23 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test n
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_n*.sh" ./sum.sh'
+    - name: run test rst
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh test_s*.sh test_t*.sh" ./sum.sh'
 
   docker-alpine-test-3:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -175,19 +195,23 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test p
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_p*.sh" ./sum.sh'
+    - name: run test ijopw
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_i*.sh test_j*.sh test_o*.sh test_p*.sh test_w*.sh" ./sum.sh'
 
   docker-alpine-test-4:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docker/test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
     - name: download docker image
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         name: docker-native
         path: /tmp
@@ -195,66 +219,5 @@ jobs:
       run: sudo docker load < /tmp/clixon-test.tar.gz
     - name: start container
       run: ./start.sh
-    - name: run test r
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_r*.sh" ./sum.sh'
-
-  docker-alpine-test-5:
-    needs: docker-alpine-build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docker/test
-    steps:
-    - uses: actions/checkout@v6
-    - name: download docker image
-      uses: actions/download-artifact@v6
-      with:
-        name: docker-native
-        path: /tmp
-    - name: load docker image
-      run: sudo docker load < /tmp/clixon-test.tar.gz
-    - name: start container
-      run: ./start.sh
-    - name: run test os
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_o*.sh test_s*.sh" ./sum.sh'
-
-  docker-alpine-test-6:
-    needs: docker-alpine-build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docker/test
-    steps:
-    - uses: actions/checkout@v6
-    - name: download docker image
-      uses: actions/download-artifact@v6
-      with:
-        name: docker-native
-        path: /tmp
-    - name: load docker image
-      run: sudo docker load < /tmp/clixon-test.tar.gz
-    - name: start container
-      run: ./start.sh
-    - name: run test ijtuw
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_i*.sh test_j*.sh test_t*.sh test_u*.sh test_w*.sh" ./sum.sh'
-
-  docker-alpine-test-7:
-    needs: docker-alpine-build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docker/test
-    steps:
-    - uses: actions/checkout@v6
-    - name: download docker image
-      uses: actions/download-artifact@v6
-      with:
-        name: docker-native
-        path: /tmp
-    - name: load docker image
-      run: sudo docker load < /tmp/clixon-test.tar.gz
-    - name: start container
-      run: ./start.sh
-    - name: run test ghlmxy
-      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_g*.sh test_h*.sh test_l*sh test_m*.sh test_x*.sh test_y*.sh" ./sum.sh'
-
+    - name: run test acghlmxy
+      run: sudo docker exec -t clixon-test bash -c 'cd /usr/local/bin/test && detail=true pattern="test_a*.sh test_c*.sh test_g*.sh test_h*.sh test_l*sh test_m*.sh test_x*.sh test_y*.sh" ./sum.sh'

@@ -101,6 +101,7 @@
 #include "clixon_plugin.h"
 #include "clixon_options.h"
 #include "clixon_yang_type.h"
+#include "banned.h"
 
 /*
  * Local types and variables

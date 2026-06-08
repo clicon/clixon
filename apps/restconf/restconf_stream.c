@@ -87,6 +87,7 @@
 #include "restconf_api.h"
 #include "restconf_err.h"
 #include "restconf_stream.h"
+#include "banned.h"
 
 /*! Check if uri path denotes a stream/notification path
  *

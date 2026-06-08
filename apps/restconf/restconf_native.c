@@ -77,6 +77,7 @@
 #include "restconf_http1.h"
 #endif
 #include "restconf_stream.h"
+#include "banned.h"
 
 /* Forward */
 static int restconf_idle_cb(int fd, void *arg);

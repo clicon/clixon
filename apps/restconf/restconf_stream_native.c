@@ -87,6 +87,7 @@
 
 #ifdef HAVE_LIBNGHTTP2
 #include "restconf_nghttp2.h"
+#include "banned.h"
 
 static int
 restconf_http2_send_notification(clixon_handle         h,

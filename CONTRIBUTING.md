@@ -99,6 +99,19 @@ Use:
 - PRIu64 for uint64
 - %p for pointers
 
+### Banned functions
+
+Clixon enforces a list of banned unsafe C functions at compile time via `lib/clixon/banned.h`, which is included after all other includes in every `.c`, `.y`, and `.l` file (and by extension in generated `.tab.c` and `lex.*.c` files). Using any of these functions causes a compile error:
+
+| Banned     | Safe alternative                              |
+|------------|-----------------------------------------------|
+| `strcpy`   | `memcpy` (when length is known)               |
+| `strcat`   | `snprintf` or explicit `memcpy`               |
+| `sprintf`  | `snprintf`                                    |
+| `vsprintf` | `vsnprintf`                                   |
+| `gets`     | `fgets`                                       |
+| `system`   | `fork` + `execv` (see `clixon_proc.c`)        |
+
 ### Include files
 
 Avoid include statements in .h files, place them in .c files whenever possible.

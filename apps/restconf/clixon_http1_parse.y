@@ -103,6 +103,7 @@
 #include "restconf_handle.h"
 #include "restconf_native.h"
 #include "clixon_http1_parse.h"
+#include "banned.h"
 
 /* Best debugging is to enable PARSE_DEBUG below and add -d to the LEX compile statement in the Makefile
  * And then run the testcase with -D 1

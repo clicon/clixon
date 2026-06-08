@@ -136,6 +136,7 @@ object.
 #include "clixon_string.h"
 
 #include "clixon_json_parse.h"
+#include "banned.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0

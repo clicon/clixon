@@ -1,0 +1,98 @@
+#
+# ***** BEGIN LICENSE BLOCK *****
+# 
+# Copyright (C) 2025 Olof Hagsand and Rubicon Communications, LLC(Netgate)
+#
+# This file is part of CLIXON
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Alternatively, the contents of this file may be used under the terms of
+# the GNU General Public License Version 3 or later (the "GPL"),
+# in which case the provisions of the GPL are applicable instead
+# of those above. If you wish to allow use of your version of this file only
+# under the terms of the GPL, and not to allow others to
+# use your version of this file under the terms of Apache License version 2, 
+# indicate your decision by deleting the provisions above and replace them with
+# the notice and other provisions required by the GPL. If you do not delete
+# the provisions above, a recipient may use your version of this file under
+# the terms of any one of the Apache License version 2 or the GPL.
+#
+# ***** END LICENSE BLOCK *****
+#
+# Build, compile and test a clixon-test container
+# This is used in CI
+# NOTE: restconf config is controlled at install time with ./configure --with-restconf=... option
+
+VPATH       	= @srcdir@
+srcdir  	= @srcdir@
+top_srcdir  	= @top_srcdir@
+DOCKERFILE      = Dockerfile
+
+#DOCKERFLAGS="--no-cache"
+
+# Example docker image. CHANGE THIS IF YOU PUSH
+IMG   = clixon/clixon-coverage
+
+SHELL	= /bin/sh
+
+.PHONY: all clean distclean docker test push depend install-include install uninstall
+
+all:	
+	echo "Run make docker to build docker image"
+
+# (recursively) clone the repo from top-level - NOTE changes must be committed
+clixon:
+	git clone file://$(realpath ${top_srcdir})
+
+clean:
+	rm -rf clixon yang openconfig
+
+distclean: clean
+	rm -f Makefile *~ .depend
+
+yang:
+	./getyang.sh
+
+openconfig:
+	./getopenconfig.sh
+
+docker: clixon yang openconfig $(DOCKERFILE)
+	sudo docker build --progress=plain -f $(DOCKERFILE) -t $(IMG) $(DOCKERFLAGS) .
+
+push:
+	sudo docker push $(IMG)
+
+# Start the clixon test container and run the test script
+# Note tests will kill the daemons started in the start scrips
+# Note when start.sh is completed, the internal startsystem.sh script may still be running
+#      therefore the sleep 1 before tests start
+coverage: docker
+	sudo docker run --name clixon-coverage-local $(IMG) || true
+	sudo docker cp clixon-coverage-local:/coverage-clixon.info coverage-clixon.info
+	sudo docker cp clixon-coverage-local:/coverage-cligen.info coverage-cligen.info
+	sudo docker cp clixon-coverage-local:/cligen-sha.txt cligen-sha.txt
+	sudo docker rm clixon-coverage-local
+	@echo "Reports: coverage-clixon.info coverage-cligen.info"
+	@echo "CLIgen SHA: $$(cat cligen-sha.txt)"
+	lcov --ignore-errors format --list coverage-clixon.info | tail -5
+	lcov --ignore-errors format --list coverage-cligen.info | tail -5
+
+depend:
+
+install-include:
+
+install:
+
+uninstall:
+

@@ -126,6 +126,7 @@
 #include "clixon_debug.h"
 #include "clixon_path.h"
 #include "clixon_instance_id_parse.h"
+#include "banned.h"
 
 /* Enable for debugging, steals some cycles otherwise */
 #if 0

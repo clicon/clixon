@@ -65,6 +65,7 @@
 #include "clixon_cli_api.h"
 #include "cli_plugin.h"
 #include "cli_handle.h"
+#include "banned.h"
 
 #define CLICON_MAGIC 0x99aafabe
 

@@ -67,6 +67,7 @@
 #include <clixon/clixon.h>
 
 #include "netconf_rpc.h"
+#include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
 #define NETCONF_OPTS "hVD:f:E:l:C:q01ca:u:d:p:y:U:t:eo:"

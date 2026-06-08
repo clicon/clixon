@@ -934,6 +934,7 @@ stream_replay_trigger(clixon_handle h,
  */
 
 #include <curl/curl.h>
+#include "banned.h"
 
 /*
  * Types (curl)

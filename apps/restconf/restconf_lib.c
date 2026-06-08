@@ -69,6 +69,7 @@
 #include "restconf_lib.h"
 #include "restconf_err.h"
 #include "restconf_handle.h"
+#include "banned.h"
 
 /*
    +----------------------------+--------------------------------------+

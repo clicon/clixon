@@ -60,6 +60,7 @@
 #include "clixon_yang.h"
 #include "clixon_xml.h"
 #include "clixon_xml_parse.h"
+#include "banned.h"
 
 /* Redefine main lex function so that you can send arguments to it: _xy is added to arg list */
 #define YY_DECL int clixon_xml_parselex(void *_xy)

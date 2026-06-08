@@ -72,6 +72,7 @@
 #include "backend_handle.h"
 #include "backend_state.h"
 #include "backend_get.h"
+#include "banned.h"
 
 /*! Help function to filter out anything that is outside of xpath
  *

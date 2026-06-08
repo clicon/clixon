@@ -70,6 +70,7 @@
 /* Exported functions in this file are in clixon_cli_api.h */
 #include "clixon_cli_api.h"
 #include "cli_common.h" /* internal functions */
+#include "banned.h"
 
 /*! Insert (escaped) strings into expand commands
  *
@@ -198,8 +199,8 @@ expand_dbvar_insert(clixon_handle h,
  * The syntax of <api_path_fmt> is of RFC8040 api-path with the following extension:
  *   %s  Represents the values of cvv in order starting from element 1
  *   %k  Represents the (first) key of the (previous) list
- * @note Label leafref-no-refer means do not expand leafrefs referred values, instead use the
- * once in place
+ * @note Argument "leafref-refer" (optional 3rd arg) means follow leafrefs to their target
+ *   path for expansion. The label @add:leafref-no-refer on the co_cvec overrides this.
  */
 int
 expand_dbvar(clixon_handle h,
@@ -235,9 +236,10 @@ expand_dbvar(clixon_handle h,
     int              argc = 0;
     cvec            *cvv2 = NULL;
     int              ret;
+    int              leafref_refer = 0;
 
-    if (argv == NULL || (cvec_len(argv) != 2 && cvec_len(argv) != 3)){
-        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [<mountpt>]");
+    if (argv == NULL || cvec_len(argv) < 2){
+        clixon_err(OE_PLUGIN, EINVAL, "requires arguments: <db> <apipathfmt> [\"leafref-refer\"] [<mountpt>]");
         goto done;
     }
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -276,6 +278,16 @@ expand_dbvar(clixon_handle h,
     api_path_fmt = cbuf_get(api_path_fmt_cb);
     if ((cvv2 = cvec_append(clicon_data_cvec_get(h, "cli-edit-cvv"), cvv)) == NULL)
         goto done;
+    /* Optional "leafref-refer" argument: if present, follow leafrefs to their target for expansion */
+    cv = cvec_i(argv, argc);
+    if (cv != NULL && cv_string_get(cv) != NULL &&
+        strcmp(cv_string_get(cv), "leafref-refer") == 0){
+        leafref_refer = 1;
+        argc++;
+    }
+    /* @add:leafref-no-refer on co_cvec overrides leafref-refer (backward compat) */
+    if (co != NULL && cvec_find(co->co_cvec, "leafref-no-refer") != NULL)
+        leafref_refer = 0;
     cv = cvec_i(argv, argc++);
     if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
         goto done;
@@ -300,7 +312,7 @@ expand_dbvar(clixon_handle h,
      * Issue: with NACM, the rpc can fail but dont want to return error / -1, instead return empty list
      */
     if (clixon_rpc_config_path_info(h, api_path, 0, NULL, NULL,
-                                    cvec_find(co->co_cvec, "leafref-no-refer") == NULL, NULL, NULL,
+                                    leafref_refer, NULL, NULL,
                                     NULL, &xpath, &nsc,
                                     NULL, NULL, NULL, NULL, NULL) < 0){
         /* Try local call to find xpath and nsc, but this may not work over mountpoints */

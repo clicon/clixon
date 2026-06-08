@@ -69,6 +69,7 @@
 #include "clixon_cli_api.h"
 #include "cli_plugin.h"
 #include "cli_common.h"
+#include "banned.h"
 
 /*! Register log notification stream
  *

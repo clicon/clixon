@@ -71,6 +71,7 @@
 #include "backend_client.h"
 #include "backend_handle.h"
 #include "backend_cache.h"
+#include "banned.h"
 
 /*! Autocli cache write
  *

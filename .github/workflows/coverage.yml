@@ -1,0 +1,72 @@
+name: Clixon Coverage
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'   # Weekly, Monday 02:00 UTC
+  workflow_dispatch:       # Allow manual triggering
+
+jobs:
+  docker-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./docker/coverage
+    steps:
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+      with:
+        persist-credentials: false
+
+    - name: inline clone clixon
+      run: git clone file://$(realpath ../..) clixon
+
+    - name: yangmodels sparse checkout
+      run: |
+        mkdir -p yang
+        cd yang
+        git init
+        git remote add -f origin https://github.com/YangModels/yang
+        git config core.sparseCheckout true
+        echo "standard/" >> .git/info/sparse-checkout
+        echo "experimental/" >> .git/info/sparse-checkout
+        git pull origin main
+
+    - name: build coverage image
+      run: sudo docker build -t clixon/coverage .
+
+    - name: run coverage container
+      run: sudo docker run --name clixon-coverage clixon/coverage
+
+    - name: extract clixon coverage report
+      run: sudo docker cp clixon-coverage:/coverage-clixon.info coverage-clixon.info
+
+    - name: extract cligen coverage report
+      run: sudo docker cp clixon-coverage:/coverage-cligen.info coverage-cligen.info
+
+    - name: extract cligen SHA from container
+      run: |
+        sudo docker cp clixon-coverage:/cligen-sha.txt /tmp/cligen-sha.txt
+        echo "CLIGEN_SHA=$(cat /tmp/cligen-sha.txt | tr -d '[:space:]')" >> $GITHUB_ENV
+
+    - name: remove container
+      run: sudo docker rm clixon-coverage
+
+    - name: upload clixon coverage to Codecov
+      uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354  # v6.0.1
+      with:
+        files: ./docker/coverage/coverage-clixon.info
+        disable_search: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: upload cligen coverage to Codecov
+      run: |
+        curl -Os https://cli.codecov.io/latest/linux/codecov
+        chmod +x codecov
+        ./codecov upload-coverage \
+          --token ${{ secrets.CLIGEN_CODECOV_TOKEN }} \
+          --slug clicon/cligen \
+          --sha ${{ env.CLIGEN_SHA }} \
+          --branch master \
+          --disable-search \
+          --file coverage-cligen.info

@@ -69,6 +69,7 @@
 #include "cli_generate.h"
 #include "cli_common.h"
 #include "cli_handle.h"
+#include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
 #define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:o:"
@@ -102,7 +103,7 @@ cli_history_load(clixon_handle h)
         goto done;
     if ((filename = clicon_option_str(h,"CLICON_CLI_HIST_FILE")) == NULL)
         goto ok; /* ignore */
-    if ((ret = wordexp(filename, &result, 0)) != 0){
+    if ((ret = wordexp(filename, &result, WRDE_NOCMD)) != 0){
         clixon_err(OE_UNIX, errno, "wordexp(%s) %d", filename, ret);
         goto done;
     }
@@ -141,7 +142,7 @@ cli_history_save(clixon_handle h)
 
     if ((filename = clicon_option_str(h, "CLICON_CLI_HIST_FILE")) == NULL)
         goto ok; /* ignore */
-    if (wordexp(filename, &result, 0) < 0){
+    if (wordexp(filename, &result, WRDE_NOCMD) < 0){
         clixon_err(OE_UNIX, errno, "wordexp");
         goto done;
     }

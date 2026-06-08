@@ -72,6 +72,7 @@
 #include "backend_get.h"
 #include "backend_cache.h"
 #include "backend_client.h"
+#include "banned.h"
 
 /*! Construct a client string description from client_entry information for logging
  *
@@ -539,7 +540,7 @@ from_client_edit_config(clixon_handle h,
         goto ok;
     }
     /* xmldb_put (difflist handling) requires list keys */
-    if ((ret = xml_yang_validate_list_key_only(xc, &xret)) < 0)
+    if ((ret = xml_yang_validate_list_key_only(h, xc, &xret)) < 0)
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)

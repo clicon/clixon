@@ -83,6 +83,7 @@
 #include "clixon_xml_sort.h"
 #include "clixon_validate_minmax.h"
 #include "clixon_validate.h"
+#include "banned.h"
 
 #ifdef LEAFREF_OPTIMIZE
 
@@ -317,6 +318,7 @@ leafref_opt_search_detect(cxobj **xvec,
     yang_stmt *yp;
     yang_stmt *y0p = NULL;  /* YANG spec of x0p (list), for list case */
     cvec      *cvk;
+    cg_var    *cvi;
     int        i;
     int        is_list = 0; /* 1=list key, 0=leaf-list */
 
@@ -339,8 +341,10 @@ leafref_opt_search_detect(cxobj **xvec,
             }
             else if (yang_keyword_get(yp) == Y_LIST &&
                      (cvk = yang_cvec_get(yp)) != NULL &&
-                     cvec_len(cvk) == 1){
-                /* Only allow single key lists */
+                     cvec_len(cvk) == 1 &&
+                     (cvi = cvec_i(cvk, 0)) != NULL &&
+                     strcmp(cv_string_get(cvi), yang_argument_get(y)) == 0){
+                /* Only allow single key lists where this leaf IS the key */
                 is_list = 1;
                 y0p = yp;
                 xpp = xml_parent(xp);
@@ -1618,20 +1622,31 @@ xml_yang_validate_add(clixon_handle h,
 
 /*! Some checks done only at edit_config, eg keys in lists
  *
+ * @param[in]  h      Clixon handle
  * @param[in]  xt     XML tree
  * @param[out] xret   Error XML tree. Free with xml_free after use
- * @retval     0      OK
+ * @retval     1      Validation OK
+ * @retval     0      Validation failed (xret set)
  * @retval    -1      Error
  */
 int
-xml_yang_validate_list_key_only(cxobj  *xt,
-                                cxobj **xret)
+xml_yang_validate_list_key_only(clixon_handle  h,
+                                cxobj         *xt,
+                                cxobj        **xret)
 {
     int        retval = -1;
     yang_stmt *yt;   /* yang spec of xt going in */
     cxobj     *x;
     int        ix;
     int        ret;
+    cvec      *cvk;
+    cg_var    *cvi;
+    char      *keyname;
+    cxobj     *xkey;
+    yang_stmt *yleaf;
+    cg_var    *cv0;
+    cg_var    *cv = NULL;
+    char      *reason = NULL;
 
     /* if not given by argument (override) use default link
        and !Node has a config sub-statement and it is false */
@@ -1642,16 +1657,73 @@ xml_yang_validate_list_key_only(cxobj  *xt,
             goto done;
         if (ret == 0)
             goto fail;
+        /* Also reject key elements whose empty body would fail type validation
+         * (issue #674). A key with an empty body that violates its own type
+         * constraints (e.g. length "1..max") can enter the datastore but then
+         * cannot be removed via CLI or addressed by subsequent operations.
+         * Keys where the empty string IS a valid value (e.g. plain type string)
+         * are still accepted.
+         * This check is intentionally limited to the edit-config path
+         * (xml_yang_validate_list_key_only) and not the general validator, so
+         * that existing datastore entries with empty keys remain readable. */
+        cvk = yang_cvec_get(yt);
+        cvi = NULL;
+        while ((cvi = cvec_each(cvk, cvi)) != NULL) {
+            keyname = cv_string_get(cvi);
+            xkey = xml_find_type(xt, NULL, keyname, CX_ELMNT);
+            if (xkey == NULL || xml_body(xkey) != NULL)
+                continue;
+            /* Body is NULL (empty element). Parse empty string then apply YANG
+             * type constraints via ys_cv_validate. Reject if either fails. */
+            if ((yleaf = yang_find(yt, Y_LEAF, keyname)) == NULL ||
+                (cv0 = yang_cv_get(yleaf)) == NULL)
+                continue;
+            if ((cv = cv_dup(cv0)) == NULL){
+                clixon_err(OE_UNIX, errno, "cv_dup");
+                goto done;
+            }
+            reason = NULL;
+            ret = cv_parse1("", cv, &reason);
+            if (ret != 1){
+                if (reason)
+                    free(reason);
+                reason = NULL;
+                cv_free(cv);
+                cv = NULL;
+                if (xret && netconf_missing_element_xml(xret, "application",
+                                                        keyname,
+                                                        "Key with empty value") < 0)
+                    goto done;
+                goto fail;
+            }
+            /* cv_parse1 succeeded; now check YANG type constraints (length, pattern, etc.) */
+            if ((ret = ys_cv_validate(h, cv, yleaf, NULL, &reason)) < 0)
+                goto done;
+            cv_free(cv);
+            cv = NULL;
+            if (ret == 0){
+                if (reason)
+                    free(reason);
+                reason = NULL;
+                if (xret && netconf_missing_element_xml(xret, "application",
+                                                        keyname,
+                                                        "Key with empty value") < 0)
+                    goto done;
+                goto fail;
+            }
+        }
     }
     ix = 0;
     while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
-        if ((ret = xml_yang_validate_list_key_only(x, xret)) < 0)
+        if ((ret = xml_yang_validate_list_key_only(h, x, xret)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
     }
     retval = 1;
  done:
+    if (cv)
+        cv_free(cv);
     return retval;
  fail:
     retval = 0;

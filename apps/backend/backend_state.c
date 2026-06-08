@@ -71,6 +71,7 @@
 #include "backend_client.h"
 #include "backend_handle.h"
 #include "backend_state.h"
+#include "banned.h"
 
 /*! Restconf get capabilities
  *

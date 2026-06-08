@@ -76,6 +76,7 @@
 #include "clixon_netconf_lib.h"
 #include "clixon_yang_module.h"
 #include "clixon_datastore.h"
+#include "banned.h"
 
 /* Forward */
 static int xml_default(yang_stmt *yt, cxobj *xt, int state);

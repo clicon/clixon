@@ -66,6 +66,7 @@
 #include "restconf_lib.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
+#include "banned.h"
 
 /*! HTTP error 405 Not Allowed
  *

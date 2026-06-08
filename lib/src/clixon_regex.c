@@ -66,6 +66,7 @@
 #include "clixon_debug.h"
 #include "clixon_options.h"
 #include "clixon_regex.h"
+#include "banned.h"
 
 /*-------------------------- POSIX translation -------------------------*/
 
@@ -242,7 +243,7 @@ regexp_xsd2posix(const char *xsd,
     cbuf  *cb = NULL;
     char   x;
     char  *s0;
-    char  *s1;
+    const char *s1;
     int    i;
     int    j; /* lookahead */
     int    esc;

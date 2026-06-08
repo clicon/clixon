@@ -81,6 +81,7 @@
 #include "clixon_netconf_input.h"
 #include "clixon_options.h"
 #include "clixon_proto.h"
+#include "banned.h"
 
 static int _atomicio_sig = 0;
 

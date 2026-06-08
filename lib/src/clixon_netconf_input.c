@@ -75,6 +75,7 @@
 #include "clixon_xml_io.h"
 #include "clixon_proto.h"
 #include "clixon_netconf_input.h"
+#include "banned.h"
 
 /*! Look for a text pattern in an input string, one char at a time
  *
