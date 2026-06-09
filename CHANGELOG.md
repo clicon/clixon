@@ -23,6 +23,7 @@ Expected: September 2026
 
 ### Features
 
+* New: [NACM External Groups](https://github.com/clicon/clixon/issues/654)
 * All clixon parsers (XML, YANG, XPATH, JSON, etc) are now reentrant
 
 ### API changes

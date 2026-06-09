@@ -20,6 +20,8 @@ fyang=$dir/nacm-example.yang
 
 NACMUSER=$(whoami)
 
+let nr=0
+
 cat <<EOF > $fyang
 module nacm-example{
   yang-version 1.1;
@@ -134,7 +136,8 @@ EOF
         start_backend -s init -f $cfg
     fi
 
-    new "wait backend"
+    let nr++
+    new "wait backend $nr"
     wait_backend
 
     # First push in nacm rules via regular means

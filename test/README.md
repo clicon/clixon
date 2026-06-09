@@ -36,6 +36,18 @@ To download the openconfig and yang models required for the tests:
    git pull origin main
 ```
 
+## NACM external groups
+
+The test of external NACM groups requires a  **secondary** OS
+group (i.e. a group other than their primary group).  If only a primary group
+exists the test is skipped with an explanatory message.
+
+To add a secondary group to the test user on debian:
+```
+  sudo usermod -aG <groupname> <username>
+```
+Then start a new login session so the group takes effect.
+
 ## SSH and SSHD
 
 Some tests require ssh and even sshd (eg test_netconf_ssh_callhome.sh), and requires generated host-keys:

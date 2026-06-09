@@ -171,6 +171,86 @@ uid2name(const uid_t uid,
     return retval;
 }
 
+/*! Return all OS group names for a given username
+ *
+ * Uses POSIX setgrent/getgrent/endgrent to iterate all groups and collect
+ * those whose member list contains username, plus the user's primary group.
+ * @param[in]   username  OS user name to look up
+ * @param[out]  groupsp   Malloced array of malloced group name strings; caller frees each entry and the array
+ * @param[out]  ngroupsp  Number of entries in groupsp
+ * @retval      0         OK
+ * @retval     -1         Error
+ * @note getgrouplist is limited to /etc/group and may not include all groups for a user.
+ */
+int
+user2groups(const char  *username,
+            char      ***groupsp,
+            int         *ngroupsp)
+{
+    int            retval = -1;
+    char           buf[1024];
+    struct passwd  pwbuf;
+    struct passwd *pwbufp = NULL;
+    struct group  *gr;
+    char         **groups = NULL;
+    int            ngroups = 0;
+    int            i;
+    char         **g2;
+    char          *gname;
+
+    if (getpwnam_r(username, &pwbuf, buf, sizeof(buf), &pwbufp) != 0){
+        clixon_err(OE_UNIX, errno, "getpwnam_r(%s)", username);
+        goto done;
+    }
+    if (pwbufp == NULL){
+        clixon_err(OE_UNIX, 0, "No such user: %s", username);
+        goto done;
+    }
+    setgrent();
+    while ((gr = getgrent()) != NULL){
+        /* Include if this is the user's primary group or username in member list */
+        if (gr->gr_gid == pwbufp->pw_gid){
+            gname = gr->gr_name;
+        }
+        else {
+            gname = NULL;
+            for (i = 0; gr->gr_mem[i] != NULL; i++){
+                if (strcmp(gr->gr_mem[i], username) == 0){
+                    gname = gr->gr_name;
+                    break;
+                }
+            }
+        }
+        if (gname == NULL)
+            continue;
+        if ((g2 = realloc(groups, (ngroups + 1) * sizeof(char *))) == NULL){
+            clixon_err(OE_UNIX, errno, "realloc");
+            endgrent();
+            goto done;
+        }
+        groups = g2;
+        if ((groups[ngroups] = strdup(gname)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            endgrent();
+            goto done;
+        }
+        ngroups++;
+    }
+    endgrent();
+    *groupsp = groups;
+    *ngroupsp = ngroups;
+    groups = NULL;
+    retval = 0;
+ done:
+    if (groups){
+        for (i = 0; i < ngroups; i++)
+            if (groups[i])
+                free(groups[i]);
+        free(groups);
+    }
+    return retval;
+}
+
 /* Privileges drop perm, temp and restore
  * @see https://www.usenix.org/legacy/events/sec02/full_papers/chen/chen.pdf
  */

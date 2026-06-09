@@ -45,6 +45,7 @@
 int group_name2gid(const char *name, gid_t *gid);
 int name2uid(const char *name, uid_t *uid);
 int uid2name(const uid_t uid, char **name);
+int user2groups(const char *username, char ***groupsp, int *ngroupsp);
 int drop_priv_temp(uid_t new_uid);
 int drop_priv_perm(uid_t new_uid);
 int restore_priv(void);

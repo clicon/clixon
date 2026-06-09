@@ -1771,6 +1771,9 @@ from_client_msg(clixon_handle h,
             goto done;
         if (ret == 2)
             goto reply;
+        /* Store peer identity in handle so NACM sub-functions can access it */
+        if (clixon_nacm_peername_set(h, ce->ce_username) < 0)
+            goto done;
         /* Cache XML NACM tree here. Use with caution, only valid on from_client_msg stack 
          */
         if (clicon_nacm_cache_set(h, xnacm) < 0)
@@ -1790,7 +1793,7 @@ from_client_msg(clixon_handle h,
                 goto reply;
             }
             /* NACM rpc operation exec validation */
-            if ((ret = nacm_rpc(rpc, module, username, xnacm, cbret)) < 0)
+            if ((ret = nacm_rpc(h, rpc, module, username, xnacm, cbret)) < 0)
                 goto done;
             if (ret == 0){ /* Not permitted and cbret set */
                 ce->ce_out_rpc_errors++;
@@ -1824,6 +1827,8 @@ from_client_msg(clixon_handle h,
             xml_free(xnacm);
             xnacm = NULL;
             if (clicon_nacm_cache_set(h, NULL) < 0)
+                goto done;
+            if (clixon_nacm_peername_set(h, NULL) < 0)
                 goto done;
         }
     } /* while */
@@ -1868,6 +1873,7 @@ from_client_msg(clixon_handle h,
         if (clicon_nacm_cache_set(h, NULL) < 0)
             goto done;
     }
+    clixon_nacm_peername_set(h, NULL); /* ensure cleared on all exit paths */
     if (xret)
         xml_free(xret);
     if (xt)

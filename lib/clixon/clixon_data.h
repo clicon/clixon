@@ -93,6 +93,8 @@ cxobj *clicon_conf_autocli(clixon_handle h);
 /* Set and get authorized user name */
 char *clicon_username_get(clixon_handle h);
 int clicon_username_set(clixon_handle h, void *username);
+char *clixon_nacm_peername_get(clixon_handle h);
+int clixon_nacm_peername_set(clixon_handle h, const char *peername);
 
 /* Set and get startup status */
 enum startup_status clicon_startup_status_get(clixon_handle h);

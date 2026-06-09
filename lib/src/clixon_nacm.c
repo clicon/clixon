@@ -79,8 +79,102 @@
 #include "clixon_xml_vec.h"
 #include "clixon_yang_parse_lib.h"
 #include "clixon_autocli.h"
+#include "clixon_uid.h"
 #include "clixon_nacm.h"
 #include "banned.h"
+
+/*! Augment gvec with NACM groups whose name matches a peer's OS group memberships
+ *
+ * Implements RFC 8341 §3.2.2: when enable-external-groups is true, the server
+ * adds the groups reported by the transport layer to the user's group set.
+ * Here "reported by the transport layer" means the OS group memberships of the
+ * peer process, looked up via getgrent().
+ * Only NACM groups not already present in gvec are added.
+ * @param[in]     xnacm    NACM XML tree
+ * @param[in]     nsc      Namespace context for xnacm
+ * @param[in]     peername Peer OS username (from socket credentials)
+ * @param[in,out] gvecp    Group node vector; realloc'd if new groups added
+ * @param[in,out] glenp    Number of entries in *gvecp
+ * @retval        0        OK
+ * @retval       -1        Error
+ */
+static int
+nacm_external_groups_add(cxobj      *xnacm,
+                         cvec       *nsc,
+                         const char *peername,
+                         cxobj    ***gvecp,
+                         size_t     *glenp)
+{
+    int     retval = -1;
+    char   *extgroups;
+    char  **osgroups = NULL;
+    int     nosgroups = 0;
+    int     i;
+    cxobj  *xgroup;
+    char   *gname;
+    cxobj **gvec2 = NULL;
+    size_t  glen2;
+    int     j;
+    int     found;
+
+    if (peername == NULL)
+        goto ok;
+    extgroups = xml_find_body(xnacm, "enable-external-groups");
+    if (extgroups == NULL || strcmp(extgroups, "true") != 0)
+        goto ok;
+    if (user2groups(peername, &osgroups, &nosgroups) < 0)
+        goto done;
+    /* For each OS group, find matching NACM group node not already in gvec */
+    glen2 = *glenp;
+    gvec2 = *gvecp;
+    for (i = 0; i < nosgroups; i++){
+        if (osgroups[i] == NULL)
+            continue;
+        xgroup = xpath_first(xnacm, nsc, "groups/group[name='%s']", osgroups[i]);
+        if (xgroup == NULL)
+            continue;
+        /* Skip if already in gvec (static user-name match) */
+        found = 0;
+        for (j = 0; j < (int)glen2; j++){
+            if (gvec2[j] == xgroup){
+                found = 1;
+                break;
+            }
+        }
+        if (found)
+            continue;
+        /* Check by name to avoid duplicates from multiple OS groups */
+        gname = xml_find_body(xgroup, "name");
+        for (j = 0; j < (int)glen2; j++){
+            if (strcmp(xml_find_body(gvec2[j], "name")?:"", gname?:"") == 0){
+                found = 1;
+                break;
+            }
+        }
+        if (found)
+            continue;
+        clixon_debug(CLIXON_DBG_NACM, "external group match: peer %s in OS group %s",
+                     peername, osgroups[i]);
+        if ((gvec2 = realloc(gvec2, (glen2 + 1) * sizeof(cxobj *))) == NULL){
+            clixon_err(OE_UNIX, errno, "realloc");
+            goto done;
+        }
+        gvec2[glen2++] = xgroup;
+    }
+    *gvecp = gvec2;
+    *glenp = glen2;
+    gvec2 = NULL;
+ ok:
+    retval = 0;
+ done:
+    if (osgroups){
+        for (i = 0; i < nosgroups; i++)
+            if (osgroups[i])
+                free(osgroups[i]);
+        free(osgroups);
+    }
+    return retval;
+}
 
 /*! Add user to list of NACM proxyusers that may represent other users
  *
@@ -237,6 +331,7 @@ nacm_rule_rpc(const char *rpc,
 
 /*! Process nacm incoming RPC message validation steps
  *
+ * @param[in]  h        Clixon handle
  * @param[in]  rpc      rpc name
  * @param[in]  module   Yang module name
  * @param[in]  username User name of requestor
@@ -250,11 +345,12 @@ nacm_rule_rpc(const char *rpc,
  * @see nacm_datanode_read
  */
 int
-nacm_rpc(const char *rpc,
-         const char *module,
-         const char *username,
-         cxobj      *xnacm,
-         cbuf       *cbret)
+nacm_rpc(clixon_handle h,
+         const char   *rpc,
+         const char   *module,
+         const char   *username,
+         cxobj        *xnacm,
+         cbuf         *cbret)
 {
     int     retval = -1;
     cxobj  *xrule;
@@ -291,6 +387,9 @@ nacm_rpc(const char *rpc,
     }
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+        goto done;
+    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
+    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
         goto done;
     /* 5. If no groups are found, continue with step 10. */
     if (glen == 0)
@@ -826,6 +925,9 @@ nacm_datanode_write(clixon_handle    h,
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
         goto done;
+    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
+    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
+        goto done;
     /* 4. If no groups are found, continue with step 9. */
     if (glen == 0)
         goto step9;
@@ -1122,6 +1224,9 @@ nacm_datanode_read1(clixon_handle h,
         goto step9;
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+        goto done;
+    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
+    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
         goto done;
     /* 4. If no groups are found (glen=0), continue and check read-default 
           in step 11. */
@@ -1788,6 +1893,9 @@ nacm_autocli_filter_build(clixon_handle           h,
 
     /* 1. Find user's groups */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+        goto done;
+    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
+    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
         goto done;
 
     /* 2. Find all rule-lists */

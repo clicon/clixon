@@ -605,6 +605,37 @@ clicon_username_set(clixon_handle h,
     return clicon_hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
 }
 
+/*! Get NACM peer name (OS peer credential for current request)
+ *
+ * @param[in]  h  Clixon handle
+ * @retval     peername string or NULL
+ */
+char *
+clixon_nacm_peername_get(clixon_handle h)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+
+    return (char*)clicon_hash_value(cdat, "nacm_peername", NULL);
+}
+
+/*! Set NACM peer name (OS peer credential for current request)
+ *
+ * @param[in]  h         Clixon handle
+ * @param[in]  peername  OS peer username, or NULL to clear
+ */
+int
+clixon_nacm_peername_set(clixon_handle h,
+                         const char   *peername)
+{
+    clicon_hash_t *cdat = clicon_data(h);
+
+    if (peername == NULL){
+        clicon_hash_del(cdat, "nacm_peername"); /* ignore not-found */
+        return 0;
+    }
+    return clicon_hash_add(cdat, "nacm_peername", (void*)peername, strlen(peername)+1)==NULL?-1:0;
+}
+
 /*! Get backend daemon startup status
  *
  * @param[in]  h      Clixon handle
