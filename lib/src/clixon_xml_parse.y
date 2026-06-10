@@ -54,8 +54,19 @@
 
 %type <string> attvalue
 
-%lex-param     {void *_xy} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_xy}
+%lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
+%parse-param   {void *_xy}             /* passed to yyparse() and yyerror() */
+%parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
+%define api.pure full                  /* make yylval a local, not a global */
+
+%code requires {
+/* Inject yyscan_t typedef into the generated tab.h so callers can use it
+ * without pulling in the full flex header */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+}
 
 %{
 
@@ -95,13 +106,14 @@
 #endif
 
 void
-clixon_xml_parseerror(void *_xy,
-                      char *s)
+clixon_xml_parseerror(void       *_xy,
+                      yyscan_t    yyscanner,
+                      char       *s)
 {
     clixon_err(OE_XML, XMLPARSE_ERRNO, "xml_parse: line %d: %s: at or before: %s",
                _XY->xy_linenum,
                s,
-               clixon_xml_parsetext);
+               clixon_xml_parseget_text(yyscanner));
     return;
 }
 

@@ -43,11 +43,17 @@
 /*
  * Types
  */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 /*! XML parser yacc handler struct */
 struct clixon_xml_parse_yacc {
     char       *xy_parse_string; /* original (copy of) parse string */
     int         xy_linenum;      /* Number of \n in parsed buffer */
     void       *xy_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t    xy_scanner;      /* reentrant flex scanner handle */
     cxobj      *xy_xtop;         /* cxobj top element (fixed) */
     cxobj      *xy_xelement;     /* cxobj active element (changes with parse context) */
     cxobj      *xy_xparent;      /* cxobj parent element (changes with parse context) */
@@ -59,18 +65,15 @@ struct clixon_xml_parse_yacc {
 typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
 
 /*
- * Variables
- */
-extern char *clixon_xml_parsetext;
-
-/*
  * Prototypes
  */
 int clixon_xml_parsel_init(clixon_xml_yacc *ya);
 int clixon_xml_parsel_exit(clixon_xml_yacc *ya);
 
-int clixon_xml_parsel_linenr(void);
-int clixon_xml_parselex(void *);
-int clixon_xml_parseparse(void *);
+char *clixon_xml_parseget_text(yyscan_t yyscanner); /* Forward declaration: reentrant flex accessor */
+/* Forward declaration of YYSTYPE for clixon_xml_parselex prototype */
+union YYSTYPE;
+int clixon_xml_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int clixon_xml_parseparse(void *, yyscan_t);
 
 #endif  /* _CLIXON_XML_PARSE_H_ */

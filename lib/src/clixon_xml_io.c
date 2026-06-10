@@ -978,7 +978,7 @@ _xml_parse(clixon_handle h,
     xy.xy_xparent = xt;
     if (clixon_xml_parsel_init(&xy) < 0)
         goto done;
-    if (clixon_xml_parseparse(&xy) != 0)  /* yacc returns 1 on error */
+    if (clixon_xml_parseparse(&xy, xy.xy_scanner) != 0)  /* yacc returns 1 on error */
         goto done;
     /* Purge all top-level body objects */
     x = NULL;
