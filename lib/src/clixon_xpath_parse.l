@@ -83,21 +83,8 @@ There are some special lexical rules in https://www.w3.org/TR/xpath-10
 #include "clixon_xpath_eval.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
-#define YY_DECL int clixon_xpath_parselex(void *_yy)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _XPY ((clixon_xpath_yacc *)_yy)
-
-#undef clixon_xpath_parsewrap
-int
-clixon_xpath_parsewrap(void)
-{
-    return 1;
-}
+#define _XPY ((clixon_xpath_yacc *)yyget_extra(yyscanner))
 
 /* strip last char: kludge to peek to next character */
 static void
@@ -107,6 +94,14 @@ striplast(char *s)
 }
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_xpath_yacc *"
+
 
 digit [0-9]
 integer {digit}+
@@ -131,25 +126,25 @@ ncname     {namestart}{namechar}*
 <TOKEN0>[(\[]            { BEGIN(TOKEN2); return *yytext; }
 <TOKEN0>\/               { BEGIN(TOKEN2); return *yytext; }
 <TOKEN0>[)\]\.,:|]       { return *yytext; }
-<TOKEN0>and              { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
-<TOKEN0>or               { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
-<TOKEN0>div              { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
-<TOKEN0>mod              { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
-<TOKEN0>[+*\-]           { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
+<TOKEN0>and              { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
+<TOKEN0>or               { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
+<TOKEN0>div              { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
+<TOKEN0>mod              { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
+<TOKEN0>[+*\-]           { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
 <TOKEN0>\?               { return *yytext; }
 <TOKEN0>"//"             { BEGIN(TOKEN2);return DOUBLESLASH; }
-<TOKEN0>"!="             { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return RELOP; }
-<TOKEN0>">="             { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
-<TOKEN0>"<="             { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
-<TOKEN0>[<>=]            { BEGIN(TOKEN2);clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
+<TOKEN0>"!="             { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext); return RELOP; }
+<TOKEN0>">="             { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext);return RELOP; }
+<TOKEN0>"<="             { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext);return RELOP; }
+<TOKEN0>[<>=]            { BEGIN(TOKEN2);yylval->intval = clicon_str2int(xpopmap,yytext);return RELOP; }
 
 <TOKEN0>@                { BEGIN(TOKEN2); return *yytext; }
 <TOKEN0>\"               { _XPY->xpy_lex_string_state = TOKEN0; BEGIN(QLITERAL); return QUOTE; }
 <TOKEN0>\'               { _XPY->xpy_lex_string_state = TOKEN0; BEGIN(ALITERAL); return APOST; }
-<TOKEN0>\-?({integer}|{real}) { clixon_xpath_parselval.string = strdup(yytext); return NUMBER; }
+<TOKEN0>\-?({integer}|{real}) { yylval->string = strdup(yytext); return NUMBER; }
 
 <TOKEN0>{ncname}         { /* See lexical rules 2 and 3 in the file header */
-                           clixon_xpath_parselval.string = strdup(yytext);
+                           yylval->string = strdup(yytext);
                            return NCNAME;
                          }
 <TOKEN0>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
@@ -162,39 +157,39 @@ ncname     {namestart}{namechar}*
 <TOKEN2>::               { BEGIN(TOKEN0); return DOUBLECOLON; /* axisname */ }
 <TOKEN2>\/               { BEGIN(TOKEN2); return *yytext; }
 <TOKEN2>[()\[\]\.,:|]    { BEGIN(TOKEN0); return *yytext; }
-<TOKEN2>and              { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
-<TOKEN2>or               { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
-<TOKEN2>div              { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
-<TOKEN2>mod              { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
-<TOKEN2>[+*\-]           { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
+<TOKEN2>and              { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
+<TOKEN2>or               { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap, yytext); return LOGOP; }
+<TOKEN2>div              { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
+<TOKEN2>mod              { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
+<TOKEN2>[+*\-]           { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext); return ADDOP; }
 <TOKEN2>\?               { BEGIN(TOKEN0); return *yytext; }
 <TOKEN2>"//"             { BEGIN(TOKEN0); return DOUBLESLASH; }
-<TOKEN2>"!="             { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext); return RELOP; }
-<TOKEN2>">="             { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
-<TOKEN2>"<="             { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
-<TOKEN2>[<>=]            { BEGIN(TOKEN0); clixon_xpath_parselval.intval = clicon_str2int(xpopmap,yytext);return RELOP; }
+<TOKEN2>"!="             { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext); return RELOP; }
+<TOKEN2>">="             { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext);return RELOP; }
+<TOKEN2>"<="             { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext);return RELOP; }
+<TOKEN2>[<>=]            { BEGIN(TOKEN0); yylval->intval = clicon_str2int(xpopmap,yytext);return RELOP; }
 
 <TOKEN2>@                { BEGIN(TOKEN0); return *yytext; }
 <TOKEN2>\"               { BEGIN(TOKEN0); _XPY->xpy_lex_string_state=TOKEN2; BEGIN(QLITERAL); return QUOTE; }
 <TOKEN2>\'               { BEGIN(TOKEN0); _XPY->xpy_lex_string_state=TOKEN2; BEGIN(ALITERAL); return APOST; }
-<TOKEN2>\-?({integer}|{real}) { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext); return NUMBER; }
+<TOKEN2>\-?({integer}|{real}) { BEGIN(TOKEN0); yylval->string = strdup(yytext); return NUMBER; }
 
-<TOKEN2>comment\(        { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; }
-<TOKEN2>text\(           { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; }
-<TOKEN2>processing-instructions\( { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext); striplast(clixon_xpath_parselval.string); return NODETYPE; }
-<TOKEN2>node\(          { BEGIN(TOKEN0); clixon_xpath_parselval.string = strdup(yytext);  striplast(clixon_xpath_parselval.string); return NODETYPE; }
+<TOKEN2>comment\(        { BEGIN(TOKEN0); yylval->string = strdup(yytext);  striplast(yylval->string); return NODETYPE; }
+<TOKEN2>text\(           { BEGIN(TOKEN0); yylval->string = strdup(yytext);  striplast(yylval->string); return NODETYPE; }
+<TOKEN2>processing-instructions\( { BEGIN(TOKEN0); yylval->string = strdup(yytext); striplast(yylval->string); return NODETYPE; }
+<TOKEN2>node\(          { BEGIN(TOKEN0); yylval->string = strdup(yytext);  striplast(yylval->string); return NODETYPE; }
 <TOKEN2>{ncname}         { /* See lexical rules 2 and 3 in the file header */
                            BEGIN(TOKEN0);
-                           clixon_xpath_parselval.string = strdup(yytext);
+                           yylval->string = strdup(yytext);
                            return NCNAME;
                         }
 <TOKEN2>.                { fprintf(stderr,"LEXICAL ERROR\n"); return -1; }
 
 <QLITERAL>\"            { BEGIN(_XPY->xpy_lex_string_state); return QUOTE; }
-<QLITERAL>[^"]+         { clixon_xpath_parselval.string = strdup(yytext);
+<QLITERAL>[^"]+         { yylval->string = strdup(yytext);
                             return CHARS;}
 <ALITERAL>\'            { BEGIN(_XPY->xpy_lex_string_state); return APOST; }
-<ALITERAL>[^']+         { clixon_xpath_parselval.string = strdup(yytext);
+<ALITERAL>[^']+         { yylval->string = strdup(yytext);
                             return CHARS;}
 
 %%
@@ -204,14 +199,15 @@ ncname     {namestart}{namechar}*
 int
 xpath_scan_init(clixon_xpath_yacc *xpy)
 {
-  BEGIN(TOKEN0);
-  xpy->xpy_lexbuf = yy_scan_string (xpy->xpy_parse_string);
-#if 1 /* XXX: just to use unput to avoid warning  */
-  if (0)
-    yyunput(0, "");
-#endif
+    struct yyguts_t *yyg;   /* needed for BEGIN() in reentrant mode */
 
-  return 0;
+    if (clixon_xpath_parselex_init(&xpy->xpy_scanner) != 0)
+        return -1;
+    yyg = (struct yyguts_t *)xpy->xpy_scanner;
+    BEGIN(TOKEN0);
+    clixon_xpath_parseset_extra(xpy, xpy->xpy_scanner);
+    xpy->xpy_lexbuf = yy_scan_string(xpy->xpy_parse_string, xpy->xpy_scanner);
+    return 0;
 }
 
 /*
@@ -221,7 +217,7 @@ xpath_scan_init(clixon_xpath_yacc *xpy)
 int
 xpath_scan_exit(clixon_xpath_yacc *xpy)
 {
-    yy_delete_buffer(xpy->xpy_lexbuf);
-    clixon_xpath_parselex_destroy();  /* modern */
+    yy_delete_buffer(xpy->xpy_lexbuf, xpy->xpy_scanner);
+    clixon_xpath_parselex_destroy(xpy->xpy_scanner);
     return 0;
 }

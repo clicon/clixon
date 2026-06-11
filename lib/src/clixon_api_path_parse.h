@@ -40,31 +40,32 @@
 /*
  * Types
  */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_api_path_yacc {
     const char   *ay_name;         /* Name of syntax (for error string) */
     int           ay_linenum;      /* Number of \n in parsed buffer */
     char         *ay_parse_string; /* original (copy of) parse string */
     void         *ay_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t      ay_scanner;      /* reentrant flex scanner handle */
     clixon_path  *ay_top;
 };
 typedef struct clixon_api_path_yacc clixon_api_path_yacc;
 
 /*
- * Variables
- */
-extern char *clixon_api_path_parsetext;
-
-/*
  * Prototypes
  */
-int api_path_scan_init(clixon_api_path_yacc *);
-int api_path_scan_exit(clixon_api_path_yacc *);
-
-int api_path_parse_init(clixon_api_path_yacc *);
-int api_path_parse_exit(clixon_api_path_yacc *);
-
-int clixon_api_path_parselex(void *);
-int clixon_api_path_parseparse(void *);
-void clixon_api_path_parseerror(void *, char*);
+union YYSTYPE;
+int   api_path_scan_init(clixon_api_path_yacc *);
+int   api_path_scan_exit(clixon_api_path_yacc *);
+int   api_path_parse_init(clixon_api_path_yacc *);
+int   api_path_parse_exit(clixon_api_path_yacc *);
+char *clixon_api_path_parseget_text(yyscan_t yyscanner);
+int   clixon_api_path_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_api_path_parseparse(void *, yyscan_t);
+void  clixon_api_path_parseerror(void *, yyscan_t, char*);
 
 #endif  /* _CLIXON_API_PATH_PARSE_H_ */

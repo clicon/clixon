@@ -40,32 +40,37 @@
 /*
  * Types
  */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_xpath_yacc{
-    const char           *xpy_name;         /* Name of syntax (for error string) */
-    int                   xpy_linenum;      /* Number of \n in parsed buffer */
-    const char           *xpy_parse_string; /* original (copy of) parse string */
-    int                   xpy_lex_string_state; /* lex start condition (STRING) */
-    void                 *xpy_lexbuf;       /* internal parse buffer from lex */
-    xpath_tree           *xpy_top;
+    const char *xpy_name;             /* Name of syntax (for error string) */
+    int         xpy_linenum;          /* Number of \n in parsed buffer */
+    const char *xpy_parse_string;     /* Original (copy of) parse string */
+    int         xpy_lex_string_state; /* Lex start condition (STRING) */
+    void       *xpy_lexbuf;           /* Internal parse buffer from lex */
+    yyscan_t    xpy_scanner;          /* Reentrant flex scanner handle */
+    xpath_tree *xpy_top;
 };
 typedef struct clixon_xpath_yacc clixon_xpath_yacc;
 
 /*
  * Variables
  */
-extern char *clixon_xpath_parsetext;
 
 /*
  * Prototypes
  */
-int xpath_scan_init(clixon_xpath_yacc *xy);
-int xpath_scan_exit(clixon_xpath_yacc *xy);
-
-int xpath_parse_init(clixon_xpath_yacc *xy);
-int xpath_parse_exit(clixon_xpath_yacc *xy);
-
-int clixon_xpath_parselex(void *);
-int clixon_xpath_parseparse(void *);
-void clixon_xpath_parseerror(void *, char*);
+union YYSTYPE;
+int   xpath_scan_init(clixon_xpath_yacc *xy);
+int   xpath_scan_exit(clixon_xpath_yacc *xy);
+int   xpath_parse_init(clixon_xpath_yacc *xy);
+int   xpath_parse_exit(clixon_xpath_yacc *xy);
+char *clixon_xpath_parseget_text(yyscan_t yyscanner);
+int   clixon_xpath_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_xpath_parseparse(void *, yyscan_t);
+void  clixon_xpath_parseerror(void *, yyscan_t, char*);
 
 #endif  /* _CLIXON_XPATH_PARSE_H_ */

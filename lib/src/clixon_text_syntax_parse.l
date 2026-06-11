@@ -56,25 +56,21 @@
 #include "clixon_text_syntax_parse.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _ts is added to arg list */
-#define YY_DECL int clixon_text_syntax_parselex(void *_ts)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _TS ((clixon_text_syntax_yacc *)_ts)
-
-#undef clixon_xml_parsewrap
-int clixon_text_syntax_parsewrap(void)
-{
-  return 1;
-}
+#define _TS ((clixon_text_syntax_yacc *)yyget_extra(yyscanner))
 
 /*
  */
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_text_syntax_yacc *"
+
 
 %x COMMENT
 %x STRING
@@ -93,7 +89,7 @@ int clixon_text_syntax_parsewrap(void)
 <INITIAL>\;               { return *yytext; }
 <INITIAL>\"               { _TS->ts_lex_state =INITIAL; BEGIN(STRING);  return *yytext; }
 <INITIAL>[^\n\r \t\[\]\{\}\;\"]+  {
-                            clixon_text_syntax_parselval.string = strdup(yytext);
+                            yylval->string = strdup(yytext);
                             return TOKEN; }
 
 <COMMENT>\n               { _TS->ts_linenum++; BEGIN(_TS->ts_lex_state);}
@@ -101,10 +97,10 @@ int clixon_text_syntax_parsewrap(void)
 <COMMENT>[^\n]+
 
 <STRING>\n                { _TS->ts_linenum++;
-                            clixon_text_syntax_parselval.string = strdup(yytext);
+                            yylval->string = strdup(yytext);
                             return TOKEN;}
 <STRING>\"                { BEGIN(_TS->ts_lex_state); return *yytext; }
-<STRING>[^\n\"]+          { clixon_text_syntax_parselval.string = strdup(yytext);
+<STRING>[^\n\"]+          { yylval->string = strdup(yytext);
                             return TOKEN; }
 
 %%
@@ -114,19 +110,18 @@ int clixon_text_syntax_parsewrap(void)
 int
 clixon_text_syntax_parsel_init(clixon_text_syntax_yacc *ts)
 {
-  BEGIN(INITIAL);
-  ts->ts_lexbuf = yy_scan_string (ts->ts_parse_string);
-  if (0)
-    yyunput(0, "");  /* XXX: just to use unput to avoid warning  */
-  return 0;
+    if (clixon_text_syntax_parselex_init(&ts->ts_scanner) != 0)
+        return -1;
+    clixon_text_syntax_parseset_extra(ts, ts->ts_scanner);
+    ts->ts_lexbuf = yy_scan_string(ts->ts_parse_string, ts->ts_scanner);
+    return 0;
 }
 
 /*! Exit xml scanner */
 int
 clixon_text_syntax_parsel_exit(clixon_text_syntax_yacc *ts)
 {
-   yy_delete_buffer(ts->ts_lexbuf);
-   clixon_text_syntax_parselex_destroy();  /* modern */
-
-  return 0;
+    yy_delete_buffer(ts->ts_lexbuf, ts->ts_scanner);
+    clixon_text_syntax_parselex_destroy(ts->ts_scanner);
+    return 0;
 }

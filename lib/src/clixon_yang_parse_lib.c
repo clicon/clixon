@@ -886,7 +886,7 @@ yang_parse_str(const char *str,
             goto done;
         if (yang_parse_init(&yy) < 0)
             goto done;
-        if (clixon_yang_parseparse(&yy) != 0) { /* yacc returns 1 on error */
+        if (clixon_yang_parseparse(&yy, yy.yy_scanner) != 0) { /* yacc returns 1 on error */
             clixon_log(NULL, LOG_NOTICE, "Yang error: %s on line %d", name, yy.yy_linenum);
             if (clixon_err_category() == 0)
                 clixon_err(OE_YANG, 0, "yang parser error with no error code (should not happen)");

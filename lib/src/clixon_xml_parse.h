@@ -50,30 +50,28 @@ typedef void *yyscan_t;
 
 /*! XML parser yacc handler struct */
 struct clixon_xml_parse_yacc {
-    char       *xy_parse_string; /* original (copy of) parse string */
-    int         xy_linenum;      /* Number of \n in parsed buffer */
-    void       *xy_lexbuf;       /* internal parse buffer from lex */
-    yyscan_t    xy_scanner;      /* reentrant flex scanner handle */
-    cxobj      *xy_xtop;         /* cxobj top element (fixed) */
-    cxobj      *xy_xelement;     /* cxobj active element (changes with parse context) */
-    cxobj      *xy_xparent;      /* cxobj parent element (changes with parse context) */
-    int         xy_lex_state;    /* lex return state */
-    cxobj     **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    size_t      xy_xlen;         /* Length of xy_xvec */
-    cbuf       *xy_cbuf;         /* Accumulator for body/content tokens (flushed at context change) */
+    char    *xy_parse_string; /* original (copy of) parse string */
+    int      xy_linenum;      /* Number of \n in parsed buffer */
+    void    *xy_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t xy_scanner;      /* reentrant flex scanner handle */
+    cxobj   *xy_xtop;         /* cxobj top element (fixed) */
+    cxobj   *xy_xelement;     /* cxobj active element (changes with parse context) */
+    cxobj   *xy_xparent;      /* cxobj parent element (changes with parse context) */
+    int      xy_lex_state;    /* lex return state */
+    cxobj  **xy_xvec;         /* Vector of created top-level nodes (to know which are created) */
+    size_t   xy_xlen;         /* Length of xy_xvec */
+    cbuf    *xy_cbuf;         /* Accumulator for body/content tokens (flushed at context change) */
 };
 typedef struct clixon_xml_parse_yacc clixon_xml_yacc;
 
 /*
  * Prototypes
  */
-int clixon_xml_parsel_init(clixon_xml_yacc *ya);
-int clixon_xml_parsel_exit(clixon_xml_yacc *ya);
-
+union YYSTYPE; /* Forward declaration */
+int   clixon_xml_parsel_init(clixon_xml_yacc *ya);
+int   clixon_xml_parsel_exit(clixon_xml_yacc *ya);
 char *clixon_xml_parseget_text(yyscan_t yyscanner); /* Forward declaration: reentrant flex accessor */
-/* Forward declaration of YYSTYPE for clixon_xml_parselex prototype */
-union YYSTYPE;
-int clixon_xml_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
-int clixon_xml_parseparse(void *, yyscan_t);
+int   clixon_xml_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_xml_parseparse(void *, yyscan_t);
 
 #endif  /* _CLIXON_XML_PARSE_H_ */

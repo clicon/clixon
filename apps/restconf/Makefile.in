@@ -84,6 +84,7 @@ LIBDEPS		= $(top_srcdir)/lib/src/$(CLIXON_LIB)
 LIBS          = -L$(top_srcdir)/lib/src $(top_srcdir)/lib/src/$(CLIXON_LIB) @LIBS@ -lm
 
 YACC		= @YACC@
+BISON		= $(filter-out -y,$(YACC))
 LEX		= @LEX@
 
 CPPFLAGS  	= @CPPFLAGS@
@@ -204,7 +205,7 @@ lex.clixon_http1_parse.c : clixon_http1_parse.l clixon_http1_parse.tab.h
 	$(LEX) -Pclixon_http1_parse clixon_http1_parse.l # -d is debug
 
 clixon_http1_parse.tab.h: clixon_http1_parse.y
-	$(YACC) -l -d -b clixon_http1_parse -p clixon_http1_parse clixon_http1_parse.y # -t is debug
+	$(BISON) -l -d -b clixon_http1_parse -p clixon_http1_parse clixon_http1_parse.y # -t is debug
 
 # extra rule to avoid parallell yaccs
 clixon_http1_parse.tab.c:	clixon_http1_parse.tab.h

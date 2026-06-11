@@ -160,8 +160,17 @@
 %token D_DELETE
 %token D_REPLACE
 
-%lex-param     {void *_yy} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_yy}
+%lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
+%parse-param   {void *_yy}             /* passed to yyparse() and yyerror() */
+%parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
+%define api.pure full                  /* make yylval a local, not a global */
+
+%code requires {
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+}
 
 %{
 /* Here starts user C-code */
@@ -169,7 +178,7 @@
 /* typecast macro */
 #define _YY ((clixon_yang_yacc *)_yy)
 
-#define _YYERROR(msg) {clixon_debug(CLIXON_DBG_YANG, "YYERROR %s '%s' %d", (msg), clixon_yang_parsetext, _YY->yy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_debug(CLIXON_DBG_YANG, "YYERROR %s '%s' %d", (msg), clixon_yang_parseget_text(yyscanner), _YY->yy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -222,13 +231,14 @@ extern int clixon_yang_parseget_lineno  (void);
 */
 void
 clixon_yang_parseerror(void *_yy,
-                       char *s)
+                       yyscan_t yyscanner,
+                       char       *s)
 {
     clixon_err(OE_YANG, 0, "%s on line %d: %s at or before: '%s'",
                _YY->yy_name,
                _YY->yy_linenum,
                s,
-               clixon_yang_parsetext);
+               clixon_yang_parseget_text(yyscanner));
   return;
 }
 
@@ -329,7 +339,7 @@ ysp_add(clixon_yang_yacc *yy,
                 goto err;
             }
             cprintf(cberr, "Invalid first char of YANG identifier of '%s'", argument);
-            clixon_yang_parseerror(yy, cbuf_get(cberr));
+            clixon_yang_parseerror(yy, yy->yy_scanner, cbuf_get(cberr));
             goto err;
         }
     }

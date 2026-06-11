@@ -89,8 +89,17 @@
 %type <stack>     literal
 %type <stack>     functioncall
 
-%lex-param     {void *_xpy} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_xpy}
+%lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
+%parse-param   {void *_xpy}             /* passed to yyparse() and yyerror() */
+%parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
+%define api.pure full                  /* make yylval a local, not a global */
+
+%code requires {
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+}
 
 %{
 /* Here starts user C-code */
@@ -98,7 +107,7 @@
 /* typecast macro */
 #define _XPY ((clixon_xpath_yacc *)_xpy)
 
-#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parsetext, _XPY->xpy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parseget_text(yyscanner), _XPY->xpy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -156,14 +165,15 @@ extern int clixon_xpath_parseget_lineno  (void); /*XXX obsolete ? */
 
 void
 clixon_xpath_parseerror(void *_xpy,
-                        char *s)
+                        yyscan_t yyscanner,
+                        char       *s)
 {
     errno = 0;
     clixon_err(OE_XML, 0, "%s on line %d: %s at or before: '%s'",  /* Note lineno here is xpath, not yang */
                _XPY->xpy_name,
                _XPY->xpy_linenum,
                s,
-               clixon_xpath_parsetext);
+               clixon_xpath_parseget_text(yyscanner));
     return;
 }
 
@@ -247,7 +257,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "Unknown xpath function \"%s\"", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
     }
     fn = ret;
@@ -270,7 +280,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "XPath function \"%s\" is not implemented", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
 #endif
         break;
@@ -305,7 +315,7 @@ xp_primary_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "Unknown xpath function \"%s\"", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
         break;
     }
@@ -343,7 +353,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "Unknown xpath function \"%s\"", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
     }
     fn = (enum clixon_xpath_function)ret;
@@ -355,7 +365,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "XPath function \"%s\" is not implemented", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
         break;
     case XPATHFN_TEXT:     /* Group of implemented node functions */
@@ -367,7 +377,7 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "Unknown xpath nodetest function \"%s\"", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
         break;
     }
@@ -400,7 +410,7 @@ xp_axisname_function(clixon_xpath_yacc *xpy,
             goto done;
         }
         cprintf(cb, "Unknown xpath axisname \"%s\"", name);
-        clixon_xpath_parseerror(xpy, cbuf_get(cb));
+        clixon_xpath_parseerror(xpy, xpy->xpy_scanner, cbuf_get(cb));
         goto done;
     }
  done:

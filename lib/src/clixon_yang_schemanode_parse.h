@@ -40,12 +40,18 @@
  * Types
  */
 /*! XML parser yacc handler struct */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_yang_schemanode_parse_yacc {
-    char      *if_parse_string; /* original (copy of) parse string */
+    char       *if_parse_string; /* Original (copy of) parse string */
     const char *if_mainfile;     /* Original main-file (this is a sib-parser) */
-    int        if_linenum;      /* Number of \n in parsed buffer */
-    void      *if_lexbuf;       /* Internal parse buffer from lex */
-    yang_stmt *if_ys;           /* Yang statement, NULL if no check */
+    int         if_linenum;      /* Number of \n in parsed buffer */
+    void       *if_lexbuf;       /* Internal parse buffer from lex */
+    yyscan_t    if_scanner;      /* Reentrant flex scanner handle */
+    yang_stmt  *if_ys;           /* Yang statement, NULL if no check */
     enum yang_sub_parse_accept if_accept;
 };
 typedef struct clixon_yang_schemanode_parse_yacc clixon_yang_schemanode_yacc;
@@ -53,15 +59,15 @@ typedef struct clixon_yang_schemanode_parse_yacc clixon_yang_schemanode_yacc;
 /*
  * Variables
  */
-extern char *clixon_yang_schemanode_parsetext;
 
 /*
  * Prototypes
  */
-int clixon_yang_schemanode_parsel_init(clixon_yang_schemanode_yacc *ya);
-int clixon_yang_schemanode_parsel_exit(clixon_yang_schemanode_yacc *ya);
-int clixon_yang_schemanode_parsel_linenr(void);
-int clixon_yang_schemanode_parselex(void *);
-int clixon_yang_schemanode_parseparse(void *);
+union YYSTYPE;
+int   clixon_yang_schemanode_parsel_init(clixon_yang_schemanode_yacc *ya);
+int   clixon_yang_schemanode_parsel_exit(clixon_yang_schemanode_yacc *ya);
+char *clixon_yang_schemanode_parseget_text(yyscan_t yyscanner);
+int   clixon_yang_schemanode_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_yang_schemanode_parseparse(void *, yyscan_t);
 
 #endif  /* _CLIXON_YANG_SCHEMANODE_PARSE_H_ */

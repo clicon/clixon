@@ -145,7 +145,7 @@ api_path_parse(char         *api_path,
         goto done;
     if (api_path_parse_init(&ay) < 0)
         goto done;
-    if (clixon_api_path_parseparse(&ay) != 0) { /* yacc returns 1 on error */
+    if (clixon_api_path_parseparse(&ay, ay.ay_scanner) != 0) { /* yacc returns 1 on error */
         clixon_log(NULL, LOG_NOTICE, "API-PATH error: on line %d", ay.ay_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_XML, 0, "API-PATH parser error with no error code (should not happen)");
@@ -194,7 +194,7 @@ instance_id_parse(char         *path,
         goto done;
     if (instance_id_parse_init(&iy) < 0)
         goto done;
-    if (clixon_instance_id_parseparse(&iy) != 0) { /* yacc returns 1 on error */
+    if (clixon_instance_id_parseparse(&iy, iy.iy_scanner) != 0) { /* yacc returns 1 on error */
         clixon_log(NULL, LOG_NOTICE, "Instance-id error: on line %d", iy.iy_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_XML, 0, "Instance-id parser error with no error code (should not happen)");

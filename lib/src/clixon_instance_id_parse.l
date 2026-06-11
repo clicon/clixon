@@ -72,23 +72,18 @@
 #include "clixon_instance_id_parse.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
-#define YY_DECL int clixon_instance_id_parselex(void *_iy)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _IY ((clixon_instance_id_yacc *)_iy)
-
-#undef clixon_instance_id_parsewrap
-int
-clixon_instance_id_parsewrap(void)
-{
-    return 1;
-}
+#define _IY ((clixon_instance_id_yacc *)yyget_extra(yyscanner))
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_instance_id_yacc *"
+
 
 namestart  [A-Z_a-z]
 namechar   [A-Z_a-z\-\.0-9]
@@ -114,16 +109,16 @@ uint       [1-9][0-9]*
 <INIT>\.           { return DOT; }
 <INIT>\"           { _IY->iy_lex_state=INIT;BEGIN(STRDQ); return DQUOTE; }
 <INIT>\'           { _IY->iy_lex_state=INIT;BEGIN(STRSQ); return SQUOTE; }
-<INIT>{identifier} { clixon_instance_id_parselval.string = strdup(yytext);
+<INIT>{identifier} { yylval->string = strdup(yytext);
                      return IDENTIFIER; }
-<INIT>{uint}       { clixon_instance_id_parselval.string = strdup(yytext);
+<INIT>{uint}       { yylval->string = strdup(yytext);
                      return UINT; }
-<INIT>.            { clixon_instance_id_parseerror(_IY, "LEXICAL ERROR\n"); return -1; }
+<INIT>.            { clixon_instance_id_parseerror(_IY, yyscanner, "LEXICAL ERROR\n"); return -1; }
 
-<STRDQ>[^\"]+         { clixon_instance_id_parselval.string = strdup(yytext); return STRING; }
+<STRDQ>[^\"]+         { yylval->string = strdup(yytext); return STRING; }
 <STRDQ>\"             { BEGIN(_IY->iy_lex_state); return DQUOTE; }
 
-<STRSQ>[^\']+         { clixon_instance_id_parselval.string = strdup(yytext); return STRING; }
+<STRSQ>[^\']+         { yylval->string = strdup(yytext); return STRING; }
 <STRSQ>\'             { BEGIN(_IY->iy_lex_state); return SQUOTE; }
 
 %%
@@ -133,14 +128,15 @@ uint       [1-9][0-9]*
 int
 instance_id_scan_init(clixon_instance_id_yacc *iy)
 {
-  BEGIN(INIT);
-  iy->iy_lexbuf = yy_scan_string(iy->iy_parse_string);
-#if 1 /* XXX: just to use unput to avoid warning  */
-  if (0)
-    yyunput(0, "");
-#endif
+    struct yyguts_t *yyg;   /* needed for BEGIN() in reentrant mode */
 
-  return 0;
+    if (clixon_instance_id_parselex_init(&iy->iy_scanner) != 0)
+        return -1;
+    yyg = (struct yyguts_t *)iy->iy_scanner;
+    BEGIN(INIT);
+    clixon_instance_id_parseset_extra(iy, iy->iy_scanner);
+    iy->iy_lexbuf = yy_scan_string(iy->iy_parse_string, iy->iy_scanner);
+    return 0;
 }
 
 /*
@@ -150,7 +146,7 @@ instance_id_scan_init(clixon_instance_id_yacc *iy)
 int
 instance_id_scan_exit(clixon_instance_id_yacc *iy)
 {
-    yy_delete_buffer(iy->iy_lexbuf);
-    clixon_instance_id_parselex_destroy();  /* modern */
+    yy_delete_buffer(iy->iy_lexbuf, iy->iy_scanner);
+    clixon_instance_id_parselex_destroy(iy->iy_scanner);
     return 0;
 }

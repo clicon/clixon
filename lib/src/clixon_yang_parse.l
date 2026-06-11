@@ -59,21 +59,8 @@
 #include "clixon_yang_parse.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
-#define YY_DECL int clixon_yang_parselex(void *_yy)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _YY ((clixon_yang_yacc *)_yy)
-
-#undef clixon_yang_parsewrap
-int
-clixon_yang_parsewrap(void)
-{
-  return 1;
-}
+#define _YY ((clixon_yang_yacc *)yyget_extra(yyscanner))
 
 /*
    statement = keyword [argument] (";" / "{" *statement "}")
@@ -90,6 +77,14 @@ clixon_yang_parsewrap(void)
 */
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_yang_yacc *"
+
 
 identifier      [A-Za-z0-9_\-\.]+
 
@@ -197,7 +192,7 @@ identifier      [A-Za-z0-9_\-\.]+
 <KEYWORD>\{               { return *yytext; }
 <KEYWORD>\}               { return *yytext; }
 <KEYWORD>;                { return *yytext; }
-<KEYWORD>.                { clixon_yang_parselval.string = strdup(yytext);
+<KEYWORD>.                { yylval->string = strdup(yytext);
                             BEGIN(UNKNOWN); return CHARS; }
 
 <DEVIATE>not-supported    { BEGIN(KEYWORD); return D_NOT_SUPPORTED; }
@@ -216,7 +211,7 @@ identifier      [A-Za-z0-9_\-\.]+
 <UNKNOWN>;                { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>\{               { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN>[ \t\n]+         { BEGIN(UNKNOWN2); return WS; /* mandatory sep for string */ }
-<UNKNOWN>[^{"';: \t\n\r]+ { clixon_yang_parselval.string = strdup(yytext);
+<UNKNOWN>[^{"';: \t\n\r]+ { yylval->string = strdup(yytext);
                             return CHARS; }
 
 <UNKNOWN2>;                { BEGIN(KEYWORD); return *yytext; }
@@ -224,18 +219,18 @@ identifier      [A-Za-z0-9_\-\.]+
 <UNKNOWN2>\'               { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return *yytext; }
 <UNKNOWN2>\{               { BEGIN(KEYWORD); return *yytext; }
 <UNKNOWN2>[ \t\n]+         { return WS; }
-<UNKNOWN2>[^{"'; \t\n\r]+  { clixon_yang_parselval.string = strdup(yytext);
+<UNKNOWN2>[^{"'; \t\n\r]+  { yylval->string = strdup(yytext);
                              return CHARS; }
 
-<BOOLEAN>true             { clixon_yang_parselval.string = strdup(yytext);
+<BOOLEAN>true             { yylval->string = strdup(yytext);
                             return BOOL; }
-<BOOLEAN>false            { clixon_yang_parselval.string = strdup(yytext);
+<BOOLEAN>false            { yylval->string = strdup(yytext);
                             return BOOL; }
 <BOOLEAN>;                { BEGIN(KEYWORD); return *yytext; }
 <BOOLEAN>\{               { BEGIN(KEYWORD); return *yytext; }
 <BOOLEAN>.                { return *yytext; }
 
-<INTEGER>\-?[0-9][0-9]*   { clixon_yang_parselval.string = strdup(yytext);
+<INTEGER>\-?[0-9][0-9]*   { yylval->string = strdup(yytext);
                             return INT; }
 <INTEGER>;                { BEGIN(KEYWORD); return *yytext; }
 <INTEGER>\{                { BEGIN(KEYWORD); return *yytext; }
@@ -243,7 +238,7 @@ identifier      [A-Za-z0-9_\-\.]+
 
 <STRARG>\{                 { BEGIN(KEYWORD); return *yytext; }
 <STRARG>;                  { BEGIN(KEYWORD); return *yytext; }
-<STRARG>{identifier}       { clixon_yang_parselval.string = strdup(yytext);
+<STRARG>{identifier}       { yylval->string = strdup(yytext);
                              return IDENTIFIER;}
 <STRARG>.                  { return *yytext; }
 
@@ -252,26 +247,26 @@ identifier      [A-Za-z0-9_\-\.]+
 <STRING>\"                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGDQ); return *yytext; }
 <STRING>\'                { _YY->yy_lex_string_state =STRING; BEGIN(STRINGSQ); return *yytext; }
 <STRING>\+                { return *yytext; }
-<STRING>[^\"\'\{\;\n \t\r]+ { clixon_yang_parselval.string = strdup(yytext); /* XXX [.]+ */
+<STRING>[^\"\'\{\;\n \t\r]+ { yylval->string = strdup(yytext); /* XXX [.]+ */
                             return CHARS;}
 
 <STRINGDQ>\\              { _YY->yy_lex_state = STRINGDQ; BEGIN(DQESC); }
 <STRINGDQ>\"              { BEGIN(_YY->yy_lex_string_state); return *yytext; }
 <STRINGDQ>\n              { _YY->yy_linenum++;
-                            clixon_yang_parselval.string = strdup(yytext);
+                            yylval->string = strdup(yytext);
                             return CHARS;}
-<STRINGDQ>[^\\"\n]+      { clixon_yang_parselval.string = strdup(yytext);
+<STRINGDQ>[^\\"\n]+      { yylval->string = strdup(yytext);
                             return CHARS;}
 
 <STRINGSQ>\'              { BEGIN(_YY->yy_lex_string_state); return *yytext; }
 <STRINGSQ>\n              { _YY->yy_linenum++;
-                            clixon_yang_parselval.string = strdup(yytext);
+                            yylval->string = strdup(yytext);
                             return CHARS;}
-<STRINGSQ>[^'\n]+         { clixon_yang_parselval.string = strdup(yytext);
+<STRINGSQ>[^'\n]+         { yylval->string = strdup(yytext);
                             return CHARS;}
 
 <DQESC>[nt"\\]            { BEGIN(_YY->yy_lex_state);
-                             clixon_yang_parselval.string = strdup(yytext);
+                             yylval->string = strdup(yytext);
                              return CHARS; }
 <DQESC>[^nt"\\]           { char *str = malloc(3);
                             /* This is for Yang 1.0 double-quoted strings */
@@ -279,7 +274,7 @@ identifier      [A-Za-z0-9_\-\.]+
                             str[0] = '\\';
                             str[1] = yytext[0];
                             str[2] = '\0';
-                            clixon_yang_parselval.string = str;
+                            yylval->string = str;
                             return CHARS; }
 <COMMENT1>[^*\n]*        /* eat anything that's not a '*' */
 <COMMENT1>"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
@@ -296,14 +291,15 @@ identifier      [A-Za-z0-9_\-\.]+
 int
 yang_scan_init(clixon_yang_yacc *yy)
 {
-  BEGIN(KEYWORD);
-  yy->yy_lexbuf = yy_scan_string (yy->yy_parse_string);
-#if 1 /* XXX: just to use unput to avoid warning  */
-  if (0)
-    yyunput(0, "");
-#endif
+    struct yyguts_t *yyg;   /* needed for BEGIN() in reentrant mode */
 
-  return 0;
+    if (clixon_yang_parselex_init(&yy->yy_scanner) != 0)
+        return -1;
+    yyg = (struct yyguts_t *)yy->yy_scanner;
+    BEGIN(KEYWORD);
+    clixon_yang_parseset_extra(yy, yy->yy_scanner);
+    yy->yy_lexbuf = yy_scan_string(yy->yy_parse_string, yy->yy_scanner);
+    return 0;
 }
 
 /*
@@ -314,7 +310,7 @@ yang_scan_init(clixon_yang_yacc *yy)
 int
 yang_scan_exit(clixon_yang_yacc *yy)
 {
-    yy_delete_buffer(yy->yy_lexbuf);
-    clixon_yang_parselex_destroy();  /* modern */
+    yy_delete_buffer(yy->yy_lexbuf, yy->yy_scanner);
+    clixon_yang_parselex_destroy(yy->yy_scanner);
     return 0;
 }

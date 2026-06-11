@@ -21,6 +21,10 @@
 ## 7.9.0
 Expected: September 2026
 
+### Features
+
+* All clixon parsers (XML, YANG, XPATH, JSON, etc) are now reentrant
+
 ### API changes
 
 * New XML body API: `xml_body_set()`, `xml_body_append()`, `xml_body_reset()` replace direct manipulation of `CX_BODY` child nodes

@@ -1215,7 +1215,7 @@ _text_syntax_parse(const char *str,
     ts.ts_yspec = yspec;
     if (clixon_text_syntax_parsel_init(&ts) < 0)
         goto done;
-    if (clixon_text_syntax_parseparse(&ts) != 0) { /* yacc returns 1 on error */
+    if (clixon_text_syntax_parseparse(&ts, ts.ts_scanner) != 0) { /* yacc returns 1 on error */
         clixon_log(NULL, LOG_NOTICE, "TEXT SYNTAX error: line %d", ts.ts_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_JSON, 0, "TEXT SYNTAX parser error with no error code (should not happen)");

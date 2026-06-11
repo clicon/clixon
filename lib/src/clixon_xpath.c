@@ -583,7 +583,7 @@ xpath_parse(const char  *xpath,
         goto done;
     if (xpath_parse_init(&xpy) < 0)
         goto done;
-    if (clixon_xpath_parseparse(&xpy) != 0) { /* yacc returns 1 on error */
+    if (clixon_xpath_parseparse(&xpy, xpy.xpy_scanner) != 0) { /* yacc returns 1 on error */
         clixon_log(NULL, LOG_NOTICE, "XPath error: on line %d", xpy.xpy_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_XML, 0, "XPath parser error with no error code (should not happen)");

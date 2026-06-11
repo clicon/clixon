@@ -97,7 +97,7 @@ yang_subparse(clixon_handle              h,
     ife.if_h = h;
     if (clixon_yang_sub_parsel_init(&ife) < 0)
         goto done;
-    if (clixon_yang_sub_parseparse(&ife) != 0) { /* yacc returns 1 on error */
+    if (clixon_yang_sub_parseparse(&ife, ife.if_scanner) != 0) { /* yacc returns 1 on error */
         if (clixon_err_category() == 0)
             clixon_err(OE_YANG, 0, "If-feature parser error with no error code (should not happen)");
         goto done;
@@ -137,7 +137,7 @@ yang_schema_nodeid_subparse(char                      *str,
     ife.if_accept = accept; /* accept absolute-schema-nodeid */
     if (clixon_yang_schemanode_parsel_init(&ife) < 0)
         goto done;
-    if (clixon_yang_schemanode_parseparse(&ife) != 0) { /* yacc returns 1 on error */
+    if (clixon_yang_schemanode_parseparse(&ife, ife.if_scanner) != 0) { /* yacc returns 1 on error */
         if (clixon_err_category() == 0)
             clixon_err(OE_YANG, 0, "descendant-schema-nodeid parser error with no error code (should not happen)");
         goto done;

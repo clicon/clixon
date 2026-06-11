@@ -57,25 +57,21 @@
 #include "clixon_yang_schemanode_parse.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _if is added to arg list */
-#define YY_DECL int clixon_yang_schemanode_parselex(void *_if)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _IF ((clixon_yang_schemanode_yacc *)_if)
-
-#undef clixon_xml_parsewrap
-int clixon_yang_schemanode_parsewrap(void)
-{
-  return 1;
-}
+#define _IF ((clixon_yang_schemanode_yacc *)yyget_extra(yyscanner))
 
 /*
  */
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_yang_schemanode_yacc *"
+
 
 identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 
@@ -84,7 +80,7 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 <INITIAL>\n               { _IF->if_linenum++; return *yytext; }
 <INITIAL>:                { return *yytext; }
 <INITIAL>\/               { return *yytext; }
-<INITIAL>{identifier}     { clixon_yang_schemanode_parselval.string = strdup(yytext);
+<INITIAL>{identifier}     { yylval->string = strdup(yytext);
                             return IDENTIFIER;}
 <INITIAL><<EOF>>          { return MY_EOF; }
 <INITIAL>.                { return -1; }
@@ -96,19 +92,18 @@ identifier      [A-Za-z_][A-Za-z0-9_\-\.]*
 int
 clixon_yang_schemanode_parsel_init(clixon_yang_schemanode_yacc *ife)
 {
-  BEGIN(INITIAL);
-  ife->if_lexbuf = yy_scan_string (ife->if_parse_string);
-  if (0)
-    yyunput(0, "");  /* XXX: just to use unput to avoid warning  */
-  return 0;
+    if (clixon_yang_schemanode_parselex_init(&ife->if_scanner) != 0)
+        return -1;
+    clixon_yang_schemanode_parseset_extra(ife, ife->if_scanner);
+    ife->if_lexbuf = yy_scan_string(ife->if_parse_string, ife->if_scanner);
+    return 0;
 }
 
 /*! Exit xml scanner */
 int
 clixon_yang_schemanode_parsel_exit(clixon_yang_schemanode_yacc *ife)
 {
-   yy_delete_buffer(ife->if_lexbuf);
-   clixon_yang_schemanode_parselex_destroy();  /* modern */
-
-  return 0;
+    yy_delete_buffer(ife->if_lexbuf, ife->if_scanner);
+    clixon_yang_schemanode_parselex_destroy(ife->if_scanner);
+    return 0;
 }

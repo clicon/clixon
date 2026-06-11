@@ -1504,7 +1504,7 @@ _json_parse(clixon_handle h,
         goto done;
     if (json_parse_init(&jy) < 0)
         goto done;
-    if (clixon_json_parseparse(&jy) != 0) { /* yacc returns 1 on error */
+    if (clixon_json_parseparse(&jy, jy.jy_scanner) != 0) { /* yacc returns 1 on error */
         clixon_log(NULL, LOG_NOTICE, "JSON error: line %d", jy.jy_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_JSON, 0, "JSON parser error with no error code (should not happen)");

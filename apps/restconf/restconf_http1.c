@@ -104,7 +104,7 @@ _http1_parse(clixon_handle  h,
         goto done;
     if (http1_parse_init(&hy) < 0)
         goto done;
-    ret = clixon_http1_parseparse(&hy); /* yacc returns 1 on error */
+    ret = clixon_http1_parseparse(&hy, hy.hy_scanner); /* yacc returns 1 on error */
     /* yacc/lex terminates parsing after headers. 
      * Look for body after headers assuming str terminating with \n\n\0 and then <body> */
     http1_parse_exit(&hy);

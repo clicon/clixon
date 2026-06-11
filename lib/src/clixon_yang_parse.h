@@ -47,16 +47,21 @@ struct ys_stack{
     yang_stmt       *ys_node;
 };
 
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_yang_yacc {
-    char                 *yy_name;         /* Name of syntax, typically filename
-                                              (for error string) */
-    int                   yy_linenum;      /* Number of \n in parsed buffer */
-    const char           *yy_parse_string; /* original (copy of) parse string */
-    void                 *yy_lexbuf;       /* internal parse buffer from lex */
-    struct ys_stack      *yy_stack;     /* Stack of levels: push/pop on () and [] */
-    int                   yy_lex_state;  /* lex start condition (ESCAPE/COMMENT) */
-    int                   yy_lex_string_state; /* lex start condition (STRING) */
-    yang_stmt            *yy_module;       /* top-level (sub)module - return value of parser */
+    char            *yy_name;         /* Name of syntax, typically filename (for error string) */
+    int              yy_linenum;      /* Number of \n in parsed buffer */
+    const char      *yy_parse_string; /* original (copy of) parse string */
+    void            *yy_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t         yy_scanner;      /* reentrant flex scanner handle */
+    struct ys_stack *yy_stack;        /* Stack of levels: push/pop on () and [] */
+    int              yy_lex_state;    /* lex start condition (ESCAPE/COMMENT) */
+    int              yy_lex_string_state; /* lex start condition (STRING) */
+    yang_stmt       *yy_module;       /* top-level (sub)module - return value of parser */
 };
 typedef struct clixon_yang_yacc clixon_yang_yacc;
 
@@ -65,35 +70,27 @@ typedef struct clixon_yang_yacc clixon_yang_yacc;
  * we should add.
  */
 struct yang_userdata{
-    char             *du_indexvar;  /* (clicon) This command is a list and
-                                       this string is the key/index of the list 
-                                    */
-    char             *du_yang;    /* (clicon) Save yang key for cli 
-                                       generation */
-    int               du_optional; /* (clicon) Optional element in list */
-    struct cg_var    *du_default;   /* default value(clicon) */
-    char              du_vector;    /* (clicon) Possibly more than one element */
+    char          *du_indexvar;  /* (clicon) This command is a list and
+                                    this string is the key/index of the list */
+    char          *du_yang;    /* (clicon) Save yang key for cli generation */
+    int            du_optional; /* (clicon) Optional element in list */
+    struct cg_var *du_default;   /* default value(clicon) */
+    char           du_vector;    /* (clicon) Possibly more than one element */
 };
-
-/*
- * Variables
- */
-extern char *clixon_yang_parsetext;
 
 /*
  * Prototypes
  */
-int yang_scan_init(clixon_yang_yacc *ya);
-int yang_scan_exit(clixon_yang_yacc *ya);
-
-int yang_parse_init(clixon_yang_yacc *ya);
-int yang_parse_exit(clixon_yang_yacc *ya);
-
-int clixon_yang_parselex(void *_ya);
-int clixon_yang_parseparse(void *);
-void clixon_yang_parseerror(void *_ya, char*);
-
-int ystack_pop(clixon_yang_yacc *ya);
+union YYSTYPE;
+int   yang_scan_init(clixon_yang_yacc *ya);
+int   yang_scan_exit(clixon_yang_yacc *ya);
+int   yang_parse_init(clixon_yang_yacc *ya);
+int   yang_parse_exit(clixon_yang_yacc *ya);
+char *clixon_yang_parseget_text(yyscan_t yyscanner);
+int   clixon_yang_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int  clixon_yang_parseparse(void *, yyscan_t);
+void  clixon_yang_parseerror(void *, yyscan_t, char*);
+int   ystack_pop(clixon_yang_yacc *ya);
 struct ys_stack *ystack_push(clixon_yang_yacc *ya, yang_stmt *yn);
 
 #endif  /* _CLIXON_YANG_PARSE_H_ */

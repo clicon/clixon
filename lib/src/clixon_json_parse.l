@@ -63,23 +63,18 @@
 #include "clixon_json_parse.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
-#define YY_DECL int clixon_json_parselex(void *_yy)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _JY ((clixon_json_yacc *)_yy)
-
-#undef clixon_json_parsewrap
-int
-clixon_json_parsewrap(void)
-{
-    return 1;
-}
+#define _JY ((clixon_json_yacc *)yyget_extra(yyscanner))
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_json_yacc *"
+
 
 digit [0-9]
 integer {digit}+
@@ -108,21 +103,21 @@ hex [A-Fa-f0-9]
 <START>null             { return J_NULL; }
 <START>false            { return J_FALSE; }
 <START>true             { return J_TRUE; }
-<START>\-?({integer}|{real}|{exp}) { clixon_json_parselval.string = strdup(yytext); return J_NUMBER;}
+<START>\-?({integer}|{real}|{exp}) { yylval->string = strdup(yytext); return J_NUMBER;}
 <START>.                { return -1; }
 <STRING>\"              { BEGIN(START); return J_DQ; }
 <STRING>\\              { BEGIN(ESCAPE); }
-<STRING>[^\"\\\b\f\n\r\t]+ { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
+<STRING>[^\"\\\b\f\n\r\t]+ { BEGIN(STRING); yylval->string = yytext; return J_STRING; }
 <STRING>\n              { return -1; }
 <STRING>.               { return -1; }
-<ESCAPE>\"              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
-<ESCAPE>\\              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
-<ESCAPE>\/              { BEGIN(STRING); clixon_json_parselval.string = yytext; return J_STRING; }
-<ESCAPE>b               { BEGIN(STRING); clixon_json_parselval.string = "\b";   return J_STRING; }
-<ESCAPE>f               { BEGIN(STRING); clixon_json_parselval.string = "\f";   return J_STRING; }
-<ESCAPE>n               { BEGIN(STRING); clixon_json_parselval.string = "\n";   return J_STRING; }
-<ESCAPE>r               { BEGIN(STRING); clixon_json_parselval.string = "\r";   return J_STRING; }
-<ESCAPE>t               { BEGIN(STRING); clixon_json_parselval.string = "\t";   return J_STRING; }
+<ESCAPE>\"              { BEGIN(STRING); yylval->string = yytext; return J_STRING; }
+<ESCAPE>\\              { BEGIN(STRING); yylval->string = yytext; return J_STRING; }
+<ESCAPE>\/              { BEGIN(STRING); yylval->string = yytext; return J_STRING; }
+<ESCAPE>b               { BEGIN(STRING); yylval->string = "\b";   return J_STRING; }
+<ESCAPE>f               { BEGIN(STRING); yylval->string = "\f";   return J_STRING; }
+<ESCAPE>n               { BEGIN(STRING); yylval->string = "\n";   return J_STRING; }
+<ESCAPE>r               { BEGIN(STRING); yylval->string = "\r";   return J_STRING; }
+<ESCAPE>t               { BEGIN(STRING); yylval->string = "\t";   return J_STRING; }
 <ESCAPE>u               { BEGIN(HEXDIG); }
 <ESCAPE>\n              { return -1; }
 <ESCAPE>.               { return -1; }
@@ -132,7 +127,7 @@ hex [A-Fa-f0-9]
                                if (clixon_unicode2utf8(yytext, buf, 5) < 0)
                                   return -1;
                                strncpy(yytext, buf, 5);
-                               clixon_json_parselval.string = yytext;
+                               yylval->string = yytext;
                                return J_STRING;
                               }
 <HEXDIG>\n              { return -1;}
@@ -145,14 +140,15 @@ hex [A-Fa-f0-9]
 int
 json_scan_init(clixon_json_yacc *jy)
 {
-  BEGIN(START);
-  jy->jy_lexbuf = yy_scan_string (jy->jy_parse_string);
-#if 1 /* XXX: just to use unput to avoid warning  */
-  if (0)
-    yyunput(0, "");
-#endif
+    struct yyguts_t *yyg;   /* needed for BEGIN() in reentrant mode */
 
-  return 0;
+    if (clixon_json_parselex_init(&jy->jy_scanner) != 0)
+        return -1;
+    yyg = (struct yyguts_t *)jy->jy_scanner;
+    BEGIN(START);
+    clixon_json_parseset_extra(jy, jy->jy_scanner);
+    jy->jy_lexbuf = yy_scan_string(jy->jy_parse_string, jy->jy_scanner);
+    return 0;
 }
 
 /*
@@ -162,7 +158,7 @@ json_scan_init(clixon_json_yacc *jy)
 int
 json_scan_exit(clixon_json_yacc *jy)
 {
-    yy_delete_buffer(jy->jy_lexbuf);
-    clixon_json_parselex_destroy();  /* modern */
+    yy_delete_buffer(jy->jy_lexbuf, jy->jy_scanner);
+    clixon_json_parselex_destroy(jy->jy_scanner);
     return 0;
 }

@@ -40,34 +40,40 @@
  * Types
  */
 
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_json_yacc {
-    int        jy_linenum;      /* Number of \n in parsed buffer */
+    int         jy_linenum;      /* Number of \n in parsed buffer */
     const char *jy_parse_string; /* original (copy of) parse string */
-    void      *jy_lexbuf;       /* internal parse buffer from lex */
-    cxobj     *jy_xtop;         /* cxobj top element (fixed) */
-    cxobj     *jy_current;      /* cxobj active element (changes with parse context) */
-    cxobj    **jy_xvec;         /* Vector of created top-level nodes (to know which are created) */
-    size_t     jy_xlen;         /* Length of jy_xvec */
-    cbuf      *jy_cbuf_str;     /* cbuf used for strings, if error needs to be deallocated */
+    void       *jy_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t    jy_scanner;      /* reentrant flex scanner handle */
+    cxobj      *jy_xtop;         /* cxobj top element (fixed) */
+    cxobj      *jy_current;      /* cxobj active element (changes with parse context) */
+    cxobj     **jy_xvec;         /* Vector of created top-level nodes (to know which are created) */
+    size_t      jy_xlen;         /* Length of jy_xvec */
+    cbuf       *jy_cbuf_str;     /* cbuf used for strings, if error needs to be deallocated */
 };
 typedef struct clixon_json_yacc clixon_json_yacc;
 
 /*
  * Variables
  */
-extern char *clixon_json_parsetext;
 
 /*
  * Prototypes
  */
-int json_scan_init(clixon_json_yacc *jy);
-int json_scan_exit(clixon_json_yacc *jy);
-
-int json_parse_init(clixon_json_yacc *jy);
-int json_parse_exit(clixon_json_yacc *jy);
-
-int clixon_json_parselex(void *);
-int clixon_json_parseparse(void *);
-void clixon_json_parseerror(void *, char*);
+union YYSTYPE;
+int   json_scan_init(clixon_json_yacc *jy);
+int   json_scan_exit(clixon_json_yacc *jy);
+int   json_parse_init(clixon_json_yacc *jy);
+int   json_parse_exit(clixon_json_yacc *jy);
+char *clixon_json_parseget_text(yyscan_t yyscanner);
+char *clixon_json_parseget_text(yyscan_t yyscanner);
+int   clixon_json_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_json_parseparse(void *, yyscan_t);
+void  clixon_json_parseerror(void *, yyscan_t, char*);
 
 #endif  /* _CLIXON_JSON_PARSE_H_ */

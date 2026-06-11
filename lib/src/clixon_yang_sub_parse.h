@@ -48,11 +48,17 @@ enum yang_sub_parse_accept{
 };
 
 /*! XML parser yacc handler struct */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_yang_sub_parse_yacc {
-    char                      *if_parse_string; /* original (copy of) parse string */
+    char                      *if_parse_string; /* Original (copy of) parse string */
     const char                *if_mainfile;     /* Original main-file (this is a sib-parser) */
     int                        if_linenum;      /* Number of \n in parsed buffer (in mainfile) */
     void                      *if_lexbuf;       /* Internal parse buffer from lex */
+    yyscan_t                   if_scanner;      /* Reentrant flex scanner handle */
     yang_stmt                 *if_ys;           /* Yang statement, NULL if no check */
     enum yang_sub_parse_accept if_accept;       /* Which sub-parse rule to accept */
     int                        if_enabled;      /* Result: 0: feature disabled, 1: enabled */
@@ -63,18 +69,18 @@ typedef struct clixon_yang_sub_parse_yacc clixon_yang_sub_parse_yacc;
 /*
  * Variables
  */
-extern char *clixon_yang_sub_parsetext;
 
 /*
  * Prototypes
  */
-int clixon_yang_sub_parsel_init(clixon_yang_sub_parse_yacc *ya);
-int clixon_yang_sub_parsel_exit(clixon_yang_sub_parse_yacc *ya);
-int clixon_yang_sub_parsel_linenr(void);
-int clixon_yang_sub_parselex(void *);
-int clixon_yang_sub_parseparse(void *);
-
-int  yang_subparse(clixon_handle h, char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile, int linenum, int *enabled);
-int  yang_schema_nodeid_subparse(char *str, enum yang_sub_parse_accept accept, const char *mainfile, int linenum);
+union YYSTYPE;
+int   clixon_yang_sub_parsel_init(clixon_yang_sub_parse_yacc *ya);
+int   clixon_yang_sub_parsel_exit(clixon_yang_sub_parse_yacc *ya);
+char *clixon_yang_sub_parseget_text(yyscan_t yyscanner);
+int   clixon_yang_sub_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_yang_sub_parseparse(void *, yyscan_t);
+int   yang_subparse(clixon_handle h, char *str, yang_stmt *ys, enum yang_sub_parse_accept accept, const char *mainfile,
+                    int linenum, int *enabled);
+int   yang_schema_nodeid_subparse(char *str, enum yang_sub_parse_accept accept, const char *mainfile, int linenum);
 
 #endif  /* _CLIXON_YANG_SUB_PARSER_H_ */

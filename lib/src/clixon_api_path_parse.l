@@ -75,23 +75,18 @@
 #include "clixon_api_path_parse.h"
 #include "banned.h"
 
-/* Redefine main lex function so that you can send arguments to it: _yy is added to arg list */
-#define YY_DECL int clixon_api_path_parselex(void *_ay)
-
-/* Dont use input function (use user-buffer) */
-#define YY_NO_INPUT
-
 /* typecast macro */
-#define _AY ((clixon_api_path_yacc *)_ay)
-
-#undef clixon_api_path_parsewrap
-int
-clixon_api_path_parsewrap(void)
-{
-    return 1;
-}
+#define _AY ((clixon_api_path_yacc *)yyget_extra(yyscanner))
 
 %}
+
+%option reentrant
+%option bison-bridge
+%option noyywrap
+%option nounput
+%option noinput
+%option extra-type="clixon_api_path_yacc *"
+
 
 namestart  [A-Z_a-z]
 namechar   [A-Z_a-z\-\.0-9]
@@ -110,15 +105,15 @@ identifier {namestart}{namechar}*
 <INIT>\/           { return SLASH;}
 <INIT>\=           { BEGIN(KEYV); return EQUAL; }
 <INIT>\:           { return COLON; }
-<INIT>{identifier} { clixon_api_path_parselval.string = strdup(yytext);
+<INIT>{identifier} { yylval->string = strdup(yytext);
                      return IDENTIFIER; }
-<INIT>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
+<INIT>.            { clixon_api_path_parseerror(_AY, yyscanner, "LEXICAL ERROR\n"); return -1; }
 
 <KEYV>\,           { return COMMA; }
 <KEYV>\/           { BEGIN(INIT); return SLASH; }
-<KEYV>[^:/?#\[\]@,]+ { clixon_api_path_parselval.string = strdup(yytext);
+<KEYV>[^:/?#\[\]@,]+ { yylval->string = strdup(yytext);
                      return STRING;}
-<KEYV>.            { clixon_api_path_parseerror(_AY, "LEXICAL ERROR\n"); return -1; }
+<KEYV>.            { clixon_api_path_parseerror(_AY, yyscanner, "LEXICAL ERROR\n"); return -1; }
 
 %%
 
@@ -127,14 +122,15 @@ identifier {namestart}{namechar}*
 int
 api_path_scan_init(clixon_api_path_yacc *ay)
 {
-  BEGIN(INIT);
-  ay->ay_lexbuf = yy_scan_string(ay->ay_parse_string);
-#if 1 /* XXX: just to use unput to avoid warning  */
-  if (0)
-    yyunput(0, "");
-#endif
+    struct yyguts_t *yyg;   /* needed for BEGIN() in reentrant mode */
 
-  return 0;
+    if (clixon_api_path_parselex_init(&ay->ay_scanner) != 0)
+        return -1;
+    yyg = (struct yyguts_t *)ay->ay_scanner;
+    BEGIN(INIT);
+    clixon_api_path_parseset_extra(ay, ay->ay_scanner);
+    ay->ay_lexbuf = yy_scan_string(ay->ay_parse_string, ay->ay_scanner);
+    return 0;
 }
 
 /*
@@ -144,7 +140,7 @@ api_path_scan_init(clixon_api_path_yacc *ay)
 int
 api_path_scan_exit(clixon_api_path_yacc *ay)
 {
-    yy_delete_buffer(ay->ay_lexbuf);
-    clixon_api_path_parselex_destroy();  /* modern */
+    yy_delete_buffer(ay->ay_lexbuf, ay->ay_scanner);
+    clixon_api_path_parselex_destroy(ay->ay_scanner);
     return 0;
 }

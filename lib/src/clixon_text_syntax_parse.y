@@ -50,8 +50,17 @@
 
 %start top
 
-%lex-param     {void *_ts} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_ts}
+%lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
+%parse-param   {void *_ts}             /* passed to yyparse() and yyerror() */
+%parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
+%define api.pure full                  /* make yylval a local, not a global */
+
+%code requires {
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+}
 
 %{
 
@@ -94,14 +103,15 @@
 
 void
 clixon_text_syntax_parseerror(void *arg,
-                              char *s)
+                              yyscan_t yyscanner,
+                              char       *s)
 {
     clixon_text_syntax_yacc *ts = (clixon_text_syntax_yacc *)arg;
 
     clixon_err(OE_XML, XMLPARSE_ERRNO, "text_syntax_parse: line %d: %s: at or before: %s",
                ts->ts_linenum,
                s,
-               clixon_text_syntax_parsetext);
+               clixon_text_syntax_parseget_text(yyscanner));
     return;
 }
 

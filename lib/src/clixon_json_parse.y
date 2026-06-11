@@ -95,8 +95,17 @@ object.
 %type <cbuf>      ustring
 %type <string>    number
 
-%lex-param     {void *_jy} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_jy}
+%lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
+%parse-param   {void *_jy}             /* passed to yyparse() and yyerror() */
+%parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
+%define api.pure full                  /* make yylval a local, not a global */
+
+%code requires {
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+}
 
 %{
 /* Here starts user C-code */
@@ -104,7 +113,7 @@ object.
 /* typecast macro */
 #define _JY ((clixon_json_yacc *)_jy)
 
-#define _YYERROR(msg) {clixon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parsetext, _JY->jy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_JSON, 0, "YYERROR %s '%s' %d", (msg), clixon_json_parseget_text(yyscanner), _JY->jy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -151,12 +160,13 @@ extern int clixon_json_parseget_lineno  (void);
 */
 void
 clixon_json_parseerror(void *_jy,
-                       char *s)
+                       yyscan_t yyscanner,
+                       char       *s)
 {
     clixon_err(OE_JSON, 0, "json_parse: line %d: %s at or before: '%s'",
                _JY->jy_linenum,
                s,
-               clixon_json_parsetext);
+               clixon_json_parseget_text(yyscanner));
     if (_JY->jy_cbuf_str)
         cbuf_free(_JY->jy_cbuf_str);
   return;

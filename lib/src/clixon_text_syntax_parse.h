@@ -41,30 +41,31 @@
  */
 /*! XML parser yacc handler struct 
  */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_text_syntax_parse_yacc {
     const char *ts_parse_string; /* original (copy of) parse string */
-    int        ts_linenum;      /* Number of \n in parsed buffer */
-    void      *ts_lexbuf;       /* internal parse buffer from lex */
-    cxobj     *ts_xtop;         /* Vector of created top-level nodes (to know which are created) */
-    int        ts_xlen;         /* Length of ts_xvec */
-    int        ts_lex_state;    /* lex return state */
-    yang_stmt *ts_yspec;        /* Yang spec */
+    int         ts_linenum;      /* Number of \n in parsed buffer */
+    void       *ts_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t    ts_scanner;      /* reentrant flex scanner handle */
+    cxobj      *ts_xtop;         /* Vector of created top-level nodes (to know which are created) */
+    int         ts_xlen;         /* Length of ts_xvec */
+    int         ts_lex_state;    /* lex return state */
+    yang_stmt  *ts_yspec;        /* Yang spec */
 };
 typedef struct clixon_text_syntax_parse_yacc clixon_text_syntax_yacc;
 
 /*
- * Variables
- */
-extern char *clixon_text_syntax_parsetext;
-
-/*
  * Prototypes
  */
-int clixon_text_syntax_parsel_init(clixon_text_syntax_yacc *ya);
-int clixon_text_syntax_parsel_exit(clixon_text_syntax_yacc *ya);
-
-int clixon_text_syntax_parsel_linenr(void);
-int clixon_text_syntax_parselex(void *);
-int clixon_text_syntax_parseparse(void *);
+union YYSTYPE;
+int   clixon_text_syntax_parsel_init(clixon_text_syntax_yacc *ya);
+int   clixon_text_syntax_parsel_exit(clixon_text_syntax_yacc *ya);
+char *clixon_text_syntax_parseget_text(yyscan_t yyscanner);
+int   clixon_text_syntax_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_text_syntax_parseparse(void *, yyscan_t);
 
 #endif  /* _CLIXON_TEXT_SYNTAX_PARSE_H_ */

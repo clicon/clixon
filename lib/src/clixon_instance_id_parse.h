@@ -40,32 +40,33 @@
 /*
  * Types
  */
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+
 struct clixon_instance_id_yacc {
     const char   *iy_name;         /* Name of syntax (for error string) */
     int           iy_linenum;      /* Number of \n in parsed buffer */
     char         *iy_parse_string; /* original (copy of) parse string */
     void         *iy_lexbuf;       /* internal parse buffer from lex */
+    yyscan_t      iy_scanner;      /* reentrant flex scanner handle */
     clixon_path  *iy_top;
     int           iy_lex_state;    /* lex return state */
 };
 typedef struct clixon_instance_id_yacc clixon_instance_id_yacc;
 
 /*
- * Variables
- */
-extern char *clixon_instance_id_parsetext;
-
-/*
  * Prototypes
  */
-int instance_id_scan_init(clixon_instance_id_yacc *);
-int instance_id_scan_exit(clixon_instance_id_yacc *);
-
-int instance_id_parse_init(clixon_instance_id_yacc *);
-int instance_id_parse_exit(clixon_instance_id_yacc *);
-
-int clixon_instance_id_parselex(void *);
-int clixon_instance_id_parseparse(void *);
-void clixon_instance_id_parseerror(void *, char*);
+union YYSTYPE;
+int   instance_id_scan_init(clixon_instance_id_yacc *);
+int   instance_id_scan_exit(clixon_instance_id_yacc *);
+int   instance_id_parse_init(clixon_instance_id_yacc *);
+int   instance_id_parse_exit(clixon_instance_id_yacc *);
+char *clixon_instance_id_parseget_text(yyscan_t yyscanner);
+int   clixon_instance_id_parselex(union YYSTYPE *yylval, yyscan_t yyscanner);
+int   clixon_instance_id_parseparse(void *, yyscan_t);
+void  clixon_instance_id_parseerror(void *, yyscan_t, char*);
 
 #endif  /* _CLIXON_INSTANCE_ID_PARSE_H_ */

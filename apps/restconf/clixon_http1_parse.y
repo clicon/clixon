@@ -69,8 +69,17 @@
 %type <string> field_vchars
 %type <string> field_values
 
-%lex-param     {void *_hy} /* Add this argument to parse() and lex() function */
-%parse-param   {void *_hy}
+%lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
+%parse-param   {void *_hy}             /* passed to yyparse() and yyerror() */
+%parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
+%define api.pure full                  /* make yylval a local, not a global */
+
+%code requires {
+#ifndef YY_TYPEDEF_YY_SCANNER_T
+#define YY_TYPEDEF_YY_SCANNER_T
+typedef void *yyscan_t;
+#endif
+}
 
 %{
 /* Here starts user C-code */
@@ -78,7 +87,7 @@
 /* typecast macro */
 #define _HY ((clixon_http1_yacc *)_hy)
 
-#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_http1_parsetext, _HY->hy_linenum); YYERROR;}
+#define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_http1_parseget_text(yyscanner), _HY->hy_linenum); YYERROR;}
 
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
@@ -123,13 +132,14 @@
 
 void
 clixon_http1_parseerror(void *_hy,
-                        char *s)
+                        yyscan_t yyscanner,
+                        char       *s)
 {
     clixon_err(OE_RESTCONF, 0, "%s on line %d: %s at or before: '%s'",
                _HY->hy_name,
                _HY->hy_linenum,
                s,
-               clixon_http1_parsetext);
+               clixon_http1_parseget_text(yyscanner));
   return;
 }
 
