@@ -538,7 +538,6 @@ xml_merge_recurse(cxobj     *x0,  /* the target */
     int             retval = -1;
     char           *x1cname; /* child name */
     cxobj          *x0c; /* base child */
-    cxobj          *x0b; /* base body */
     cxobj          *x1c; /* mod child */
     char           *x1bstr; /* mod body string */
     yang_stmt      *yc;  /* yang child */
@@ -592,11 +591,7 @@ xml_merge_recurse(cxobj     *x0,  /* the target */
     if (yang_keyword_get(y0) == Y_LEAF_LIST || yang_keyword_get(y0) == Y_LEAF){
         x1bstr = xml_body(x1);
         if (x1bstr){
-            if ((x0b = xml_body_get(x0)) == NULL){
-                if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
-                    goto done;
-            }
-            if (xml_value_set(x0b, x1bstr) < 0)
+            if (xml_body_set(x0, x1bstr) < 0)
                 goto done;
         }
         if (xml_parent(x0) == NULL &&

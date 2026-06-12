@@ -312,7 +312,6 @@ json2xml_decode_identityref(cxobj     *x,
     int        retval = -1;
     char      *ns;
     char      *body;
-    cxobj     *xb;
     char      *prefix = NULL;
     char      *id = NULL;
     yang_stmt *ymod;
@@ -323,9 +322,8 @@ json2xml_decode_identityref(cxobj     *x,
 
     clixon_debug(CLIXON_DBG_DEFAULT, "");
     yspec = ys_spec(y);
-    if ((xb = xml_body_get(x)) == NULL)
+    if ((body = xml_body(x)) == NULL)
         goto ok;
-    body = xml_value(xb);
     if (nodeid_split(body, &prefix, &id) < 0)
         goto done;
     /* prefix is a module name -> find module */
@@ -367,7 +365,7 @@ json2xml_decode_identityref(cxobj     *x,
             else
                 cprintf(cbv, "%s", id);
 
-            if (xml_value_set(xb, cbuf_get(cbv)) < 0)
+            if (xml_body_set(x, cbuf_get(cbv)) < 0)
                 goto done;
         }
         else{

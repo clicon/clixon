@@ -21,6 +21,13 @@
 ## 7.9.0
 Expected: September 2026
 
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* New XML body API: `xml_body_set()`, `xml_body_append()`, `xml_body_reset()` replace direct manipulation of `CX_BODY` child nodes
+  * See migration guide: https://clixon-docs.readthedocs.io/en/latest/xml.html#setting-body-values
+
 ## 7.8.0
 29 May 2026
 

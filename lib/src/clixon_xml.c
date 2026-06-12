@@ -1549,7 +1549,6 @@ xml_new_body(const char *name,
              const char *val)
 {
     cxobj *new_node = NULL;
-    cxobj *body_node;
 
     if (name == NULL || val == NULL) {
         clixon_err(OE_XML, EINVAL, "name or val is NULL");
@@ -1558,13 +1557,9 @@ xml_new_body(const char *name,
     if ((new_node = xml_new(name, parent, CX_ELMNT)) == NULL) {
         return NULL;
     }
-    if ((body_node = xml_new("body", new_node, CX_BODY)) == NULL ||
-        xml_value_set(body_node, val) < 0) {
+    if (xml_body_set(new_node, val) < 0) {
         xml_free(new_node);
         new_node = NULL;
-        body_node = NULL;
-    } else {
-        xml_type_set(body_node, CX_BODY);
     }
     return new_node;
 }
@@ -2119,6 +2114,67 @@ xml_body_get(cxobj *xt)
     while ((xb = xml_child_iter(xt, &ixb, CX_BODY)) != NULL)
         return xb;
     return NULL;
+}
+
+/*! Set body value on element, creating CX_BODY child if needed
+ *
+ * If the element already has a body child, its value is overwritten.
+ * @param[in]  xn   Element xml node (CX_ELMNT)
+ * @param[in]  val  Body value to set (copied); NULL creates empty body
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xml_body_set(cxobj      *xn,
+             const char *val)
+{
+    int    retval = -1;
+    cxobj *xb;
+
+    if ((xb = xml_body_get(xn)) == NULL)
+        if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
+            goto done;
+    if (val != NULL && xml_value_set(xb, val) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Append to body value on element, creating CX_BODY child if needed
+ *
+ * @param[in]  xn   Element xml node (CX_ELMNT)
+ * @param[in]  val  Body value to append (copied)
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xml_body_append(cxobj      *xn,
+                const char *val)
+{
+    int    retval = -1;
+    cxobj *xb;
+
+    if ((xb = xml_body_get(xn)) == NULL)
+        if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
+            goto done;
+    if (xml_value_append(xb, val) < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Reset (remove) body value from element
+ *
+ * @param[in]  xn   Element xml node (CX_ELMNT)
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+xml_body_reset(cxobj *xn)
+{
+    return xml_rm_children(xn, CX_BODY);
 }
 
 /*! Find and return the value of an xml child of specific type given prefix and name

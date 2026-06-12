@@ -230,7 +230,6 @@ cvec2xml_1(cvec       *cvv,
     int               retval = -1;
     cxobj            *xt = NULL;
     cxobj            *xn;
-    cxobj            *xb;
     cg_var           *cv;
     char             *val;
     int               len=0;
@@ -253,10 +252,8 @@ cvec2xml_1(cvec       *cvv,
         xml_parent_set(xn, xt);
         xml_child_i_set(xt, i++, xn);
         xml_child_nr_set(xt, i);
-        if ((xb = xml_new("body", xn, CX_BODY)) == NULL) /* this leaks */
-            goto err;
         val = cv2str_dup(cv);
-        xml_value_set(xb, val); /* this leaks */
+        xml_body_set(xn, val); /* this leaks on error */
         if (val)
             free(val);
     }

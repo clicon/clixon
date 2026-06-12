@@ -2143,18 +2143,15 @@ clixon_netconf_internal_error(cxobj      *xerr,
 {
     int    retval = -1;
     cxobj *xr;
-    cxobj *xb;
 
-    if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL &&
-        (xb = xml_body_get(xr))){
-        if (xml_value_set(xb, "operation-failed") < 0)
+    if ((xr = xpath_first(xerr, NULL, "//error-tag")) != NULL){
+        if (xml_body_set(xr, "operation-failed") < 0)
             goto done;
     }
-    if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL &&
-        (xb = xml_body_get(xr))){
-        if (xml_value_append(xb, msg) < 0)
+    if ((xr = xpath_first(xerr, NULL, "//error-message")) != NULL){
+        if (xml_body_append(xr, msg) < 0)
             goto done;
-        if (arg &&xml_value_append(xb, arg) < 0)
+        if (arg && xml_body_append(xr, arg) < 0)
             goto done;
     }
     retval = 0;

@@ -1511,7 +1511,6 @@ xpath2xml_traverse(xpath_tree *xs,
     yang_stmt *yspec;
     yang_stmt *ymod;
     yang_stmt *yc;
-    cxobj     *xb;
     int        ret;
 
     if (xbotp == NULL || ybotp == NULL){
@@ -1616,9 +1615,7 @@ xpath2xml_traverse(xpath_tree *xs,
         break;
     case XP_PRIME_STR:
         if (xs->xs_s0 && y0 && yang_keyword_get(y0) == Y_LEAF){
-            if ((xb = xml_new("body", x0, CX_BODY)) == NULL)
-                goto done;
-            if (xml_value_set(xb, xs->xs_s0) < 0)
+            if (xml_body_set(x0, xs->xs_s0) < 0)
                 goto done;
         }
         break;

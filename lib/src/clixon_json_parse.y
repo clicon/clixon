@@ -252,19 +252,12 @@ json_current_clone(clixon_json_yacc *jy)
 
 static int
 json_current_body(clixon_json_yacc *jy,
-                  char             *value)
+                 char             *value)
 {
-    int retval = -1;
-    cxobj *xn;
-
-    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __func__);
-    if ((xn = xml_new("body", jy->jy_current, CX_BODY)) == NULL)
-        goto done;
-    if (value && xml_value_append(xn, value) < 0)
-        goto done;
-    retval = 0;
- done:
-    return retval;
+   clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __func__);
+   if (xml_body_set(jy->jy_current, value) < 0)
+       return -1;
+   return 0;
  }
 
 %}

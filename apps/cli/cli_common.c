@@ -204,7 +204,6 @@ dbxml_body(cxobj *xbot,
 {
     int     retval = -1;
     char   *str = NULL;
-    cxobj  *xb;
     cg_var *cval;
     int     len;
 
@@ -214,9 +213,7 @@ dbxml_body(cxobj *xbot,
         clixon_err(OE_UNIX, errno, "cv2str_dup");
         goto done;
     }
-    if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
-        goto done;
-    if (xml_value_set(xb,  str) < 0)
+    if (xml_body_set(xbot, str) < 0)
         goto done;
     retval = 0;
  done:

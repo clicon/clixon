@@ -118,15 +118,12 @@ static int
 xml_parse_flush_content(clixon_xml_yacc *xy)
 {
     int    retval = -1;
-    cxobj *xn;
 
     if (cbuf_len(xy->xy_cbuf) == 0){
         retval = 0;
         goto done;
     }
-    if ((xn = xml_new("body", xy->xy_xparent, CX_BODY)) == NULL)
-        goto done;
-    if (xml_value_append(xn, cbuf_get(xy->xy_cbuf)) < 0)
+    if (xml_body_append(xy->xy_xparent, cbuf_get(xy->xy_cbuf)) < 0)
         goto done;
     cbuf_reset(xy->xy_cbuf);
     retval = 0;
@@ -344,7 +341,7 @@ xml_parse_bslash(clixon_xml_yacc *xy,
     while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL)
         break;
     if (xc != NULL){ /* at least one element */
-        if (xml_rm_children(x, CX_BODY) < 0) /* remove all bodies */
+        if (xml_body_reset(x) < 0) /* remove all bodies */
             goto done;
     }
     retval = 0;

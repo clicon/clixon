@@ -303,6 +303,9 @@ int       xml_enumerate_get(cxobj *x);
 
 char     *xml_body(cxobj *xn);
 cxobj    *xml_body_get(cxobj *xn);
+int       xml_body_set(cxobj *xn, const char *val);
+int       xml_body_append(cxobj *xn, const char *val);
+int       xml_body_reset(cxobj *xn);
 char     *xml_find_type_value(cxobj *xn_parent, const char *prefix,
                               const char *name, enum cxobj_type type);
 cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, enum cxobj_type type);

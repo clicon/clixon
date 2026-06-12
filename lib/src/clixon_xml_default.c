@@ -141,15 +141,12 @@ xml_default_create(yang_stmt *y,
 {
     int        retval = -1;
     cxobj     *xc = NULL;
-    cxobj     *xb;
     char      *str;
     cg_var    *cv;
 
     if (xml_default_create1(y, xt, &xc) < 0)
         goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
-    if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
-        goto done;
     if ((cv = yang_cv_get(y)) == NULL){
         clixon_err(OE_UNIX, ENOENT, "No yang cv of %s", yang_argument_get(y));
         goto done;
@@ -158,7 +155,7 @@ xml_default_create(yang_stmt *y,
         clixon_err(OE_UNIX, errno, "cv2str_dup");
         goto done;
     }
-    if (xml_value_set(xb, str) < 0)
+    if (xml_body_set(xc, str) < 0)
         goto done;
     free(str);
     retval = 0;
@@ -181,19 +178,16 @@ xml_default_create_cv(yang_stmt *y,
 {
     int    retval = -1;
     cxobj *xc = NULL;
-    cxobj *xb;
     char  *str;
 
     if (xml_default_create1(y, xt, &xc) < 0)
         goto done;
     xml_flag_set(xc, XML_FLAG_DEFAULT);
-    if ((xb = xml_new("body", xc, CX_BODY)) == NULL)
-        goto done;
     if ((str = cv2str_dup(cv)) == NULL){
         clixon_err(OE_UNIX, errno, "cv2str_dup");
         goto done;
     }
-    if (xml_value_set(xb, str) < 0)
+    if (xml_body_set(xc, str) < 0)
         goto done;
     free(str);
     retval = 0;

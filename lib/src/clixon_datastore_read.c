@@ -461,7 +461,6 @@ disable_nacm_on_empty(cxobj     *xt,
     int        len = 0;
     cxobj     *xnacm = NULL;
     cxobj     *x;
-    cxobj     *xb;
     int        ix;
 
     if ((ymod = yang_find(yspec, Y_MODULE, "ietf-netconf-acm")) == NULL)
@@ -479,9 +478,7 @@ disable_nacm_on_empty(cxobj     *xt,
     if (clixon_xml_find_instance_id(xt, yspec, &vec, &len, "/nacm:nacm/nacm:enable-nacm") < 1)
         goto done;
     if (len){
-        if ((xb = xml_body_get(vec[0])) == NULL)
-            goto done;
-        if (xml_value_set(xb, "false") < 0)
+        if (xml_body_set(vec[0], "false") < 0)
             goto done;
     }
     if (vec)

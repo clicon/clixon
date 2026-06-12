@@ -717,10 +717,7 @@ from_client_config_path_info(clixon_handle h,
         goto done;
     }
     if (ybot && yang_keyword_get(ybot) && body){
-        cxobj *xb;
-        if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
-            goto done;
-        if (xml_value_set(xb, body) < 0)
+        if (xml_body_set(xbot, body) < 0)
             goto done;
     }
     if (ybot)

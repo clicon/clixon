@@ -213,7 +213,7 @@ pidfile_get_fd(FILE  *f,
                 pid_t *pid0)
 {
     char   *ptr;
-    char    buf[32];
+    char    buf[32] = {0};
     pid_t   pid;
 
     *pid0 = 0;
