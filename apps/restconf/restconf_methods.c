@@ -300,6 +300,8 @@ api_data_write(clixon_handle h,
     if ((xdata00 = xml_dup(xtop)) == NULL)
         goto done;
     if (xpath){
+        if (xml_sort_recurse(xdata00) < 0)
+            goto done;
         if ((xdata0 = xpath_first(xdata00, nsc, "%s/..", xpath)) == NULL){
             clixon_err(OE_XML, 0, "XML not found using xpath %s", xpath);
             goto done;
