@@ -96,6 +96,11 @@ tleaf(cxobj *x)
 
     if (xml_type(x) != CX_ELMNT)
         return 0;
+#ifdef OPTMEM_XML_BODY
+    /* In inline mode, body is stored in x_bodyval with no CX_BODY child */
+    if (xml_child_nr_notype(x, CX_ATTR) == 0 && xml_flag(x, XML_FLAG_BODY))
+        return 1;
+#endif
     if (xml_child_nr_notype(x, CX_ATTR) != 1)
         return 0;
     /* From here exactly one noattr child, get it */
@@ -288,6 +293,11 @@ text2file(cxobj            *xn,
     while ((xc = xml_child_iter(xn, &ix, -1)) != NULL)
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
             children++;
+#ifdef OPTMEM_XML_BODY
+    /* Count inline body as a virtual child so tleaf/leaf-list paths are taken */
+    if (xml_type(xn) == CX_ELMNT && xml_flag(xn, XML_FLAG_BODY))
+        children++;
+#endif
     if (children == 0){ /* If no children print line */
         switch (xml_type(xn)){
         case CX_BODY:{
@@ -354,6 +364,24 @@ text2file(cxobj            *xn,
                 break;
         }
     }
+#ifdef OPTMEM_XML_BODY
+    /* In inline mode, no CX_BODY child exists; emit body value like text2file(CX_BODY) */
+    if (xml_flag(xn, XML_FLAG_BODY)){
+        char *bodyval = xml_body(xn);
+        if ((cbb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (bodyval && index(bodyval, ' ') != NULL)
+            cprintf(cbb, "\"%s\"", bodyval);
+        else
+            cprintf(cbb, "%s", bodyval ? bodyval : "");
+        if (*leafl)
+            (*fn)(f, "%*s%s\n", PRETTYPRINT_INDENT*(level+1), "", cbuf_get(cbb));
+        else
+            (*fn)(f, "%s;\n", cbuf_get(cbb));
+    }
+#endif
     /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
     if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
         *leafl = 0;
@@ -480,6 +508,11 @@ text2cbuf(cbuf             *cb,
     while ((xc = xml_child_iter(xn, &ix, -1)) != NULL)
         if (xml_type(xc) == CX_ELMNT || xml_type(xc) == CX_BODY)
             children++;
+#ifdef OPTMEM_XML_BODY
+    /* Count inline body as a virtual child so tleaf/leaf-list paths are taken */
+    if (xml_type(xn) == CX_ELMNT && xml_flag(xn, XML_FLAG_BODY))
+        children++;
+#endif
     if (children == 0){ /* If no children print line */
         switch (xml_type(xn)){
         case CX_BODY:{
@@ -551,6 +584,27 @@ text2cbuf(cbuf             *cb,
                 break;
         }
     }
+#ifdef OPTMEM_XML_BODY
+    /* In inline mode, no CX_BODY child exists; emit body value like text2cbuf(CX_BODY) */
+    if (xml_flag(xn, XML_FLAG_BODY)){
+        char *bodyval = xml_body(xn);
+        if ((cbb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (bodyval && index(bodyval, ' ') != NULL)
+            cprintf(cbb, "\"%s\"", bodyval);
+        else
+            cprintf(cbb, "%s", bodyval ? bodyval : "");
+        if (*leafl){
+            if (prepend)
+                cprintf(cb, "%s", prepend);
+            cprintf(cb, "%*s%s\n", level1 + PRETTYPRINT_INDENT, "", cbuf_get(cbb));
+        }
+        else
+            cprintf(cb, "%s;\n", cbuf_get(cbb));
+    }
+#endif
     /* Stop leaf-list printing (ie []) if no longer leaflist and same name */
     if (yn && yang_keyword_get(yn) != Y_LEAF_LIST && *leafl != 0){
         *leafl = 0;

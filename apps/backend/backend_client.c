@@ -1048,7 +1048,7 @@ from_client_kill_session(clixon_handle h,
     int           ret;
 
     if ((x = xml_find(xe, "session-id")) == NULL ||
-        (str = xml_find_value(x, "body")) == NULL){
+        (str = xml_body(x)) == NULL){
         if (netconf_missing_element(cbret, "protocol", "session-id", NULL) < 0)
             goto done;
         goto ok;
@@ -1115,14 +1115,14 @@ from_client_create_subscription(clixon_handle h,
     if ((nsc = xml_nsctx_init(NULL, EVENT_RFC5277_NAMESPACE)) == NULL)
         goto done;
     if ((x = xpath_first(xe, nsc, "stream")) != NULL){
-        if ((stream = xml_find_value(x, "body")) == NULL){
+        if ((stream = xml_body(x)) == NULL){
             if (netconf_bad_element(cbret, "application", "stream", "Expected stream name") < 0)
                 goto done;
             goto ok;
         }
     }
     if ((x = xpath_first(xe, nsc, "stopTime")) != NULL){
-        if ((stoptime = xml_find_value(x, "body")) != NULL &&
+        if ((stoptime = xml_body(x)) != NULL &&
             str2time(stoptime, &stop) < 0){
             if (netconf_bad_element(cbret, "application", "stopTime", "Expected timestamp") < 0)
                 goto done;
@@ -1130,7 +1130,7 @@ from_client_create_subscription(clixon_handle h,
         }
     }
     if ((x = xpath_first(xe, nsc, "startTime")) != NULL){
-        if ((starttime = xml_find_value(x, "body")) != NULL &&
+        if ((starttime = xml_body(x)) != NULL &&
             str2time(starttime, &start) < 0){
             if (netconf_bad_element(cbret, "application", "startTime", "Expected timestamp") < 0)
                 goto done;

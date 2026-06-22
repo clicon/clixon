@@ -124,6 +124,11 @@ child_type(cxobj *x)
     clen = xml_child_nr_notype(x, CX_ATTR);
     if (xml_type(x) != CX_ELMNT)
         return -1; /* n/a */
+#ifdef OPTMEM_XML_BODY
+    /* In inline mode, body is stored in x_bodyval (no CX_BODY child exists) */
+    if (clen == 0 && xml_flag(x, XML_FLAG_BODY))
+        return BODY_CHILD;
+#endif
     if (clen == 0)
         return NULL_CHILD;
     if (clen > 1)
@@ -988,6 +993,13 @@ xml2json1_cbuf(cbuf                   *cb,
             }
         }
     }
+#ifdef OPTMEM_XML_BODY
+    /* In inline mode no CX_BODY child exists; output body value directly */
+    if (childt == BODY_CHILD && xml_flag(x, XML_FLAG_BODY)){
+        if (xml2json_encode_leafs(x, x, xml_spec(x), cb) < 0)
+            goto done;
+    }
+#endif
     if (cbuf_len(metacbc)){
         cprintf(cb, "%s", cbuf_get(metacbc));
     }

@@ -407,7 +407,6 @@ snmp_scalar_set(clixon_handle               h,
     int        retval = -1;
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
-    cxobj     *xb;
     char      *valstr = NULL;
     cbuf      *cb = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
@@ -420,13 +419,11 @@ snmp_scalar_set(clixon_handle               h,
         goto done;
     if (snmp_yang2xml(xtop, ys, cvk, &xbot) < 0)
         goto done;
-    if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
-        goto done;
     /* Extended */
     if (type_yang2asn1(ys, &asn1_type, 1) < 0)
         goto done;
     if (valstr0){
-        if (xml_value_set(xb, valstr0) < 0)
+        if (xml_body_set(xbot, valstr0) < 0)
             goto done;
     }
     else {
@@ -434,7 +431,7 @@ snmp_scalar_set(clixon_handle               h,
             goto done;
         if (ret == 0)
             goto ok;
-        if (xml_value_set(xb, valstr) < 0)
+        if (xml_body_set(xbot, valstr) < 0)
             goto done;
     }
     if ((cb = cbuf_new()) == NULL){
@@ -555,7 +552,6 @@ snmp_cache_set(clixon_handle               h,
     int        retval = -1;
     cxobj     *xtop = NULL;
     cxobj     *xbot = NULL;
-    cxobj     *xb;
     char      *valstr = NULL;
     netsnmp_variable_list *requestvb = request->requestvb;
     int        asn1_type;
@@ -572,8 +568,6 @@ snmp_cache_set(clixon_handle               h,
     if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
         goto done;
     if (snmp_yang2xml(xtop, ys, cvk, &xbot) < 0)
-        goto done;
-    if ((xb = xml_new("body", xbot, CX_BODY)) == NULL)
         goto done;
     /* Extended */
     if (type_yang2asn1(ys, &asn1_type, 1) < 0)
@@ -614,7 +608,7 @@ snmp_cache_set(clixon_handle               h,
                 goto done;
         }
     }
-    if (xml_value_set(xb, valstr) < 0)
+    if (xml_body_set(xbot, valstr) < 0)
         goto done;
     clicon_ptr_get(h, "snmp-rowstatus-tree", (void**)&xcache);
     if (xcache == NULL){

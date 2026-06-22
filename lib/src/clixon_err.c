@@ -386,10 +386,13 @@ netconf_err2cb(clixon_handle h,
         cprintf(cberr, "%s ", xml_body(x));
     if ((x = xml_find_type(xerr, NULL, "error-message", CX_ELMNT)) != NULL)
         cprintf(cberr, "%s ", xml_body(x));
-    if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL &&
-        xml_child_nr(x) > 0){
-        if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
-            goto done;
+    if ((x = xml_find_type(xerr, NULL, "error-info", CX_ELMNT)) != NULL){
+        if (xml_child_nr(x) > 0){
+            if (clixon_xml2cbuf(cberr, xml_child_i(x, 0), 0, 0, NULL, -1, 0) < 0)
+                goto done;
+        }
+        else if (xml_body(x) != NULL)
+            cprintf(cberr, "%s", xml_body(x));
     }
     if ((x = xml_find_type(xerr, NULL, "error-app-tag", CX_ELMNT)) != NULL)
         cprintf(cberr, ": %s ", xml_body(x));

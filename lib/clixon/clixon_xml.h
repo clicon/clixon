@@ -235,6 +235,7 @@ typedef enum xml_stats_enum xml_stats_enum;
 #define XML_FLAG_DENY        0x1000 /* Marked as read denied by NACM  */
 #define XML_FLAG_DEL_ANC     0x2000 /* Target-tree ancestor of a deleted node (possibly unique hex?)
                                                 (for incremental mandatory check) */
+#define XML_FLAG_BODY        0x4000 /* Element has an inline body value (OPTMEM_XML_BODY mode) */
 
 /*
  * Prototypes

@@ -132,6 +132,11 @@ strip_body_objects(cxobj *xt)
                    !xml_flag(xb, XML_FLAG_BODYKEY)){
                 xml_purge(xb);
             }
+#ifdef OPTMEM_XML_BODY
+            /* In inline mode, also clear any inline body (e.g. whitespace in containers) */
+            if (xml_flag(xt, XML_FLAG_BODY) && !xml_flag(xt, XML_FLAG_BODYKEY))
+                xml_body_reset(xt);
+#endif
         }
     }
 

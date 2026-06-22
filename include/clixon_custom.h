@@ -266,7 +266,6 @@
  * Caveat: to find out whether all elements are one list a relatively costly
  * loop is made once per yang, this could possibly change and the loop could
  * be improved.
-
  */
 #define LEAFREF_OPTIMIZE
 
@@ -294,13 +293,6 @@
  *       unique "config/interface config/subinterface";
  */
 #define YANG_UNIQUE_MULTI_IGNORE
-
-/*! Keep candidate datastores in memory, do not sync to file.
- *
- * In-mem is good for performance, but difficult to debug
- * Also may be unnecesary due to other optimizations
- */
-#undef XMLDB_CANDIDATE_INMEM
 
 /*! Relax YANG validation for debugging
  *

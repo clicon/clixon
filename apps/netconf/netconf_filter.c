@@ -79,22 +79,16 @@
     CONTAINMENT      select
  */
 
-/* return a string containing leafs value, NULL if no leaf or no value */
+/* Return body string of element if it is a leaf (no child elements), NULL otherwise */
 static char*
 leafstring(cxobj *x)
 {
-    cxobj *c;
-
     if (xml_type(x) != CX_ELMNT)
         return NULL;
-    if (xml_child_nr(x) != 1)
+    /* Leaf: must have no child elements */
+    if (xml_child_nr_type(x, CX_ELMNT) != 0)
         return NULL;
-    c = xml_child_i(x, 0);
-    if (xml_child_nr(c) != 0)
-        return NULL;
-    if (xml_type(c) != CX_BODY)
-        return NULL;
-    return xml_value(c);
+    return xml_body(x);
 }
 
 /*! Internal recursive part where configuration xml tree is pruned from filter

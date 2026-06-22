@@ -21,12 +21,11 @@
 ## 7.9.0
 Expected: September 2026
 
-### API changes on existing protocol/config features
-
-Users may have to change how they access the system
+### API changes
 
 * New XML body API: `xml_body_set()`, `xml_body_append()`, `xml_body_reset()` replace direct manipulation of `CX_BODY` child nodes
-  * See migration guide: https://clixon-docs.readthedocs.io/en/latest/xml.html#setting-body-values
+* XML child iteration: `xml_child_each()` replaced by `xml_child_iter()`
+* See the [C API Migration Guide](https://clixon-docs.readthedocs.io/en/latest/migration.html#id1) for full details and code examples
 
 ## 7.8.0
 29 May 2026
@@ -50,7 +49,7 @@ The Clixon 7.8 release features optimized datastore YANG validation including in
   * Added xmldb status to remove startup in-memory cache
   * Reduced size of `struct xml` struct
   * Changed child iterator API: use xml_childiter() instead of xml_child_each()
-    * Configure with `--enable-child-each-wrapper option` to enable optimization
+    * Configure with `--enable-xml-child-each-wrapper` option to enable optimization
 * New xmldb-cache-status:
   * You set cache behaviour of each datastore individually as one of inmem, file and file-inmem
   * New option: `CLICON_XMLDB_CACHE_STATUS`
@@ -97,7 +96,7 @@ Developers may need to change their code
     ix = 0;
     while ((xc = xml_child_iter(xt, &ix, elmnt)) != NULL) {
     ```
-  * Run: `configure --enable-child-each-wrapper` after migration
+  * Run: `configure --enable-xml-child-each-wrapper` after migration
   * Replace `xml_child_each_attr()` --> `xml_child_iter_attr()`
 * A new XML flag: `XML_FLAG_DEL_ANC` has been added
   * Part of the optimized incremental validation

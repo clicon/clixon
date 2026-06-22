@@ -194,7 +194,7 @@ struct xml{
         struct xmlvec *xu_childvec;  /* ELMNT: childvec sub-struct (len/max/vec), NULL if no children */
         char         *xu_value;     /* BODY/ATTR: have values (strdup'd) */
     } x_u;
-#ifndef XML_CHILD_EACH_WRAPPER
+#ifndef XML_CHILD_EACH_WRAPPER /* Optimization: if xml_child_each wrapper is used, this field is not needed */
     uint32_t         _x_vector_i;   /* internal use: xml_child_each can be removed if no xml_child_each is used */
 #endif
     uint32_t         _x_i;          /* Internal use for stable sorting:
@@ -210,6 +210,9 @@ struct xml{
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang,
                                        by reference, dont free */
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
+#ifdef OPTMEM_XML_BODY /* Optimization: Remove bodies as separate objects */
+    char             *x_bodyval;    /* Inline body value (replaces CX_BODY child) */
+#endif
 };
 
 /* Access functions for x_u union fields */
@@ -351,6 +354,10 @@ xml_stats_one(cxobj         *x,
                 sz += cvec_size(x->x_ns_cache);
             if (x->x_cv)
                 sz += cv_size(x->x_cv);
+#ifdef OPTMEM_XML_BODY
+            if (x->x_bodyval)
+                sz += strlen(x->x_bodyval) + 1;
+#endif
             break;
         case CX_ATTR:
             sz += sizeof(struct xml);
@@ -423,6 +430,12 @@ xml_stats_one(cxobj         *x,
             nr++;
             sz += strlen(x->x_value) + 1;
         }
+#ifdef OPTMEM_XML_BODY
+        if (xml_type(x) == CX_ELMNT && x->x_bodyval){
+            nr++;
+            sz += strlen(x->x_bodyval) + 1;
+        }
+#endif
         break;
     }
     if (nrp)
@@ -858,6 +871,10 @@ xml_flag_reset(cxobj   *xn,
 char*
 xml_value(cxobj *xn)
 {
+#ifdef OPTMEM_XML_BODY
+    if (is_element(xn))
+        return xn->x_bodyval;
+#endif
     if (!is_bodyattr(xn))
         return NULL;
     return xn->x_value;
@@ -876,6 +893,23 @@ xml_value_set(cxobj      *xn,
 {
     int    retval = -1;
 
+#ifdef OPTMEM_XML_BODY
+    if (is_element(xn)){
+        if (val == NULL){
+            clixon_err(OE_XML, EINVAL, "value is NULL");
+            goto done;
+        }
+        if (xn->x_bodyval)
+            free(xn->x_bodyval);
+        if ((xn->x_bodyval = strdup(val)) == NULL){
+            clixon_err(OE_XML, errno, "strdup");
+            goto done;
+        }
+        xml_flag_set(xn, XML_FLAG_BODY);
+        retval = 0;
+        goto done;
+    }
+#endif
     if (!is_bodyattr(xn))
         return 0;
     if (val == NULL){
@@ -910,6 +944,33 @@ xml_value_append(cxobj      *xn,
     size_t oldlen;
     char  *newval;
 
+#ifdef OPTMEM_XML_BODY
+    if (is_element(xn)){
+        if (val == NULL){
+            clixon_err(OE_XML, EINVAL, "value is NULL");
+            goto done;
+        }
+        sz = strlen(val)+1;
+        if (xn->x_bodyval == NULL){
+            if ((xn->x_bodyval = strdup(val)) == NULL){
+                clixon_err(OE_XML, errno, "strdup");
+                goto done;
+            }
+        }
+        else{
+            oldlen = strlen(xn->x_bodyval);
+            if ((newval = realloc(xn->x_bodyval, oldlen + sz)) == NULL){
+                clixon_err(OE_XML, errno, "realloc");
+                goto done;
+            }
+            memcpy(newval + oldlen, val, sz);
+            xn->x_bodyval = newval;
+        }
+        xml_flag_set(xn, XML_FLAG_BODY);
+        retval = 0;
+        goto done;
+    }
+#endif
     if (!is_bodyattr(xn))
         return 0;
     if (val == NULL){
@@ -2086,14 +2147,18 @@ xml_enumerate_get(cxobj *x)
 char *
 xml_body(cxobj *xn)
 {
+    if (!is_element(xn))
+        return NULL;
+#ifdef OPTMEM_XML_BODY
+    return xn->x_bodyval;
+#else
     cxobj *xb;
     int    ixb = 0;
 
-    if (!is_element(xn))
-        return NULL;
     while ((xb = xml_child_iter(xn, &ixb, CX_BODY)) != NULL)
         return xml_value(xb);
     return NULL;
+#endif
 }
 
 /*! Get (first) body of xml node, note could be many 
@@ -2106,14 +2171,18 @@ xml_body(cxobj *xn)
 cxobj *
 xml_body_get(cxobj *xt)
 {
+    if (!is_element(xt))
+        return NULL;
+#ifdef OPTMEM_XML_BODY
+    return xml_flag(xt, XML_FLAG_BODY) ? xt : NULL;
+#else
     cxobj *xb;
     int    ixb = 0;
 
-    if (!is_element(xt))
-        return NULL;
     while ((xb = xml_child_iter(xt, &ixb, CX_BODY)) != NULL)
         return xb;
     return NULL;
+#endif
 }
 
 /*! Set body value on element, creating CX_BODY child if needed
@@ -2128,6 +2197,19 @@ int
 xml_body_set(cxobj      *xn,
              const char *val)
 {
+#ifdef OPTMEM_XML_BODY
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_bodyval)
+        free(xn->x_bodyval);
+    xn->x_bodyval = NULL;
+    if (val != NULL && (xn->x_bodyval = strdup(val)) == NULL){
+        clixon_err(OE_XML, errno, "strdup");
+        return -1;
+    }
+    xml_flag_set(xn, XML_FLAG_BODY);
+    return 0;
+#else
     int    retval = -1;
     cxobj *xb;
 
@@ -2139,6 +2221,7 @@ xml_body_set(cxobj      *xn,
     retval = 0;
  done:
     return retval;
+#endif
 }
 
 /*! Append to body value on element, creating CX_BODY child if needed
@@ -2152,6 +2235,15 @@ int
 xml_body_append(cxobj      *xn,
                 const char *val)
 {
+#ifdef OPTMEM_XML_BODY
+    if (!is_element(xn))
+        return 0;
+    if (val == NULL){
+        clixon_err(OE_XML, EINVAL, "value is NULL");
+        return -1;
+    }
+    return xml_value_append(xn, val);
+#else
     int    retval = -1;
     cxobj *xb;
 
@@ -2163,6 +2255,7 @@ xml_body_append(cxobj      *xn,
     retval = 0;
  done:
     return retval;
+#endif
 }
 
 /*! Reset (remove) body value from element
@@ -2174,7 +2267,18 @@ xml_body_append(cxobj      *xn,
 int
 xml_body_reset(cxobj *xn)
 {
+#ifdef OPTMEM_XML_BODY
+    if (!is_element(xn))
+        return 0;
+    if (xn->x_bodyval){
+        free(xn->x_bodyval);
+        xn->x_bodyval = NULL;
+    }
+    xml_flag_reset(xn, XML_FLAG_BODY);
+    return 0;
+#else
     return xml_rm_children(xn, CX_BODY);
+#endif
 }
 
 /*! Find and return the value of an xml child of specific type given prefix and name
@@ -2375,6 +2479,10 @@ xml_free0(cxobj *x)
             cv_free(x->x_cv);
         if (x->x_ns_cache)
             xml_nsctx_free(x->x_ns_cache);
+#ifdef OPTMEM_XML_BODY
+        if (x->x_bodyval)
+            free(x->x_bodyval);
+#endif
 #ifdef XML_EXPLICIT_INDEX
         xml_search_index_free(x);
 #endif
@@ -2443,6 +2551,17 @@ xml_copy_one(cxobj *x0,
     switch (xml_type(x0)){
     case CX_ELMNT:
         xml_spec_set(x1, xml_spec(x0));
+#ifdef OPTMEM_XML_BODY
+        if (xml_flag(x0, XML_FLAG_BODY)){
+            if (x0->x_bodyval != NULL){
+                if ((x1->x_bodyval = strdup(x0->x_bodyval)) == NULL){
+                    clixon_err(OE_XML, errno, "strdup");
+                    goto done;
+                }
+            }
+            xml_flag_set(x1, XML_FLAG_BODY);
+        }
+#endif
         break;
     case CX_BODY:
     case CX_ATTR:

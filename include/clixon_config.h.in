@@ -156,6 +156,9 @@
 /* Define to 1 if you have the `versionsort' function. */
 #undef HAVE_VERSIONSORT
 
+/* Enable optmem-xml-body */
+#undef OPTMEM_XML_BODY
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 

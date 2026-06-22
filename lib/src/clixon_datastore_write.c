@@ -768,8 +768,8 @@ text_modify(clixon_handle       h,
                 changed++;
                 if (op==OP_NONE)
                     xml_flag_set(x0, XML_FLAG_NONE); /* Mark for potential deletion */
-                if (x1bstr){ /* empty type does not have body */ /* XXX Here x0 = <b></b> */
-                    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+                if (x1bstr){ /* empty type does not have body */
+                    if (xml_body_set(x0, NULL) < 0)
                         goto done;
                 }
             }
@@ -814,8 +814,9 @@ text_modify(clixon_handle       h,
                 }
                 /* XXX here x1bstr is checked for null, while adding an empty string above */
                 if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
-                    if ((x0b = xml_new("body", x0, CX_BODY)) == NULL)
+                    if (xml_body_set(x0, NULL) < 0)
                         goto done;
+                    x0b = xml_body_get(x0);
                 }
                 x0bstr = xml_value(x0b);
                 if (x0bstr==NULL || strcmp(x0bstr, x1bstr)){

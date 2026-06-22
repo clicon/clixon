@@ -380,7 +380,7 @@ if test "$enable_grpc" = "yes"; then
    fi
 fi
 
-# In 7.8 native xml_child_each_wrapper is disabled by default which wastes one ptr in the xml struct
+# In 7.8 native xml-child-each-wrapper is disabled by default which wastes one ptr in the xml struct
 # but makes calls to xml_child_each keep their pre-7.8 performance
 # This can be enabled by --enable-xml-child-each-wrapper in which xml_child_each uses a wrapper to xml_child_iter
 # for memory footprint optimization, but make calls to xml_child_each slower
@@ -398,6 +398,23 @@ AC_MSG_RESULT(xml-child-each-wrapper is: ${enable_xml_child_each_wrapper})
 if test "${enable_xml_child_each_wrapper}" = "yes"; then
    XML_CHILD_EACH_WRAPPER=1
    AC_DEFINE_UNQUOTED(XML_CHILD_EACH_WRAPPER, ${XML_CHILD_EACH_WRAPPER}, [Enable xml-child-each-wrapper])
+fi
+
+# Fold CX_BODY child into element struct field x_bodyval for memory optimization
+# This can be enabled by --enable-optmem-xml-body; once migration is complete it will be the default
+AC_ARG_ENABLE(optmem-xml-body, AS_HELP_STRING([--enable-optmem-xml-body],[Fold body value into element struct (no CX_BODY child), default: no]),[
+   if test "$enableval" = no; then
+      enable_optmem_xml_body=no
+   else
+      enable_optmem_xml_body=yes
+   fi
+  ],
+  [ enable_optmem_xml_body=no])
+AC_MSG_RESULT(optmem-xml-body is: ${enable_optmem_xml_body})
+
+if test "${enable_optmem_xml_body}" = "yes"; then
+   OPTMEM_XML_BODY=1
+   AC_DEFINE_UNQUOTED(OPTMEM_XML_BODY, ${OPTMEM_XML_BODY}, [Enable optmem-xml-body])
 fi
 
 # Set default config file location

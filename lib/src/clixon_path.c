@@ -1075,7 +1075,6 @@ api_path2xml_vec(char            **vec,
     char      *prefix = NULL;
     char      *restval;
     cxobj     *xn = NULL; /* new */
-    cxobj     *xb;        /* body */
     cvec      *cvk = NULL; /* vector of index keys */
     cg_var    *cvi;
     char      *keyname;
@@ -1181,13 +1180,11 @@ api_path2xml_vec(char            **vec,
         if ((x = xml_new(yang_argument_get(y), x0, CX_ELMNT)) == NULL)
             goto done;
         xml_spec_set(x, y);
-        if ((xb = xml_new("body", x, CX_BODY)) == NULL)
-            goto done;
         if (restval){
             if (uri_percent_decode(restval, &val) < 0)
                 goto done;
         }
-        if (val && xml_value_set(xb, val) < 0)
+        if (xml_body_set(x, val) < 0)
             goto done;
         break;
     case Y_LIST:
@@ -1239,19 +1236,16 @@ api_path2xml_vec(char            **vec,
                 if ((xn = xml_new(keyname, x, CX_ELMNT)) == NULL)
                     goto done;
                 xml_spec_set(xn, ykey);
-                if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
-                    goto done;
+                val = NULL;
                 if (vi < nvalvec){
-                    /* Here assign and decode key values */
-                    val = NULL;
                     if (uri_percent_decode(valvec[vi], &val) < 0)
                         goto done;
-                    if (xml_value_set(xb, val) < 0)
-                        goto done;
-                    if (val){
-                        free(val);
-                        val = NULL;
-                    }
+                }
+                if (xml_body_set(xn, val) < 0)
+                    goto done;
+                if (val){
+                    free(val);
+                    val = NULL;
                 }
                 vi++;
             }

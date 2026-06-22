@@ -773,6 +773,7 @@ enable_netsnmp
 with_mib_generated_yang_dir
 enable_grpc
 enable_xml_child_each_wrapper
+enable_optmem_xml_body
 with_configfile
 with_libxml2
 with_sigaction
@@ -1429,6 +1430,9 @@ Optional Features:
   --enable-grpc           Enable gRPC/gNMI northbound interface
   --enable-xml-child-each-wrapper
                           Enable xml_child_each wrapper
+  --enable-optmem-xml-body
+                          Fold body value into element struct (no CX_BODY
+                          child), default: no
 
 
 Optional Packages:
@@ -5914,7 +5918,7 @@ fi
    fi
 fi
 
-# In 7.8 native xml_child_each_wrapper is disabled by default which wastes one ptr in the xml struct
+# In 7.8 native xml-child-each-wrapper is disabled by default which wastes one ptr in the xml struct
 # but makes calls to xml_child_each keep their pre-7.8 performance
 # This can be enabled by --enable-xml-child-each-wrapper in which xml_child_each uses a wrapper to xml_child_iter
 # for memory footprint optimization, but make calls to xml_child_each slower
@@ -5940,6 +5944,32 @@ if test "${enable_xml_child_each_wrapper}" = "yes"; then
    XML_CHILD_EACH_WRAPPER=1
 
 printf "%s\n" "#define XML_CHILD_EACH_WRAPPER ${XML_CHILD_EACH_WRAPPER}" >>confdefs.h
+
+fi
+
+# Fold CX_BODY child into element struct field x_bodyval for memory optimization
+# This can be enabled by --enable-optmem-xml-body; once migration is complete it will be the default
+# Check whether --enable-optmem-xml-body was given.
+if test ${enable_optmem_xml_body+y}
+then :
+  enableval=$enable_optmem_xml_body;
+   if test "$enableval" = no; then
+      enable_optmem_xml_body=no
+   else
+      enable_optmem_xml_body=yes
+   fi
+
+else $as_nop
+   enable_optmem_xml_body=no
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: optmem-xml-body is: ${enable_optmem_xml_body}" >&5
+printf "%s\n" "optmem-xml-body is: ${enable_optmem_xml_body}" >&6; }
+
+if test "${enable_optmem_xml_body}" = "yes"; then
+   OPTMEM_XML_BODY=1
+
+printf "%s\n" "#define OPTMEM_XML_BODY ${OPTMEM_XML_BODY}" >>confdefs.h
 
 fi
 
