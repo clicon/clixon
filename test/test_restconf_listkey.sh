@@ -68,6 +68,22 @@ module list{
         type string;
       }
    }
+   /* Regression for issue #679: inner list declared BEFORE key leaf. */
+   list outer {
+      key "id";
+      list inner {
+         key "name";
+         leaf name {
+            type string;
+         }
+         leaf value {
+            type string;
+         }
+      }
+      leaf id {
+         type string;
+      }
+   }
 }
 EOF
 
@@ -173,7 +189,7 @@ new "restconf PUT list-list just key ok"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=z/f -d '{"list:f":"z"}')" 0 "HTTP/$HVER 204"
 
 new "restconf PUT list-list just key just key wrong value (should fail)"
-expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=z/f -d '{"list:f":"wrong"}')" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/e=z/f -d '{"list:f":"wrong"}')" 0 "HTTP/$HVER 412" '{"ietf-restconf:errors":{"error":{"error-type":"protocol","error-tag":"operation-failed","error-severity":"error","error-message":"api-path keys do not match data keys"}}}'
 
 new "restconf PUT add list+leaf-list entry"
 expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c/a=x,y/f=u -d '{"list:f":"u"}')" 0 "HTTP/$HVER 201"
@@ -213,6 +229,23 @@ expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCP
 
 new "restconf GET all empty strings"
 expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:c)" 0 "HTTP/$HVER 200" '{"list:c":{"a":\[{"b":"","c":"","nonkey":"44"},{"b":"","c":"z","nonkey":"42"},{"b":",","c":",","nonkey":"45"},{"b":"x","c":"","nonkey":"43"}'
+
+# Regression tests for issue #679: PATCH/PUT on a nested list entry whose parent list
+# declares the nested list BEFORE the key leaf.  yang_order(inner)=0 < yang_order(id)=1,
+# so api_path2xml_mnt builds skeleton children [id(y_order=1), inner(y_order=0)] --
+# unsorted.  xml_search_binary then searches the wrong half and misses 'inner'.
+# Fix: xml_sort_recurse(xtop) in api_data_write() after api_path2xml_mnt() returns.
+new "issue679: PUT outer list entry"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:outer=a -d '{"list:outer":{"id":"a"}}')" 0 "HTTP/$HVER 201"
+
+new "issue679: PUT nested list entry (inner declared before key leaf)"
+expectpart "$(curl $CURLOPTS -X PUT -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:outer=a/inner=x -d '{"list:inner":{"name":"x","value":"orig"}}')" 0 "HTTP/$HVER 201"
+
+new "issue679: PATCH nested list entry"
+expectpart "$(curl $CURLOPTS -X PATCH -H "Content-Type: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:outer=a/inner=x -d '{"list:inner":{"name":"x","value":"patched"}}')" 0 "HTTP/$HVER 204"
+
+new "issue679: GET nested list entry after PATCH"
+expectpart "$(curl $CURLOPTS -X GET -H "Accept: application/yang-data+json" $RCPROTO://localhost/restconf/data/list:outer=a/inner=x)" 0 "HTTP/$HVER 200" '"value":"patched"'
 
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"

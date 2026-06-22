@@ -27,6 +27,10 @@ Expected: September 2026
 * XML child iteration: `xml_child_each()` replaced by `xml_child_iter()`
 * See the [C API Migration Guide](https://clixon-docs.readthedocs.io/en/latest/migration.html#id1) for full details and code examples
 
+### Corrected Bugs
+
+* Fixed: [RESTCONF PATCH/PUT requests for nested list entries stopped working](https://github.com/clicon/clixon/issues/679)
+
 ## 7.8.0
 29 May 2026
 

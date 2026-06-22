@@ -270,6 +270,10 @@ api_data_write(clixon_handle h,
             if (ys_real_module(ybot, &ymodapi) < 0)
                 goto done;
         }
+        /* Sort the path skeleton so that xpath_first() on xdata00 (its dup) can
+         * use binary search when resolving key predicates on nested lists */
+        if (xml_sort_recurse(xtop) < 0)
+            goto done;
     }
     if (api_path){
         /* Translate api-path to xpath: xpath (cbpath) and namespace context (nsc) */

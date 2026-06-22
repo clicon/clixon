@@ -1389,6 +1389,7 @@ api_path2xml(const char *api_path,
  * @retval     -1         Fatal error
  *
  * @note both retval -1 set clixon_err, retval 0 set xerr netconf xml
+ * @note xtop is not sorted on exit
  * @see api_path2xpath For api-path to xml xpath translation
  * @see api_path2xml
  */
