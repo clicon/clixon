@@ -139,6 +139,11 @@ install:	$(APPL)
 	install -m 0755 $(INSTALLFLAGS) $(APPL) $(DESTDIR)$(sbindir)
 	install -d -m 0755 $(DESTDIR)$(datarootdir)/clixon/proto
 	install -m 0644 proto/gnmi.proto proto/gnmi_ext.proto $(DESTDIR)$(datarootdir)/clixon/proto
+	install -d -m 0755 $(DESTDIR)$(datarootdir)/clixon/proto/google/protobuf
+	install -m 0644 $(PROTO_INCDIR)/google/protobuf/any.proto \
+		$(PROTO_INCDIR)/google/protobuf/descriptor.proto \
+		$(PROTO_INCDIR)/google/protobuf/duration.proto \
+		$(DESTDIR)$(datarootdir)/clixon/proto/google/protobuf
 
 install-include:
 
@@ -146,6 +151,13 @@ uninstall:
 	rm -f $(DESTDIR)$(sbindir)/$(APPL)
 	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/gnmi.proto
 	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/gnmi_ext.proto
+	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/google/protobuf/any.proto
+	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/google/protobuf/descriptor.proto
+	rm -f $(DESTDIR)$(datarootdir)/clixon/proto/google/protobuf/duration.proto
+	rmdir --ignore-fail-on-non-empty \
+		$(DESTDIR)$(datarootdir)/clixon/proto/google/protobuf \
+		$(DESTDIR)$(datarootdir)/clixon/proto/google \
+		$(DESTDIR)$(datarootdir)/clixon/proto
 
 .SUFFIXES:
 .SUFFIXES: .c .o
