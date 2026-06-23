@@ -122,6 +122,7 @@ typedef struct restconf_conn {
     struct timeval        rc_t;         /* Timestamp of last read/write activity, used by callhome
                                            idle-timeout algorithm */
     int                   rc_event_stream;    /* Event notification stream socket (maybe in sd?) */
+    int                   rc_header_timer; /* HTTP/1 partial header timeout active, see #667 */
 } restconf_conn;
 
 /* Restconf per socket handle
