@@ -144,7 +144,7 @@ if [ $BE -ne 0 ]; then
     if [ $? -ne 0 ]; then
         err
     fi
-    new "start backend with validate debug: -s init -f $cfg"
+    new "start backend with validate debug: -s init -f $cfg -D validate -lf$LOGFILE"
     # Start with validate debug logging to file; DBG=validate enables CLIXON_DBG_VALIDATE
     DBG=validate start_backend -s init -f $cfg -l f$LOGFILE
 fi

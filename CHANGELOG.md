@@ -33,6 +33,7 @@ Expected: September 2026
 
 ### Corrected Bugs
 
+* Fixed: [YANG incremental validation of MUST failed when an entire top-level list entry is deleted](https://github.com/clicon/clixon/issues/681)
 * Fixed: [RESTCONF PATCH/PUT requests for nested list entries stopped working](https://github.com/clicon/clixon/issues/679)
 
 ## 7.8.0

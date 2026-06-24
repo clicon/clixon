@@ -155,9 +155,9 @@ find_target_equiv(cxobj *xsrc,
         path[depth++] = xp;
         xp = xml_parent(xp);
     }
-    if (depth == 0)
-        return NULL; /* xsrc is direct child of root */
-
+    if (depth == 0){
+        return xttop;  /* deleted node is a direct child of src root; flag target root */
+    }
     /* Walk the path top-down through the target tree */
     xt = xttop;
     for (j = depth - 1; j >= 0; j--){
