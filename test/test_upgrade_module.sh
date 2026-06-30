@@ -72,7 +72,6 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-
 # Create 5 startup files 1-5 according to the 5 cases above (columns in the matrix)
 # Argument:
 # 1: payload, eg whats in the config apart from modstate
@@ -158,7 +157,6 @@ EOF
 </${DATASTORE_TOP}>
 EOF
 }
-
 
 # Check statements in log
 # arg1: a statement to look for

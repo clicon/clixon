@@ -165,7 +165,6 @@ fi
 new "wait backend"
 wait_backend
 
-
 new "Spawn expect script to simulate two CLI sessions"
 # -d to debug matching info
 time sudo expect -f- "$cfg" $(whoami) <<'EOF'

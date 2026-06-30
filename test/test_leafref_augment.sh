@@ -130,7 +130,6 @@ module augment{
 }
 EOF
 
-
 new "test params: -f $cfg"
 
 if [ $BE -ne 0 ]; then

@@ -22,5 +22,3 @@ IPv6=true
 # This check is optional because some installs, such as vagrant make a non-systemd/direct
 # start
 NGINXCHECK=true
-
-

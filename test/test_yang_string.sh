@@ -72,7 +72,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "Get config"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><candidate/></source></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data>$CONFIG</data></rpc-reply>"
 
-
 if [ $BE -ne 0 ]; then     # Bring your own backend
     new "Kill backend"
     # Check if premature kill

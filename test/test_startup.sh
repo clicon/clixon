@@ -149,7 +149,6 @@ function testrun(){
     stop_backend -f $cfg
 } # testrun
 
-
 # The backend should fail with 255 and all db:s should be unaffected
 function testfail(){
     mode=$1

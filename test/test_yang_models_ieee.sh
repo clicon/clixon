@@ -9,7 +9,6 @@
 #        -      when "../ompe-mode = olt'";
 #        +      when "../ompe-mode = 'olt'";
 
-
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
 

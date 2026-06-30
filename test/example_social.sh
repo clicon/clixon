@@ -32,7 +32,6 @@ cat <<EOF > $fexample
      contact      "support@example.com";
      description  "Example Social Data Model.";
 
-
 //    revision YYYY-MM-DD {
     revision 2021-07-21 { // Clixon
        description
@@ -299,5 +298,3 @@ cat <<EOF > $fexample
      }
    }
 EOF
-
-

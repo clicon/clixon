@@ -117,7 +117,6 @@ EXAMPLENS="xmlns=\"http://example.com/ns/wdcc\""
 
 XML="<wd $EXAMPLENS><wdce>1500</wdce></wd>"
 
-
 db=startup
 if [ $db = startup ]; then
     sudo echo "<${DATASTORE_TOP}>$XML</${DATASTORE_TOP}>" > $dir/startup_db
@@ -178,7 +177,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 <wdc>1500</wdc><wdce>1500</wdce><wds>ok</wds>\
 </wd></data></rpc-reply>"
 
-
 new "rfc6243 3.2.  'trim' Retrieval Mode"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc $DEFAULTNS><get><filter type=\"subtree\"><wd $EXAMPLENS/></filter>\
@@ -209,7 +207,6 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
 "<rpc-reply $DEFAULTNS><data><wd $EXAMPLENS>\
 <wdce>1500</wdce><wds>ok</wds>\
 </wd></data></rpc-reply>"
-
 
 new "rfc8040 B.3.9. RESTONF with-defaults parameter = trim json"
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example:wd?with-defaults=trim)" \

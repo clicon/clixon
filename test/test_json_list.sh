@@ -70,7 +70,6 @@ new "test params: -y $fyang"
 
 testrun "top one leaf-list" '{"json:l1":[1]}' '<l1 xmlns="urn:example:clixon">1</l1>'
 
-
 #testrun "top two leaf-list" '{"json:l1":[1,2]}' '<l1 xmlns="urn:example:clixon">1</l1><l1 xmlns="urn:example:clixon">2</l1>'
 
 testrun "one leaf-list" '{"json:c":{"l1":[1]}}' '<c xmlns="urn:example:clixon"><l1>1</l1></c>'

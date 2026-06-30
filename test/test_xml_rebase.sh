@@ -179,7 +179,6 @@ EOF
 new "draft-ietf example reverse"
 testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" conflict
 
-
 # Session 1 edits the config by changing the descr of intf_one to San Fransisco
 cat <<EOF > $dir/x1
 <a xmlns="urn:example:example">
@@ -491,8 +490,6 @@ EOF
 
 new "Add separate leaf-list elements"
 testconflict $fyang "$dir/x0" "$dir/x1" "$dir/x2" ok
-
-
 
 rm -rf $dir
 

@@ -487,7 +487,6 @@ expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-\ *<y0 xmlns=\"urn:
 new "netconf discard"
 expecteof_netconf "$clixon_netconf -qef $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

@@ -267,7 +267,6 @@ expectpart "$(curl -u andy:bar $CURLOPTS -X PATCH $RCPROTO://localhost/restconf/
 new "GET check"
 expectpart "$(curl -u andy:bar $CURLOPTS -X GET $RCPROTO://localhost/restconf/data/example-system:system -H 'Accept: application/yang-data+xml')" 0 "HTTP/$HVER 200" '<system xmlns="http://example.com/ns/example-system"><extraleaf>something</extraleaf></system>'
 
-
 if [ $RC -ne 0 ]; then
     new "Kill restconf daemon"
     stop_restconf

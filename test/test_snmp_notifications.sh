@@ -140,7 +140,6 @@ function testexit(){
 new "SNMP tests"
 testinit
 
-
 new "Start snmptrapd and listen for traps - expect 2-3 notifications"
 ret=$(timeout 6s snmptrapd -f -Ot -Lo -F\"%#v\\n\")
 expect="DISMAN-EVENT-MIB::sysUpTimeInstance = [0-9]*, SNMPv2-MIB::snmpTrapOID.0 = OID: NET-SNMP-MIB::netSnmp.200.1, NET-SNMP-MIB::netSnmp.200.1.1 = STRING: \"fault\", NET-SNMP-MIB::netSnmp.200.1.2.1 = STRING: \"Ethernet0\", NET-SNMP-MIB::netSnmp.200.1.3 = STRING: \"major\""

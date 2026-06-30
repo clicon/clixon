@@ -10,7 +10,6 @@ fi
 APPNAME=example
 xml=example.xml
 
-
 cat <<EOF > $xml
 <table xmlns="urn:example:clixon">
    <parameter>

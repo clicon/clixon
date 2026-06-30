@@ -59,5 +59,3 @@ exit
 # Run script 
 #  CC=/usr/bin/afl-clang 
 sudo LD_PRELOAD="/usr/local/lib/desock.so" afl-fuzz -i input -o output -d -m $MEGS -- /usr/local/sbin/clixon_restconf -rf $cfg
-
-

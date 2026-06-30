@@ -104,7 +104,6 @@ show("Show a particular state of the system"){
 }
 EOF
 
-
 # Set value in one choice
 # Args:
 # 1:   config to set

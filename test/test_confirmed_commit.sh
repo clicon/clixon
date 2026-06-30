@@ -126,7 +126,6 @@ RUNNING_PATH="/usr/local/var/$APPNAME/running_db"
 ROLLBACK_PATH="/usr/local/var/$APPNAME/rollback_db"
 FAILSAFE_PATH="/usr/local/var/$APPNAME/failsafe_db"
 
-
 CONFIGB="<table xmlns=\"urn:example:clixon\"><parameter><name>eth0</name></parameter></table>"
 CONFIGC="<table xmlns=\"urn:example:clixon\"><parameter><name>eth1</name></parameter></table>"
 CONFIGCONLY="<parameter xmlns=\"urn:example:clixon\"><name>eth1</name></parameter>" # restcpnf

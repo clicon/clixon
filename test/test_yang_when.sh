@@ -253,7 +253,6 @@ module example {
 }
 EOF
 
-
 new "3. Check a top-level value as allowed value"
 
 new "test params: -f $cfg"

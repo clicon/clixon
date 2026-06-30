@@ -49,7 +49,6 @@ if [ ! ${LIBOPT} $dir/usr/local/lib/libclixon_backend${SUFFIX} ]; then
     fi
 fi
 
-
 new "Make DESTDIR install include"
 (cd ..; $make DESTDIR=$dir install-include)
 if [ $? -ne 0 ]; then

@@ -127,7 +127,6 @@ module clixon-example{
 }
 EOF
 
-
 cat <<EOF > $nacmfile
    <nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm">
      <enable-nacm>true</enable-nacm>

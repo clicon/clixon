@@ -174,7 +174,6 @@ cat <<EOF > $dir/compat-invalid.xml
 </${DATASTORE_TOP}>
 EOF
 
-
 # Create non-compat valid startup db
 # startup config XML with following (A obsolete, B OK, C lacking)
 # But XML is OK

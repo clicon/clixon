@@ -92,7 +92,6 @@ show("Show a particular state of the system"){
 }
 EOF
 
-
 # First file of mode does not have CLICON_PIPETREE, next have
 cat <<EOF > $clidir/before.cli
 CLICON_MODE="default";

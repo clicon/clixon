@@ -103,7 +103,6 @@ fi
 new "wait backend"
 wait_backend
 
-
 if [ $RC -ne 0 ]; then
     new "kill old restconf daemon"
     stop_restconf_pre

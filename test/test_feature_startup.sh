@@ -75,7 +75,6 @@ testrun()
     wait_backend
 }
 
-
 new "test params: -f $cfg"
 
 new "enable feature A"
@@ -98,5 +97,3 @@ rm -rf $dir
 
 new "endtest"
 endtest
-
-

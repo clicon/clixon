@@ -70,8 +70,6 @@ example("Example callback") {
       orig, cli_remove(); # Original
     }
 }
-
-
 EOF
 
 new "test params: -f $cfg"

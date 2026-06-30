@@ -121,7 +121,6 @@ EOF
 new "2a JSON Add a/a/k on top"
 expectpart "$($clixon_util_xml -Jvy $fyang -f $fjson)" 0 '^$'
 
-
 # Subtree with namespace
 cat <<EOF > $fjson
    {"match:a":{"k":43}}

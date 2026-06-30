@@ -543,7 +543,6 @@ expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon 
 
 # PART 3
 
-
 cat <<EOF > $dir/1.xpath
 /table/parameter[name='x']/name
 EOF

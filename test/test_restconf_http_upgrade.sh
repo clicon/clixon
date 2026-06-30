@@ -54,7 +54,6 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-
 # Restconf test routine with arguments:
 # 1. Enable http for http/2 (CLICON_RESTCONF_HTTP2_PLAIN)
 # 2. Expected http return value
@@ -85,8 +84,6 @@ function testrun()
         new "start restconf daemon -o CLICON_RESTCONF_HTTP2_PLAIN=${h2enable}"
         start_restconf -f $cfg -o CLICON_RESTCONF_HTTP2_PLAIN=${h2enable}
     fi
-
-
 
     if [ ${HAVE_LIBNGHTTP2} = false -a ${HAVE_HTTP1} = true ]; then    # http/1 only
 

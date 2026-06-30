@@ -47,5 +47,3 @@ else
     echo -ne "\e[0m"
     exit -1
 fi
-
-

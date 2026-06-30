@@ -81,7 +81,6 @@ RESTCONFIG=$(cat <<EOF
 EOF
 )
 
-
 # Clixon config
 cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">

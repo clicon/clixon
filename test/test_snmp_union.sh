@@ -153,7 +153,6 @@ OIDX="${ENTITY_OID}.1.3.2"
 # stat, value=12
 OIDY="${ENTITY_OID}.1.3.12"
 
-
 new "SNMP system tests"
 testinit
  

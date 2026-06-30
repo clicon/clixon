@@ -81,7 +81,6 @@ module clixon-augment {
 }
 EOF
 
-
 cat <<EOF > $clidir/ex.cli
 # Clixon example specification
 CLICON_MODE="example";

@@ -416,7 +416,6 @@ expectpart "$($snmpwalk IF-MIB::ifTable)" 0 "IF-MIB::ifIndex.1 = INTEGER: 1" \
            "IF-MIB::ifSpecific.1 = OID: SNMPv2-SMI::zeroDotZero" \
            "IF-MIB::ifSpecific.2 = OID: iso.2.3"
 
-
 # There is an intricate error in the return of this test that has to with validation of state data
 # clixon_snmp queries using xpath:
 #  if-mib:IF-MIB/if-mib:ifRcvAddressTable/if-mib:ifRcvAddressEntry[if-mib:ifIndex='1']
@@ -493,7 +492,6 @@ expectpart "$($snmpwalk $OID30)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
 
 testexit
 rm -rf $dir
-
 
 new "endtest"
 endtest

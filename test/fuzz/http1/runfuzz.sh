@@ -76,6 +76,3 @@ sudo afl-fuzz -i input -o output -d -m $MEGS -- /usr/local/sbin/clixon_restconf 
 
 # To continue existing
 #sudo afl-fuzz -i - -o output -d -m $MEGS -- /usr/local/sbin/clixon_restconf -rf $cfg
-
-
-

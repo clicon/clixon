@@ -236,6 +236,3 @@ rm -rf $dir
 
 new "endtest"
 endtest
-
-
-

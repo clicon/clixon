@@ -6,5 +6,3 @@ Content-Length: 91
 
 {"ietf-interfaces:interface":{"name":"eth/0/0","type":"clixon-example:eth","enabled":true}}
 
-
-

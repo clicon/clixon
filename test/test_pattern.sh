@@ -21,7 +21,6 @@ APPNAME=example
 cfg=$dir/pattern.xml
 fyang=$dir/pattern.yang
 
-
 regexlist="posix"
 if [ "${WITH_LIBXML2}" = yes ] ; then
     regexlist="$regexlist libxml2"

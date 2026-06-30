@@ -86,7 +86,6 @@ fi
 new "wait backend"
 wait_backend
 
-
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill
