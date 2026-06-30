@@ -24,7 +24,8 @@ Expected: September 2026
 ### Features
 
 * New: [NACM External Groups](https://github.com/clicon/clixon/issues/654)
-* All clixon parsers (XML, YANG, XPATH, JSON, etc) are now reentrant
+  See: https://clixon-docs.readthedocs.io/en/latest/netconf.html#external-groups
+* Reentrant (thread-safe) parsers: XML, YANG, XPATH, JSON, etc.
 
 ### API changes
 
