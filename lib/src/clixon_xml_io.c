@@ -1736,3 +1736,61 @@ clixon_xml_diff2cbuf(cbuf  *cb,
 {
     return xml_diff2cbuf(cb, x0, x1, 0, 1);
 }
+
+/* Print an XML representation of one edit in a YANG Patch into a cbuf.
+ *
+ * @param[in]  *cb    CLIgen buffer
+ * @param[in]  *xe    Edit XML subtree
+ * @retval      0     OK
+ * @retval     -1     Error
+ */
+int
+clixon_yangpatch2cbuf(cbuf            *cb,
+                      cxobj           *xe)
+{
+    int         retval = -1;
+    cxobj      *x;
+    const char *op;
+    const char *prefix;
+
+    if ((x = xml_find(xe, "target")) == NULL) {
+        goto done;
+    }
+    cprintf(cb, "%s\n", xml_body(x));
+
+    if ((x = xml_find(xe, "operation")) == NULL) {
+        goto done;
+    }
+    op = xml_body(x);
+    switch (op[0]) {
+    case 'c': /* create */
+        prefix = "+";
+        break;
+    case 'd': /* delete */
+        prefix = "-";
+        break;
+    case 'r': /* replace*/
+        if ((x = xml_find(xe, "source-value")) == NULL)
+            goto done;
+        if (clixon_xml2cbuf1(cb, x, 1, 1, "-", -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+            goto done;
+        prefix = "+";
+        break;
+    case 'm': /* move */
+        prefix = "~";
+        /* not currently supported */
+        goto done;
+    default:
+        goto done;
+    }
+    if ((x = xml_find(xe, "value")) == NULL)
+        goto done;
+    if (clixon_xml2cbuf1(cb, x, 1, 1, prefix, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+        goto done;
+
+     retval = 0;
+done:
+     clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "retval: %d\n", retval);
+     return retval;
+}
+

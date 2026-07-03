@@ -73,8 +73,8 @@ module clixon-example {
                 }
              }
          }
-      }
-   }
+     }
+  }
 }
 EOF
 
@@ -142,13 +142,16 @@ new "add d"
 expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter d value 98)" 0 "^$"
 
 new "check compare xml"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^+\ *<top xmlns=\"urn:example:clixon\">" --not-- "\-" "<data>"
+expectpart "$($clixon_cli -1 -f $cfg  show compare xml)" 0 "^--- running" "^+++ candidate" "^/clixon-example:top" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>"
 
 new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\-" data
 
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "check compare xml no-matches"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^==="
 
 new "check running"
 expectpart "$($clixon_cli -1 -f $cfg show config running)" 0 "^<top xmlns=\"urn:example:clixon\"><section><name>x</name><table><parameter><name>a</name><value>17</value></parameter><parameter><name>b</name><value>42</value></parameter><parameter><name>d</name><value>98</value></parameter></table></section></top>$"
@@ -166,8 +169,7 @@ new "check candidate"
 expectpart "$($clixon_cli -1 -f $cfg show config candidate)" 0 "^<top xmlns=\"urn:example:clixon\"><section><name>x</name><table><parameter><name>b</name><value>42</value></parameter><parameter><name>c</name><value>72</value></parameter><parameter><name>d</name><value>99</value></parameter></table></section></top>$"
 
 new "check compare xml b"
-echo "$clixon_cli -1 -f $cfg show compare xml"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "<table xmlns=\"urn:example:clixon\">" "^\-\ *<parameter>" "^+\ *<parameter>" "^\-\ *<name>a</name>" "^+\ *<name>c</name>" --not-- "^+\ *<name>a</name>" "^\-\ *<name>c</name>"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^/clixon-example:top/section=x/table/parameter=a" "^\-\ *<parameter xmlns=\"urn:example:clixon\">" "^\-\ *<name>a</name>" "^\-\ *<value>17</value>" "^\-\ *</parameter>" "^/clixon-example:top/section=x/table/parameter=c" "^\+\ *<parameter xmlns=\"urn:example:clixon\">" "^\+\ *<name>c</name>" "^\+\ *<value>72</value>" "^\+\ *</parameter>" "^/clixon-example:top/section=x/table/parameter=d/value" "\-\ *<value xmlns=\"urn:example:clixon\">98</value>" "^\+\ *<value xmlns=\"urn:example:clixon\">99</value>"
 
 new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\ *table {" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value \"98\";" "^+\ *value \"99\";"
@@ -213,10 +215,11 @@ new "add d12 97"
 expectpart "$($clixon_cli -1 -f $cfg set top section y multi parameter d1 d2 value 97)" 0 "^$"
 
 new "check compare multi xml"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^\-\ *<first>a1</first>" "^\-\ *<second>a2</second>" "^\-\ *<value>17</value>" "^\-\ *<value>18</value>" "^+\ *<first>c1</first>" "^+\ *<second>c2</second>" "^+\ *<value>72</value>" "^+\ *<value>73</value>" "^+\ *<value>97</value>" "^\-\ *<value>99</value>" --not-- "<value>98</value>"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^/clixon-example:top/section=y/multi/parameter=a1,a2" "^\-\ *<parameter xmlns=\"urn:example:clixon\">" "^\-\ *<first>a1</first>" "^\-\ *<second>a2</second>" "^\-\ *<value>17</value>" "^\-\ *<value>18</value>" "^\-\ *</parameter>" "^\/clixon-example:top/section=y/multi/parameter=c1,c2" "^\+\ *<parameter xmlns=\"urn:example:clixon\">" "^\+\ *<first>c1</first>" "^\+\ *<second>c2</second>" "^\+\ *<value>72</value>" "^\+\ *<value>73</value>" "^\+\ *</parameter>" "^\/clixon-example:top/section=y/multi/parameter=d1,d2/value=97" "^\+\ *<value xmlns=\"urn:example:clixon\">97</value>" "^/clixon-example:top/section=y/multi/parameter=d1,d2/value=99" "^\-\ *<value xmlns=\"urn:example:clixon\">99</value>"
 
 new "check compare multi text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\-\ *parameter a1 a2 {" "^\-\ *17" "^\-\ *18" "^+\ *parameter c1 c2 {" "^+\ *72" "^+\ *73" "^+\ *97" "^\-\ *99" "parameter d1 d2 {"  --not-- "parameter b1 b2 {"
+
 # XXX --not-- "^+\ *value \["
 
 # NYI: json, cli
