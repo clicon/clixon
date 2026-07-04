@@ -172,8 +172,9 @@ new "test params: -f $cfg"
 if [ $BE -ne 0 ]; then
     new "kill old backend"
     $clixon_backend -z -f $cfg >/dev/null 2>&1 || true
+
     new "start backend -s startup -f $cfg"
-    $clixon_backend -D $DBG -s startup -f $cfg
+    start_backend -s startup -f $cfg
     if [ $? -ne 0 ]; then
         err
     fi
@@ -194,10 +195,13 @@ expectpart "$($clixon_cli -1 -f $cfg show configuration 2>&1)" 0 \
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
-    $clixon_backend -z -f $cfg
-    if [ $? -ne 0 ]; then
-        err "kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
     fi
+    # kill backend
+    stop_backend -f $cfg
 fi
 
 rm -rf "$dir"

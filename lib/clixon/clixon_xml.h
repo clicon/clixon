@@ -310,6 +310,7 @@ int       xml_body_reset(cxobj *xn);
 char     *xml_find_type_value(cxobj *xn_parent, const char *prefix,
                               const char *name, enum cxobj_type type);
 cxobj    *xml_find_type(cxobj *xn_parent, const char *prefix, const char *name, enum cxobj_type type);
+cxobj    *xml_find_type_ns(cxobj *xn_parent, const char *name, const char *ns);
 char     *xml_find_value(cxobj *xn_parent, const char *name);
 char     *xml_find_body(cxobj *xn, const char *name);
 cxobj    *xml_find_body_obj(cxobj *xt, const char *name, const char *val);

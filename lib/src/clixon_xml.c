@@ -2352,6 +2352,43 @@ xml_find_type(cxobj          *xt,
     return NULL;
 }
 
+/*! Find child element matching resolved namespace URI and local name
+ *
+ * Like xml_find_type() but matches on resolved namespace URI rather than
+ * raw XML prefix, avoiding false hits when siblings share a local name
+ * but belong to different modules/namespaces.
+ * @param[in]   xt    xml tree node to search children of
+ * @param[in]   name  Element name
+ * @param[in]   ns    Namespace URI to match, or NULL for any namespace
+ * @retval      x     First matching child element
+ * @retval      NULL  No matching child found, or error in xml2ns
+ * @see xml_find_type
+ */
+cxobj *
+xml_find_type_ns(cxobj      *xt,
+                 const char *name,
+                 const char *ns)
+{
+    cxobj *x;
+    char  *xns = NULL;
+    int    ix = 0;
+
+    if (!is_element(xt))
+        return NULL;
+    while ((x = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
+        if (strcmp(name, xml_name(x)) != 0)
+            continue;
+        if (ns != NULL) {
+            if (xml2ns(x, xml_prefix(x), &xns) < 0)
+                return NULL;
+            if (xns == NULL || strcmp(ns, xns) != 0)
+                continue;
+        }
+        return x;
+    }
+    return NULL;
+}
+
 /*! Find and return the value of a sub xml node
  *
  * The value can be of an attribute or body.

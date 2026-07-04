@@ -571,6 +571,7 @@ xml_bind_yang0_opt(clixon_handle h,
     char      *name;
     yang_bind  ybc;
     char      *prefix;
+    char      *ns = NULL;    /* resolved namespace of xc */
     int        ix;
     int        ret;
 
@@ -613,19 +614,25 @@ xml_bind_yang0_opt(clixon_handle h,
     }
     ix = 0;
     while ((xc = xml_child_iter(xt, &ix, CX_ELMNT)) != NULL) {
-        /* It is xml2ns in populate_self_parent that needs improvement */
-        /* cache previous + prefix */
         name = xml_name(xc);
         prefix = xml_prefix(xc);
+        /* cache previous child by name+prefix for list-element optimization */
         if (yc0 != NULL &&
             clicon_strcmp(name0, name) == 0 &&
             clicon_strcmp(prefix0, prefix) == 0){
             if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xc0, jsonenc, skip_mnt, xerr)) < 0)
                 goto done;
         }
-        else if (xsibling &&
-                 (xs = xml_find_type(xsibling, prefix, name, CX_ELMNT)) != NULL){
-            if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xs, jsonenc, skip_mnt, xerr)) < 0)
+        else if (xsibling) {
+            /* Resolve namespace to find the right sibling child when multiple
+             * children share the same local name but differ in namespace */
+            if (xml2ns(xc, prefix, &ns) < 0)
+                goto done;
+            if ((xs = xml_find_type_ns(xsibling, name, ns)) != NULL){
+                if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, xs, jsonenc, skip_mnt, xerr)) < 0)
+                    goto done;
+            }
+            else if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, NULL, jsonenc, skip_mnt, xerr)) < 0)
                 goto done;
         }
         else if ((ret = xml_bind_yang0_opt(h, xc, ybc, yspec, NULL, jsonenc, skip_mnt, xerr)) < 0)
