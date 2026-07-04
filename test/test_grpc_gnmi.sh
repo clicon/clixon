@@ -509,6 +509,42 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
     73 "FailedPrecondition"
 
 # -------------------------------------------------------------------
+# gnmi_name_valid() rejection tests
+# Element and key names become XML tag names and XPath node names;
+# characters outside [A-Za-z0-9_.-] must be rejected to prevent injection.
+# -------------------------------------------------------------------
+
+new "gNMI Get: element name with XML injection char '<' — expect InvalidArgument"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"path":[{"elem":[{"name":"example:val<bad>"}]}],"type":"ALL","encoding":"ASCII"}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
+    67 "InvalidArgument"
+
+new "gNMI Set: element name with XPath injection char single-quote — expect InvalidArgument"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d "{\"update\":[{\"path\":{\"elem\":[{\"name\":\"example:val'bad\"}]},\"val\":{\"string_val\":\"x\"}}]}" \
+    localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
+    67 "InvalidArgument"
+
+new "gNMI Get: element name with path separator '/' — expect InvalidArgument"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"path":[{"elem":[{"name":"example:val/bad"}]}],"type":"ALL","encoding":"ASCII"}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
+    67 "InvalidArgument"
+
+new "gNMI Get: key name with XML injection char '<' — expect InvalidArgument"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"path":[{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"na<me":"eth0"}}]}],"type":"ALL","encoding":"ASCII"}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
+    67 "InvalidArgument"
+
+new "gNMI Get: key value with single-quote (XPath injection) — expect InvalidArgument"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d "{\"path\":[{\"elem\":[{\"name\":\"network\"},{\"name\":\"interfaces\"},{\"name\":\"interface\",\"key\":{\"name\":\"eth'0\"}}]}],\"type\":\"ALL\",\"encoding\":\"ASCII\"}" \
+    localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
+    67 "InvalidArgument"
+
+# -------------------------------------------------------------------
 # DataType (type) filter tests: ALL / CONFIG / STATE
 # -------------------------------------------------------------------
 

@@ -239,6 +239,34 @@ gnmi_find_namespace(clixon_handle h,
     return NULL;
 }
 
+/*! Validate a gNMI-supplied element/key name is a safe identifier
+ *
+ * gNMI path element and key names become XML element/tag names and XPath node
+ * names; these cannot be escaped, so reject any name containing characters
+ * outside a conservative YANG-identifier set (alphanumeric, '_', '-', '.') to
+ * prevent XML/XPath structure injection.
+ * @param[in]  name  Candidate name
+ * @retval     1     Valid
+ * @retval     0     Invalid (NULL, empty, or illegal character)
+ */
+static int
+gnmi_name_valid(const char *name)
+{
+    const char *p;
+
+    if (name == NULL || *name == '\0')
+        return 0;
+    for (p = name; *p; p++){
+        if ((*p >= 'A' && *p <= 'Z') ||
+            (*p >= 'a' && *p <= 'z') ||
+            (*p >= '0' && *p <= '9') ||
+            *p == '_' || *p == '-' || *p == '.')
+            continue;
+        return 0;
+    }
+    return 1;
+}
+
 /*! Resolve the namespace and local name for a gNMI path element
  *
  * gNMI uses YANG module-qualified names ("module:localname") to identify
@@ -372,18 +400,20 @@ gnmi_find_yparent(clixon_handle h,
  * registers each distinct namespace with a unique prefix, then issues
  * clicon_rpc_get against the running datastore.
  *
- * @param[in]  h        Clixon handle
- * @param[in]  gpath    gNMI Path to query (may be NULL)
- * @param[in]  content  CONTENT_ALL, CONTENT_CONFIG, or CONTENT_NONCONFIG
- * @param[out] xretp    XML result tree; caller must xml_free()
- * @retval     0        OK
- * @retval    -1        Error
+ * @param[in]  h           Clixon handle
+ * @param[in]  gpath       gNMI Path to query (may be NULL)
+ * @param[in]  content     CONTENT_ALL, CONTENT_CONFIG, or CONTENT_NONCONFIG
+ * @param[out] xretp       XML result tree; caller must xml_free()
+ * @param[out] grpc_status gRPC status code on error
+ * @retval     0           OK
+ * @retval    -1           Error
  */
 static int
 gnmi_get_one_path(clixon_handle h,
                   Gnmi__Path   *gpath,
                   int           content,
-                  cxobj       **xretp)
+                  cxobj       **xretp,
+                  int          *grpc_status)
 {
     int                       retval = -1;
     cvec                     *nsc = NULL;
@@ -401,6 +431,8 @@ gnmi_get_one_path(clixon_handle h,
     const char               *ens;
     const char               *local;
     char                     *pfx;
+
+    *grpc_status = GRPC_INTERNAL;
 
     if ((xpathcb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -440,9 +472,26 @@ gnmi_get_one_path(clixon_handle h,
             }
             pfx = NULL;
             xml_nsctx_get_prefix(nsc, ens, &pfx);
+            if (!gnmi_name_valid(local)){
+                clixon_err(OE_XML, EINVAL, "Invalid gNMI element name in path");
+                *grpc_status = GRPC_INVALID_ARGUMENT;
+                goto done;
+            }
             cprintf(xpathcb, "/%s:%s", pfx, local);
             for (nk = 0; nk < elem->n_key; nk++){
                 ke = elem->key[nk];
+                if (!gnmi_name_valid(ke->key)){
+                    clixon_err(OE_XML, EINVAL, "Invalid gNMI key name in path");
+                    *grpc_status = GRPC_INVALID_ARGUMENT;
+                    goto done;
+                }
+                /* XPath 1.0 single-quoted literals cannot escape a quote, so
+                 * reject key values containing one (prevents XPath injection) */
+                if (ke->value != NULL && strchr(ke->value, '\'') != NULL){
+                    clixon_err(OE_XML, EINVAL, "Invalid gNMI key value: contains quote");
+                    *grpc_status = GRPC_INVALID_ARGUMENT;
+                    goto done;
+                }
                 cprintf(xpathcb, "[%s:%s='%s']", pfx, ke->key, ke->value);
             }
         }
@@ -551,7 +600,7 @@ gnmi_get(clixon_handle  h,
             xml_free(xret);
             xret = NULL;
         }
-        if (gnmi_get_one_path(h, req->path[i], content, &xret) < 0)
+        if (gnmi_get_one_path(h, req->path[i], content, &xret, grpc_status) < 0)
             goto done;
 
         /* Build JSON from the returned XML subtree */
@@ -743,6 +792,7 @@ gnmi_extract_value_string(Gnmi__TypedValue *tv)
  * @param[in]  value  Leaf value string, or NULL for delete/container
  * @param[in]  op     Operation (OP_MERGE, OP_REPLACE, OP_REMOVE)
  * @param[in]  cb     Output buffer to append to
+ * @param[out] grpc_status  gRPC status code on error
  * @retval     0      OK
  * @retval    -1      Error
  */
@@ -751,7 +801,8 @@ gnmi_path_to_xml(clixon_handle       h,
                  Gnmi__Path         *path,
                  const char         *value,
                  enum operation_type op,
-                 cbuf               *cb)
+                 cbuf               *cb,
+                 int                *grpc_status)
 {
     const char             *ns = NULL;
     const char             *opstr = NULL;
@@ -786,6 +837,12 @@ gnmi_path_to_xml(clixon_handle       h,
         }
         if (ns == NULL)
             ns = ens;
+
+        if (!gnmi_name_valid(local)){
+            clixon_err(OE_XML, EINVAL, "Invalid gNMI element name in path");
+            *grpc_status = GRPC_INVALID_ARGUMENT;
+            return -1;
+        }
 
         /* nc:operation goes on the innermost (last) element only, so that
          * intermediate containers are not themselves deleted/replaced. */
@@ -822,12 +879,21 @@ gnmi_path_to_xml(clixon_handle       h,
         }
         for (nk = 0; nk < elem->n_key; nk++){
             ke = elem->key[nk];
-            cprintf(cb, "<%s>%s</%s>", ke->key, ke->value, ke->key);
+            if (!gnmi_name_valid(ke->key)){
+                clixon_err(OE_XML, EINVAL, "Invalid gNMI key name in path");
+                *grpc_status = GRPC_INVALID_ARGUMENT;
+                return -1;
+            }
+            cprintf(cb, "<%s>", ke->key);
+            if (xml_chardata_cbuf_append(cb, 0, ke->value) < 0)
+                return -1;
+            cprintf(cb, "</%s>", ke->key);
         }
     }
     /* Leaf value inside innermost element */
     if (value != NULL)
-        cprintf(cb, "%s", value);
+        if (xml_chardata_cbuf_append(cb, 0, value) < 0)
+            return -1;
     /* Close all elements in reverse order */
     for (j = path->n_elem; j > 0; j--){
         gnmi_resolve_elem_ns(h, path->elem[j-1]->name, NULL, NULL, &local);
@@ -944,7 +1010,7 @@ gnmi_set(clixon_handle  h,
     for (i = 0; i < req->n_delete_; i++){
         dpath = req->delete_[i];
         cbuf_reset(xmlcb);
-        if (gnmi_path_to_xml(h, dpath, NULL, OP_REMOVE, xmlcb) < 0)
+        if (gnmi_path_to_xml(h, dpath, NULL, OP_REMOVE, xmlcb, grpc_status) < 0)
             goto discard;
         if (gnmi_edit_candidate(h, xmlcb) < 0)
             goto discard;
@@ -967,7 +1033,7 @@ gnmi_set(clixon_handle  h,
         if ((val = gnmi_extract_value_string(upd->val)) == NULL)
             continue;
         cbuf_reset(xmlcb);
-        if (gnmi_path_to_xml(h, upd->path, val, OP_REPLACE, xmlcb) < 0){
+        if (gnmi_path_to_xml(h, upd->path, val, OP_REPLACE, xmlcb, grpc_status) < 0){
             free(val); goto discard;
         }
         free(val);
@@ -992,7 +1058,7 @@ gnmi_set(clixon_handle  h,
         if ((val = gnmi_extract_value_string(upd->val)) == NULL)
             continue;
         cbuf_reset(xmlcb);
-        if (gnmi_path_to_xml(h, upd->path, val, OP_MERGE, xmlcb) < 0){
+        if (gnmi_path_to_xml(h, upd->path, val, OP_MERGE, xmlcb, grpc_status) < 0){
             free(val); goto discard;
         }
         free(val);
@@ -1173,7 +1239,7 @@ gnmi_subscribe(clixon_handle  h,
             xret = NULL;
         }
         if (gnmi_get_one_path(h, sublist->subscription[i]->path,
-                              CONTENT_ALL, &xret) < 0)
+                              CONTENT_ALL, &xret, grpc_status) < 0)
             goto done;
 
         if ((jsoncb = cbuf_new()) == NULL){

@@ -40,6 +40,13 @@
 /* gRPC Length-Prefixed-Message prefix size: 1B compressed flag + 4B length */
 #define GRPC_PREFIX_LEN 5
 
+/* Maximum accepted gRPC request body size in bytes (DoS protection).
+ * Bounds in-memory growth of a single request stream; larger requests are
+ * rejected with a stream reset. */
+#ifndef GRPC_REQUEST_BODY_MAX
+#define GRPC_REQUEST_BODY_MAX (16*1024*1024)
+#endif
+
 /* gRPC status codes (https://grpc.github.io/grpc/core/md_doc_statuscodes.html) */
 #define GRPC_OK                  0
 #define GRPC_CANCELLED           1

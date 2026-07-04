@@ -258,6 +258,11 @@ on_data_chunk_cb(nghttp2_session *session,
     if ((gs = grpc_stream_get(gc, stream_id)) == NULL)
         return NGHTTP2_ERR_CALLBACK_FAILURE;
     newlen = gs->gs_bodylen + len;
+    if (newlen > GRPC_REQUEST_BODY_MAX){
+        clixon_log(gc->gc_h, LOG_WARNING, "gRPC request body exceeds %d bytes, resetting stream",
+                   GRPC_REQUEST_BODY_MAX);
+        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE; /* reset stream */
+    }
     if (newlen > gs->gs_bodyalloc){
         if ((nb = realloc(gs->gs_body, newlen + 256)) == NULL){
             clixon_err(OE_UNIX, errno, "realloc");
@@ -745,7 +750,11 @@ grpc_listen_init(clixon_handle h,
     setsockopt(ss, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
     memset(&sin, 0, sizeof sin);
     sin.sin_family      = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
+    /* Bind to loopback only: the gNMI listener currently has NO TLS and NO
+     * authentication (see README "Remaining: TLS"). Exposing it on all
+     * interfaces would allow unauthenticated remote configuration read/write.
+     * Restrict to localhost until transport security is implemented. */
+    sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     sin.sin_port        = htons(port);
     if (bind(ss, (struct sockaddr *)&sin, sizeof sin) < 0){
         clixon_err(OE_UNIX, errno, "bind port %u", port);
@@ -757,7 +766,8 @@ grpc_listen_init(clixon_handle h,
     }
     if (clixon_event_reg_fd(ss, grpc_accept_cb, h, "grpc server") < 0)
         goto done;
-    clixon_log(h, LOG_NOTICE, "gRPC listening on port %u", port);
+    clixon_log(h, LOG_WARNING, "gRPC/gNMI listening on 127.0.0.1:%u WITHOUT TLS or "
+               "authentication; bound to loopback only", port);
     retval = 0;
  done:
     if (retval < 0 && ss >= 0)
