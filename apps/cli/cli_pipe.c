@@ -450,6 +450,13 @@ pipe_generic(clixon_handle h,
     }
     if (script == NULL || strlen(script) == 0)
         goto ok;
+    /* Jail to CLICON_CLI_PIPE_DIR: script must be a plain filename, no path
+     * separators, so it cannot traverse out of the dir (eg ../../bin/sh).
+     * Prevents restricted-CLI escape via arbitrary executable execution. */
+    if (strchr(script, '/') != NULL){
+        clixon_err(OE_PLUGIN, EINVAL, "Invalid pipe script '%s': must not contain '/'", script);
+        goto done;
+    }
     if ((dir = clicon_option_str(h, "CLICON_CLI_PIPE_DIR")) == NULL){
         clixon_err(OE_UNIX, 0, "CLICON_CLI_PIPE_DIR not set");
         goto done;

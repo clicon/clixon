@@ -139,11 +139,12 @@ cli_history_save(clixon_handle h)
     char     *filename;
     FILE     *f = NULL;
     wordexp_t result = {0,}; /* for tilde expansion */
+    int       ret;
 
     if ((filename = clicon_option_str(h, "CLICON_CLI_HIST_FILE")) == NULL)
         goto ok; /* ignore */
-    if (wordexp(filename, &result, WRDE_NOCMD) < 0){
-        clixon_err(OE_UNIX, errno, "wordexp");
+    if ((ret = wordexp(filename, &result, WRDE_NOCMD)) != 0){
+        clixon_err(OE_UNIX, errno, "wordexp(%s) %d", filename, ret);
         goto done;
     }
     if ((f = fopen(result.we_wordv[0], "w+")) == NULL){

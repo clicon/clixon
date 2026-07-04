@@ -254,6 +254,18 @@ expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| generic fi
 new "generic pipe: last"
 expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| generic last.sh)" 0 "^</table>$" --not-- parameter
 
+# Security: pipe_generic must jail to $pipedir. A script name containing a path
+# separator (eg ../escape.sh) must be rejected, not executed — otherwise a
+# restricted CLI could run arbitrary binaries outside the jail.
+cat <<EOF > $dir/escape.sh
+#!/usr/bin/env bash
+echo ESCAPED-JAIL
+EOF
+chmod 755 $dir/escape.sh
+
+new "generic pipe: path traversal ../escape.sh must be rejected (jail)"
+expectpart "$($clixon_cli -1 -m $mode -f $cfg show explicit config \| generic ../escape.sh 2>&1)" 255 --not-- "ESCAPED-JAIL"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

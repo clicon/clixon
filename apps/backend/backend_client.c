@@ -1870,6 +1870,7 @@ from_client_msg(clixon_handle h,
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xnacm){
         xml_free(xnacm);
+        xnacm = NULL;
         if (clicon_nacm_cache_set(h, NULL) < 0)
             goto done;
     }

@@ -93,6 +93,19 @@ EOF
 # Create a soft link from inside to outside
 ln -s $dir/outside.html $dir/www/data/inside.html
 
+# Sibling file sharing the web-root prefix string (www vs wwwsecret.html).
+# A symlink inside the data dir points out to it: realpath() follows the link
+# out of the root, but the resolved path still shares the leading prefix string
+# "..../www", which the old strncmp boundary check failed to reject.
+cat <<EOF > $dir/wwwsecret.html
+<!DOCTYPE html>
+<html><head><title>Secret</title></head>
+<body><h1>Secret!</h1>
+<p>If you see this page, you escaped the web root via prefix confusion</p>
+</body></html>
+EOF
+ln -s $dir/wwwsecret.html $dir/www/data/secret.html
+
 # Disable read access
 cat <<EOF > $dir/www/data/noread.html
 <!DOCTYPE html>
@@ -258,6 +271,9 @@ TP/$HVER 200" "Content-Type: text/html" "<title>Welcome to Clixon!</title>"
 
         new "WWW get http soft link"
         expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/inside.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Dont access this</title>"
+
+        new "WWW get http soft link prefix confusion (sibling sharing root prefix)"
+        expectpart "$(curl $CURLOPTS -X GET -H 'Accept: text/html' $proto://localhost/data/secret.html)" 0 "HTTP/$HVER 403" "Content-Type: text/html" "<title>403 Forbidden</title>" --not-- "<title>Secret</title>"
         
         # Two cases where the privileges test is not run:
         # 1) Docker in alpine for some reason
