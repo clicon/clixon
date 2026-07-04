@@ -47,6 +47,7 @@
  * @see cv_flag
  */
 #define V_UNSET   0x10  /* Used by XML code to denote a value is not default */
+#define V_FLAG    0x20  /* General purpose, eg http1 parser */
 
 /*
  * Yang flags used in

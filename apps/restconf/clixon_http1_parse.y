@@ -69,6 +69,10 @@
 %type <string> field_vchars
 %type <string> field_values
 
+%destructor { free($$); } TOKEN PCHARS absolute_path
+%destructor { free($$); } VCHARS field_vchars field_values
+%destructor { cbuf_free($$); } absolute_paths absolute_paths1
+
 %lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
 %parse-param   {void *_hy}             /* passed to yyparse() and yyerror() */
 %parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */
@@ -108,9 +112,6 @@ typedef void *yyscan_t;
 #include <cligen/cligen.h>
 #include <clixon/clixon.h>
 
-#include "restconf_lib.h"
-#include "restconf_handle.h"
-#include "restconf_native.h"
 #include "clixon_http1_parse.h"
 #include "banned.h"
 
@@ -160,14 +161,9 @@ http1_parse_query(clixon_http1_yacc *hy,
                   char              *query)
 {
     int                   retval = -1;
-    restconf_stream_data *sd = NULL;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s: ?%s ", __func__, query);
-    if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
-        clixon_err(OE_RESTCONF, 0, "stream 0 not found");
-        goto done;
-    }
-    if (uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)
+    if (uri_str2cvec(query, '&', '=', 1, &hy->hy_qvec) < 0)
         goto done;
     retval = 0;
  done:
@@ -179,14 +175,9 @@ http1_body(clixon_http1_yacc *hy,
            char              *body)
 {
     int                   retval = -1;
-    restconf_stream_data *sd = NULL;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s ", __func__, body);
-    if ((sd = restconf_stream_find(hy->hy_rc, 0)) == NULL){
-        clixon_err(OE_RESTCONF, 0, "stream 0 not found");
-        goto done;
-    }
-    if (cbuf_append_buf(sd->sd_indata, body, strlen(body)) < 0){
+    if (cbuf_append_buf(hy->hy_indata, body, strlen(body)) < 0){
         clixon_err(OE_RESTCONF, errno, "cbuf_append_buf");
         goto done;
     }
@@ -204,8 +195,14 @@ http1_parse_header_field(clixon_http1_yacc *hy,
 {
     int retval = -1;
 
-    if (restconf_convert_hdr(hy->hy_h, name, field) < 0)
+    cg_var *cv;
+    if ((cv = cvec_add(hy->hy_header, CGV_STRING)) == NULL)
         goto done;
+    if (name)
+        cv_name_set(cv, name);
+    if (field)
+        cv_string_set(cv, field);
+    cv_flag_set(cv, V_FLAG);
     retval = 0;
  done:
     return retval;
@@ -257,8 +254,10 @@ The request methods defined by this specification can be found in
 */
 method        : TOKEN
                   {
-                      if (restconf_param_set(_HY->hy_h, "REQUEST_METHOD", $1) < 0)
+                      if (cvec_add_string(_HY->hy_header, "REQUEST_METHOD", $1) < 0){
+                          free($1);
                           YYABORT;
+                      }
                       free($1);
                       _PARSE_DEBUG("method -> TOKEN");
                   }
@@ -271,19 +270,19 @@ method        : TOKEN
  */
 request_target : absolute_paths1
                  {
-                     if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
+                     if (cvec_add_string(_HY->hy_header, "REQUEST_URI", cbuf_get($1)) < 0)
                           YYABORT;
                       cbuf_free($1);
                      _PARSE_DEBUG("request-target -> absolute-paths1");
                  }
                 | absolute_paths1 QMARK QUERY
                   {
-                      if (restconf_param_set(_HY->hy_h, "REQUEST_URI", cbuf_get($1)) < 0)
+                      if (cvec_add_string(_HY->hy_header, "REQUEST_URI", cbuf_get($1)) < 0)
                           YYABORT;
                       cbuf_free($1);
-                      if (http1_parse_query(_HY, $3) < 0)
+                      if (http1_parse_query(_HY, $3) < 0){
                           YYABORT;
-                      free($3);
+                      }
                       _PARSE_DEBUG("request-target -> absolute-paths1 ? query");
                   }
 ;
@@ -303,16 +302,20 @@ absolute_paths : absolute_paths absolute_path
                  {
                      $$ = $1;
                      cprintf($$, "/");
-                     if ($2)
+                     if ($2){
                          cprintf($$, "%s", $2);
+                         free($2);
+                     }
                      _PARSE_DEBUG("absolute-paths -> absolute-paths absolute-path");
                   }
                | absolute_path
                  {
                      if (($$ = cbuf_new()) == NULL){ YYABORT;}
                      cprintf($$, "/");
-                     if ($1)
+                     if ($1){
                          cprintf($$, "%s", $1);
+                         free($1);
+                     }
                      _PARSE_DEBUG("absolute-paths -> absolute-path");
                  }
 ;
@@ -340,8 +343,8 @@ absolute_path   : SLASH PCHARS
 HTTP_version    : HTTP SLASH DIGIT DOT DIGIT
                    {
                        /* make sanity check later */
-                       _HY->hy_rc->rc_proto_d1 = $3;
-                       _HY->hy_rc->rc_proto_d2 = $5;
+                       _HY->hy_proto_d1 = $3;
+                       _HY->hy_proto_d2 = $5;
                        clixon_debug(CLIXON_DBG_DEFAULT, "clixon_http1_parse: http/%d.%d", $3, $5);
                        _PARSE_DEBUG("HTTP-version -> HTTP / DIGIT . DIGIT");
                    }
@@ -359,8 +362,10 @@ header_fields : header_fields header_field CRLF
 header_field  : TOKEN COLON ows field_values ows
                  {
                      if ($4){
-                         if (http1_parse_header_field(_HY, $1, $4) < 0)
+                         if (http1_parse_header_field(_HY, $1, $4) < 0){
+                             free($1); free($4);
                              YYABORT;
+                         }
                          free($4);
                      }
                      free($1);

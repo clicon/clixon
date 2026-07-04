@@ -669,6 +669,8 @@ on_data_chunk_recv_callback(nghttp2_session *session,
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%d", stream_id);
     if ((sd = restconf_stream_find(rc, stream_id)) != NULL){
+        if (cbuf_len(sd->sd_indata) + len > RESTCONF_REQUEST_BODY_MAX)
+            return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE; /* reset stream */
         cbuf_append_buf(sd->sd_indata, (void*)data, len);
     }
     return 0;

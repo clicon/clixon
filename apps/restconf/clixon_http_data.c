@@ -159,6 +159,30 @@ api_http_data_err(clixon_handle  h,
     return retval;
 }
 
+/*! Check that canonical path is contained within canonical prefix
+ *
+ * Requires a path-separator (or string-end) boundary right after the prefix to
+ * avoid prefix-confusion, eg prefix "/var/www" must not match "/var/www-secret".
+ * @param[in]  prefix  Canonical prefix (from realpath)
+ * @param[in]  path    Canonical path to test (from realpath)
+ * @retval     1       path is within prefix
+ * @retval     0       path is outside prefix
+ */
+static int
+path_within_prefix(const char *prefix,
+                   const char *path)
+{
+    size_t plen = strlen(prefix);
+
+    if (strncmp(prefix, path, plen) != 0)
+        return 0;
+    /* Boundary must be end-of-string or '/'. If prefix already ends in '/'
+     * (eg root "/"), the boundary is satisfied. */
+    if (prefix[plen-1] != '/' && path[plen] != '\0' && path[plen] != '/')
+        return 0;
+    return 1;
+}
+
 /*! Check validity of path, may only be regular dir or file
  *
  * No .., soft link, ~, etc
@@ -235,7 +259,7 @@ http_data_check_file_path(clixon_handle h,
         code = 404;
         goto invalid;
     }
-    if (strncmp(resolved_prefix, resolved, strlen(resolved_prefix)) != 0){
+    if (!path_within_prefix(resolved_prefix, resolved)){
         clixon_debug(CLIXON_DBG_RESTCONF, "Error: resolved path %s escapes prefix %s", resolved, resolved_prefix);
         code = 403;
         goto invalid;
@@ -257,7 +281,7 @@ http_data_check_file_path(clixon_handle h,
             code = 404;
             goto invalid;
         }
-        if (strncmp(resolved_prefix, resolved, strlen(resolved_prefix)) != 0){
+        if (!path_within_prefix(resolved_prefix, resolved)){
             clixon_debug(CLIXON_DBG_RESTCONF, "Error: redirect path %s escapes prefix %s", resolved, resolved_prefix);
             code = 403;
             goto invalid;

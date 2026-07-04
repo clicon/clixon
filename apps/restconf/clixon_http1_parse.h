@@ -44,14 +44,20 @@
 typedef void *yyscan_t;
 #endif
 
+/* Encapsulate state of parser making it restconf independent and reentrant */
 struct clixon_http1_yacc {
     const char    *hy_name;         /* Name of syntax (for error string) */
     clixon_handle  hy_h;            /* Clixon handle */
-    restconf_conn *hy_rc;          /* Connection handle */
     int            hy_linenum;      /* Number of \n in parsed buffer */
+    int            hy_proto_d1;     /* parsed version digit 1 */
+    int            hy_proto_d2;     /* parsed version digit 2 */
     char          *hy_parse_string; /* original (copy of) parse string */
     void          *hy_lexbuf;       /* internal parse buffer from lex */
     yyscan_t       hy_scanner;      /* reentrant flex scanner handle */
+    cvec          *hy_header;       /* Header fields */
+    cvec          *hy_qvec;         /* Query fields by ref */
+    cbuf          *hy_indata;       /* Indata cbuf by ref */
+
 };
 typedef struct clixon_http1_yacc clixon_http1_yacc;
 

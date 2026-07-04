@@ -530,6 +530,36 @@ native_send_badrequest(clixon_handle    h,
 }
 
 #ifdef HAVE_HTTP1
+/*! Send a 413 Payload Too Large reply and close
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  rc   Restconf connection, note may be closed in this
+ * @retval     1    OK
+ * @retval     0    OK, but socket write returned error, caller should close rc
+ * @retval    -1    Error
+ */
+static int
+native_send_payload_too_large(clixon_handle  h,
+                              restconf_conn *rc)
+{
+    int   retval = -1;
+    cbuf *cb = NULL;
+
+    clixon_debug(CLIXON_DBG_RESTCONF, "");
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\n");
+    cprintf(cb, "Content-Length: 0\r\n");
+    cprintf(cb, "\r\n");
+    retval = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, __func__);
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return retval;
+}
+
 /*! Clear all input stream data if input is interrupted for some reason
  *
  * Only used by HTTP/1.
@@ -702,6 +732,18 @@ restconf_http1_process(restconf_conn *rc,
         if (cbuf_append_buf(sd->sd_indata, buf, n) < 0){
             clixon_err(OE_UNIX, errno, "cbuf_append");
             goto done;
+        }
+        if (cbuf_len(sd->sd_indata) > RESTCONF_REQUEST_BODY_MAX){
+            clixon_log(h, LOG_WARNING, "restconf request body exceeds %d bytes",
+                       RESTCONF_REQUEST_BODY_MAX);
+            if (native_send_payload_too_large(h, rc) < 0)
+                goto done;
+            if (http1_native_clear_input(h, sd) < 0)
+                goto done;
+            if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
+                goto done;
+            rc = NULL;
+            goto closed;
         }
     }
     else {

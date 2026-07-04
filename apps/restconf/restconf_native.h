@@ -64,6 +64,15 @@ extern "C" {
 #ifndef _RESTCONF_NATIVE_H_
 #define _RESTCONF_NATIVE_H_
 
+/*! Maximum accepted restconf request body size in bytes (DoS protection)
+ *
+ * Bounds in-memory growth of a single request. Requests exceeding this are
+ * rejected with 413 Payload Too Large (http/1) or stream-reset (http/2).
+ */
+#ifndef RESTCONF_REQUEST_BODY_MAX
+#define RESTCONF_REQUEST_BODY_MAX (16*1024*1024)
+#endif
+
 /*
  * Types
  */

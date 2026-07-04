@@ -77,9 +77,9 @@
  *
  * @param[in]  h        Clixon handle
  * @param[in]  rc       Restconf connection
- * @param[in]  str      Pointer to string containing HTTP/1 
+ * @param[in]  str      Pointer to string containing HTTP/1
  * @param[in]  filename Debug string identifying file or connection
- * @retval     0        Parse OK 
+ * @retval     0        Parse OK
  * @retval    -1        Error
  */
 static int
@@ -88,28 +88,55 @@ _http1_parse(clixon_handle  h,
              char          *str,
              const char    *filename)
 {
-    int               retval = -1;
-    clixon_http1_yacc hy = {0,};
-    int               ret;
+    int                   retval = -1;
+    clixon_http1_yacc     hy = {0,};
+    cg_var               *cv;
+    restconf_stream_data *sd = NULL;
+    int                   ret;
 
     clixon_debug(CLIXON_DBG_PARSE, "%s", str);
     if (strlen(str) == 0)
         goto ok;
+    if ((sd = restconf_stream_find(rc, 0)) == NULL){
+        clixon_err(OE_RESTCONF, 0, "stream 0 not found");
+        goto done;
+    }
     hy.hy_parse_string = str;
     hy.hy_name = filename;
     hy.hy_h = h;
-    hy.hy_rc = rc;
     hy.hy_linenum = 1;
+    if ((hy.hy_header = cvec_new(0)) == NULL)
+        goto done;
+    hy.hy_indata = sd->sd_indata;
     if (http1_scan_init(&hy) < 0)
         goto done;
     if (http1_parse_init(&hy) < 0)
         goto done;
     ret = clixon_http1_parseparse(&hy, hy.hy_scanner); /* yacc returns 1 on error */
-    /* yacc/lex terminates parsing after headers. 
-     * Look for body after headers assuming str terminating with \n\n\0 and then <body> */
     http1_parse_exit(&hy);
     http1_scan_exit(&hy);
-    if (ret != 0){
+    if (ret == 0){ /* OK */
+        rc->rc_proto_d1 = hy.hy_proto_d1;
+        rc->rc_proto_d2 = hy.hy_proto_d2;
+        if (hy.hy_qvec){
+            if (cvec_len(hy.hy_qvec))
+                sd->sd_qvec = hy.hy_qvec;
+            else
+                cvec_free(hy.hy_qvec);
+        }
+        cv = NULL;
+        while ((cv = cvec_each(hy.hy_header, cv)) != NULL){
+            if (cv_flag(cv, V_FLAG)){
+                if (restconf_convert_hdr(h, cv_name_get(cv), cv_string_get(cv)) < 0)
+                    goto done;
+            }
+            else if (restconf_param_set(h, cv_name_get(cv), cv_string_get(cv)) < 0)
+                goto done;
+        }
+    }
+    else {
+    /* Error: yacc/lex terminates parsing after headers.
+     * Look for body after headers assuming str terminating with \n\n\0 and then <body> */
         if (filename)
             clixon_log(h, LOG_NOTICE, "HTTP1 error: on line %d in %s", hy.hy_linenum, filename);
         else
@@ -121,6 +148,8 @@ _http1_parse(clixon_handle  h,
  ok:
     retval = 0;
  done:
+    if (hy.hy_header)
+        cvec_free(hy.hy_header);
     clixon_debug(CLIXON_DBG_PARSE, "retval:%d", retval);
     return retval;
 }
@@ -131,7 +160,7 @@ _http1_parse(clixon_handle  h,
  * @param[in]  rc       Restconf connection
  * @param[in]  f        A file descriptor containing HTTP/1 (as ASCII characters)
  * @param[in]  filename Debug string identifying file or connection
- * @retval     0        Parse OK 
+ * @retval     0        Parse OK
  * @retval    -1        Error
  */
 int
@@ -200,7 +229,7 @@ clixon_http1_parse_file(clixon_handle  h,
  * @param[in]  h        Clixon handle
  * @param[in]  rc       Restconf connection
  * @param[in]  str      HTTP/1 string
- * @retval     0        Parse OK 
+ * @retval     0        Parse OK
  * @retval    -1        Error
  */
 int
@@ -218,9 +247,9 @@ clixon_http1_parse_string(clixon_handle  h,
  * @param[in]  rc       Restconf connection
  * @param[in]  buf      HTTP/1 buffer
  * @param[in]  n        Length of buffer
- * @retval     0        Parse OK 
+ * @retval     0        Parse OK
  * @retval    -1        Error
- * @note  Had preferred to do this without copying, OR 
+ * @note  Had preferred to do this without copying, OR
  * input flex with a non-null terminated string
  */
 int
@@ -533,15 +562,25 @@ http1_check_content_length(clixon_handle         h,
                            restconf_stream_data *sd,
                            int                  *status)
 {
-    int   retval = -1;
-    char *val;
-    int   len;
+    int       retval = -1;
+    char     *val;
+    char     *endp;
+    long long llen;
 
-    if ((val = restconf_param_get(h, "HTTP_CONTENT_LENGTH")) == NULL ||
-        (len = atoi(val)) == 0)
+    if ((val = restconf_param_get(h, "HTTP_CONTENT_LENGTH")) == NULL)
         *status = 0;
-    else{
-        if (cbuf_len(sd->sd_indata) < len)
+    else {
+        errno = 0;
+        llen = strtoll(val, &endp, 10);
+        if (endp == val || *endp != '\0' || errno != 0 || llen < 0){
+            /* Malformed/negative Content-Length: do not loop waiting for more,
+             * process what we have (body parser will reject if invalid) */
+            clixon_debug(CLIXON_DBG_RESTCONF, "Invalid Content-Length: %s", val);
+            *status = 2;
+        }
+        else if (llen == 0)
+            *status = 0;
+        else if (cbuf_len(sd->sd_indata) < (size_t)llen)
             *status = 1;
         else
             *status = 2;

@@ -102,13 +102,13 @@ query   [A-Za-z0-9\-\._~!$&'()*+,;=:@?/]|%[0-9a-fA-F][0-9a-fA-F]
 <REQTARG>\?        { BEGIN(REQUERY); return QMARK; }
 <REQTARG>\/        { return SLASH; }
 <REQTARG>[ ]       { BEGIN(REQHTTP); return SP; }
-<REQTARG>{pchar}+  { yylval->string = yytext;
+<REQTARG>{pchar}+  { yylval->string = strdup(yytext);
                      return PCHARS; }
 <REQTARG>.         { clixon_http1_parseerror(_HY, yyscanner, "LEXICAL ERROR\n"); return -1; }
 
 <REQUERY>\/        { return SLASH; }
 <REQUERY>[ ]       { BEGIN(REQHTTP); return SP; }
-<REQUERY>{query}+  { yylval->string = strdup(yytext);
+<REQUERY>{query}+  { yylval->string = yytext;
                      return QUERY; }
 <REQUERY>.         { clixon_http1_parseerror(_HY, yyscanner, "LEXICAL ERROR\n"); return -1; }
 
