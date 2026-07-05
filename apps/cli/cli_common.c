@@ -858,11 +858,10 @@ compare_db_names(clixon_handle    h,
 
     if (format == FORMAT_XML) { /* new implementation for xml format using rpc compare */
         if (clixon_rpc_nmda_compare(h, db1, db2, &xret) < 0) {
-            clixon_err(OE_PLUGIN, 0, "clixon_rpc_nmda_compare");
+            clixon_err(OE_PLUGIN, 0, "clixon_rpc_nmda_compare %s %s", db1, db2);
             goto done;
         }
         if (xpath_first(xret, NULL, "//no-matches") != NULL) {
-            cligen_output(stdout, "===\n");
             retval = 0;
             goto done;
         }
