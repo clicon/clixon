@@ -733,20 +733,33 @@ type_snmp2xml(yang_stmt                  *ys,
     }
     case ASN_IPADDRESS:{
         struct in_addr addr;
+        if (requestvb->val_len < 4){
+            clixon_err(OE_XML, EINVAL, "SNMP IpAddress value too short (%zu < 4)",
+                       (size_t)requestvb->val_len);
+            goto fail;
+        }
         memcpy(&addr.s_addr, requestvb->val.string, 4);
         cv_string_set(cv, inet_ntoa(addr));
         break;
     }
     case CLIXON_ASN_FIXED_STRING:
-        cv_string_set(cv, (char*)requestvb->val.string);
+        /* SNMP octet strings are not NUL-terminated; bound by val_len to avoid
+         * reading past the buffer */
+        cv_strncpy(cv, (char*)requestvb->val.string, requestvb->val_len);
         *asn1type = ASN_OCTET_STR;
         break;
     case CLIXON_ASN_PHYS_ADDR:
+        if (requestvb->val_len < sizeof(struct ether_addr)){
+            clixon_err(OE_XML, EINVAL, "SNMP PhysAddress value too short (%zu < %zu)",
+                       (size_t)requestvb->val_len, sizeof(struct ether_addr));
+            goto fail;
+        }
         cv_string_set(cv, ether_ntoa((const struct ether_addr *)requestvb->val.string));
         *asn1type = ASN_OCTET_STR;
         break;
     case ASN_OCTET_STR: // 4
-        cv_string_set(cv, (char*)requestvb->val.string);
+        /* Not NUL-terminated; bound by val_len to avoid reading past the buffer */
+        cv_strncpy(cv, (char*)requestvb->val.string, requestvb->val_len);
         break;
     case ASN_COUNTER64:{ // 0x46 / 70
         uint64_t u64;
@@ -1138,10 +1151,10 @@ snmp_yang2xpath(yang_stmt *ys,
  *
  * For ints this is one to one, eg 42 -> 42
  * But for eg strings this is more complex, eg foo -> 3.6.22.22 (or something,...)
- * @param[in]  str      XML body string
- * @param[in]  yi       Yang statement
- * @param[out] objid    OID vector 
- * @param[out] objidlen Length of OID vector 
+ * @param[in]     str      XML body string
+ * @param[in]     yi       Yang statement
+ * @param[out]    objid    OID vector
+ * @param[in,out] objidlen On input: capacity of objid; on output: length written
  * @retval     0        OK
  * @retval    -1        Error
  */
@@ -1153,9 +1166,12 @@ snmp_str2oid(char      *str,
 {
     int        retval = -1;
     int        asn1_type;
-    int        i;
-    int        j = 0;
+    size_t     i;
+    size_t     j = 0;
+    size_t     cap;
+    size_t     slen;
 
+    cap = *objidlen; /* input capacity of objid */
     if (type_yang2asn1(yi, &asn1_type, 0) < 0)
         goto done;
     switch (asn1_type){
@@ -1165,11 +1181,22 @@ snmp_str2oid(char      *str,
     case ASN_COUNTER64:
     case ASN_COUNTER:
     case ASN_IPADDRESS:
+        if (j >= cap){
+            clixon_err(OE_XML, EINVAL, "OID buffer overflow");
+            goto done;
+        }
         objid[j++] = atoi(str);
         break;
     case ASN_OCTET_STR:{ /* encode to N.c.c.c.c */
-        objid[j++] = strlen(str);
-        for (i=0; i<strlen(str); i++)
+        slen = strlen(str);
+        /* Need slen+1 entries (length prefix + each byte) */
+        if (slen + 1 > cap){
+            clixon_err(OE_XML, EINVAL, "OID key string too long (%zu) for buffer (%zu)",
+                       slen, cap);
+            goto done;
+        }
+        objid[j++] = slen;
+        for (i=0; i<slen; i++)
             objid[j++] = str[i]&0xff;
         break;
     }
@@ -1221,11 +1248,23 @@ snmp_oid2str(oid      **oidi,
     case ASN_COUNTER:
     case ASN_IPADDRESS:
     case CLIXON_ASN_ROWSTATUS:
+        if (*oidilen < 1){
+            clixon_err(OE_XML, EINVAL, "OID too short for integer key");
+            goto done;
+        }
         cprintf(enc, "%lu", (*oidi)[i++]);
         break;
     case CLIXON_ASN_PHYS_ADDR: /* XXX may need special mapping: ether_aton() ?  */
     case ASN_OCTET_STR: /* decode from N.c.c.c.c */
+        if (*oidilen < 1){
+            clixon_err(OE_XML, EINVAL, "OID too short for octet-string key");
+            goto done;
+        }
         len = (*oidi)[i++];
+        /* Bound declared length to available sub-ids to avoid reading past the
+         * request OID array */
+        if (len > *oidilen - 1)
+            len = *oidilen - 1;
         for (; i<len+1; i++){
             cprintf(enc, "%c", (char)((*oidi)[i]&0xff));
         }
@@ -1359,6 +1398,7 @@ snmp_xmlkey2val_oid(cxobj     *xentry,
                 goto done;
             }
         }
+        objidlen = MAX_OID_LEN; /* reset capacity before each call (str2oid overwrites with output len) */
         if (snmp_str2oid(xml_body(xi), xml_spec(xi), objid, &objidlen) < 0)
             goto done;
         if (oid_append(objidk, objidklen, objid, objidlen) < 0)
