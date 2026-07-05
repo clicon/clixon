@@ -740,7 +740,7 @@ clicon_rpc_edit_config(clixon_handle       h,
     cprintf(cb, "</edit-config></rpc>");
     if (clicon_rpc_msg(h, cb, &xret) < 0)
         goto done;
-    if ((xerr = xpath_first(xret, NULL, "/rpc-error")) != NULL){
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Editing configuration");
         goto done;
     }
