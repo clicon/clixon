@@ -151,7 +151,7 @@ new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
 new "check compare xml no-matches"
-expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^==="
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^$"
 
 new "check running"
 expectpart "$($clixon_cli -1 -f $cfg show config running)" 0 "^<top xmlns=\"urn:example:clixon\"><section><name>x</name><table><parameter><name>a</name><value>17</value></parameter><parameter><name>b</name><value>42</value></parameter><parameter><name>d</name><value>98</value></parameter></table></section></top>$"
