@@ -661,7 +661,7 @@ cv_validate1(clixon_handle h,
                 retu = range_check(uu, cv1, cv2, uint32);
                 break;
             case CGV_UINT64:
-                uu =  cv_uint32_get(cv);
+                uu =  cv_uint64_get(cv);
                 retu = range_check(uu, cv1, cv2, uint64);
                 break;
             case CGV_STRING:

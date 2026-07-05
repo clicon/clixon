@@ -307,7 +307,9 @@ xml2file_recurse(FILE                *f,
         (*fn)(f, " ");
         if (namespace)
             (*fn)(f, "%s:", namespace);
-        (*fn)(f, "%s=\"%s\"", name, xml_value(x));
+        if (xml_chardata_encode(&encstr, 1, "%s", xml_value(x)) < 0)
+            goto done;
+        (*fn)(f, "%s=\"%s\"", name, encstr);
         break;
     case CX_ELMNT:
         if (pretty && prefix)

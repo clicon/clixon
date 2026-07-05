@@ -44,6 +44,7 @@
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <assert.h>
@@ -391,8 +392,8 @@ text_read_modstate(clixon_handle    h,
 		cxobj* cx_ns;
 		if ((xf2 = xml_dup(xf)) == NULL)
 		    goto done;
-		cx_ns = xml_find(xf2, "namespace");
-		xml_purge(cx_ns);
+		if ((cx_ns = xml_find(xf2, "namespace")) != NULL)
+		    xml_purge(cx_ns);
 		xml_new_body("namespace", xf2, sns);
 		if (xml_addsub(msdiff->md_diff, xf2) < 0)
 		    goto done;
@@ -510,9 +511,28 @@ xmldb_multi_read_applyfn(cxobj *x,
     cbuf                   *cb = NULL;
     char                   *dbfile;
     FILE                   *fp = NULL;
+    int                     i;
+    size_t                  len;
 
     if ((xa = xml_find_type(x, CLIXON_LIB_PREFIX, "link", CX_ATTR)) != NULL &&
         (filename = xml_value(xa)) != NULL){
+        /* Sanity check of filename: end with .xml */
+        len = strlen(filename);
+        if (len >= 4 && strcmp(filename + len - 4, ".xml") == 0){
+        }
+        else{
+            clixon_err(OE_DB, EINVAL, "Invalid datastore link '%s' should end with .xml" , filename);
+            goto done;
+        }
+        /* Sanity check of filename: must be hashed */
+        for (i = 0; i < len-4; i++){
+            if (!(islower(filename[i]) || isdigit(filename[i])))
+                break;
+        }
+        if (i < len-4){
+            clixon_err(OE_DB, EINVAL, "Invalid datastore link '%s' should be a hashed filename", filename);
+            goto done;
+        }
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_XML, errno, "cbuf_new");
             goto done;

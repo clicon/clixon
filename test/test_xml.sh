@@ -135,6 +135,18 @@ expecteof "$clixon_util_xml -o" 0 "<x a='t'/>" '<x a="t"/>'
 new "Mixed quotes"
 expecteof "$clixon_util_xml -o" 0 "<x a='t' b=\"q\"/>" '<x a="t" b="q"/>'
 
+new "Attribute value with ampersand: escape & to &amp;"
+expecteof "$clixon_util_xml -o" 0 '<x a="a&amp;b"/>' '<x a="a&amp;b"/>'
+
+new "Attribute value with less-than: escape < to &lt;"
+expecteof "$clixon_util_xml -o" 0 '<x a="a&lt;b"/>' '<x a="a&lt;b"/>'
+
+new "Attribute value with greater-than: escape > to &gt;"
+expecteof "$clixon_util_xml -o" 0 '<x a="a&gt;b"/>' '<x a="a&gt;b"/>'
+
+new "Attribute value with double-quote: escape \" to &quot;"
+expecteof "$clixon_util_xml -o" 0 '<x a="a&quot;b"/>' '<x a="a&quot;b"/>'
+
 new "XMLdecl version"
 expecteof "$clixon_util_xml -o" 0 '<?xml version="1.0"?><a/>' '<a/>'
 

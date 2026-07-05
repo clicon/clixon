@@ -2519,6 +2519,11 @@ netconf_input_chunked_framing(char    ch,
         break;
     case 3:
         if (ch >= '0' && ch <= '9'){ /* other nums */
+            /* RFC 6242: chunk-size max is 4294967295. Reject overflow / oversize */
+            if (*size > (UINT32_MAX - (size_t)(ch - '0')) / 10){
+                clixon_err(OE_NETCONF, 0, "NETCONF framing error chunk-size: exceeds RFC6242 maximum 4294967295");
+                goto err;
+            }
             *size = (*size)*10 + ch-'0';
             break;
         }
