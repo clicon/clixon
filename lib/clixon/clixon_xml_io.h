@@ -58,7 +58,6 @@ int   clixon_xml_parse_string1(clixon_handle h, const char *str, yang_bind yb, y
 int   clixon_xml_parse_va(yang_bind yb, yang_stmt *yspec, cxobj **xt, cxobj **xerr,
                         const char *format, ...)  __attribute__ ((format (printf, 5, 6)));
 int   clixon_xml_attr_copy(cxobj *xin, cxobj *xout, const char *name);
-int   clixon_xml_diff2cbuf(cbuf *cb, cxobj *x0, cxobj *x1);
 int   clixon_yangpatch2cbuf(cbuf *cb, cxobj *xe);
 
 static inline int
