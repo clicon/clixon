@@ -690,7 +690,12 @@ api_path_fmt2xpath(const char *api_path_fmt,
                     clixon_err(OE_UNIX, errno, "cv2str_dup");
                     goto done;
                 }
-                cprintf(cb, "[%s='%s']", cv_name_get(cv), str);
+                cprintf(cb, "[%s=", cv_name_get(cv));
+                if (xpath_literal_encode(cb, str, 1) < 0){
+                    free(str);
+                    goto done;
+                }
+                cprintf(cb, "]");
                 free(str);
             }
         }
@@ -902,7 +907,10 @@ api_path2xpath_cvv(cvec      *api_path,
                     /* valvec is uri encoded, needs decoding */
                     if (uri_percent_decode(val1, &decval) < 0)
                         goto done;
-                    cprintf(xpath, "%s='%s']", cv_string_get(cvi), decval);
+                    cprintf(xpath, "%s=", cv_string_get(cvi));
+                    if (xpath_literal_encode(xpath, decval, 1) < 0)
+                        goto done;
+                    cprintf(xpath, "]");
                     if (decval){
                         free(decval);
                         decval = NULL;
@@ -913,7 +921,10 @@ api_path2xpath_cvv(cvec      *api_path,
                 if (val){
                     if (uri_percent_decode(val, &decval) < 0)
                         goto done;
-                    cprintf(xpath, "[.='%s']", decval);
+                    cprintf(xpath, "[.=");
+                    if (xpath_literal_encode(xpath, decval, 1) < 0)
+                        goto done;
+                    cprintf(xpath, "]");
                     if (decval){
                         free(decval);
                         decval = NULL;

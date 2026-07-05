@@ -306,9 +306,11 @@ xpath_tree2cbuf(xpath_tree *xs,
         break;
     case XP_PRIME_STR:
 #ifdef XPATH_USE_APOSTROPHE
-        cprintf(xcb, "'%s'", xs->xs_s0?xs->xs_s0:"");
+        if (xpath_literal_encode(xcb, xs->xs_s0?xs->xs_s0:"", 1) < 0)
+            goto done;
 #else
-        cprintf(xcb, "\"%s\"", xs->xs_s0?xs->xs_s0:"");
+        if (xpath_literal_encode(xcb, xs->xs_s0?xs->xs_s0:"", 0) < 0)
+            goto done;
 #endif
         break;
     case XP_PRIME_FN:
@@ -1304,6 +1306,85 @@ xpath_count(cxobj      *xcur,
     return retval;
 }
 
+/*! Append a value as a safe XPath 1.0 string literal to a cbuf
+ *
+ * XPath 1.0 string literals have no escape mechanism and cannot contain their
+ * own delimiter. To safely embed an arbitrary (possibly attacker-supplied)
+ * value and prevent XPath injection (eg a key value containing a quote that
+ * would break out of the predicate) the quoting is chosen based on content.
+ *
+ * To preserve backward-compatible (and hash-stable) output, the caller's
+ * preferred quote style (apostrophe) is used whenever the value does not
+ * contain that quote character; only values that DO contain it (which would
+ * otherwise produce malformed/injectable xpath) deviate:
+ *  - value lacks the preferred quote:        wrap in the preferred quote
+ *  - value has preferred but not other quote: wrap in the other quote
+ *  - value has both quote characters:         build a concat(...) expression
+ * @param[in,out] cb         cbuf to append the literal/expression to
+ * @param[in]     str        Value to encode (NULL is treated as empty string)
+ * @param[in]     apostrophe If set, prefer apostrophe ' literals, else double "
+ * @retval        0          OK
+ * @retval       -1          Error
+ */
+int
+xpath_literal_encode(cbuf       *cb,
+                     const char *str,
+                     int         apostrophe)
+{
+    const char *p;
+    const char *seg;
+    int         has_squote = 0;
+    int         has_dquote = 0;
+    int         first;
+
+    if (cb == NULL){
+        clixon_err(OE_XML, EINVAL, "cb is NULL");
+        return -1;
+    }
+    if (str == NULL)
+        str = "";
+    for (p = str; *p; p++){
+        if (*p == '\'')
+            has_squote = 1;
+        else if (*p == '"')
+            has_dquote = 1;
+    }
+    if (!has_squote && !has_dquote){
+        /* No quotes: use preferred style (backward compatible / hash stable) */
+        cprintf(cb, apostrophe ? "'%s'" : "\"%s\"", str);
+    }
+    else if (!has_squote){
+        /* Has " but not ': safe to use single quotes */
+        cprintf(cb, "'%s'", str);
+    }
+    else if (!has_dquote){
+        /* Has ' but not ": safe to use double quotes */
+        cprintf(cb, "\"%s\"", str);
+    }
+    else {
+        /* Both quote chars present: split on single quotes into runs that
+         * contain no single quote, wrap each in single quotes, and interleave
+         * a double-quoted single quote ("'") between them, all inside concat() */
+        cprintf(cb, "concat(");
+        seg = str;
+        first = 1;
+        for (p = str; ; p++){
+            if (*p == '\'' || *p == '\0'){
+                if (!first)
+                    cprintf(cb, ",");
+                first = 0;
+                cprintf(cb, "'%.*s'", (int)(p - seg), seg);
+                if (*p == '\0')
+                    break;
+                cprintf(cb, ",\"'\"");
+                seg = p + 1;
+            }
+        }
+        cprintf(cb, ")");
+    }
+    return 0;
+}
+
 /*! Given an XML node, build an XPath recursively to root, internal function
  *
  * @param[in]  x      XML object
@@ -1369,18 +1450,10 @@ xml2xpath1(cxobj *x,
         keyword = yang_keyword_get(y);
         switch (keyword){
         case Y_LEAF_LIST:
-            if (apostrophe){
-                if ((b = xml_body(x)) != NULL)
-                    cprintf(cb, "[.='%s']", b);
-                else
-                    cprintf(cb, "[.='']");
-            }
-            else{
-                if ((b = xml_body(x)) != NULL)
-                    cprintf(cb, "[.=\"%s\"]", b);
-                else
-                    cprintf(cb, "[.=\"\"]");
-            }
+            cprintf(cb, "[.=");
+            if (xpath_literal_encode(cb, xml_body(x), apostrophe) < 0) /* NULL body -> '' */
+                goto done;
+            cprintf(cb, "]");
             break;
         case Y_LIST:
             cvk = yang_cvec_get(y);
@@ -1401,10 +1474,10 @@ xml2xpath1(cxobj *x,
                 cprintf(cb, "[");
                 if (prefix)
                     cprintf(cb, "%s:", prefix);
-                if (apostrophe)
-                    cprintf(cb, "%s='%s']", keyname, b?b:"");
-                else
-                    cprintf(cb, "%s=\"%s\"]", keyname, b?b:"");
+                cprintf(cb, "%s=", keyname);
+                if (xpath_literal_encode(cb, b, apostrophe) < 0)
+                    goto done;
+                cprintf(cb, "]");
             }
             break;
         default:

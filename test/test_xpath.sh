@@ -592,6 +592,9 @@ expectpart "$($clixon_util_xpath -D $DBG -i "/table" -f $dir/1.xml -n ex:urn:exa
 new "xpath concat"
 expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "concat(\"mynumber:\", /ex:table/ex:options/ex:max-number)")" 0 "mynumber:50000"
 
+new "xpath concat*3"
+expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n ex:urn:example:clixon -y $fyang -p "concat(\"mynumber:\", /ex:table/ex:options/ex:max-number, \":foo\")")" 0 "mynumber:50000:foo$"
+
 new "xpath issue fail"
 expectpart "$($clixon_util_xpath -D $DBG -f $dir/1.xml -n null:urn:ietf:params:xml:ns:netconf:base:1.0 -n ex:urn:example:clixon -y $fyang -p "/ex:table/ex:options/*")" 0 "<max-number>50000</max-number>"
 

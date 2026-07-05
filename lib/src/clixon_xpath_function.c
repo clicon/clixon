@@ -843,16 +843,72 @@ xp_function_string(xp_ctx            *xc,
     return retval;
 }
 
-/*! The false function returns false.
+/*! Walk a left-recursive XP_EXP args tree, appending each arg's string value to cb
+ *
+ * The parser builds args as a left-recursive list:
+ *   concat(a, b, c)  ->  XP_EXP(c0=XP_EXP(c0=a, c1=b), c1=c)
+ * Recurse into c0 first (prior args), then evaluate c1 (this arg).
+ * When there is only one arg, it lives in c0 with c1==NULL.
+ * @param[in]  xc        Incoming context
+ * @param[in]  xs        XPath args node (XP_EXP subtree)
+ * @param[in]  nsc       XML Namespace context
+ * @param[in]  localonly Skip prefix and namespace tests
+ * @param[in]  cb        Output cbuf to append string fragments to
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
+static int
+concat_args(xp_ctx            *xc,
+            struct xpath_tree *xs,
+            cvec              *nsc,
+            int                localonly,
+            cbuf              *cb)
+{
+    int     retval = -1;
+    xp_ctx *xr = NULL;
+    char   *s = NULL;
+
+    if (xs == NULL){
+        retval = 0;
+        goto done;
+    }
+    if (xs->xs_c1 != NULL){
+        /* Left branch holds prior args; recurse first */
+        if (concat_args(xc, xs->xs_c0, nsc, localonly, cb) < 0)
+            goto done;
+        /* Right branch is the current arg */
+        if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr) < 0)
+            goto done;
+    }
+    else {
+        /* Base case: single arg sits in c0 */
+        if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr) < 0)
+            goto done;
+    }
+    if (xr != NULL){
+        if (ctx2string(xr, &s) < 0)
+            goto done;
+        cprintf(cb, "%s", s);
+    }
+    retval = 0;
+ done:
+    if (xr)
+        ctx_free(xr);
+    if (s)
+        free(s);
+    return retval;
+}
+
+/*! XPath concat() function: concatenate two or more strings
  *
  * Signature: string concat(string, string, string*)
- * @param[in]  xc   Incoming context
- * @param[in]  xs   XPath node tree
- * @param[in]  nsc  XML Namespace context
+ * @param[in]  xc        Incoming context
+ * @param[in]  xs        XPath args node tree (XP_EXP subtree from parser)
+ * @param[in]  nsc       XML Namespace context
  * @param[in]  localonly Skip prefix and namespace tests (non-standard)
- * @param[out] xrp  Resulting context
- * @retval     0    OK
- * @retval    -1    Error
+ * @param[out] xrp       Resulting context
+ * @retval     0         OK
+ * @retval    -1         Error
  */
 int
 xp_function_concat(xp_ctx            *xc,
@@ -862,57 +918,43 @@ xp_function_concat(xp_ctx            *xc,
                    xp_ctx           **xrp)
 {
     int     retval = -1;
-    xp_ctx *xr0 = NULL;
-    xp_ctx *xr1 = NULL;
-    xp_ctx *xr = NULL;
-    char   *s0 = NULL;
-    char   *s1 = NULL;
-    char   *sc = NULL;
     cbuf   *cb = NULL;
+    xp_ctx *xr = NULL;
+    char   *sc = NULL;
 
-    if (xs == NULL || xs->xs_c0 == NULL || xs->xs_c1 == NULL){
-        clixon_err(OE_XML, EINVAL, "concat expects but did not get at least two arguments");
-        goto done;
-    }
-    /* contains two arguments in xs: cncat contains(string, string) */
-    if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr0) < 0)
-        goto done;
-    if (ctx2string(xr0, &s0) < 0)
-        goto done;
-    if (xp_eval(xc, xs->xs_c1, nsc, localonly, &xr1) < 0)
-        goto done;
-    if (ctx2string(xr1, &s1) < 0)
-        goto done;
-    if ((xr = malloc(sizeof(*xr))) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
+    if (xs == NULL){
+        clixon_err(OE_XML, EINVAL, "concat: missing arguments");
         goto done;
     }
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "%s%s", s0, s1);
+    if (concat_args(xc, xs, nsc, localonly, cb) < 0)
+        goto done;
+    if ((xr = malloc(sizeof(*xr))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
     if ((sc = strdup(cbuf_get(cb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_STRING;
+    xr->xc_initial = xc->xc_initial;
     xr->xc_string = sc;
+    sc = NULL;
     *xrp = xr;
     xr = NULL;
     retval = 0;
  done:
     if (cb)
         cbuf_free(cb);
-    if (xr0)
-        ctx_free(xr0);
-    if (xr1)
-        ctx_free(xr1);
-    if (s0)
-        free(s0);
-    if (s1)
-        free(s1);
+    if (xr)
+        ctx_free(xr);
+    if (sc)
+        free(sc);
     return retval;
 }
 
