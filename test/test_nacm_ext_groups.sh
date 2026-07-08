@@ -19,6 +19,7 @@
 #  10. | none        | true     | explicit name | no               | permit (explicit groupname attr)
 #  11. | none        | true     | wrong name    | no               | deny   (explicit groupname no match)
 #  12. | exact       | true     | explicit name | no               | deny   (groupname ignored, not cred=none)
+#  13. | none        | true     | CLI -g match  | no               | permit (CLI -g smoke test)
 #
 
 # Magic line must be first in script (see README.md)
@@ -31,6 +32,10 @@ APPNAME=example
 
 cfg=$dir/conf_yang.xml
 fyang=$dir/nacm-example.yang
+
+clidir=$dir/cli
+test -d ${clidir} || rm -rf ${clidir}
+mkdir $clidir
 
 NACMUSER=$(whoami)
 
@@ -88,6 +93,9 @@ function setup() {
   <CLICON_YANG_MAIN_FILE>$fyang</CLICON_YANG_MAIN_FILE>
   <CLICON_SOCK_FAMILY>UNIX</CLICON_SOCK_FAMILY>
   <CLICON_SOCK>$dir/backend.sock</CLICON_SOCK>
+  <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
+  <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
+  <CLICON_CLISPEC_DIR>$clidir</CLICON_CLISPEC_DIR>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>/usr/local/var/$APPNAME</CLICON_XMLDB_DIR>
@@ -184,6 +192,20 @@ function nacm_config() {
       <name>permit-get</name>
       <rpc-name>get</rpc-name>
       <module-name>*</module-name>
+      <access-operations>exec</access-operations>
+      <action>permit</action>
+    </rule>
+    <rule>
+      <name>permit-config-path-info</name>
+      <rpc-name>config-path-info</rpc-name>
+      <module-name>clixon-lib</module-name>
+      <access-operations>exec</access-operations>
+      <action>permit</action>
+    </rule>
+    <rule>
+      <name>permit-translate-format</name>
+      <rpc-name>translate-format</rpc-name>
+      <module-name>clixon-lib</module-name>
       <access-operations>exec</access-operations>
       <action>permit</action>
     </rule>
@@ -348,6 +370,29 @@ teardown
 new "Test 12 cred=exact: explicit groupname=$SECONDARYGROUP ignored (not cred=none) → deny"
 setup "$(nacm_config true "explicit-only-group" "")" exact
 testget_group "$NACMUSER" "explicit-only-group" "$ERROR"
+teardown
+
+#----------------------------------------------------------------------
+# Test 13: CLI -g <group> smoke test.
+# clixon_cli -U $NACMUSER -g $SECONDARYGROUP with cred=none sends
+# groupname="$SECONDARYGROUP" in the RPC. The NACM group has no user-name
+# entry; access is granted solely via the explicit groupname.
+#----------------------------------------------------------------------
+
+cat <<EOF > $clidir/ex.cli
+# Clixon example specification
+CLICON_MODE="example";
+CLICON_PROMPT="%U@%H %W> ";
+CLICON_PLUGIN="example_cli";
+show("Show a particular state of the system") configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);
+EOF
+
+new "Test 13 cred=none: clixon_cli -g $SECONDARYGROUP explicit group → show config returns x=42"
+setup "$(nacm_config true "$SECONDARYGROUP" "")" none
+
+new "CLI show config"
+expectpart "$($clixon_cli -1 -f $cfg -U $NACMUSER -g $SECONDARYGROUP show config 2>&1)" 0 "42"
+
 teardown
 
 rm -rf $dir

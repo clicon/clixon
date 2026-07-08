@@ -72,7 +72,7 @@
 #include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:o:"
+#define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:g:o:"
 
 static char *_restarg = NULL; /* what remains after options XXX just to avoid mem-leakage, try to fix wo global var */
 
@@ -394,7 +394,8 @@ usage(clixon_handle h,
             "\t-L \t\tDebug print dynamic CLI syntax including completions and expansions\n"
             "\t-y <file>\tOverride yang spec file (dont include .yang suffix)\n"
             "\t-c <file>\tSpecify cli spec file.\n"
-            "\t-U <user>\tOver-ride unix user with a pseudo user for NACM.\n"
+            "\t-U <user>\tOverride unix user with a masquerading user for NACM mode NONE and expect.\n"
+            "\t-g <group>\tOverride unix groups with a masquerading group for NACM mode NONE.\n"
             "\t-o \"<option>=<value>\"\tGive configuration option overriding config file (see clixon-config.yang)\n",
             argv0,
             plgdir ? plgdir : "none"
@@ -607,8 +608,12 @@ main(int    argc,
             if (clicon_option_add(h, "CLICON_CLISPEC_FILE", optarg) < 0)
                 goto done;
             break;
-        case 'U': /* Clixon 'pseudo' user */
+        case 'U': /* Masquerading user */
             if (clicon_username_set(h, optarg) < 0)
+                goto done;
+            break;
+        case 'g': /* Masquerading group */
+            if (clixon_groupname_set(h, optarg) < 0)
                 goto done;
             break;
         case 'o':{ /* Configuration option */

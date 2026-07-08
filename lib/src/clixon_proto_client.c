@@ -104,6 +104,7 @@ create_hello(clixon_handle h,
              char         *source_host)
 {
     char  *username;
+    char  *groupname;
     int    clixon_lib = 0;
     char  *ns = NULL;
     char  *prefix = NULL;
@@ -111,6 +112,10 @@ create_hello(clixon_handle h,
     cprintf(cb, "<hello xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     if ((username = clicon_username_get(h)) != NULL){
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        clixon_lib++;
+    }
+    if ((groupname = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
         clixon_lib++;
     }
     /* RFC 6022 session parameters transport and source-host */
@@ -598,6 +603,7 @@ clixon_rpc_get_config1(clixon_handle h,
     uint32_t   session_id;
     yang_stmt *yspec;
     cvec      *nscd = NULL;
+    char      *groupname;
     int        ret;
 
     if (session_id_check(h, &session_id) < 0)
@@ -609,10 +615,12 @@ clixon_rpc_get_config1(clixon_handle h,
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     if (username == NULL)
         username = clicon_username_get(h);
-    if (username != NULL){
+    if (username != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " xmlns:%s=\"%s\"",
             NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
@@ -717,6 +725,7 @@ clicon_rpc_edit_config(clixon_handle       h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
 
     if (session_id_check(h, &session_id) < 0)
@@ -727,10 +736,12 @@ clicon_rpc_edit_config(clixon_handle       h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, "><edit-config><target><%s/></target>", db);
     cprintf(cb, "<default-operation>%s</default-operation>",
@@ -776,6 +787,7 @@ clicon_rpc_copy_config(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -787,10 +799,12 @@ clicon_rpc_copy_config(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);  /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<copy-config><source><%s/></source><target><%s/></target></copy-config></rpc>",
@@ -829,6 +843,7 @@ clicon_rpc_delete_config(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -840,10 +855,12 @@ clicon_rpc_delete_config(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);  /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb,  "<edit-config><target><%s/></target><default-operation>none</default-operation><config operation=\"delete\"/></edit-config>", db);
@@ -878,6 +895,7 @@ clicon_rpc_lock(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -889,10 +907,12 @@ clicon_rpc_lock(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<lock><target><%s/></target></lock>", db);
@@ -927,6 +947,7 @@ clicon_rpc_unlock(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -938,10 +959,12 @@ clicon_rpc_unlock(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<unlock><target><%s/></target></unlock>", db);
@@ -1014,6 +1037,7 @@ clixon_rpc_get1(clixon_handle   h,
     cxobj     *xerr = NULL;
     cxobj     *xd = NULL;
     char      *username;
+    char      *groupname;
     uint32_t   session_id;
     yang_stmt *yspec;
     cvec      *nscd = NULL;
@@ -1029,10 +1053,12 @@ clixon_rpc_get1(clixon_handle   h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " message-id=\"%d\"", netconf_message_id_next(h));
     cprintf(cb, "><get");
     /* Clixon extension, content=all,config, or nonconfig */
@@ -1164,6 +1190,7 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
     cxobj     *xerr = NULL;
     cxobj     *xd = NULL; /* return data */
     char      *username;
+    char      *groupname;
     uint32_t   session_id;
     yang_stmt *yspec;
     cvec      *nscd = NULL;
@@ -1180,10 +1207,12 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
         goto done;
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " xmlns:%s=\"%s\"",
             NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);  /* XXX: use incrementing sequence */
@@ -1306,6 +1335,7 @@ clicon_rpc_close_session(clixon_handle h)
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     int       s;
     cbuf     *cb = NULL;
@@ -1321,10 +1351,12 @@ clicon_rpc_close_session(clixon_handle h)
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<close-session/>");
@@ -1364,6 +1396,7 @@ clicon_rpc_kill_session(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t my_session_id; /* Not the one to kill */
     cbuf    *cb = NULL;
 
@@ -1375,10 +1408,12 @@ clicon_rpc_kill_session(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<kill-session><session-id>%u</session-id></kill-session>", session_id);
@@ -1415,6 +1450,7 @@ clicon_rpc_validate(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -1426,10 +1462,12 @@ clicon_rpc_validate(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<validate><source><%s/></source></validate>", db);
@@ -1476,6 +1514,7 @@ clicon_rpc_commit(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     char    *persist_id_enc = NULL;
     char    *persist_enc = NULL;
@@ -1513,10 +1552,12 @@ clicon_rpc_commit(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     if (cancel) {
@@ -1577,6 +1618,7 @@ clicon_rpc_discard_changes(clixon_handle h)
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -1588,10 +1630,12 @@ clicon_rpc_discard_changes(clixon_handle h)
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<discard-changes/>");
@@ -1631,6 +1675,7 @@ clicon_rpc_create_subscription(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -1642,10 +1687,12 @@ clicon_rpc_create_subscription(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<create-subscription xmlns=\"%s\">"
@@ -1689,6 +1736,7 @@ clicon_rpc_update(clixon_handle h)
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -1700,10 +1748,12 @@ clicon_rpc_update(clixon_handle h)
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);  /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<update xmlns=\"%s\">", NETCONF_PRIVCAND_NAMESPACE);
@@ -1740,6 +1790,7 @@ clicon_rpc_debug(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -1751,10 +1802,12 @@ clicon_rpc_debug(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<debug xmlns=\"%s\"><level>%d</level></debug>", CLIXON_LIB_NS, level);
@@ -1798,6 +1851,7 @@ clicon_rpc_restconf_debug(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -1809,10 +1863,12 @@ clicon_rpc_restconf_debug(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<edit-config><target><candidate/></target><config>");
@@ -1918,6 +1974,7 @@ clixon_rpc_clixon_cache(clixon_handle h,
     cxobj     *xerr = NULL;
     cxobj     *xreply;
     char      *username;
+    char      *groupname;
     uint32_t   session_id;
     cbuf      *cb = NULL;
     yang_stmt *yspec;
@@ -1937,10 +1994,12 @@ clixon_rpc_clixon_cache(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<clixon-cache xmlns=\"%s\">", CLIXON_LIB_NS);
@@ -2038,6 +2097,7 @@ clixon_rpc_config_path_info(clixon_handle h,
     yang_stmt *yspec0;
     uint32_t   session_id;
     char      *username;
+    char      *groupname;
     cxobj     *xret = NULL;
     cxobj     *xe;
     cxobj     *xerr = NULL;
@@ -2067,10 +2127,12 @@ clixon_rpc_config_path_info(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<config-path-info xmlns=\"%s\">", CLIXON_LIB_NS);
@@ -2242,6 +2304,7 @@ clixon_rpc_translate_format(clixon_handle    h,
     yang_stmt *yspec0;
     uint32_t   session_id;
     char      *username;
+    char      *groupname;
     cbuf      *cb = NULL;
     cxobj     *xret = NULL;
     cxobj     *xe;
@@ -2263,10 +2326,12 @@ clixon_rpc_translate_format(clixon_handle    h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<translate-format xmlns=\"%s\">", CLIXON_LIB_NS);
@@ -2362,6 +2427,7 @@ clicon_rpc_restart_plugin(clixon_handle h,
     cxobj   *xret = NULL;
     cxobj   *xerr;
     char    *username;
+    char    *groupname;
     uint32_t session_id;
     cbuf    *cb = NULL;
 
@@ -2373,10 +2439,12 @@ clicon_rpc_restart_plugin(clixon_handle h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cb, ">");
     cprintf(cb, "<restart-plugin xmlns=\"%s\"><plugin>%s</plugin></restart-plugin>",
@@ -2425,6 +2493,7 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
     cxobj                 *xnaf;
     cxobj                 *xchild;
     char                  *username;
+    char                  *groupname;
     char                  *str;
     nacm_autocli_filter_t *naf = NULL;
     cg_var                *cv;
@@ -2437,10 +2506,12 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
     }
     cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
     cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
-    if ((username = clicon_username_get(h)) != NULL){
+    if ((username = clicon_username_get(h)) != NULL)
         cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
         cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
     cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
     cprintf(cb, ">");
     cprintf(cb, "<nacm-autocli-filter-get xmlns=\"%s\"/>", CLIXON_LIB_NS);
