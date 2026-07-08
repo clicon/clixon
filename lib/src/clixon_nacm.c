@@ -85,44 +85,75 @@
 
 /*! Augment gvec with NACM groups whose name matches a peer's OS group memberships
  *
- * Implements RFC 8341 §3.2.2: when enable-external-groups is true, the server
+ * Implements RFC 8341 §3.3.4.5: when enable-external-groups is true, the server
  * adds the groups reported by the transport layer to the user's group set.
  * Here "reported by the transport layer" means the OS group memberships of the
  * peer process, looked up via getgrent().
  * Only NACM groups not already present in gvec are added.
+ * If the client has requested an explicit group name (cred=none only), only
+ * that group is checked; under exact/except creds explicit groupname is
+ * ignored to prevent privilege escalation.
  * @param[in]     xnacm    NACM XML tree
  * @param[in]     nsc      Namespace context for xnacm
+ * @param[in]     cred     NACM credentials mode (none/exact/except)
  * @param[in]     peername Peer OS username (from socket credentials)
+ * @param[in]     username Authenticated NACM user (from cl:username)
  * @param[in,out] gvecp    Group node vector; realloc'd if new groups added
  * @param[in,out] glenp    Number of entries in *gvecp
  * @retval        0        OK
  * @retval       -1        Error
  */
 static int
-nacm_external_groups_add(cxobj      *xnacm,
-                         cvec       *nsc,
-                         const char *peername,
-                         cxobj    ***gvecp,
-                         size_t     *glenp)
+nacm_external_groups_add(clixon_handle            h,
+                         cxobj                   *xnacm,
+                         cvec                    *nsc,
+                         const char              *username,
+                         cxobj                 ***gvecp,
+                         size_t                  *glenp)
 {
-    int     retval = -1;
-    char   *extgroups;
-    char  **osgroups = NULL;
-    int     nosgroups = 0;
-    int     i;
-    cxobj  *xgroup;
-    char   *gname;
-    cxobj **gvec2 = NULL;
-    size_t  glen2;
-    int     j;
-    int     found;
+    int                     retval = -1;
+    enum nacm_credentials_t cred;
+    const char             *peername;
+    char                   *extgroups;
+    char                   *groupname; /* Explicit groupname requested by client */
+    char                  **osgroups = NULL;
+    int                     nosgroups = 0;
+    cxobj                  *xgroup;
+    char                   *gname;
+    cxobj                 **gvec2 = NULL;
+    size_t                  glen2;
+    int                     i;
+    int                     j;
+    int                     found;
 
-    if (peername == NULL)
+    if ((peername = clixon_nacm_peername_get(h)) == NULL)
+        goto ok;
+    cred = clicon_nacm_credentials(h);
+    /* External groups are the transport-reported groups of the AUTHENTICATED
+     * user. For proxy transports under 'except' creds (RESTCONF, proxyusers,
+     * root) the peer is the proxy daemon, not the end user, so its OS groups
+     * must NOT be granted to the proxied user (NACM privilege escalation,
+     * RFC 8341 3.2.2). Under 'none' creds the peer's groups are intentionally
+     * usable for a masqueraded username (test/insecure mode). Under 'exact'
+     * peer==user always. So skip only when creds enforce identity yet peer
+     * differs from the claimed user. */
+    if (cred != NC_NONE && (username == NULL || strcmp(peername, username) != 0))
         goto ok;
     extgroups = xml_find_body(xnacm, "enable-external-groups");
     if (extgroups == NULL || strcmp(extgroups, "true") != 0)
         goto ok;
-    if (user2groups(peername, &osgroups, &nosgroups) < 0)
+    if (cred == NC_NONE && (groupname = clixon_groupname_get(h)) != NULL){
+        nosgroups = 1;
+        if ((osgroups = malloc(sizeof(char *))) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        if ((osgroups[0] = strdup(groupname)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+    }
+    else if (user2groups(peername, &osgroups, &nosgroups) < 0)
         goto done;
     /* For each OS group, find matching NACM group node not already in gvec */
     glen2 = *glenp;
@@ -388,8 +419,8 @@ nacm_rpc(clixon_handle h,
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
         goto done;
-    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
-    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
+    /* Augment with OS groups from transport layer */
+    if (nacm_external_groups_add(h, xnacm, nsc, username, &gvec, &glen) < 0)
         goto done;
     /* 5. If no groups are found, continue with step 10. */
     if (glen == 0)
@@ -925,8 +956,8 @@ nacm_datanode_write(clixon_handle    h,
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
         goto done;
-    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
-    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
+    /* Augment with OS groups from transport layer */
+    if (nacm_external_groups_add(h, xnacm, nsc, username, &gvec, &glen) < 0)
         goto done;
     /* 4. If no groups are found, continue with step 9. */
     if (glen == 0)
@@ -1225,8 +1256,8 @@ nacm_datanode_read1(clixon_handle h,
     /* User's group */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
         goto done;
-    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
-    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
+    /* Augment with OS groups from transport layer */
+    if (nacm_external_groups_add(h, xnacm, nsc, username, &gvec, &glen) < 0)
         goto done;
     /* 4. If no groups are found (glen=0), continue and check read-default 
           in step 11. */
@@ -1365,7 +1396,7 @@ nacm_access_check(clixon_handle h,
     enabled = xml_body(x);
     if (strcmp(enabled, "true") != 0)
         goto permit;
-    recovery_user=clicon_nacm_recovery_user(h);
+    recovery_user = clicon_nacm_recovery_user(h);
     /* 2.   If the requesting session is identified as a recovery session,
      * then the protocol operation is permitted. 
      */
@@ -1894,8 +1925,8 @@ nacm_autocli_filter_build(clixon_handle           h,
     /* 1. Find user's groups */
     if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
         goto done;
-    /* Augment with OS groups from transport layer (RFC 8341 §3.2.2) */
-    if (nacm_external_groups_add(xnacm, nsc, clixon_nacm_peername_get(h), &gvec, &glen) < 0)
+    /* Augment with OS groups from transport layer */
+    if (nacm_external_groups_add(h, xnacm, nsc, username, &gvec, &glen) < 0)
         goto done;
 
     /* 2. Find all rule-lists */

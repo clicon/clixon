@@ -1589,6 +1589,7 @@ from_client_msg(clixon_handle h,
     char                *module = NULL;
     cbuf                *cbret = NULL; /* return message */
     char                *username;
+    char                *groupname;
     yang_stmt           *yspec;
     yang_stmt           *ye;
     yang_stmt           *ymod;
@@ -1736,10 +1737,12 @@ from_client_msg(clixon_handle h,
     netconf_monitoring_counter_inc(h, "in-rpcs");
     /* Message-id for replies */
     msg_id = xml_find_value(x, "message-id");
-
-    /* Username may be used by callbacks, etc */
+    /* Username may be used by callbacks, etc. Should be set for NACM to work properly */
     username = xml_find_value(x, "username");
     clicon_username_set(h, username);
+    /* Explicit groupname the client wants to match, instead of picking an implicit */
+    groupname = xml_find_value(x, "groupname");
+    clixon_groupname_set(h, groupname);
     ix = 0;
     while ((xe = xml_child_iter(x, &ix, CX_ELMNT)) != NULL) {
         rpc = xml_name(xe);

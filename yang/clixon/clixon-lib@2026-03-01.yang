@@ -60,6 +60,7 @@ module clixon-lib {
        - content (also RESTCONF)
        - depth   (also RESTCONF)
        - username
+       - groupname
        - autocommit
        - copystartup
        - transport (see RFC6022)

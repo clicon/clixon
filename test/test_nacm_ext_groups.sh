@@ -14,6 +14,11 @@
 #   5. | none        | true     | match         | no (fake user)   | permit
 #   6. | none        | true     | no            | match (masq)     | permit (group masquerade)
 #   7. | exact       | true     | no            | match (masq)     | deny   (credential check)
+#   8. | except+proxy| true     | peer-only     | no (proxied user)| deny   (proxy escalation fix)
+#   9. | except+proxy| true     | no            | match (proxied)  | permit (proxy path works)
+#  10. | none        | true     | explicit name | no               | permit (explicit groupname attr)
+#  11. | none        | true     | wrong name    | no               | deny   (explicit groupname no match)
+#  12. | exact       | true     | explicit name | no               | deny   (groupname ignored, not cred=none)
 #
 
 # Magic line must be first in script (see README.md)
@@ -69,6 +74,12 @@ ERROR='^<rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><rpc-error><e
 function setup() {
     local nacmxml=$1
     local cred=${2:-exact}
+    local proxyuser=${3:-}
+
+    local proxytag=""
+    if [ -n "$proxyuser" ]; then
+        proxytag="<CLICON_RESTCONF_USER>${proxyuser}</CLICON_RESTCONF_USER>"
+    fi
 
     cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
@@ -83,6 +94,7 @@ function setup() {
   <CLICON_NACM_MODE>internal</CLICON_NACM_MODE>
   <CLICON_NACM_DISABLED_ON_EMPTY>true</CLICON_NACM_DISABLED_ON_EMPTY>
   <CLICON_NACM_CREDENTIALS>${cred}</CLICON_NACM_CREDENTIALS>
+  ${proxytag}
 </clixon-config>
 EOF
 
@@ -121,6 +133,15 @@ function testget() {
     local username=$1
     local ex=$2
     local XML="<rpc $DEFAULTNS username=\"$username\"><get-config><source><running/></source><filter type=\"xpath\" select=\"/ex:x\" xmlns:ex=\"urn:example:nacm\"/></get-config></rpc>"
+    expecteof_netconf "$clixon_util_socket -a UNIX -s $dir/backend.sock -D $DBG" 0 "" "$XML" "$ex"
+}
+
+# Send get-config via raw UNIX socket with explicit groupname attribute in RPC
+function testget_group() {
+    local username=$1
+    local groupname=$2
+    local ex=$3
+    local XML="<rpc $DEFAULTNS username=\"$username\" groupname=\"$groupname\"><get-config><source><running/></source><filter type=\"xpath\" select=\"/ex:x\" xmlns:ex=\"urn:example:nacm\"/></get-config></rpc>"
     expecteof_netconf "$clixon_util_socket -a UNIX -s $dir/backend.sock -D $DBG" 0 "" "$XML" "$ex"
 }
 
@@ -230,8 +251,12 @@ done # for cred in exact except none
 
 #----------------------------------------------------------------------
 # Test 5: credentials=none, stated RPC username is a non-existent fake user.
-# nacm_external_groups_add() always uses the socket peername (NACMUSER), not the
-# stated username, so OS group membership still grants access despite the fake name.
+# Under credentials=none (test/insecure mode) external-group augmentation is
+# intentionally keyed on the socket peername (NACMUSER) even when the stated
+# username differs, so the peer's OS group membership grants access despite the
+# fake name. This is an explicit test masquerade capability (cf. clixon_cli -U).
+# Under exact/except creds this peer!=user case would instead skip external
+# groups (see nacm_external_groups_add), preventing proxy privilege escalation.
 # Expected: access PERMITTED.
 #----------------------------------------------------------------------
 new "Test 5 cred=none: setup enable-external-groups=true, group=$SECONDARYGROUP (no user-name)"
@@ -262,12 +287,76 @@ setup "$(nacm_config true "admingroup" "$MASQUSER")" exact
 testget "$MASQUSER" "$ERROR"
 teardown
 
+#----------------------------------------------------------------------
+# Tests 8-9: proxy privilege-escalation regression (cred=except).
+# CLICON_RESTCONF_USER=$NACMUSER registers $NACMUSER as a NACM proxyuser, so in
+# 'except' mode the peer $NACMUSER may represent any other username. This is the
+# RESTCONF/proxy model where the socket peer (proxy daemon) differs from the
+# authenticated end user.
+#
+# Test 8: proxied end user ($PROXIEDUSER) is NOT a static member of any group and
+# its access would only come from the peer's OS groups. The fix in
+# nacm_external_groups_add() must NOT attribute the proxy peer's OS groups
+# ($NACMUSER is in $SECONDARYGROUP) to the proxied user.
+#   Pre-fix: external groups keyed on peername → $SECONDARYGROUP matches → PERMIT
+#            (the escalation: proxied user inherits the proxy's OS groups).
+#   Post-fix: cred=except && peer!=user → external groups skipped → DENY.
+#
+# Test 9: positive control — same proxy setup, but the proxied user IS a static
+# user-name member of the NACM group, so the proxy path itself still grants
+# access (we only blocked the OS-group leak, not legitimate proxying).
+#----------------------------------------------------------------------
+PROXIEDUSER="proxieduser-$$"
+
+new "Test 8 cred=except proxy: peer=$NACMUSER (proxyuser) represents $PROXIEDUSER; peer OS group $SECONDARYGROUP must NOT leak → deny"
+setup "$(nacm_config true "$SECONDARYGROUP" "")" except "$NACMUSER"
+testget "$PROXIEDUSER" "$ERROR"
+teardown
+
+new "Test 9 cred=except proxy: peer=$NACMUSER (proxyuser) represents $PROXIEDUSER who is static member of admingroup → permit"
+setup "$(nacm_config true "admingroup" "$PROXIEDUSER")" except "$NACMUSER"
+testget "$PROXIEDUSER" "$OK"
+teardown
+
+#----------------------------------------------------------------------
+# Tests 10-11: explicit groupname attribute in RPC.
+# Client sends groupname="..." in the RPC; nacm_external_groups_add uses that
+# single name instead of OS group lookup. credentials=none so the
+# peer==user check passes.
+# Test 10: explicit groupname matches the NACM group → permit
+# Test 11: explicit groupname does not match any NACM group → deny
+#----------------------------------------------------------------------
+
+new "Test 10 cred=none: explicit groupname=$SECONDARYGROUP matches NACM group → permit"
+setup "$(nacm_config true "$SECONDARYGROUP" "")" none
+testget_group "$NACMUSER" "$SECONDARYGROUP" "$OK"
+teardown
+
+new "Test 11 cred=none: explicit groupname=no-such-group does not match any NACM group → deny"
+setup "$(nacm_config true "$SECONDARYGROUP" "")" none
+testget_group "$NACMUSER" "no-such-group-$$" "$ERROR"
+teardown
+
+#----------------------------------------------------------------------
+# Test 12: explicit groupname ignored under cred=exact (privilege escalation fix).
+# Client sends groupname="$SECONDARYGROUP" but cred=exact means groupname is
+# only honoured under cred=none. OS group lookup is used instead; since the
+# NACM group name is an arbitrary string that doesn't match any OS group,
+# access is denied.
+#----------------------------------------------------------------------
+
+new "Test 12 cred=exact: explicit groupname=$SECONDARYGROUP ignored (not cred=none) → deny"
+setup "$(nacm_config true "explicit-only-group" "")" exact
+testget_group "$NACMUSER" "explicit-only-group" "$ERROR"
+teardown
+
 rm -rf $dir
 
 unset NACMUSER
 unset PRIMARYGROUP
 unset SECONDARYGROUP
 unset MASQUSER
+unset PROXIEDUSER
 
 new "endtest"
 endtest

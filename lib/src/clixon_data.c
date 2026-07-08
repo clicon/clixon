@@ -605,6 +605,37 @@ clicon_username_set(clixon_handle h,
     return clicon_hash_add(cdat, "username", username, strlen(username)+1)==NULL?-1:0;
 }
 
+/*! Get explicit group name, ie group name of the client sending a message
+ *
+ * If not set, an implicit group name is used, ie one of the groups the user belongs to.
+ * @param[in]  h   Clixon handle
+ * @retval     username
+ */
+char *
+clixon_groupname_get(clixon_handle h)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    return (char*)clicon_hash_value(cdat, "groupname", NULL);
+}
+
+/*! Set authorized user name
+ *
+ * @param[in]  h   Clixon handle
+ * @param[in]  username
+ * @note Just keep note of it, dont allocate it or so.
+ */
+int
+clixon_groupname_set(clixon_handle h,
+                     void         *groupname)
+{
+    clicon_hash_t  *cdat = clicon_data(h);
+
+    if (groupname == NULL)
+        return clicon_hash_del(cdat, "groupname");
+    return clicon_hash_add(cdat, "groupname", groupname, strlen(groupname)+1)==NULL?-1:0;
+}
+
 /*! Get NACM peer name (OS peer credential for current request)
  *
  * @param[in]  h  Clixon handle
