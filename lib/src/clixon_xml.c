@@ -1189,7 +1189,7 @@ xml_child_i_set(cxobj *xt,
  *
  * @param[in]  xp    xml parent node
  * @param[in]  xc    the xml child to look for
- * @retval     i     The order of the child
+ * @retval     i     The raw slot index of the child
  * @retval    -1     if no such child, or empty child
  * @see xml_child_i
  */
@@ -1198,15 +1198,13 @@ xml_child_order(cxobj *xp,
                 cxobj *xc)
 {
     cxobj *x;
-    int    i = 0;
     int    ix = 0;
 
     if (!is_element(xp))
         return -1;
     while ((x = xml_child_iter(xp, &ix, -1)) != NULL) {
         if (x == xc)
-            return i;
-        i++;
+            return ix - 1;
     }
     return -1;
 }
@@ -1322,8 +1320,7 @@ xml_child_iter_attr(cxobj *xparent,
 
 /*! Iterator over xml children using caller-side index (no struct state)
  *
- * Similar to yn_iter() for yang nodes. Uses an int index on the caller's stack
- * instead of storing state in the child node. This allows:
+ * Uses an int index on the caller's stack. This allows:
  * - Concurrent iteration over the same parent
  * - No per-node storage overhead for iteration
  * @param[in]     xparent xml tree node whose children should be iterated
