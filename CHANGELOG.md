@@ -29,11 +29,14 @@ Expected: September 2026
   * See: https://clixon-docs.readthedocs.io/en/latest/netconf.html#external-groups
 * Reentrant (thread-safe) parsers: XML, YANG, XPATH, JSON, etc.
 
-### API changes
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
 
 * New XML body API: `xml_body_set()`, `xml_body_append()`, `xml_body_reset()` replace direct manipulation of `CX_BODY` child nodes
 * XML child iteration: `xml_child_each()` replaced by `xml_child_iter()`
 * See the [C API Migration Guide](https://clixon-docs.readthedocs.io/en/latest/migration.html#id1) for full details and code examples
+* New XML flag: `XML_FLAG_ADD_ANC` is added symmetric to `XML_FLAG_DEL_ANC`
 
 ### Corrected Bugs
 

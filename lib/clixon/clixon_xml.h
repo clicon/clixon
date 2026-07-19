@@ -233,9 +233,9 @@ typedef enum xml_stats_enum xml_stats_enum;
 #define XML_FLAG_CACHE_DIRTY 0x400 /* This part of XML tree is not synced to disk */
 #define XML_FLAG_SKIP        0x800 /* Node is skipped in xml_diff */
 #define XML_FLAG_DENY        0x1000 /* Marked as read denied by NACM  */
-#define XML_FLAG_DEL_ANC     0x2000 /* Target-tree ancestor of a deleted node (possibly unique hex?)
-                                                (for incremental mandatory check) */
+#define XML_FLAG_DEL_ANC     0x2000 /* Target-tree ancestor of a deleted node */
 #define XML_FLAG_BODY        0x4000 /* Element has an inline body value (OPTMEM_XML_BODY mode) */
+#define XML_FLAG_ADD_ANC     0x8000 /* Source-tree ancestor of an added node (symmetric to DEL_ANC) */
 
 /*
  * Prototypes

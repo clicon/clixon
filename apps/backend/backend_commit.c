@@ -226,7 +226,7 @@ compute_diffs(clixon_handle       h,
 
     /* Clear flags xpath for get */
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE));
+               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE|XML_FLAG_ADD_ANC));
     xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE|XML_FLAG_DEL_ANC));
     /* 3. Compute differences */
@@ -263,10 +263,19 @@ compute_diffs(clixon_handle       h,
         }
     }
     for (i=0; i<td->td_alen; i++){ /* Also down */
+        cxobj *xsrc_equiv;
+
         xn = td->td_avec[i];
         xml_flag_set(xn, XML_FLAG_ADD);
         xml_apply(xn, CX_ELMNT, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD);
         xml_apply_ancestor(xn, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_CHANGE);
+        /* Symmetric to DEL_ANC: propagate XML_FLAG_ADD_ANC into the source
+         * tree so callers can identify source ancestors of added nodes. */
+        xsrc_equiv = find_target_equiv(xn, td->td_target, td->td_src);
+        if (xsrc_equiv != NULL){
+            xml_flag_set(xsrc_equiv, XML_FLAG_ADD_ANC);
+            xml_apply_ancestor(xsrc_equiv, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_ADD_ANC);
+        }
     }
     for (i=0; i<td->td_clen; i++){ /* Also up */
         xn = td->td_scvec[i];
