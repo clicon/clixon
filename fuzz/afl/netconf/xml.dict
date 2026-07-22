@@ -1,0 +1,47 @@
+#
+# AFL dictionary for XML
+# ----------------------
+#
+# Several basic syntax elements and attributes, modeled on libxml2.
+#
+# Created by Michal Zalewski <lcamtuf@google.com>
+#
+
+attr_encoding=" encoding=\"1\""
+attr_generic=" a=\"1\""
+attr_href=" href=\"1\""
+attr_standalone=" standalone=\"no\""
+attr_version=" version=\"1\""
+attr_xmlns=" xmlns=\"1\""
+attr_xmlns=" xmlns:ns=\"1\""
+
+entity_builtin="&lt;"
+entity_decimal="&#1;"
+entity_external="&a;"
+entity_hex="&#x1;"
+
+string_any="ANY"
+string_brackets="[]"
+string_cdata="CDATA"
+string_dashes="--"
+string_empty_dblquotes="\"\""
+string_empty_quotes="''"
+string_parentheses="()"
+string_pcdata="#PCDATA"
+string_percent="%a"
+string_public="PUBLIC"
+string_ucs4="UCS-4"
+string_utf16="UTF-16"
+string_utf8="UTF-8"
+string_xmlns="xmlns:"
+
+tag_attlist="<!ATTLIST"
+tag_cdata="<![CDATA["
+tag_close="</a>"
+tag_doctype="<!DOCTYPE"
+tag_open="<a>"
+tag_open_close="<a />"
+tag_open_exclamation="<!"
+tag_open_q="<?"
+tag_sq2_close="]]>]]>"
+tag_xml_q="<?xml?>"

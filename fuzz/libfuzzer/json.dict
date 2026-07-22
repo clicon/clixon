@@ -1,0 +1,31 @@
+# JSON dictionary for libFuzzer
+# Covers JSON structural tokens and common YANG-encoded JSON patterns (RFC 7951)
+
+# Structural
+"{"
+"}"
+"["
+"]"
+":"
+","
+"\""
+
+# Literals
+"true"
+"false"
+"null"
+
+# YANG/NETCONF common names
+"name"
+"type"
+"value"
+"enabled"
+"config"
+"state"
+"interface"
+"interfaces"
+
+# RFC 7951 namespace prefixes
+"ietf-interfaces:interfaces"
+"ietf-ip:ipv4"
+"ietf-ip:ipv6"

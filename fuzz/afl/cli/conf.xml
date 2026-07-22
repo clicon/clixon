@@ -1,0 +1,15 @@
+<clixon-config xmlns="http://clicon.org/config">
+  <CLICON_CONFIGFILE>conf.xml</CLICON_CONFIGFILE>
+  <CLICON_CONFIGDIR>conf.d</CLICON_CONFIGDIR>
+  <CLICON_YANG_DIR>/usr/local/share/clixon</CLICON_YANG_DIR>
+  <CLICON_YANG_MODULE_MAIN>clixon-example</CLICON_YANG_MODULE_MAIN>
+  <CLICON_SOCK>/usr/local/var/example/example.sock</CLICON_SOCK>
+  <CLICON_BACKEND_PIDFILE>/usr/local/var/example/example.pidfile</CLICON_BACKEND_PIDFILE>
+  <CLICON_XMLDB_DIR>/usr/local/var/example</CLICON_XMLDB_DIR>
+  <CLICON_STARTUP_MODE>init</CLICON_STARTUP_MODE>
+  <CLICON_CLISPEC_DIR>clispec</CLICON_CLISPEC_DIR>
+  <CLICON_CLI_DIR>/usr/local/lib/example/cli</CLICON_CLI_DIR>
+  <CLICON_CLI_MODE>example</CLICON_CLI_MODE>
+  <CLICON_CLI_LINESCROLLING>0</CLICON_CLI_LINESCROLLING>
+  <CLICON_CLI_TAB_MODE>0</CLICON_CLI_TAB_MODE>
+</clixon-config>

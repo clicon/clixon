@@ -1,0 +1,46 @@
+# text_syntax (curly-brace) dictionary for libFuzzer
+# Covers structural tokens and common YANG-encoded CLI text syntax patterns
+
+# Structural
+"{"
+"}"
+"["
+"]"
+";"
+"\""
+
+# Common YANG leaf/container names
+"interface"
+"interfaces"
+"type"
+"enabled"
+"name"
+"description"
+"address"
+"prefix-length"
+"route"
+"nexthop"
+"metric"
+"system"
+"hostname"
+"ntp"
+"server"
+"config"
+"state"
+"container"
+
+# Common values
+"true"
+"false"
+"null"
+
+# Namespace-prefixed names (RFC 7951 style)
+"ietf-interfaces:interfaces"
+"iana-if-type:ethernetCsmacd"
+
+# Comment start
+"#"
+
+# Newlines and whitespace
+"\\n"
+"\\t"

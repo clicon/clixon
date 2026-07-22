@@ -1,0 +1,84 @@
+# YANG dictionary for libFuzzer
+# Covers YANG statement keywords (RFC 7950) and common values
+
+# Top-level keywords
+"module"
+"submodule"
+"namespace"
+"prefix"
+"revision"
+"import"
+"include"
+"organization"
+"contact"
+"description"
+"reference"
+
+# Data definition keywords
+"container"
+"list"
+"leaf"
+"leaf-list"
+"choice"
+"case"
+"anyxml"
+"anydata"
+"uses"
+"grouping"
+"augment"
+
+# Type keywords
+"type"
+"typedef"
+"union"
+"leafref"
+"path"
+"identityref"
+"identity"
+"base"
+"enumeration"
+"enum"
+"bits"
+"bit"
+"instance-identifier"
+
+# Constraint keywords
+"must"
+"when"
+"mandatory"
+"min-elements"
+"max-elements"
+"unique"
+"default"
+"key"
+
+# Type restriction keywords
+"range"
+"length"
+"pattern"
+"fraction-digits"
+
+# Common type names
+"string"
+"boolean"
+"int8"
+"int16"
+"int32"
+"int64"
+"uint8"
+"uint16"
+"uint32"
+"uint64"
+"empty"
+"binary"
+"decimal64"
+
+# Config / state
+"config"
+"true"
+"false"
+
+# Structural
+"{"
+"}"
+";"
