@@ -86,6 +86,7 @@ int clixon_rpc_api_path2xml(clixon_handle h, const char *api_path, const char *b
 int clixon_rpc_translate_format(clixon_handle h, enum format_enum format, const char *xpath, cvec *nsc,
                                 cxobj *xt, int pretty, int skiptop, int cli_aware, const char *prepend, cbuf *cb);
 int clicon_rpc_restart_plugin(clixon_handle h, const char *plugin);
+int clixon_rpc_nmda_compare(clixon_handle h, const char *db1, const char *db2, cxobj **xt);
 
 /*-- Backward compatible 7.6 --*/
 static inline int
