@@ -54,7 +54,11 @@
 /* clixon */
 #include <clixon/clixon.h>
 
-/* generated protobuf */
+/* generated protobuf — fields marked deprecated in the gNMI proto are reflected
+ * in the generated header and its init macros; suppress -Wdeprecated-declarations
+ * for this file since we cannot modify the official gNMI .proto file */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include "gnmi.pb-c.h"
 
 #include "grpc_nghttp2.h"

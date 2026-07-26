@@ -210,6 +210,9 @@ clixon_http1_parse.tab.h: clixon_http1_parse.y
 # extra rule to avoid parallell yaccs
 clixon_http1_parse.tab.c:	clixon_http1_parse.tab.h
 
+clixon_http1_parse.tab.o : clixon_http1_parse.tab.c
+	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-unused-but-set-variable -c $<
+
 lex.clixon_http1_parse.o : lex.clixon_http1_parse.c clixon_http1_parse.tab.h
 	$(CC) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -Wno-error -c $<
 
