@@ -54,6 +54,9 @@
 
 %type <string> attvalue
 
+%destructor { free($$); } NAME STRING
+%destructor { free($$); } attvalue
+
 %lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
 %parse-param   {void *_xy}             /* passed to yyparse() and yyerror() */
 %parse-param   {yyscan_t yyscanner}    /* passed to yyparse(), yylex(), and yyerror() */

@@ -91,6 +91,8 @@ object.
 %token <string> J_STRING
 %token <string> J_NUMBER
 
+%destructor { free($$); } J_NUMBER number
+
 %type <cbuf>      string
 %type <cbuf>      ustring
 %type <string>    number
@@ -169,6 +171,7 @@ clixon_json_parseerror(void *_jy,
                clixon_json_parseget_text(yyscanner));
     if (_JY->jy_cbuf_str)
         cbuf_free(_JY->jy_cbuf_str);
+    _JY->jy_cbuf_str = NULL;
   return;
 }
 
@@ -198,6 +201,10 @@ json_current_new(clixon_json_yacc *jy,
     char      *id = NULL;
 
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __func__);
+    if (jy->jy_current == NULL){
+        clixon_err(OE_JSON, 0, "JSON object stack underflow");
+        goto done;
+    }
     /* Find colon separator and if found split into prefix:name */
     if (nodeid_split(name, &prefix, &id) < 0)
         goto done;
@@ -265,6 +272,10 @@ json_current_body(clixon_json_yacc *jy,
                  char             *value)
 {
    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s", __func__);
+   if (jy->jy_current == NULL){
+       clixon_err(OE_JSON, 0, "JSON object stack underflow");
+       return -1;
+   }
    if (xml_body_set(jy->jy_current, value) < 0)
        return -1;
    return 0;

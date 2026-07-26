@@ -54,15 +54,15 @@
 %token <intval> RELOP
 
 %token <string> NUMBER
-%token <string> X_EOF
-%token <string> QUOTE
-%token <string> APOST
+%token X_EOF
+%token QUOTE
+%token APOST
 %token <string> CHARS
 %token <string> NCNAME
 %token <string> NODETYPE
-%token <string> DOUBLEDOT
-%token <string> DOUBLECOLON
-%token <string> DOUBLESLASH
+%token DOUBLEDOT
+%token DOUBLECOLON
+%token DOUBLESLASH
 %token <string> FUNCTIONNAME
 
 %type <intval>    axisspec
@@ -88,6 +88,10 @@
 %type <stack>     primaryexpr
 %type <stack>     literal
 %type <stack>     functioncall
+
+/* Free allocated strings and xpath_tree nodes when bison discards them during error recovery */
+%destructor { free($$); } <string>
+%destructor { if ($$) xpath_tree_free((xpath_tree *)$$); } <stack>
 
 %lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
 %parse-param   {void *_xpy}             /* passed to yyparse() and yyerror() */
@@ -384,7 +388,10 @@ xp_nodetest_function(clixon_xpath_yacc *xpy,
     if (cb)
         cbuf_free(cb);
     xtret = xp_new(XP_NODE_FN, fn, NULL, name, NULL, NULL, NULL);
+    name = NULL;
  done:
+    if (name)
+        free(name);
     if (cb)
         cbuf_free(cb);
     return xtret;
@@ -495,9 +502,10 @@ abbreviatedstep : '.' predicates     { $$=xp_new(XP_STEP,A_SELF, NULL,NULL, NULL
                        | AbbreviatedAxisSpecifier 
 */
 axisspec    : NCNAME DOUBLECOLON
-                 { if (($$=xp_axisname_function(_XPY, $1)) < 0) YYERROR;
-                   free($1);
-                   _PARSE_DEBUG2("axisspec-> AXISNAME(%s -> %d) ::", $1, $$);
+                 { char *_n = $1; $1 = NULL;
+                   if (($$=xp_axisname_function(_XPY, _n)) < 0) { free(_n); YYERROR; }
+                   free(_n);
+                   _PARSE_DEBUG("axisspec-> AXISNAME ::");
                  }
             | abbreviatedaxisspec
                  { $$ = $1; }
@@ -512,9 +520,10 @@ abbreviatedaxisspec :'@'      { $$=A_ATTRIBUTE; _PARSE_DEBUG("axisspec-> @"); }
 nodetest    : nametest { $$ = $1;
                    _PARSE_DEBUG("nodetest-> nametest");}
             | NODETYPE ')'
-               { if (($$ = xp_nodetest_function(_XPY, $1)) == NULL) YYERROR;
-                   _PARSE_DEBUG1("nodetest-> nodetype(%s)", $1);
-               }
+            { char *_n = $1; $1 = NULL;
+              if (($$ = xp_nodetest_function(_XPY, _n)) == NULL) YYERROR;
+              _PARSE_DEBUG("nodetest-> nodetype");
+            }
             ;
 
 nametest    : ADDOP
@@ -565,10 +574,15 @@ literal     : QUOTE string QUOTE
 
 functioncall : NCNAME '(' ')'
                  { /* XXX warning: rule useless in parser due to conflicts */
-                   if (($$ = xp_primary_function(_XPY, $1, NULL)) == NULL) YYERROR;
+                   char *_n = $1; $1 = NULL;
+                   if (($$ = xp_primary_function(_XPY, _n, NULL)) == NULL) YYERROR;
                    _PARSE_DEBUG("primaryexpr-> functionname ()"); }
              | NCNAME '(' args ')'
-                 { if (($$ = xp_primary_function(_XPY, $1, $3)) == NULL) YYERROR;
+                 { char *_n = $1; $1 = NULL;
+                   if (($$ = xp_primary_function(_XPY, _n, $3)) == NULL) {
+                       xpath_tree_free($3); $3 = NULL;
+                       YYERROR;
+                   }
                    _PARSE_DEBUG("primaryexpr-> functionname (arguments)"); }
             ;
 
@@ -580,7 +594,7 @@ string      : string CHARS  {
                          free($2);
                          _PARSE_DEBUG("string-> string CHAR");
                }
-            | CHARS         { _PARSE_DEBUG("string-> "); }
+            | CHARS         { $$ = $1; _PARSE_DEBUG("string-> "); }
             ;
 
 %%

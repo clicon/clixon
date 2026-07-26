@@ -912,8 +912,12 @@ yang_parse_str(const char *str,
  done:
     clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "retval:%p", ymod);
     ystack_pop(&yy);
-    if (yy.yy_stack)
-        free (yy.yy_stack);
+    /* Free any extra frames left on stack by a failed parse */
+    while (yy.yy_stack) {
+        struct ys_stack *ystack = yy.yy_stack;
+        yy.yy_stack = ystack->ys_next;
+        free(ystack);
+    }
     return ymod;  /* top-level (sub)module */
 }
 
@@ -1989,6 +1993,8 @@ ys_parse(yang_stmt   *ys,
   done:
     if (reason)
         free(reason);
+    if (yang_cv_get(ys) == NULL && cv)
+        cv_free(cv);
     return yang_cv_get(ys);
 }
 

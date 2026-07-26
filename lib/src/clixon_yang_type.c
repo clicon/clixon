@@ -1412,6 +1412,11 @@ yang_type_resolve(yang_stmt   *yorig,
             clixon_err(OE_DB, 0, "mandatory type object is not found");
             goto done;
         }
+        /* Cycle detection: if rytype is the same pointer as ytype, we have a circular typedef */
+        if (rytype == ytype){
+            clixon_err(OE_YANG, 0, "Circular typedef reference: \"%s\"", type);
+            goto done;
+        }
         /* Recursively resolve this new type */
         if (yang_type_resolve(yorig, ys, rytype, yrestype,
                               options, cvv,

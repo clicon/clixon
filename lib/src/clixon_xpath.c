@@ -589,6 +589,7 @@ xpath_parse(const char  *xpath,
         clixon_log(NULL, LOG_NOTICE, "XPath error: on line %d", xpy.xpy_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_XML, 0, "XPath parser error with no error code (should not happen)");
+        xpy.xpy_top = NULL; /* destructors freed any partial tree during error recovery */
         xpath_scan_exit(&xpy);
         goto done;
     }

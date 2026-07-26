@@ -525,13 +525,14 @@ xml_name_set(cxobj      *xn,
     char  *prefix_copy = NULL;
     size_t prefixlen;
     size_t namelen;
+    int    retval = -1;
 
     /* Save prefix before freeing combined allocation */
     if (xn->x_prefix_len){
         if ((prefix_copy = strndup(xn->x_name - xn->x_prefix_len - 1,
                                    xn->x_prefix_len)) == NULL){
             clixon_err(OE_XML, errno, "strndup");
-            return -1;
+            goto done;
         }
     }
     /* Free combined allocation */
@@ -543,10 +544,13 @@ xml_name_set(cxobj      *xn,
         namelen = strlen(name);
         if (prefix_copy){
             prefixlen = strlen(prefix_copy);
+            if (prefixlen > UINT8_MAX){
+                clixon_err(OE_XML, EINVAL, "xml prefix too long: %zu", prefixlen);
+                goto done;
+            }
             if ((alloc = malloc(prefixlen + 1 + namelen + 1)) == NULL){
                 clixon_err(OE_XML, errno, "malloc");
-                free(prefix_copy);
-                return -1;
+                goto done;
             }
             memcpy(alloc, prefix_copy, prefixlen + 1);
             memcpy(alloc + prefixlen + 1, name, namelen + 1);
@@ -556,13 +560,15 @@ xml_name_set(cxobj      *xn,
         else{
             if ((xn->x_name = strdup(name)) == NULL){
                 clixon_err(OE_XML, errno, "strdup");
-                return -1;
+                goto done;
             }
         }
     }
+    retval = 0;
+ done:
     if (prefix_copy)
         free(prefix_copy);
-    return 0;
+    return retval;
 }
 
 /*! Get prefix of xnode
@@ -591,11 +597,12 @@ xml_prefix_set(cxobj      *xn,
     char  *name_copy = NULL;
     size_t prefixlen;
     size_t namelen;
+    int    retval = -1;
 
     /* Save current name before freeing combined allocation */
     if (xn->x_name && (name_copy = strdup(xn->x_name)) == NULL){
         clixon_err(OE_XML, errno, "strdup");
-        return -1;
+        goto done;
     }
     /* Free combined allocation */
     if (xn->x_name)
@@ -604,12 +611,15 @@ xml_prefix_set(cxobj      *xn,
     xn->x_prefix_len = 0;
     if (name_copy){
         namelen = strlen(name_copy);
-        if (prefix){
+        if (prefix && *prefix){
             prefixlen = strlen(prefix);
+            if (prefixlen > UINT8_MAX){
+                clixon_err(OE_XML, EINVAL, "xml prefix too long: %zu", prefixlen);
+                goto done;
+            }
             if ((alloc = malloc(prefixlen + 1 + namelen + 1)) == NULL){
                 clixon_err(OE_XML, errno, "malloc");
-                free(name_copy);
-                return -1;
+                goto done;
             }
             memcpy(alloc, prefix, prefixlen + 1);
             memcpy(alloc + prefixlen + 1, name_copy, namelen + 1);
@@ -619,13 +629,15 @@ xml_prefix_set(cxobj      *xn,
         else{
             if ((xn->x_name = strdup(name_copy)) == NULL){
                 clixon_err(OE_XML, errno, "strdup");
-                free(name_copy);
-                return -1;
+                goto done;
             }
         }
-        free(name_copy);
     }
-    return 0;
+    retval = 0;
+ done:
+    if (name_copy)
+        free(name_copy);
+    return retval;
 }
 
 /*! Get cached namespace (given prefix)

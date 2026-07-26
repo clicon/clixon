@@ -4462,6 +4462,7 @@ yang_arg2cvec(yang_stmt  *ys,
         cv_type_set(cv, CGV_STRING);
         if ((cv_string_set(cv, vec[i])) == NULL){
             clixon_err(OE_YANG, errno, "cv_string_set");
+            cvec_free(cvv);
             cvv = NULL;
             goto done;
         }
