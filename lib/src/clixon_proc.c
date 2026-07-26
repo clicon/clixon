@@ -232,12 +232,12 @@ clixon_proc_socket(clixon_handle h,
     clixon_log(h, LOG_INFO, "%s '%s'", __func__, flattened);
     free(flattened);
 
-    if (socketpair(AF_UNIX, sock_flags, 0, sp) < 0){
+    if (socketpair(AF_UNIX, sock_flags | SOCK_CLOEXEC, 0, sp) < 0){
         clixon_err(OE_UNIX, errno, "socketpair");
         goto done;
     }
     if (sockerr &&
-        socketpair(AF_UNIX, sock_flags, 0, sperr) < 0){
+        socketpair(AF_UNIX, sock_flags | SOCK_CLOEXEC, 0, sperr) < 0){
         clixon_err(OE_UNIX, errno, "socketpair");
         goto done;
     }
