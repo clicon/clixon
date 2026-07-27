@@ -41,6 +41,19 @@
 #define _CLIXON_EVENT_H_
 
 /*
+ * Constants
+ */
+/*! Priority levels for clixon_event_reg_fd_prio()
+ *
+ * Per-registration priority:
+ * high-prio fds are serviced (drained) before low-prio fds in each loop cycle.
+ * When high-prio fds are registered, low-prio fds are throttled to one per cycle
+ * but remain round-robin fair among themselves.
+ */
+#define CLIXON_EVENT_PRIO_LOW  0  /* Default (clixon_event_reg_fd) */
+#define CLIXON_EVENT_PRIO_HIGH 1  /* Serviced before low-prio fds */
+
+/*
  * Prototypes
  */
 int clixon_exit_set(int nr);

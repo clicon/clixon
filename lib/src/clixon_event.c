@@ -200,11 +200,12 @@ clicon_sig_ignore_get(void)
  * @param[in]  fn   Function to call when input available on fd
  * @param[in]  arg  Argument to function fn
  * @param[in]  str  Describing string for logging
- * @param[in]  prio Priority (0 or 1)
+ * @param[in]  prio Priority: CLIXON_EVENT_PRIO_HIGH or CLIXON_EVENT_PRIO_LOW
  * @code
  *   static int fn(int fd, void *arg){}
  *   clixon_event_reg_fd(fd, fn, (void*)42, "call fn on input on fd", 0);
  * @endcode
+ * @note Priority is honored purely by this per-fd flag
  * @see clixon_event_loop
  */
 int
@@ -486,6 +487,44 @@ event_handle_eintr(clixon_handle h)
     goto done;
 }
 
+/*! Move an unprio event to the tail of the _ee list (round-robin fairness)
+ *
+ * When prioritized fds exist, only one unprio fd is serviced per loop cycle.
+ * Since the scan always restarts from the list head, an unprio fd near the head
+ * that is always ready would be serviced every cycle and starve the others.
+ * Moving the just-serviced node to the tail makes the next cycle resume with the
+ * remaining fds, giving round-robin fairness among unprio fds.
+ *
+ * @param[in] e  Serviced event to move to the tail of _ee
+ */
+static int
+event_unprio_rotate(struct event_data *e)
+{
+    int                retval = -1;
+    struct event_data *prev = NULL;
+    struct event_data *tail;
+
+    if (e->e_next == NULL) /* already at tail (or single element): nothing to do */
+        goto ok;
+    if (_ee != e){         /* find predecessor (list head may have changed) */
+        for (prev = _ee; prev && prev->e_next != e; prev = prev->e_next)
+            ;
+        if (prev == NULL)  /* e no longer in list: leave it be */
+            goto ok;
+    }
+    if (prev == NULL)      /* unlink e */
+        _ee = e->e_next;
+    else
+        prev->e_next = e->e_next;
+    e->e_next = NULL;
+    for (tail = _ee; tail->e_next; tail = tail->e_next)
+        ;
+    tail->e_next = e;
+ ok:
+    retval = 0;
+    return retval;
+}
+
 static int
 event_handle_fds(struct event_data *ee,
                  int                prio)
@@ -501,7 +540,10 @@ event_handle_fds(struct event_data *ee,
         if ((pfd = e->e_pollfd) == NULL) /* Could be added after poll regitsration */
             continue;
         if (pfd->revents != 0) { /* returned events */
-            if (pfd->revents & POLLIN || pfd->revents & POLLHUP) {
+            /* POLLERR (and POLLHUP) may be returned even though only POLLIN was
+             * requested. Dispatch the callback so it reads the error/EOF and
+             * unregisters just this fd, rather than tearing down the whole loop */
+            if (pfd->revents & (POLLIN | POLLHUP | POLLERR)) {
                 clixon_debug(CLIXON_DBG_EVENT, "fd %s", e->e_descr);
                 _ee_unreg = 0;
                 if ((*e->e_fn)(e->e_fd, e->e_arg) < 0) {
@@ -512,8 +554,10 @@ event_handle_fds(struct event_data *ee,
                     _ee_unreg = 0;
                     break;
                 }
-                if (prio == 0 && _ee_prio_nr > 0) /* Prioritized exists, break unprio fairness */
+                if (prio == 0 && _ee_prio_nr > 0) { /* Prioritized exists, break unprio fairness */
+                    event_unprio_rotate(e); /* round-robin among unprio fds */
                     break;
+                }
             }
             else if (pfd->revents & POLLNVAL) { /* fd not open */
                 clixon_err(OE_EVENTS, 0, "poll: Invalid request: %s fd %d not open",

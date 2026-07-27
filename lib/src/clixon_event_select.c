@@ -97,6 +97,10 @@ struct event_data{
 static struct event_data *ee = NULL;
 static struct event_data *ee_timers = NULL;
 
+/* Number of prioritized (e_prio) fds registered in ee. When > 0 the unprio pass
+ * is throttled to one fd per cycle for fairness (mirrors clixon_event.c) */
+static int _ee_prio_nr = 0;
+
 /* Set if element in ee is deleted (clixon_event_unreg_fd). Check in ee loops */
 static int _ee_unreg = 0;
 
@@ -106,12 +110,14 @@ static int _ee_unreg = 0;
  * @param[in]  fn   Function to call when input available on fd
  * @param[in]  arg  Argument to function fn
  * @param[in]  str  Describing string for logging
- * @param[in]  prio Priority (0 or 1)
+ * @param[in]  prio Priority: CLIXON_EVENT_PRIO_HIGH or CLIXON_EVENT_PRIO_LOW
  * @code
  * int fn(int fd, void *arg){
  * }
  * clixon_event_reg_fd(fd, fn, (void*)42, "call fn on input on fd");
  * @endcode 
+ * @note Priority is honored purely by this per-fd flag, independent of the
+ *       CLICON_SOCK_PRIO option (which only selects the value a caller passes).
  * @see clixon_event_unreg_fd
  */
 int
@@ -136,6 +142,8 @@ clixon_event_select_reg_fd_prio(int         fd,
     e->e_prio = prio;
     e->e_next = ee;
     ee = e;
+    if (prio)
+        _ee_prio_nr++;
     clixon_debug(CLIXON_DBG_EVENT, "registering %s", e->e_string);
     return 0;
 }
@@ -164,6 +172,8 @@ clixon_event_select_unreg_fd(int   s,
             found++;
             *e_prev = e->e_next;
             _ee_unreg++;
+            if (e->e_prio)
+                _ee_prio_nr--;
             free(e);
             break;
         }
@@ -290,6 +300,45 @@ clixon_event_select_poll(int fd)
     return retval;
 }
 
+/*! Move an unprio event to the tail of the ee list (round-robin fairness)
+ *
+ * With CLICON_SOCK_PRIO only one unprio fd is serviced per loop cycle. Since the
+ * unprio scan always restarts from the list head, an unprio fd near the head that
+ * is always ready would be serviced every cycle and starve the other unprio fds.
+ * Moving the just-serviced node to the tail makes the next cycle resume with the
+ * remaining fds, giving round-robin fairness among unprio fds.
+ *
+ * @param[in] e  Serviced event to move to the tail of ee
+ * @retval    0  OK
+ */
+static int
+event_select_unprio_rotate(struct event_data *e)
+{
+    int                retval = -1;
+    struct event_data *prev = NULL;
+    struct event_data *tail;
+
+    if (e->e_next == NULL) /* already at tail (or single element): nothing to do */
+        goto ok;
+    if (ee != e){          /* find predecessor (list head may have changed) */
+        for (prev = ee; prev && prev->e_next != e; prev = prev->e_next)
+            ;
+        if (prev == NULL)  /* e no longer in list: leave it be */
+            goto ok;
+    }
+    if (prev == NULL)      /* unlink e */
+        ee = e->e_next;
+    else
+        prev->e_next = e->e_next;
+    e->e_next = NULL;
+    for (tail = ee; tail->e_next; tail = tail->e_next)
+        ;
+    tail->e_next = e;
+ ok:
+    retval = 0;
+    return retval;
+}
+
 /*! Dispatch file descriptor events (and timeouts) by invoking callbacks.
  *
  * @param[in] h  Clixon handle
@@ -381,7 +430,10 @@ clixon_event_select_loop(clixon_handle h)
             free(e);
         }
         _ee_unreg = 0;
-        if (clicon_option_bool(h, "CLICON_SOCK_PRIO")){
+        /* Prio: drain all ready prioritized fds first. Driven purely by the
+         * per-fd e_prio flag (set via clixon_event_reg_fd_prio), independent of
+         * any global option. No-op when no prioritized fds are registered. */
+        if (_ee_prio_nr > 0){
             for (e=ee; e; e=e_next) {
                 if (clixon_exit_get() == 1)
                     break;
@@ -401,7 +453,9 @@ clixon_event_select_loop(clixon_handle h)
         }
 
         /* Unprio
-         * Note that without prio, round-robin fairness is ensured, not with prio */
+         * When prioritized fds exist, one unprio fd is serviced per cycle;
+         * round-robin fairness among unprio fds is preserved via
+         * event_select_unprio_rotate() below */
         for (e=ee; e; e=e_next){
             if (clixon_exit_get() == 1)
                 break;
@@ -416,8 +470,10 @@ clixon_event_select_loop(clixon_handle h)
                     _ee_unreg = 0;
                     break;
                 }
-                if (clicon_option_bool(h, "CLICON_SOCK_PRIO"))
+                if (_ee_prio_nr > 0){ /* Prioritized exist: break unprio fairness */
+                    event_select_unprio_rotate(e); /* round-robin among unprio fds */
                     break;
+                }
             }
         }
         clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */

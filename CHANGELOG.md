@@ -23,11 +23,22 @@ Expected: September 2026
 
 ### Features
 
+* Event handling: Improved fairness of low prio events
+  * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
 * New: [NACM External Groups](https://github.com/clicon/clixon/issues/654)
   * Added explicit groupname attribute for cred-mode=NONE, for masquerading of groups
     * Added `-g <group>` option to the CLI
   * See: https://clixon-docs.readthedocs.io/en/latest/netconf.html#external-groups
 * Reentrant (thread-safe) parsers: XML, YANG, XPATH, JSON, etc.
+
+
+### API changes on existing protocol/config features
+
+Users may have to change how they access the system
+
+* New `clixon-config@2026-06-01.yang` revision
+   * Changed default value of `CLICON_EVENT_SELECT` to `false`, ie poll-based event handling
+      * If you want to keep the select-based event-handling, set it to `true`.
 
 ### C/CLI-API changes on existing features
 

@@ -240,6 +240,7 @@ backend_accept_client(int   fd,
     socklen_t       len;
     client_entry   *ce;
     char           *name = NULL;
+    int             prio;
 #ifdef HAVE_SO_PEERCRED        /* Linux. */
     socklen_t       clen;
     struct ucred    cr = {0,};
@@ -291,9 +292,13 @@ backend_accept_client(int   fd,
     ce->ce_s = s;
     /*
      * Register callback for actual data socket
+     * Use CLICON_SOCK_PRIO option to set priority of this socket
      */
-    if (clixon_event_reg_fd_prio(s, from_client, (void*)ce, "local netconf client socket",
-                                 clicon_option_bool(h, "CLICON_SOCK_PRIO")) < 0)
+    if (clicon_option_bool(h, "CLICON_SOCK_PRIO"))
+        prio = CLIXON_EVENT_PRIO_HIGH;
+    else
+        prio = CLIXON_EVENT_PRIO_LOW;
+    if (clixon_event_reg_fd_prio(s, from_client, (void*)ce, "local netconf client socket", prio) < 0)
         goto done;
     s = -1;
     retval = 0;

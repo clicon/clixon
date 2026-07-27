@@ -53,6 +53,12 @@ module clixon-config {
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2026-06-01 {
+        description
+            "Changed default values:
+                CLICON_EVENT_SELECT: false
+             Released in Clixon 7.9";
+    }
     revision 2026-03-01 {
         description
             "Added options:
@@ -1212,13 +1218,21 @@ module clixon-config {
             type boolean;
             default false;
             description
-                "Enable socket event priority.
-                 If enabled, a file-descriptor can be registered as high prio.
-                 Presently, the backend socket has higher prio than others.
-                 (should be made more generic)
-                 Note that a side-effect of enabling this option is that fairness of
-                 non-prio events is disabled
-                 This is useful if the backend opens other sockets, such as the controller";
+                "Register the backend's local client (NETCONF) data sockets as
+                 high-priority events.
+                 If enabled, established client request sockets are serviced
+                 before lower-priority events (such as the server/accept socket
+                 and any other non-prio sockets) in each event-loop cycle, thus
+                 prioritizing in-progress client requests over accepting new
+                 connections. Round-robin fairness among non-prio events is
+                 preserved.
+                 This is useful if the backend opens other sockets, such as the
+                 controller (device connections), which should not delay client
+                 request processing.
+                 This option only selects the priority the backend assigns to its
+                 own client sockets; the underlying per-fd priority API
+                 (clixon_event_reg_fd_prio / CLIXON_EVENT_PRIO_HIGH) is always
+                 available to plugins independent of this option.";
         }
         leaf CLICON_AUTOCOMMIT {
             type int32;
@@ -1627,14 +1641,13 @@ module clixon-config {
         /* Events */
         leaf CLICON_EVENT_SELECT {
             description
-                "If false, use new poll event handler,
-                 This is newer and allows for more open files and is recommended for
+                "If false use poll event handler.
+                 If true, use select event handler,
+                 The poll event handler allows for more open files and is recommended for
                  the controller
-                 If true, use original select event handler.
-                 This has been around for a long time and is more robust.
-                 But expected to phased out and made obsolete eventually";
+                 The select event handler is planned to be phased out and eventually made obsolete  along with this option";
             type boolean;
-            default true;
+            default false;
         }
         /* SNMP */
         leaf-list CLICON_SNMP_MIB {
