@@ -153,8 +153,9 @@ clixon_strsep2(char       *str,
 
     s1 = str;
     while ((s1 = strstr(s1, delim1)) != NULL){
-        if ((s2 = strstr(s1+strlen(delim1), delim2)) != NULL)
-            nr += 2;
+        if ((s2 = strstr(s1+strlen(delim1), delim2)) == NULL)
+            break; /* no closing delimiter: no more complete pairs possible */
+        nr += 2;
         s1 = s2 + strlen(delim2);
     }
     /* alloc vector and append copy of string */
@@ -170,12 +171,12 @@ clixon_strsep2(char       *str,
     s1 = ptr;
     vec[i++] = ptr;
     while ((s1 = strstr(s1, delim1)) != NULL){
-        if ((s2 = strstr(s1+strlen(delim1), delim2)) != NULL){
-            *s1 = '\0';
-            *s2 = '\0';
-            vec[i++] = s1 + strlen(delim1);
-            vec[i++] = s2 + strlen(delim2);
-        }
+        if ((s2 = strstr(s1+strlen(delim1), delim2)) == NULL)
+            break; /* no closing delimiter: no more complete pairs possible */
+        *s1 = '\0';
+        *s2 = '\0';
+        vec[i++] = s1 + strlen(delim1);
+        vec[i++] = s2 + strlen(delim2);
         s1 = s2 + strlen(delim2);
     }
     *vcp = vec;

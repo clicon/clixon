@@ -611,7 +611,7 @@ on_frame_recv_callback(nghttp2_session     *session,
                 return 0;
             /* Query vector, ie the ?a=x&b=y stuff */
             query = restconf_param_get(rc->rc_h, "REQUEST_URI");
-            if ((query = index(query, '?')) != NULL){
+            if (query != NULL && (query = index(query, '?')) != NULL){
                 query++;
                 if (strlen(query) &&
                     uri_str2cvec(query, '&', '=', 1, &sd->sd_qvec) < 0)

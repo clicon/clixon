@@ -266,7 +266,8 @@ oid_eq(const oid *objid0,
  * @param[in]     objid1len  Length of second OID vector 
  * @retval        0          OK
  * @retval       -1          Error
- * Assume objid0 is allocated with MAX_OID_LEN > oid0len+oid1len
+ * @note objid0 must be allocated with capacity MAX_OID_LEN; the append is
+ *       rejected if the resulting length would exceed it.
  */
 int
 oid_append(const oid *objid0,
@@ -276,12 +277,14 @@ oid_append(const oid *objid0,
 {
     void *dst;
 
-    dst =  (void*)objid0;
-    dst += (*objid0len)*sizeof(*objid0);
-    if (memcpy(dst, objid1, objid1len*sizeof(*objid0)) < 0){
-        clixon_err(OE_UNIX, errno, "memcpy");
+    if (*objid0len + objid1len > MAX_OID_LEN){
+        clixon_err(OE_UNIX, EOVERFLOW, "OID length %zu exceeds MAX_OID_LEN %d",
+                   *objid0len + objid1len, MAX_OID_LEN);
         return -1;
     }
+    dst =  (void*)objid0;
+    dst += (*objid0len)*sizeof(*objid0);
+    memcpy(dst, objid1, objid1len*sizeof(*objid0));
     *objid0len += objid1len;
     return 0;
 }
