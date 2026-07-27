@@ -420,6 +420,75 @@ if [ "$BE" -ne 0 ]; then
     stop_backend -f "$cfg"
 fi
 
+# Extension (unknown) statements are allowed as substatements of deviation and
+# deviate, see RFC 7950 Sec 6.3.1 (statements can be extended with unknown stmts)
+new "8. extension statements in deviation and deviate bodies"
+cat <<EOF > $fyangdev
+module example-deviations{
+   yang-version 1.1;
+   prefix ed;
+   namespace "urn:example:deviations";
+   import example-base {
+         prefix base;
+   }
+   extension mytag {
+      argument value;
+   }
+   deviation /base:system/base:user/base:type {
+      ed:mytag "at-deviation-level";
+      deviate add {
+         default "admin";
+         ed:mytag "in-deviate-add";
+      }
+   }
+   deviation /base:system/base:my {
+      deviate replace {
+         type int8;
+         ed:mytag "in-deviate-replace";
+      }
+   }
+   deviation /base:system {
+      deviate delete {
+         must "daytime or time";
+         ed:mytag "in-deviate-delete";
+      }
+   }
+}
+EOF
+
+if [ "$BE" -ne 0 ]; then
+    new "kill old backend"
+    sudo clixon_backend -zf "$cfg"
+    if [ $? -ne 0 ]; then
+        err
+    fi
+    new "start backend -s init -f $cfg"
+    start_backend -s init -f "$cfg"
+fi
+
+new "wait backend 5"
+wait_backend
+
+new "Add user bob"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><user><name>bob</name></user></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "deviate add still applies (admin default present)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><running/></source><filter type=\"xpath\" select=\"/base:system/base:user[base:name='bob']/base:type\" xmlns:base=\"urn:example:base\"/></get-config></rpc>" "" "<rpc-reply $DEFAULTNS><data><system xmlns=\"urn:example:base\"><user><name>bob</name><type>admin</type></user></system></data></rpc-reply>"
+
+if [ "$BE" -ne 0 ]; then
+    new "Kill backend"
+    # Check if premature kill
+    pid=$(pgrep -u root -f clixon_backend)
+    if [ -z "$pid" ]; then
+        err "backend already dead"
+    fi
+    # kill backend
+    stop_backend -f "$cfg"
+fi
+
 rm -rf "$dir"
 
 new "endtest"

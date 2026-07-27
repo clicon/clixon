@@ -1569,10 +1569,11 @@ deviation_substmts : deviation_substmts deviation_substmt
 
 deviation_substmt : description_stmt  { _PARSE_DEBUG("deviation-substmt -> description-stmt"); }
                   | reference_stmt    { _PARSE_DEBUG("deviation-substmt -> reference-stmt"); }
-                  | deviate_not_supported_stmt { _PARSE_DEBUG("yang-stmt -> deviate-not-supported-stmt");}
-                  | deviate_add_stmt     { _PARSE_DEBUG("deviation-stmt -> deviate-add-stmt");}
-                  | deviate_delete_stmt  { _PARSE_DEBUG("deviation-stmt -> deviate-delete-stmt");}
-                  | deviate_replace_stmt { _PARSE_DEBUG("deviation-stmt -> deviate-replace-stmt");}
+                  | deviate_not_supported_stmt { _PARSE_DEBUG("deviation-substmt -> deviate-not-supported-stmt");}
+                  | deviate_add_stmt     { _PARSE_DEBUG("deviation-substmt -> deviate-add-stmt");}
+                  | deviate_delete_stmt  { _PARSE_DEBUG("deviation-substmt -> deviate-delete-stmt");}
+                  | deviate_replace_stmt { _PARSE_DEBUG("deviation-substmt -> deviate-replace-stmt");}
+                  | unknown_stmt         { _PARSE_DEBUG("deviation-substmt -> unknown-stmt");}
                   ;
 
 not_supported_keyword_str : D_NOT_SUPPORTED
@@ -1615,6 +1616,7 @@ deviate_add_substmt : units_stmt    { _PARSE_DEBUG("deviate-add-substmt -> units
                 | mandatory_stmt    { _PARSE_DEBUG("deviate-add-substmt -> mandatory-stmt"); }
                 | min_elements_stmt { _PARSE_DEBUG("deviate-add-substmt -> min-elements-stmt"); }
                 | max_elements_stmt { _PARSE_DEBUG("deviate-add-substmt -> max-elements-stmt"); }
+                | unknown_stmt      { _PARSE_DEBUG("deviate-add-substmt -> unknown-stmt"); }
                 |                   { _PARSE_DEBUG("deviate-add-substmt -> "); }
                 ;
 
@@ -1642,6 +1644,7 @@ deviate_delete_substmt : units_stmt { _PARSE_DEBUG("deviate-delete-substmt -> un
                 | must_stmt         { _PARSE_DEBUG("deviate-delete-substmt -> must-stmt"); }
                 | unique_stmt       { _PARSE_DEBUG("deviate-delete-substmt -> unique-stmt"); }
                 | default_stmt      { _PARSE_DEBUG("deviate-delete-substmt -> default-stmt"); }
+                | unknown_stmt      { _PARSE_DEBUG("deviate-delete-substmt -> unknown-stmt"); }
                 |                   { _PARSE_DEBUG("deviate-delete-substmt -> "); }
                 ;
 
@@ -1673,6 +1676,7 @@ deviate_replace_substmt : type_stmt         { _PARSE_DEBUG("deviate-replace-subs
                 | mandatory_stmt    { _PARSE_DEBUG("deviate-replace-substmt -> mandatory-stmt"); }
                 | min_elements_stmt { _PARSE_DEBUG("deviate-replace-substmt -> min-elements-stmt"); }
                 | max_elements_stmt { _PARSE_DEBUG("deviate-replace-substmt -> max-elements-stmt"); }
+                | unknown_stmt      { _PARSE_DEBUG("deviate-replace-substmt -> unknown-stmt"); }
                 |                   { _PARSE_DEBUG("deviate-replace-substmt -> "); }
                 ;
 
