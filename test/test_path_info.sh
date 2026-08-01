@@ -126,6 +126,15 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 new "netconf show info xpath + nsc"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><config-path-info $LIBNS><xpath>/qx:table/qx:parameter[qx:name='a']/w:extra</xpath><namespace-context><namespace><prefix>qx</prefix><ns>urn:example:clixon</ns></namespace><namespace><prefix>w</prefix><ns>urn:example:extra</ns></namespace></namespace-context></config-path-info></rpc>" "$RET"
 
+new "netconf show info xpath unknown prefix, no nsc, expect error"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><config-path-info $LIBNS><xpath>/ccl:table</xpath></config-path-info></rpc>" "<error-message>No namespace found for prefix: ccl</error-message>"
+
+new "netconf show info xpath unknown prefix + nsc, expect error"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><config-path-info $LIBNS><xpath>/ccl:table</xpath><namespace-context><namespace><prefix>qx</prefix><ns>urn:example:clixon</ns></namespace></namespace-context></config-path-info></rpc>" "<error-message>No namespace found for prefix: ccl</error-message>"
+
+new "netconf show info xpath no prefix, expect error"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><config-path-info $LIBNS><xpath>/nonexistent</xpath></config-path-info></rpc>" "<error-message>No namespace found for node: nonexistent</error-message>"
+
 if [ $BE -ne 0 ]; then
     new "Kill backend"
     # Check if premature kill

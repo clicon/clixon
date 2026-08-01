@@ -1552,6 +1552,49 @@ xml2xpath(cxobj *x,
     return retval;
 }
 
+/*! Create netconf error of XPath node whose namespace could not be resolved
+ *
+ * @param[in]  prefix    XPath namespace prefix, may be NULL
+ * @param[in]  name      XPath node name
+ * @param[in]  namespace Namespace of prefix, NULL if prefix could not be resolved
+ * @param[out] xerr      Netconf error message
+ * @retval     0         OK
+ * @retval    -1         Error
+ * @see xpath2xml_traverse
+ */
+static int
+xpath2xml_nserr(const char *prefix,
+                const char *name,
+                const char *namespace,
+                cxobj     **xerr)
+{
+    int   retval = -1;
+    cbuf *cberr = NULL;
+
+    if ((cberr = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (namespace != NULL){
+        cprintf(cberr, "No such yang module namespace: %s", namespace);
+        if (netconf_unknown_element_xml(xerr, "application", namespace, cbuf_get(cberr)) < 0)
+            goto done;
+    }
+    else {
+        if (prefix != NULL)
+            cprintf(cberr, "No namespace found for prefix: %s", prefix);
+        else
+            cprintf(cberr, "No namespace found for node: %s", name);
+        if (netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    if (cberr)
+        cbuf_free(cberr);
+    return retval;
+}
+
 /*! Create xml tree from XPath as xpath-tree, recursive function
  *
  * @param[in]  xs      Parsed XPath - xpath_tree
@@ -1580,7 +1623,6 @@ xpath2xml_traverse(xpath_tree *xs,
     char      *prefix;
     char      *namespace;
     char      *ns = NULL;
-    cbuf      *cberr = NULL;
     cxobj     *xc;
     yang_stmt *yspec;
     yang_stmt *ymod;
@@ -1599,13 +1641,7 @@ xpath2xml_traverse(xpath_tree *xs,
         name = xs->xs_s1;
         if ((namespace = xml_nsctx_get(nsc, prefix)) == NULL){
             if (!create){
-                if ((cberr = cbuf_new()) == NULL){
-                    clixon_err(OE_UNIX, errno, "cbuf_new");
-                    goto done;
-                }
-                cprintf(cberr, "No namespace found for prefix: %s", prefix);
-                if (xerr &&
-                    netconf_invalid_value_xml(xerr, "application", cbuf_get(cberr)) < 0)
+                if (xerr && xpath2xml_nserr(prefix, name, NULL, xerr) < 0)
                     goto done;
                 goto fail;
             }
@@ -1621,10 +1657,9 @@ xpath2xml_traverse(xpath_tree *xs,
                             goto done;
                     }
                 }
-                if ((ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
-                    cprintf(cberr, "No such yang module namespace");
-                    if (xerr &&
-                        netconf_unknown_element_xml(xerr, "application", namespace, cbuf_get(cberr)) < 0)
+                if (namespace == NULL ||
+                    (ymod = yang_find_module_by_namespace(yspec, namespace)) == NULL){
+                    if (xerr && xpath2xml_nserr(prefix, name, namespace, xerr) < 0)
                         goto done;
                     goto fail;
                 }
@@ -1652,10 +1687,9 @@ xpath2xml_traverse(xpath_tree *xs,
                         goto done;
                 }
             }
-            if ((ymod = yang_find_module_by_namespace(y0, namespace)) == NULL){
-                cprintf(cberr, "No such yang module namespace");
-                if (xerr &&
-                    netconf_unknown_element_xml(xerr, "application", namespace, cbuf_get(cberr)) < 0)
+            if (namespace == NULL ||
+                (ymod = yang_find_module_by_namespace(y0, namespace)) == NULL){
+                if (xerr && xpath2xml_nserr(prefix, name, namespace, xerr) < 0)
                     goto done;
                 goto fail;
             }
