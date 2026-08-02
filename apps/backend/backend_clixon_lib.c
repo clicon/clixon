@@ -637,6 +637,7 @@ from_client_config_path_info(clixon_handle h,
     char      *prefix = NULL;
     char      *ns = NULL;
     int        create = 0;
+    cxobj     *xapply;
     int        ret;
 
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -724,7 +725,16 @@ from_client_config_path_info(clixon_handle h,
         yspec =  ys_spec(ybot);
     else
         yspec = yspec0;
-    if (xml_apply0(xbot, CX_ELMNT, identityref_add_ns, yspec) < 0)
+    /* When xbot is a leaf (body leaf), its parent is the list entry whose
+     * key children (siblings of xbot) may be identityref values needing
+     * namespace bindings. Apply from the parent to cover those siblings. */
+    xapply = xbot;
+    if (ybot &&
+        (yang_keyword_get(ybot) == Y_LEAF ||
+         yang_keyword_get(ybot) == Y_LEAF_LIST) &&
+        xml_parent(xbot) != NULL)
+        xapply = xml_parent(xbot);
+    if (xml_apply0(xapply, CX_ELMNT, identityref_add_ns, yspec) < 0)
         goto done;
     if (ybot){
         ns = yang_find_mynamespace(ybot);

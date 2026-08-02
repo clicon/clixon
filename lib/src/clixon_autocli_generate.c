@@ -526,6 +526,8 @@ yang2cli_var_identityref(yang_stmt *ys,
     yang_stmt *ymod;
     yang_stmt *yprefix;
     yang_stmt *yspec;
+    yang_stmt *yparent;
+    int        is_list_key = 0;
 
     if ((ybaseref = yang_find(ytype, Y_BASE, NULL)) == NULL)
         goto ok;
@@ -533,10 +535,28 @@ yang2cli_var_identityref(yang_stmt *ys,
         goto ok;
     idrefvec = yang_cvec_get(ybaseid);
     if (cvec_len(idrefvec) > 0){
-        /* Add a wildchar string first -let validate take it for default prefix */
-        cprintf(cb, ">");
-        yang2cli_helptext(cb, helptext);
-        cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
+        /* Detect if this leaf is a list key.
+         * For list key identityref leaves, emit only constrained choices (no wildcard)
+         * to prevent entering unprefixed values that cause duplicate list entries.
+         * For non-key leaves, a wildcard alternative is emitted first so that
+         * unprefixed identityref values (e.g. "aes" instead of "mc:aes") remain valid. */
+        yparent = yang_parent_get(ys);
+        if (yparent != NULL && yang_keyword_get(yparent) == Y_LIST){
+            int ret;
+            if ((ret = yang_key_match(yparent, yang_argument_get(ys), NULL)) < 0)
+                goto done;
+            is_list_key = (ret == 1);
+        }
+        if (!is_list_key){
+            /* Wildcard alternative: close the open variable and add a free-text alternative */
+            cprintf(cb, ">");
+            yang2cli_helptext(cb, helptext);
+            cprintf(cb, "|<%s:%s choice:", yang_argument_get(ys), cvtypestr);
+        }
+        else{
+            /* List key: constrained choices only, no wildcard */
+            cprintf(cb, " choice:");
+        }
         yspec = ys_spec(ys);
         i = 0;
         while ((cv = cvec_each(idrefvec, cv)) != NULL){
