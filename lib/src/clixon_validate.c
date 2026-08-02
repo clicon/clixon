@@ -606,6 +606,7 @@ validate_leafref(cxobj     *xt,
     int        require_instance = 1;
 #ifdef LEAFREF_OPTIMIZE
     int        ret;
+    int        cachehit = 0;
 #endif
 
     /* require instance */
@@ -644,6 +645,7 @@ validate_leafref(cxobj     *xt,
         if (ret == 1){
             xvec = leafref_opt.lc_cache_xvec;
             xlen = leafref_opt.lc_cache_xlen;
+            cachehit = 1;
         }
     }
 #endif /* LEAFREF_OPTIMIZE */
@@ -651,9 +653,11 @@ validate_leafref(cxobj     *xt,
         if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, xpath) < 0)
             goto done;
 #ifdef LEAFREF_OPTIMIZE
-    if (yt != leafref_opt.lc_cache_yang ||
-        leafref_opt.lc_cache_xpath == NULL ||
-        strcmp(xpath, leafref_opt.lc_cache_xpath) != 0){
+    /* On cache miss the cache must be renewed, also if yang and xpath are the same:
+     * the same leafref may resolve to other instances in another context, eg
+     * another list entry, see https://github.com/clicon/clixon/issues/683
+     */
+    if (!cachehit){
         if (leafref_opt_cache_new(yt, xt, xpath, xvec, xlen) < 0)
             goto done;
         leafref_opt.lc_bin_search = 0;

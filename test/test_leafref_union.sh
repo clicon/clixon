@@ -4,6 +4,7 @@
 # See also https://github.com/clicon/clixon/issues/388
 # See also https://github.com/clicon/clixon/issues/498
 # See also https://github.com/clicon/clixon/issues/558
+# See also https://github.com/clicon/clixon/issues/683
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -132,6 +133,52 @@ module leafref{
          type reftype;
       }
    }
+   /* Issue #683: union of leafrefs where the leafref path is relative to a
+      list entry, so that the same yang node + path resolves to different
+      instances in different list entries */
+   container tests {
+      list test {
+         key name;
+         leaf name {
+            type string;
+         }
+         container a {
+            list a1 {
+               key name;
+               leaf name {
+                  type string;
+               }
+            }
+            list a2 {
+               key name;
+               leaf name {
+                  type string;
+               }
+            }
+         }
+         container b {
+            list b1 {
+               key name;
+               leaf name {
+                  type string;
+               }
+               list b2 {
+                  key name;
+                  leaf name {
+                     type union {
+                        type leafref {
+                           path "../../../../a/a1/name";
+                        }
+                        type leafref {
+                           path "../../../../a/a2/name";
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
 }
 EOF
 
@@ -250,6 +297,43 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 new "netconf validate v=66 not ok (issue #498)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error>" ""
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# Issue #683: union of leafrefs where each list entry has its own referred instances
+new "netconf set tests t1+t2 in same edit"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><tests xmlns=\"urn:example:clixon\"><test><name>t1</name><a><a1><name>e1</name></a1></a><b><b1><name>zoneA</name><b2><name>e1</name></b2></b1></b></test><test><name>t2</name><a><a1><name>e2</name></a1></a><b><b1><name>zoneB</name><b2><name>e2</name></b2></b1></b></test></tests></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate t1+t2 ok (issue #683)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf set tests t1"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><tests xmlns=\"urn:example:clixon\"><test><name>t1</name><a><a1><name>e1</name></a1></a><b><b1><name>zoneA</name><b2><name>e1</name></b2></b1></b></test></tests></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit t1"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf set tests t2"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><tests xmlns=\"urn:example:clixon\"><test><name>t2</name><a><a1><name>e2</name></a1></a><b><b1><name>zoneB</name><b2><name>e2</name></b2></b1></b></test></tests></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit t2 ok (issue #683)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf set tests t3 referring second union branch a2"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><tests xmlns=\"urn:example:clixon\"><test><name>t3</name><a><a2><name>e3</name></a2></a><b><b1><name>zoneC</name><b2><name>e3</name></b2></b1></b></test></tests></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf commit t3 ok (issue #683)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><commit/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf set tests t4 referring non-existent instance"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><tests xmlns=\"urn:example:clixon\"><test><name>t4</name><a><a1><name>e4</name></a1></a><b><b1><name>zoneD</name><b2><name>nosuch</name></b2></b1></b></test></tests></config><default-operation>merge</default-operation></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate t4 not ok (issue #683)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>data-missing</error-tag><error-app-tag>instance-required</error-app-tag>" ""
 
 new "netconf discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>]]>]]>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
