@@ -170,22 +170,6 @@ http1_parse_query(clixon_http1_yacc *hy,
     return retval;
 }
 
-static int
-http1_body(clixon_http1_yacc *hy,
-           char              *body)
-{
-    int                   retval = -1;
-
-    clixon_debug(CLIXON_DBG_DEFAULT, "%s: %s ", __func__, body);
-    if (cbuf_append_buf(hy->hy_indata, body, strlen(body)) < 0){
-        clixon_err(OE_RESTCONF, errno, "cbuf_append_buf");
-        goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*!
  */
 static int
@@ -217,10 +201,6 @@ http1_parse_header_field(clixon_http1_yacc *hy,
  */
 http_message  :  request_line header_fields CRLF body X_EOF
                    {
-                       if ($4) {
-                           if (http1_body(_HY, $4) < 0) YYABORT;
-                           free($4);
-                       }
                        _PARSE_DEBUG("http-message -> request-line header-fields body");
                        YYACCEPT;
                    }
@@ -228,12 +208,13 @@ http_message  :  request_line header_fields CRLF body X_EOF
 
 body          : body BODY
                  {
-                     if (($$ = clixon_string_del_join($1, "", $2)) == NULL) {
+                     if (cbuf_append_buf(_HY->hy_indata, $2, strlen($2)) < 0) {
+                         clixon_err(OE_RESTCONF, errno, "cbuf_append_buf");
                          free($2);
                          YYABORT;
                      }
-                     else
-                         free($2);
+                     free($2);
+                     $$ = NULL;
                      _PARSE_DEBUG("body -> body BODY");
                  }
               | ERROR   { _PARSE_DEBUG("body -> ERROR"); YYABORT; /* shouldnt happen */ }
