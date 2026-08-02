@@ -491,6 +491,38 @@ grpc_send_framed(void           *gc_opaque,
     return retval;
 }
 
+/*! Build a human-readable error message for the gRPC grpc-message trailer
+ *
+ * CR/LF and other control characters are replaced by space, since gRPC
+ * transports the message as an HTTP/2 trailer value which must not contain
+ * such characters.
+ *
+ * @retval  cb    New cbuf with error message, free with cbuf_free()
+ * @retval  NULL  Error
+ */
+static cbuf *
+grpc_errmsg(void)
+{
+    cbuf       *cb;
+    char       *reason;
+    const char *src;
+    size_t      i;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        return NULL;
+    }
+    reason = clixon_err_reason();
+    src = (reason != NULL && strlen(reason) > 0) ? reason : clixon_err_str();
+    for (i = 0; src[i] != '\0'; i++){
+        if ((unsigned char)src[i] < 0x20 || src[i] == 0x7f)
+            cprintf(cb, " ");
+        else
+            cprintf(cb, "%c", src[i]);
+    }
+    return cb;
+}
+
 /*! nghttp2 frame recv callback — dispatch complete requests */
 static int
 on_frame_recv_cb(nghttp2_session     *session,
@@ -504,6 +536,7 @@ on_frame_recv_cb(nghttp2_session     *session,
     const uint8_t *req_proto = NULL;
     size_t         req_proto_len = 0;
     int            gst;
+    cbuf          *cberr;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "frame type:%u flags:0x%02x stream:%d",
                  frame->hd.type, frame->hd.flags, frame->hd.stream_id);
@@ -532,8 +565,11 @@ on_frame_recv_cb(nghttp2_session     *session,
             gst = GRPC_INTERNAL;
             if (gnmi_capabilities(gc->gc_h, req_proto, req_proto_len,
                                   &resp_buf, &resp_len, &gst) < 0){
+                cberr = grpc_errmsg();
                 grpc_send_response(gc, frame->hd.stream_id, NULL, 0,
-                                   gst, clixon_err_str());
+                                   gst, cberr ? cbuf_get(cberr) : NULL);
+                if (cberr)
+                    cbuf_free(cberr);
             }
             else {
                 grpc_send_response(gc, frame->hd.stream_id, resp_buf, resp_len,
@@ -546,8 +582,11 @@ on_frame_recv_cb(nghttp2_session     *session,
             gst = GRPC_INTERNAL;
             if (gnmi_get(gc->gc_h, req_proto, req_proto_len,
                          &resp_buf, &resp_len, &gst) < 0){
+                cberr = grpc_errmsg();
                 grpc_send_response(gc, frame->hd.stream_id, NULL, 0,
-                                   gst, clixon_err_str());
+                                   gst, cberr ? cbuf_get(cberr) : NULL);
+                if (cberr)
+                    cbuf_free(cberr);
             }
             else {
                 grpc_send_response(gc, frame->hd.stream_id, resp_buf, resp_len,
@@ -560,8 +599,11 @@ on_frame_recv_cb(nghttp2_session     *session,
             gst = GRPC_INTERNAL;
             if (gnmi_set(gc->gc_h, req_proto, req_proto_len,
                          &resp_buf, &resp_len, &gst) < 0){
+                cberr = grpc_errmsg();
                 grpc_send_response(gc, frame->hd.stream_id, NULL, 0,
-                                   gst, clixon_err_str());
+                                   gst, cberr ? cbuf_get(cberr) : NULL);
+                if (cberr)
+                    cbuf_free(cberr);
             }
             else {
                 grpc_send_response(gc, frame->hd.stream_id, resp_buf, resp_len,
@@ -574,8 +616,11 @@ on_frame_recv_cb(nghttp2_session     *session,
             gst = GRPC_INTERNAL;
             if (gnmi_subscribe(gc->gc_h, req_proto, req_proto_len,
                                &resp_buf, &resp_len, &gst) < 0){
+                cberr = grpc_errmsg();
                 grpc_send_response(gc, frame->hd.stream_id, NULL, 0,
-                                   gst, clixon_err_str());
+                                   gst, cberr ? cbuf_get(cberr) : NULL);
+                if (cberr)
+                    cbuf_free(cberr);
             }
             else {
                 grpc_send_framed(gc, frame->hd.stream_id, resp_buf, resp_len,

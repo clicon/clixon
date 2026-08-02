@@ -65,6 +65,91 @@
 #include "grpc_gnmi.h"
 #include "banned.h"
 
+/*! Map from NETCONF error-tag (RFC 6241 App. A) to gRPC status code
+ *
+ * NETCONF error-tags carried in an rpc-error are translated to the closest
+ * gRPC status (https://grpc.github.io/grpc/core/md_doc_statuscodes.html)
+ * @see netconf_grpc_map (RESTCONF equivalent) in apps/restconf/restconf_lib.c
+ */
+static const map_str2int netconf_grpc_map[] = {
+    {"invalid-value",           GRPC_INVALID_ARGUMENT},
+    {"too-big",                 GRPC_INVALID_ARGUMENT},
+    {"missing-attribute",       GRPC_INVALID_ARGUMENT},
+    {"bad-attribute",           GRPC_INVALID_ARGUMENT},
+    {"unknown-attribute",       GRPC_INVALID_ARGUMENT},
+    {"missing-element",         GRPC_INVALID_ARGUMENT},
+    {"bad-element",             GRPC_INVALID_ARGUMENT},
+    {"unknown-element",         GRPC_INVALID_ARGUMENT},
+    {"unknown-namespace",       GRPC_INVALID_ARGUMENT},
+    {"malformed-message",       GRPC_INVALID_ARGUMENT},
+    {"access-denied",           GRPC_PERMISSION_DENIED},
+    {"data-exists",             GRPC_ALREADY_EXISTS},
+    {"data-missing",            GRPC_FAILED_PRECONDITION},
+    {"in-use",                  GRPC_FAILED_PRECONDITION},
+    {"lock-denied",             GRPC_FAILED_PRECONDITION},
+    {"resource-denied",         GRPC_FAILED_PRECONDITION},
+    {"rollback-failed",         GRPC_INTERNAL},
+    {"partial-operation",       GRPC_INTERNAL},
+    {"operation-not-supported", GRPC_UNIMPLEMENTED},
+    {"operation-failed",        GRPC_FAILED_PRECONDITION},
+    {NULL,                      -1}
+};
+
+/*! Translate a NETCONF error-tag to a gRPC status code
+ *
+ * @param[in]  tag  NETCONF error-tag string (may be NULL)
+ * @retval     grpc status code, GRPC_FAILED_PRECONDITION if tag unknown/NULL
+ */
+static int
+gnmi_errtag2status(const char *tag)
+{
+    int status;
+
+    if (tag == NULL || (status = clicon_str2int(netconf_grpc_map, tag)) < 0)
+        return GRPC_FAILED_PRECONDITION;
+    return status;
+}
+
+/*! Build a NETCONF RPC in a cbuf, send it, and map any rpc-error to gRPC status
+ *
+ * Mirrors the RESTCONF pattern (construct RPC in a cbuf, send via
+ * clicon_rpc_netconf, inspect the reply for rpc-error). On a NETCONF error the
+ * detailed reason is set via clixon_err_netconf() (so it reaches the
+ * grpc-message trailer) and the error-tag is mapped to a gRPC status code.
+ *
+ * @param[in]   h            Clixon handle
+ * @param[in]   rpcstr       NETCONF RPC as a string (<rpc>...</rpc>)
+ * @param[in]   errprefix    Prefix for the error reason (eg "edit-config")
+ * @param[out]  grpc_status  gRPC status code, set on NETCONF error
+ * @retval      1            OK, no error
+ * @retval      0            NETCONF error returned (reason + grpc_status set)
+ * @retval     -1            Fatal error
+ */
+static int
+gnmi_rpc_send(clixon_handle h,
+              const char   *rpcstr,
+              const char   *errprefix,
+              int          *grpc_status)
+{
+    int    retval = -1;
+    cxobj *xret = NULL;
+    cxobj *xerr;
+
+    if (clicon_rpc_netconf(h, rpcstr, &xret, NULL) < 0)
+        goto done;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "%s", errprefix);
+        *grpc_status = gnmi_errtag2status(netconf_reply_err_tag(xret));
+        retval = 0;
+        goto done;
+    }
+    retval = 1;
+ done:
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
 /*! Build gNMI CapabilityResponse and serialize it
  *
  * Iterates the loaded YANG spec to populate supported_models.
@@ -908,32 +993,46 @@ gnmi_path_to_xml(clixon_handle       h,
 
 /*! Send one edit-config RPC to the candidate datastore (no commit)
  *
- * Builds a <config> wrapper around the given XML body and sends it as
- * an edit-config with default-operation=none.  Each node in xmlbody
- * must already carry an nc:operation attribute.
+ * Builds a full edit-config RPC (default-operation=none) around the given XML
+ * body and sends it via clicon_rpc_netconf.  Each node in xmlbody must already
+ * carry an nc:operation attribute.  On a NETCONF error the detailed reason is
+ * set and the error-tag is mapped to a gRPC status code.
  *
- * @param[in]  h        Clixon handle
- * @param[in]  xmlbody  XML content to wrap in <config>...</config>
- * @retval     0        OK
- * @retval    -1        Error
+ * @param[in]   h            Clixon handle
+ * @param[in]   xmlbody      XML content to wrap in <config>...</config>
+ * @param[out]  grpc_status  gRPC status code, set on NETCONF error
+ * @retval      1            OK
+ * @retval      0            NETCONF error (reason + grpc_status set)
+ * @retval     -1            Fatal error
  */
 static int
 gnmi_edit_candidate(clixon_handle h,
-                    cbuf         *xmlbody)
+                    cbuf         *xmlbody,
+                    int          *grpc_status)
 {
-    int   retval = -1;
-    cbuf *cb = NULL;
+    int      retval = -1;
+    cbuf    *cb = NULL;
+    char    *username;
+    char    *groupname;
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    cprintf(cb, "<config>");
-    cprintf(cb, "%s", cbuf_get(xmlbody));
-    cprintf(cb, "</config>");
-    if (clicon_rpc_edit_config(h, "candidate", OP_NONE, cbuf_get(cb)) < 0)
-        goto done;
-    retval = 0;
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL)
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+    if ((groupname = clixon_groupname_get(h)) != NULL)
+        cprintf(cb, " %s:groupname=\"%s\"", CLIXON_LIB_PREFIX, groupname);
+    if (username != NULL || groupname != NULL)
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    cprintf(cb, " %s", NETCONF_MESSAGE_ID_ATTR);
+    cprintf(cb, "><edit-config><target><candidate/></target>");
+    cprintf(cb, "<default-operation>none</default-operation>");
+    cprintf(cb, "<config>%s</config>", cbuf_get(xmlbody));
+    cprintf(cb, "</edit-config></rpc>");
+    retval = gnmi_rpc_send(h, cbuf_get(cb), "edit-config", grpc_status);
  done:
     if (cb)
         cbuf_free(cb);
@@ -1016,7 +1115,9 @@ gnmi_set(clixon_handle  h,
         cbuf_reset(xmlcb);
         if (gnmi_path_to_xml(h, dpath, NULL, OP_REMOVE, xmlcb, grpc_status) < 0)
             goto discard;
-        if (gnmi_edit_candidate(h, xmlcb) < 0)
+        if ((ret = gnmi_edit_candidate(h, xmlcb, grpc_status)) < 0)
+            goto discard;
+        if (ret == 0) /* NETCONF error: reason + grpc_status set */
             goto discard;
         any = 1;
         if ((ur = calloc(1, sizeof *ur)) == NULL){
@@ -1041,7 +1142,9 @@ gnmi_set(clixon_handle  h,
             free(val); goto discard;
         }
         free(val);
-        if (gnmi_edit_candidate(h, xmlcb) < 0)
+        if ((ret = gnmi_edit_candidate(h, xmlcb, grpc_status)) < 0)
+            goto discard;
+        if (ret == 0) /* NETCONF error: reason + grpc_status set */
             goto discard;
         any = 1;
         if ((ur = calloc(1, sizeof *ur)) == NULL){
@@ -1066,7 +1169,9 @@ gnmi_set(clixon_handle  h,
             free(val); goto discard;
         }
         free(val);
-        if (gnmi_edit_candidate(h, xmlcb) < 0)
+        if ((ret = gnmi_edit_candidate(h, xmlcb, grpc_status)) < 0)
+            goto discard;
+        if (ret == 0) /* NETCONF error: reason + grpc_status set */
             goto discard;
         any = 1;
         if ((ur = calloc(1, sizeof *ur)) == NULL){
@@ -1081,12 +1186,15 @@ gnmi_set(clixon_handle  h,
 
     /* Commit all edits as one transaction; discard on failure */
     if (any){
-        if ((ret = clicon_rpc_commit(h, 0, 0, 0, NULL, NULL)) < 0)
+        cbuf_reset(xmlcb);
+        cprintf(xmlcb, "<rpc xmlns=\"%s\" %s><commit/></rpc>",
+                NETCONF_BASE_NAMESPACE, NETCONF_MESSAGE_ID_ATTR);
+        if ((ret = gnmi_rpc_send(h, cbuf_get(xmlcb), "commit", grpc_status)) < 0)
             goto discard;
         if (ret == 0){
-            /* NETCONF error returned — discard and surface the error */
+            /* NETCONF error returned — reason + grpc_status already set;
+             * discard and surface the error */
             clicon_rpc_discard_changes(h);
-            *grpc_status = GRPC_FAILED_PRECONDITION;
             goto done;
         }
     }

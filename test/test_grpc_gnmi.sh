@@ -87,6 +87,12 @@ module example {
       }
       description "A decimal64 leaf for typed-value tests";
    }
+   leaf codeword {
+      type string {
+         pattern '[a-z]+';
+      }
+      description "A pattern-constrained leaf for detailed-error-message tests";
+   }
    container config {
       description "A simple container";
       leaf description {
@@ -313,7 +319,7 @@ new "gNMI Set list entry eth0 without speed (expect mandatory validation error)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"update":[{"path":{"elem":[{"name":"network"},{"name":"interfaces"},{"name":"interface","key":{"name":"eth0"}},{"name":"mtu"}]},"val":{"uint_val":1500}}]}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
-    73 "FailedPrecondition"
+    67 "InvalidArgument"
 
 new "gNMI Get eth0 after failed Set (expect not present)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
@@ -502,11 +508,17 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
 # -------------------------------------------------------------------
 # Error handling tests
 # -------------------------------------------------------------------
-new "gNMI Set invalid YANG path — expect FailedPrecondition"
+new "gNMI Set invalid YANG path — expect InvalidArgument"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"update":[{"path":{"elem":[{"name":"nonexistent"}]},"val":{"string_val":"x"}}]}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
-    73 "FailedPrecondition"
+    67 "InvalidArgument"
+
+new "gNMI Set pattern-invalid value — expect InvalidArgument + detailed regexp error"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"update":[{"path":{"elem":[{"name":"example:codeword"}]},"val":{"string_val":"ABC123"}}]}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Set 2>&1)" \
+    67 "InvalidArgument" "regexp match fail" "pattern does not match"
 
 # -------------------------------------------------------------------
 # gnmi_name_valid() rejection tests

@@ -23,6 +23,7 @@ Expected: September 2026
 
 ### Features
 
+* Improved gRPC/gNMI error handling: detailed error messages and status codes
 * Event handling: Improved fairness of low prio events
   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
 * New: [NACM External Groups](https://github.com/clicon/clixon/issues/654)
@@ -30,7 +31,6 @@ Expected: September 2026
     * Added `-g <group>` option to the CLI
   * See: https://clixon-docs.readthedocs.io/en/latest/netconf.html#external-groups
 * Reentrant (thread-safe) parsers: XML, YANG, XPATH, JSON, etc.
-
 
 ### API changes on existing protocol/config features
 

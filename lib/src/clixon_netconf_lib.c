@@ -2613,3 +2613,28 @@ netconf_cbuf_err2cb(clixon_handle h,
         xml_free(xerr);
     return retval;
 }
+
+/*! Return the NETCONF error-tag body from an rpc-reply/rpc-error XML tree
+ *
+ * Utility for callers that need to map a NETCONF error-tag (RFC 6241 App. A)
+ * to a protocol-specific status code (eg RESTCONF HTTP status or gNMI/gRPC
+ * status), given the reply from clicon_rpc_netconf() or similar.
+ *
+ * @param[in]  xret  rpc-reply xml (or a subtree possibly containing rpc-error)
+ * @retval     tag   error-tag body string (points into xret, do not free)
+ * @retval     NULL  No rpc-error/error-tag found
+ */
+char *
+netconf_reply_err_tag(cxobj *xret)
+{
+    cxobj *xerr;
+    cxobj *xtag;
+
+    if (xret == NULL)
+        return NULL;
+    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) == NULL)
+        return NULL;
+    if ((xtag = xml_find_type(xerr, NULL, "error-tag", CX_ELMNT)) == NULL)
+        return NULL;
+    return xml_body(xtag);
+}
