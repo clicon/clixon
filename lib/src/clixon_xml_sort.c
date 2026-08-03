@@ -227,6 +227,7 @@ xml_cmp(cxobj      *x1,
     cxobj      *x2b;
     enum cxobj_type xt1;
     enum cxobj_type xt2;
+    enum rfc_6020   kw1;
 
     if (x1==NULL || x2==NULL)
         goto done; /* shouldnt happen */
@@ -268,8 +269,19 @@ xml_cmp(cxobj      *x1,
         /* this is for choice */
         if ((equal = yi1-yi2) != 0)
             goto done;
+        /* Same YANG order position but different specs: applies to choice alternatives
+         * and to same-position augments.
+         * For augments: use stable pointer tiebreaker so ordering is consistent
+         * within a process run, preventing spurious diffs on re-sort (issue #678).
+         * For choice: fall through to let nr1-nr2 preserve insertion order.
+         */
+        kw1 = yang_keyword_get(yang_parent_get(y1));
+        if (kw1 != Y_CASE && kw1 != Y_CHOICE){
+            equal = (y1 < y2) ? -1 : 1;
+            goto done;
+        }
     }
-    /* Now y1==y2, same Yang spec, can only be list or leaf-list,
+    /* y1==y2, same Yang spec, can only be list or leaf-list,
      * But first check exceptions, eg config false or ordered-by user
      * otherwise sort according to key
      * If the two elements are in the same list, and they are ordered-by user

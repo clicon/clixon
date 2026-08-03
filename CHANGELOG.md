@@ -51,6 +51,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Duplicate list entries created due to XML element reordering in transaction diffs](https://github.com/clicon/clixon/issues/678)
 * Fixed: [CLI rejects prefixed identityref key values inline but accepts them standalone; allows unprefixed form creating duplicate list entries](https://github.com/clicon/clixon/issues/662)
 * Fixed: [XML/YANG binding uses wrong sibling namespace for same local node names](https://github.com/clicon/clixon/issues/670)
 * Fixed: [YANG incremental validation of MUST failed when an entire top-level list entry is deleted](https://github.com/clicon/clixon/issues/681)
