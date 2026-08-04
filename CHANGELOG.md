@@ -23,6 +23,7 @@ Expected: September 2026
 
 ### Features
 
+* Added LLVM libFuzzer unit support for yang, json, xml, xpath, api-path, etc
 * Improved gRPC/gNMI error handling: detailed error messages and status codes
 * Event handling: Improved fairness of low prio events
   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority

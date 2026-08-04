@@ -583,13 +583,16 @@ xpath_parse(const char  *xpath,
     xpy.xpy_linenum = 1;
     if (xpath_scan_init(&xpy) < 0)
         goto done;
-    if (xpath_parse_init(&xpy) < 0)
+    if (xpath_parse_init(&xpy) < 0){
+        xpath_scan_exit(&xpy);
         goto done;
+    }
     if (clixon_xpath_parseparse(&xpy, xpy.xpy_scanner) != 0) { /* yacc returns 1 on error */
         clixon_log(NULL, LOG_NOTICE, "XPath error: on line %d", xpy.xpy_linenum);
         if (clixon_err_category() == 0)
             clixon_err(OE_XML, 0, "XPath parser error with no error code (should not happen)");
         xpy.xpy_top = NULL; /* destructors freed any partial tree during error recovery */
+        xpath_parse_exit(&xpy);
         xpath_scan_exit(&xpy);
         goto done;
     }

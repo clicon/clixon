@@ -55,6 +55,16 @@ typedef struct _qelem_t {
         struct _qelem_t  *q_prev;
 } qelem_t;
 
+/*! Initialize elem as a self-linked single-element queue
+ *
+ * Must be called on a freshly allocated node before DELQ can safely
+ * be used on it (ensures q_next/q_prev are never NULL).
+ */
+#define INITQ(elem) { \
+        register qelem_t *Xe = (qelem_t *)(elem); \
+        Xe->q_next = Xe->q_prev = Xe; \
+    }
+
 /*! Append element 'elem' to queue.
  *
  * @param[in]     elem   Element to be added

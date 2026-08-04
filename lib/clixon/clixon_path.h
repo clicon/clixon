@@ -90,6 +90,8 @@ typedef int (api_path_mnt_cb_t)(clixon_handle h, cxobj *xmt, yang_stmt **yspec, 
  * Prototypes
  */
 int clixon_path_free(clixon_path *cplist);
+int api_path_parse(char *api_path, clixon_path **cplist);
+int instance_id_parse(char *path, clixon_path **cplist);
 int xml_yang_root(cxobj *x, cxobj **xr);
 int yang2api_path_fmt(yang_stmt *ys, int inclkey, char **api_path_fmt);
 int api_path_fmt2api_path(const char *api_path_fmt, cvec *cvv, yang_stmt *yspec, char **api_path, int *cvvi);

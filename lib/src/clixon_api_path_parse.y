@@ -59,11 +59,11 @@
 
 %token <string> IDENTIFIER
 %token <string> STRING
-%token <string> SLASH
-%token <string> COLON
-%token <string> COMMA
-%token <string> EQUAL
-%token <string> X_EOF
+%token SLASH
+%token COLON
+%token COMMA
+%token EQUAL
+%token X_EOF
 
 %type  <stack>  list
 %type  <stack>  element
@@ -72,6 +72,9 @@
 %type  <stack>  list_instance
 %type  <stack>  key_values
 %type  <stack>  key_value
+
+%destructor { clixon_path_free($$); } <stack>
+%destructor { free($$); } <string>
 
 %lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
 %parse-param   {void *_ay}             /* passed to yyparse() and yyerror() */
@@ -202,6 +205,7 @@ path_new(char *module_name,
         goto done;
     }
     memset(cp, 0, sizeof(*cp));
+    INITQ(cp);
     if (module_name)
         if ((cp->cp_prefix = strdup(module_name)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
@@ -237,6 +241,7 @@ keyval_add(cvec   *cvv,
     }
     if (cvec_append_var(cvv, cv) == NULL){
         clixon_err(OE_UNIX, errno, "cvec_append_var");
+        cvec_free(cvv);
         cvv = NULL;
         goto done;
     }

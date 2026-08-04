@@ -53,16 +53,3 @@ Minimize:
 ```
 LD_LIBRARY_PATH=/usr/local/lib ./fuzz_netconf -minimize_crash=1 -runs=10000 artifacts_netconf/crash-<sha1>
 ```
-
-## Restoring a normal build
-
-After fuzzing, restore a normal clixon build:
-
-```
-cd /path/to/clixon
-./configure
-make -C lib clean
-make -C lib
-sudo make -C lib install
-sudo ldconfig
-```

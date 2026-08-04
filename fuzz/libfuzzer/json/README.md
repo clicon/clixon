@@ -64,16 +64,3 @@ For leak detection run in single-process mode (leaks are only reported on exit):
 LD_LIBRARY_PATH=/usr/local/lib LSAN_OPTIONS=detect_leaks=1 \
     ./fuzz_json artifacts_json/crash-<sha1> -runs=1
 ```
-
-## Restoring a normal build
-
-After fuzzing, restore a normal clixon build:
-
-```
-cd /path/to/clixon
-./configure
-make -C lib clean
-make -C lib
-sudo make -C lib install
-sudo ldconfig
-```

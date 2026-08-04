@@ -16,8 +16,26 @@ cd /path/to/clixon
 ./configure CC=clang \
   CFLAGS="-g -O1 -fsanitize=fuzzer-no-link,address -fno-omit-frame-pointer" \
   LDFLAGS="-fsanitize=fuzzer-no-link,address"
-make -C lib clean
-make -C lib
-sudo make -C lib install
+cd lib
+make clean
+make
+sudo make install
 sudo ldconfig
 ```
+
+## Restoring a normal build
+
+After fuzzing, restore a normal clixon build:
+
+```
+cd /path/to/clixon
+./configure
+cd lib
+make clean
+make lib
+sudo make install
+sudo ldconfig
+```
+
+## Remaining parsers
+yang_schemanode, yang_sub

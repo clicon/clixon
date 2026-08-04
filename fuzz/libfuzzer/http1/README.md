@@ -13,22 +13,13 @@ Drives the parser directly with no network, no backend, and no restconf_conn.
 From this directory (`fuzz/libfuzzer/http1/`):
 
 ```
-clang -g -O1 -fsanitize=fuzzer,address \
-  -I../../../apps/restconf \
-  -I../../../lib/clixon -I../../../lib/src -I../../../lib \
-  -I../../../include -I../../.. \
-  -DHAVE_CONFIG_H \
-  fuzz_http1.c \
-  ../../../apps/restconf/clixon_http1_parse.tab.c \
-  ../../../apps/restconf/lex.clixon_http1_parse.c \
-  -o fuzz_http1 \
-  -L/usr/local/lib -lclixon -lcligen
+  build.sh
 ```
 
 ## Run
 
 ```
-LD_LIBRARY_PATH=/usr/local/lib ./fuzz_http1 corpus/
+make run
 ```
 
 To suppress expected per-iteration leak reports from tokens abandoned on parse

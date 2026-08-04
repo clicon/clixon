@@ -56,35 +56,42 @@
  /* Must be here to define YYSTYPE */
 %union {
     char     *string;
-    void     *stack; /* cv / cvec */
+    void     *stack; /* clixon_path * typed non-terminals */
+    cvec     *cvvp;  /* cvec * typed non-terminals */
+    cg_var   *cvp;   /* cg_var * typed non-terminals */
 }
 
 %token <string> UINT
 %token <string> IDENTIFIER
 %token <string> STRING
-%token <string> SLASH
-%token <string> COLON
-%token <string> EQUAL
-%token <string> LSQBR
-%token <string> RSQBR
-%token <string> DOT
-%token <string> DQUOTE
-%token <string> SQUOTE
-%token <string> X_EOF
+%token SLASH
+%token COLON
+%token EQUAL
+%token LSQBR
+%token RSQBR
+%token DOT
+%token DQUOTE
+%token SQUOTE
+%token X_EOF
 
 %type  <stack>  list
 %type  <stack>  element
 %type  <stack>  node_id
 %type  <string> prefix
-%type  <stack>  element2
-%type  <stack>  leaf_list_pred
-%type  <stack>  leaf_list_pred_expr
-%type  <stack>  pos
-%type  <stack>  key_preds
-%type  <stack>  key_pred
-%type  <stack>  key_pred_expr
+%type  <cvvp>   element2
+%type  <cvvp>   leaf_list_pred
+%type  <cvp>    leaf_list_pred_expr
+%type  <cvvp>   pos
+%type  <cvvp>   key_preds
+%type  <cvp>    key_pred
+%type  <cvp>    key_pred_expr
 %type  <string> node_id_k
 %type  <string> qstring
+
+%destructor { clixon_path_free($$); } <stack>
+%destructor { free($$); } <string>
+%destructor { if ($$) cvec_free($$); } <cvvp>
+%destructor { if ($$) cv_free($$); } <cvp>
 
 %lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
 %parse-param   {void *_iy}             /* passed to yyparse() and yyerror() */
@@ -96,6 +103,7 @@
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void *yyscan_t;
 #endif
+#include <cligen/cligen.h>
 }
 
 %{
@@ -213,6 +221,7 @@ path_new(char *prefix,
         goto done;
     }
     memset(cp, 0, sizeof(*cp));
+    INITQ(cp);
     if (prefix)
         if ((cp->cp_prefix = strdup(prefix)) == NULL){
             clixon_err(OE_UNIX, errno, "strdup");
@@ -246,11 +255,13 @@ keyval_pos(char *uint)
     cv_type_set(cv, CGV_UINT32);
     if ((ret = cv_parse1(uint, cv, &reason)) < 0){
         clixon_err(OE_UNIX, errno, "cv_parse1");
+        cvec_free(cvv);
         cvv = NULL;
         goto done;
     }
     if (ret == 0){
         clixon_err(OE_UNIX, errno, "cv_parse1: %s", reason);
+        cvec_free(cvv);
         cvv = NULL;
         goto done;
     }
@@ -281,6 +292,7 @@ keyval_add(cvec   *cvv,
     }
     if (cvec_append_var(cvv, cv) == NULL){
         clixon_err(OE_UNIX, errno, "cvec_append_var");
+        cvec_free(cvv);
         cvv = NULL;
         goto done;
     }
