@@ -3,6 +3,8 @@
 # CLI help string for enum values should show per-enum description,
 # not the enclosing leaf description.
 # Tests both inline enum and typedef enum.
+# Also regression test for https://github.com/clicon/clixon/issues/684
+# An empty enum/bit description must not generate ("") which CLIgen cannot parse.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -83,6 +85,18 @@ module example {
     description "General log level";
   }
 
+  typedef emptydesc {
+    type enumeration {
+      enum a {
+        description "ok value";
+      }
+      enum b {
+        description "";
+      }
+    }
+    description "Enum with empty description";
+  }
+
   container crypto {
     leaf log {
       type ex:loglevel;
@@ -108,6 +122,21 @@ module example {
         enum alpha;
         enum beta;
         enum gamma;
+      }
+    }
+    leaf empty {
+      description "empty enum description leaf";
+      type ex:emptydesc;
+    }
+    leaf flags {
+      description "bits leaf";
+      type bits {
+        bit b0 {
+          description "bit zero";
+        }
+        bit b1 {
+          description "";
+        }
       }
     }
   }
@@ -166,6 +195,23 @@ expectpart "$(echo "set crypto plain ?" | $clixon_cli -f $cfg 2>&1)" 0 \
     "beta" \
     "gamma" \
     "plain enum leaf"
+
+new "Generated CLI spec: empty enum description generates no helptext"
+expectpart "$($clixon_cli -f $cfg -G -1 2>&1)" 0 \
+    'a("ok value")' \
+    'b0("bit zero")' \
+    --not-- '("")' 'syntax error'
+
+new "CLI help: empty enum description falls back to leaf description"
+expectpart "$(echo "set crypto empty ?" | $clixon_cli -f $cfg 2>&1)" 0 \
+    "ok value" \
+    "empty enum description leaf"
+
+new "CLI set leaf with empty enum description"
+expectpart "$($clixon_cli -1f $cfg set crypto empty b)" 0
+
+new "CLI set bit with empty description"
+expectpart "$($clixon_cli -1f $cfg set crypto flags b1)" 0
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
