@@ -795,10 +795,12 @@ yang2cli_leaf_var_sub(clixon_handle h,
                         cprintf(cb, "\\");
                     cprintf(cb, "%c", arg[j]);
                 }
-                /* Add per-enum description as per-choice helptext if available */
+                /* Add per-enum description as per-choice helptext if available
+                 * An empty description is skipped since CLIgen does not accept ("") as choicehelp
+                 */
                 if ((yd = yang_find(yi, Y_DESCRIPTION, NULL)) != NULL &&
-                    (desc = yang_argument_get(yd)) != NULL){
-                    dlen = strlen(desc);
+                    (desc = yang_argument_get(yd)) != NULL &&
+                    (dlen = strlen(desc)) > 0){
                     cprintf(cb, "(\"");
                     for (j=0; j<(int)dlen; j++){
                         if (desc[j] == '"')
