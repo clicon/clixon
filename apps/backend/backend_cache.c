@@ -614,3 +614,38 @@ backend_clixon_cache_init(clixon_handle h)
  done:
     return retval;
 }
+
+/*! Create autocli cache dir and transfer ownership to a new user (before privilege drop)
+ *
+ * Called before privilege drop so the directory is created as root and then
+ * chowned to the backend user, mirroring xmldb_drop_priv for datastores.
+ * @param[in]  h      Clixon handle
+ * @param[in]  newuid Target uid (wwwuser) to own the cache directory
+ * @param[in]  gid    Target gid
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+int
+backend_autocli_cache_drop_priv(clixon_handle h,
+                                uid_t         newuid,
+                                gid_t         gid)
+{
+    int   retval = -1;
+    char *dir = NULL;
+
+    if (autocli_cache(h, NULL, &dir) < 0)
+        goto done;
+    if (dir == NULL){
+        retval = 0;
+        goto done;
+    }
+    if (trydir(dir) < 0)
+        goto done;
+    if (chown(dir, newuid, gid) < 0){
+        clixon_err(OE_UNIX, errno, "chown(%s)", dir);
+        goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}

@@ -436,6 +436,7 @@ main(int    argc,
     enum format_enum config_dump_format = FORMAT_XML;
     int            print_version = 0;
     int32_t        d;
+    int            enable;
 
     /* Defaults */
     once = 0;
@@ -787,17 +788,18 @@ main(int    argc,
         goto done;
     if (clicon_nsctx_global_set(h, nsctx_global) < 0)
         goto done;
-    {
-        int enable;
-        /* Create autocli from YANG,
-           If not autocli enabled is true, you can start it later from a cli callback by calling autocli_start( h) */
-        if (autocli_enabled(h, &enable) < 0)
-            goto done;
-        if (!enable)
-            clixon_debug(CLIXON_DBG_CLI, "Autocli-enabled is false, skipping autocli generation");
-        else if (autocli_start(h) < 0)
-            goto done;
-    }
+    /* Create autocli from YANG,
+     * If not autocli enabled is true, you can start it later from a cli callback by calling autocli_start(h)
+     * If clispec-cache=read, autocli_start() may require backend connection, which makes the bootstrapping problematic.
+     * For example, if you want to dump the config or debug flags, you may not want to connect to the backend.
+     * We should maybe defer it until later
+     */
+    if (autocli_enabled(h, &enable) < 0)
+        goto done;
+    if (!enable)
+        clixon_debug(CLIXON_DBG_CLI, "Autocli-enabled is false, skipping autocli generation");
+    else if (autocli_start(h) < 0)
+        goto done;
     /* Initialize cli syntax.
      * Plugins have already been loaded by clixon_plugins_load above */
     if (clispec_load(h) < 0)
@@ -878,7 +880,7 @@ main(int    argc,
     /* Go into event-loop unless -1 command-line */
     if (once)
         retval = 0;
-    else
+    else 
         retval = cli_interactive(h);
   done:
     if (h){

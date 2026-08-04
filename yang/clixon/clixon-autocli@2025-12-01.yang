@@ -194,7 +194,7 @@ module clixon-autocli{
             }
             enum read {
                 description
-                   "If clispec file exists, read from cache, if not found, generate";
+                   "If clispec file exists, read from cache, if not found, generate.";
             }
             enum write {
                 status obsolete;
@@ -284,7 +284,8 @@ module clixon-autocli{
                  If enabled, query backend of clispecs from YANG, where a cached clispec is returned
                  and if miss, generate and save.
                  Note, disabled may not work across mount-points, use read instead
-                 If read then CLICON_AUTOCLI_CACHE_DIR must also be set.";
+                 If read then CLICON_AUTOCLI_CACHE_DIR must also be set.
+                 Note, if read but backend not available, degrade to none";
             type cache-type;
             default disabled;
         }

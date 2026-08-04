@@ -291,7 +291,10 @@ clixon_err_args(clixon_handle h,
         goto done;
     }
     cbuf_reset(_err_reason);
-    cprintf(_err_reason, "%s", msg);
+    if (suberr && suberr != XMLPARSE_ERRNO)
+        cprintf(_err_reason, "%s: %s", msg, strerror(suberr));
+    else
+        cprintf(_err_reason, "%s", msg);
     _err_category = category;
     _err_subnr = suberr;
     /* Check category callbacks as defined in clixon_err_cat_reg */

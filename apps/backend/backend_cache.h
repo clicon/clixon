@@ -42,5 +42,6 @@
  */
 int backend_autocli_clear_cache(clixon_handle h);
 int backend_clixon_cache_init(clixon_handle h);
+int backend_autocli_cache_drop_priv(clixon_handle h, uid_t newuid, gid_t gid);
 
 #endif  /* _BACKEND_CACHE_H_ */

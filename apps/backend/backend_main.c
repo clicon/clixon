@@ -273,6 +273,8 @@ check_drop_priv(clixon_handle h,
         if (xmldb_drop_priv(h, "rollback", newuid, gid) < 0)
             goto done;
     }
+    if (backend_autocli_cache_drop_priv(h, newuid, gid) < 0)
+        goto done;
     if (setgid(gid) == -1) {
         clixon_err(OE_DAEMON, errno, "setgid %d", gid);
         goto done;

@@ -11,6 +11,7 @@
 # CLICON_MODULE_SET_ID is a single var (replaced)
 # CLICON_FEATURE is a list var (append)
 # Check subconfigs, ie /restconf/server-cert-path used since it does not have default
+# Test does not run with clispec-cache=read since cli-main bootstrapping is problematic
 #
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
