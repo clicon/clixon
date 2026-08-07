@@ -1783,18 +1783,24 @@ clixon_xml_diff2patch(cxobj   *x1,
 {
     int retval = -1;
     int nr = 1;
+    uint16_t f1 = 0;
+    uint16_t f2 = 0;
 
-    if (x1)
+    if (x1) {
+        f1 = xml_flag(x1, XML_FLAG_TOP);
         xml_flag_set(x1, XML_FLAG_TOP);
-    if (x2)
+    }
+    if (x2) {
+        f2 = xml_flag(x2, XML_FLAG_TOP);
         xml_flag_set(x2, XML_FLAG_TOP);
+    }
     if (xml_diff2patch(x1, x2, flags, xpatch, &nr) < 0)
         goto done;
     retval = 0;
  done:
-    if (x1)
+    if (x1 && !f1)
         xml_flag_reset(x1, XML_FLAG_TOP);
-    if (x2)
+    if (x2 && !f2)
         xml_flag_reset(x2, XML_FLAG_TOP);
     return retval;
 }
@@ -1830,3 +1836,4 @@ clixon_xml_diff_nacm_read(clixon_handle h,
  done:
     return retval;
 }
+

@@ -741,8 +741,6 @@ text_diff_keys(cbuf      *cb,
  * @param[in]  skiptop  0: Include top object 1: Skip top-object, only children,
  * @retval     0       Ok
  * @retval    -1       Error
- * @see xml_diff_ordered_by_user
- * @see text_diff2cbuf_ordered_by_user
  */
 static int
 text_diff2cbuf_ordered_by_user(cbuf      *cb,
@@ -814,7 +812,7 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
  *    if (clixon_text_diff2cbuf(cb, 0, x0, x1, 0) < 0)
  *       err();
  * @endcode
- * @see clixon_xml_diff2cbuf
+
  * XXX Leaf-list +/- is not correct
  * For example, it should be:
  *    value [
@@ -826,9 +824,7 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
  * +     97
  * -     99
  * @see clixon_compare_xmls which uses files and is independent of YANG
- * @see xml_diff2cbuf  for XML
  * @see xml_tree_equal Equal or not
- * @see xml_diff       Diff sets
  */
 static int
 text_diff2cbuf(cbuf             *cb,
@@ -1095,7 +1091,6 @@ text_diff2cbuf(cbuf             *cb,
  *    if (clixon_text_diff2cbuf(cb, 0, x0, x1) < 0)
  *       err();
  * @endcode
- * @see clixon_xml_diff2cbuf
  */
 int
 clixon_text_diff2cbuf(cbuf  *cb,

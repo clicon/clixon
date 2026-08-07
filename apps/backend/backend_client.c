@@ -1470,7 +1470,6 @@ from_client_compare(clixon_handle h,
             goto done;
         goto ok;
     }
-
     /* Alt: see dsref handling in rpc_datastore_diff */
     if ((db1 = xml_find_body(xe, "source")) == NULL){
         if (netconf_missing_element(cbret, "protocol", "source", NULL) < 0)
@@ -1481,6 +1480,15 @@ from_client_compare(clixon_handle h,
     if (id1 == NULL){
         if (netconf_invalid_value(cbret, "protocol", "missing source identifier") < 0)
             goto done;
+    }
+    /* Do not create a private candidate when comparing */
+    if (strcmp(id1, "candidate") == 0 && clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
+        if (xmldb_candidate_find(h, "candidate", ce->ce_id, &de1, NULL) < 0)
+            goto done;
+        if (de1 == NULL) {
+            free(id1);
+            id1 = strdup("running");
+        }
     }
     if (xmldb_find_create(h, id1, ce->ce_id, &de1, NULL) < 0)
         goto done;
@@ -1494,8 +1502,18 @@ from_client_compare(clixon_handle h,
         if (netconf_invalid_value(cbret, "protocol", "missing target identifier") < 0)
             goto done;
     }
+    /* Do not create a private candidate when comparing */
+    if (strcmp(id2, "candidate") == 0 && clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
+        if (xmldb_candidate_find(h, "candidate", ce->ce_id, &de2, NULL) < 0)
+            goto done;
+        if (de2 == NULL) {
+            free(id2);
+            id2 = strdup("running");
+        }
+    }
     if (xmldb_find_create(h, id2, ce->ce_id, &de2, NULL) < 0)
         goto done;
+
     /* filter: subtree-filter or xpath-filter */
     if ((xpath_filter = xml_find(xe, "xpath-filter")) != NULL){
         if ((xpath0 = xml_body(xpath_filter)) != NULL){

@@ -80,6 +80,10 @@
  */
 #define NETCONF_COMPARE_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-nmda-compare"
 
+/* RFC 8342: Network Management Datastore Architecture (NMDA)
+ */
+#define NETCONF_DATASTORES_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-datastores"
+
 /*! draft-ietf-netconf-privcand  NETCONF and RESTCONF Private Candidate Datastores
  */
 #define NETCONF_PRIVCAND_NAMESPACE "urn:ietf:params:xml:ns:yang:ietf-netconf-private-candidate"

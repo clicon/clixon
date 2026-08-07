@@ -2566,3 +2566,64 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
         xml_free(xret);
     return retval;
 }
+
+/* Make a clixon compare call from client to backend server
+ *
+ * @param[in]   h       Clixon handle
+ * @param[in]   db1     Source datastore
+ * @param[in]   db2     Target datastore
+ * @param[out]  xt      Pointer to roc reply to be freed by caller, or NULL
+ * @retval      0       rpc reply ok
+ * @retval     -1       Error
+*/
+
+int
+clixon_rpc_nmda_compare(clixon_handle   h,
+                        const char     *db1,
+                        const char     *db2,
+                        cxobj         **xt)
+{
+    int        retval = -1;
+    cbuf      *cb = NULL;
+    cxobj     *xret = NULL;
+    char      *username;
+    uint32_t   session_id;
+
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "db1: %s, db2: %s", db1, db2);
+    if (session_id_check(h, &session_id) < 0)
+        goto done;
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_XML, errno, "cbuf_new");
+        goto done;
+    }
+    cprintf(cb, "<rpc xmlns=\"%s\"", NETCONF_BASE_NAMESPACE);
+    cprintf(cb, " xmlns:%s=\"%s\"", NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE);
+    if ((username = clicon_username_get(h)) != NULL){
+        cprintf(cb, " %s:username=\"%s\"", CLIXON_LIB_PREFIX, username);
+        cprintf(cb, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    }
+    cprintf(cb, " message-id=\"%d\">", netconf_message_id_next(h));
+    cprintf(cb, "<compare xmlns=\"%s\" xmlns:ds=\"%s\">",
+        NETCONF_COMPARE_NAMESPACE, NETCONF_DATASTORES_NAMESPACE);
+    cprintf(cb, "<source>ds:%s</source>", db1);
+    cprintf(cb, "<target>ds:%s</target>", db2);
+    cprintf(cb, "</compare></rpc>");
+    if (clicon_rpc_msg(h, cb, &xret) < 0)
+        goto done;
+
+    if ((xpath_first(xret, NULL, "//rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xret, "compare rpc error");
+        goto done;
+    }
+    *xt = xret;
+    xret = NULL;
+    retval = 0;
+  done:
+    clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "retval:%d", retval);
+    if (cb)
+        cbuf_free(cb);
+    if (xret)
+        xml_free(xret);
+    return retval;
+}
+
