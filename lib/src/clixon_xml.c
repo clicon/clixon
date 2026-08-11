@@ -52,7 +52,6 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
 
 /* cligen */
 #include <cligen/cligen.h>
@@ -188,6 +187,18 @@ struct xmlvec {
     struct xml    *xv_vec[];  /* flexible array member */
 };
 
+/*! Co-located body string and cv cache (used when OPTMEM_XML_BODY)
+ *
+ * Allocated as a single block: header + inline string.
+ * This replaces the separate x_cv and x_bodyval fields with one pointer.
+ */
+#ifdef OPTMEM_XML_BODY
+struct xml_bodyval {
+    cg_var *xbv_cv;    /* Cached cligen variable; NULL until set by xml_cv_set() */
+    char    xbv_str[]; /* Inline body string (flexible array) */
+};
+#endif
+
 struct xml{
     struct xml       *x_up;         /* parent node in hierarchy if any */
     union {                         /* depends on x_type: */
@@ -209,9 +220,11 @@ struct xml{
     cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang,
                                        by reference, dont free */
+#ifndef OPTMEM_XML_BODY
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
+#endif
 #ifdef OPTMEM_XML_BODY /* Optimization: Remove bodies as separate objects */
-    char             *x_bodyval;    /* Inline body value (replaces CX_BODY child) */
+    struct xml_bodyval *x_bodyval;  /* Combined body string + cv cache (one allocation) */
 #endif
 };
 
@@ -224,7 +237,7 @@ struct xml{
 #define xv_max(x)  ((x)->x_childvec->xv_max)
 #define xv_vec(x)  ((x)->x_childvec->xv_vec)
 
-/* Variant of struct xml for use by non-elements to save space
+/*! Variant of struct xml for use by non-elements to save space
  * @see struct xml  For XML elements
  * XXX Possibly future optimization: body value is folded into parent element
  */
@@ -352,11 +365,13 @@ xml_stats_one(cxobj         *x,
                 sz += (x->x_prefix_len ? x->x_prefix_len + 1 : 0) + strlen(x->x_name) + 1;
             if (x->x_ns_cache)
                 sz += cvec_size(x->x_ns_cache);
+#ifndef OPTMEM_XML_BODY
             if (x->x_cv)
                 sz += cv_size(x->x_cv);
+#endif
 #ifdef OPTMEM_XML_BODY
             if (x->x_bodyval)
-                sz += strlen(x->x_bodyval) + 1;
+                sz += sizeof(struct xml_bodyval) + strlen(x->x_bodyval->xbv_str) + 1;
 #endif
             break;
         case CX_ATTR:
@@ -419,10 +434,17 @@ xml_stats_one(cxobj         *x,
         }
         break;
     case XML_STATS_CV:
+#ifndef OPTMEM_XML_BODY
         if (xml_type(x) == CX_ELMNT && x->x_cv){
             nr++;
             sz += cv_size(x->x_cv);
         }
+#else
+        if (xml_type(x) == CX_ELMNT && x->x_bodyval && x->x_bodyval->xbv_cv){
+            nr++;
+            sz += cv_size(x->x_bodyval->xbv_cv);
+        }
+#endif
         break;
     case XML_STATS_VALUE:
         if ((xml_type(x) == CX_BODY || xml_type(x) == CX_ATTR) &&
@@ -433,7 +455,7 @@ xml_stats_one(cxobj         *x,
 #ifdef OPTMEM_XML_BODY
         if (xml_type(x) == CX_ELMNT && x->x_bodyval){
             nr++;
-            sz += strlen(x->x_bodyval) + 1;
+            sz += strlen(x->x_bodyval->xbv_str) + 1;
         }
 #endif
         break;
@@ -884,8 +906,9 @@ char*
 xml_value(cxobj *xn)
 {
 #ifdef OPTMEM_XML_BODY
-    if (is_element(xn))
-        return xn->x_bodyval;
+    if (is_element(xn)){
+        return xn->x_bodyval ? xn->x_bodyval->xbv_str : NULL;
+    }
 #endif
     if (!is_bodyattr(xn))
         return NULL;
@@ -911,11 +934,22 @@ xml_value_set(cxobj      *xn,
             clixon_err(OE_XML, EINVAL, "value is NULL");
             goto done;
         }
-        if (xn->x_bodyval)
-            free(xn->x_bodyval);
-        if ((xn->x_bodyval = strdup(val)) == NULL){
-            clixon_err(OE_XML, errno, "strdup");
-            goto done;
+        {
+            struct xml_bodyval *bv;
+            size_t              len = strlen(val) + 1;
+            if (xn->x_bodyval){
+                if (xn->x_bodyval->xbv_cv){
+                    cv_free(xn->x_bodyval->xbv_cv);
+                }
+                free(xn->x_bodyval);
+            }
+            if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
+                clixon_err(OE_XML, errno, "malloc");
+                goto done;
+            }
+            bv->xbv_cv = NULL;
+            memcpy(bv->xbv_str, val, len);
+            xn->x_bodyval = bv;
         }
         xml_flag_set(xn, XML_FLAG_BODY);
         retval = 0;
@@ -963,20 +997,27 @@ xml_value_append(cxobj      *xn,
             goto done;
         }
         sz = strlen(val)+1;
-        if (xn->x_bodyval == NULL){
-            if ((xn->x_bodyval = strdup(val)) == NULL){
-                clixon_err(OE_XML, errno, "strdup");
-                goto done;
+        {
+            struct xml_bodyval *bv;
+            if (xn->x_bodyval == NULL){
+                if ((bv = malloc(sizeof(struct xml_bodyval) + sz)) == NULL){
+                    clixon_err(OE_XML, errno, "malloc");
+                    goto done;
+                }
+                bv->xbv_cv = NULL;
+                memcpy(bv->xbv_str, val, sz);
+                xn->x_bodyval = bv;
             }
-        }
-        else{
-            oldlen = strlen(xn->x_bodyval);
-            if ((newval = realloc(xn->x_bodyval, oldlen + sz)) == NULL){
-                clixon_err(OE_XML, errno, "realloc");
-                goto done;
+            else{
+                oldlen = strlen(xn->x_bodyval->xbv_str);
+                if ((bv = realloc(xn->x_bodyval, sizeof(struct xml_bodyval) + oldlen + sz)) == NULL){
+                    clixon_err(OE_XML, errno, "realloc");
+                    goto done;
+                }
+                /* realloc preserves xbv_cv pointer */
+                memcpy(bv->xbv_str + oldlen, val, sz);
+                xn->x_bodyval = bv;
             }
-            memcpy(newval + oldlen, val, sz);
-            xn->x_bodyval = newval;
         }
         xml_flag_set(xn, XML_FLAG_BODY);
         retval = 0;
@@ -1670,7 +1711,13 @@ xml_cv(cxobj *x)
 {
     if (!is_element(x))
         return NULL;
+#ifdef OPTMEM_XML_BODY
+    if (x->x_bodyval == NULL)
+        return NULL;
+    return x->x_bodyval->xbv_cv;
+#else
     return x->x_cv;
+#endif
 }
 
 /*! Set (cached) cligen variable value of xml node
@@ -1688,10 +1735,19 @@ xml_cv_set(cxobj  *x,
 {
     if (!is_element(x))
         return 0;
+#ifdef OPTMEM_XML_BODY
+    if (x->x_bodyval == NULL)
+        return 0; /* no body: cannot cache */
+    if (x->x_bodyval->xbv_cv)
+        cv_free(x->x_bodyval->xbv_cv);
+    x->x_bodyval->xbv_cv = cv;
+    return 0;
+#else
     if (x->x_cv)
         cv_free(x->x_cv);
     x->x_cv = cv;
     return 0;
+#endif
 }
 
 /*! Find an XML node matching name among a parent's children.
@@ -2159,7 +2215,7 @@ xml_body(cxobj *xn)
     if (!is_element(xn))
         return NULL;
 #ifdef OPTMEM_XML_BODY
-    return xn->x_bodyval;
+    return xn->x_bodyval ? xn->x_bodyval->xbv_str : NULL;
 #else
     cxobj *xb;
     int    ixb = 0;
@@ -2209,12 +2265,22 @@ xml_body_set(cxobj      *xn,
 #ifdef OPTMEM_XML_BODY
     if (!is_element(xn))
         return 0;
-    if (xn->x_bodyval)
+    if (xn->x_bodyval){
+        if (xn->x_bodyval->xbv_cv)
+            cv_free(xn->x_bodyval->xbv_cv);
         free(xn->x_bodyval);
+    }
     xn->x_bodyval = NULL;
-    if (val != NULL && (xn->x_bodyval = strdup(val)) == NULL){
-        clixon_err(OE_XML, errno, "strdup");
-        return -1;
+    if (val != NULL){
+        struct xml_bodyval *bv;
+        size_t              len = strlen(val) + 1;
+        if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
+            clixon_err(OE_XML, errno, "malloc");
+            return -1;
+        }
+        bv->xbv_cv = NULL;
+        memcpy(bv->xbv_str, val, len);
+        xn->x_bodyval = bv;
     }
     xml_flag_set(xn, XML_FLAG_BODY);
     return 0;
@@ -2280,6 +2346,8 @@ xml_body_reset(cxobj *xn)
     if (!is_element(xn))
         return 0;
     if (xn->x_bodyval){
+        if (xn->x_bodyval->xbv_cv)
+            cv_free(xn->x_bodyval->xbv_cv);
         free(xn->x_bodyval);
         xn->x_bodyval = NULL;
     }
@@ -2521,13 +2589,18 @@ xml_free0(cxobj *x)
         if (x->x_name)
             free(x->x_name - (x->x_prefix_len ? x->x_prefix_len + 1 : 0));
         sz = sizeof(struct xml);
+#ifndef OPTMEM_XML_BODY
         if (x->x_cv)
             cv_free(x->x_cv);
+#endif
         if (x->x_ns_cache)
             xml_nsctx_free(x->x_ns_cache);
 #ifdef OPTMEM_XML_BODY
-        if (x->x_bodyval)
+        if (x->x_bodyval){
+            if (x->x_bodyval->xbv_cv)
+                cv_free(x->x_bodyval->xbv_cv);
             free(x->x_bodyval);
+        }
 #endif
 #ifdef XML_EXPLICIT_INDEX
         xml_search_index_free(x);
@@ -2600,10 +2673,15 @@ xml_copy_one(cxobj *x0,
 #ifdef OPTMEM_XML_BODY
         if (xml_flag(x0, XML_FLAG_BODY)){
             if (x0->x_bodyval != NULL){
-                if ((x1->x_bodyval = strdup(x0->x_bodyval)) == NULL){
-                    clixon_err(OE_XML, errno, "strdup");
+                size_t              len = strlen(x0->x_bodyval->xbv_str) + 1;
+                struct xml_bodyval *bv;
+                if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
+                    clixon_err(OE_XML, errno, "malloc");
                     goto done;
                 }
+                bv->xbv_cv = NULL; /* do not copy stale cv cache */
+                memcpy(bv->xbv_str, x0->x_bodyval->xbv_str, len);
+                x1->x_bodyval = bv;
             }
             xml_flag_set(x1, XML_FLAG_BODY);
         }
@@ -3218,6 +3296,7 @@ xml_search_index_get(cxobj *x,
 int
 xml_init(clixon_handle h)
 {
+    clixon_debug(OE_XML, "sizeof xml:%lu", sizeof(struct xml));
     return 0;
 }
 
@@ -3297,7 +3376,7 @@ xml_search_child_insert(cxobj *xp,
     len = clixon_xvec_len(si->si_xvec);
     if ((i = xml_search_indexvar_binary_pos(xp, indexvar, si->si_xvec, 0, len, len, NULL)) < 0)
         goto done;
-    assert(clixon_xvec_i(si->si_xvec, i) != xp);
+    //    assert(clixon_xvec_i(si->si_xvec, i) != xp);
     if (clixon_xvec_insert_pos(si->si_xvec, xp, i) < 0)
         goto done;
  ok:

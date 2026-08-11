@@ -1152,9 +1152,9 @@ text_populate_list(cxobj *xn)
                 goto done;
             yc = yang_find(yn, Y_LEAF, namei);
             xml_spec_set(xc, yc);
-            if ((xml_addsub(xc, xb)) < 0)
+            if (xml_body_set(xc, xml_value(xb)) < 0)
                 goto done;
-
+            xml_purge(xb);
         }
         if (xml_sort(xn) < 0)
             goto done;
