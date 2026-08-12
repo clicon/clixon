@@ -179,10 +179,10 @@ xml_search_index_head(cxobj *x)
  * - Local name: In either case the "local name" is N (also "prefix")
  * It is this combination of the universally managed URI namespace with the 
  * vocabulary's local names that is effective in avoiding name clashes.
- * @see struct xmlbody    For XML body and attributes
+ * @see struct xmlbody    For XML body and attributes (not used when OPTMEM_XML_BODY)
  * Compact layout: pointers first, then ints, then small fields.
  * x_type stored as int8_t.
- * Common fields (shared with xmlbody) must be at same offsets.
+ * Common fields (shared with xmlbody when not OPTMEM_XML_BODY) must be at same offsets.
  */
 /* Childvec sub-struct: header + flexible array of child pointers in one allocation */
 struct xmlvec {
@@ -243,8 +243,9 @@ struct xml{
 
 /*! Variant of struct xml for use by non-elements to save space
  * @see struct xml  For XML elements
- * XXX Possibly future optimization: body value is folded into parent element
+ * Not used when OPTMEM_XML_BODY: all nodes use struct xml in that mode.
  */
+#ifndef OPTMEM_XML_BODY
 struct xmlbody{
     struct xml       *xb_up;         /* parent node in hierarchy if any */
     char             *xb_value;      /* attribute and body nodes have values (strdup'd) */
@@ -256,6 +257,7 @@ struct xmlbody{
     int8_t            xb_type;       /* type of node: element, attribute, body */
     uint8_t           xb_prefix_len; /* length of prefix, 0 if no prefix  (NB used for body bit dont rm due to alignment) */
 };
+#endif /* OPTMEM_XML_BODY */
 
 /*
  * Variables
@@ -388,7 +390,11 @@ xml_stats_one(cxobj         *x,
                 sz += (x->x_prefix_len ? x->x_prefix_len + 1 : 0) + strlen(x->x_name) + 1;
             break;
         case CX_BODY:
+#ifdef OPTMEM_XML_BODY
+            sz += sizeof(struct xml);
+#else
             sz += sizeof(struct xmlbody);
+#endif
             if (x->x_value)
                 sz += strlen(x->x_value) + 1;
             break;
@@ -405,7 +411,11 @@ xml_stats_one(cxobj         *x,
     case XML_STATS_BODY:
         if (xml_type(x) == CX_BODY){
             nr++;
+#ifdef OPTMEM_XML_BODY
+            sz += sizeof(struct xml);
+#else
             sz += sizeof(struct xmlbody);
+#endif
         }
         break;
     case XML_STATS_ATTR:
@@ -1629,7 +1639,11 @@ xml_new(const char     *name,
         sz = sizeof(struct xml);
         break;
     case CX_BODY:
+#ifdef OPTMEM_XML_BODY
+        sz = sizeof(struct xml);
+#else
         sz = sizeof(struct xmlbody);
+#endif
         break;
     default:
         clixon_err(OE_XML, EINVAL, "Invalid type: %d", type);
@@ -2650,7 +2664,11 @@ xml_free0(cxobj *x)
             free(x->x_value);
         break;
     case CX_BODY:
+#ifdef OPTMEM_XML_BODY
+        sz = sizeof(struct xml);
+#else
         sz = sizeof(struct xmlbody);
+#endif
         if (x->x_value)
             free(x->x_value);
         break;
