@@ -219,23 +219,23 @@ typedef enum xml_stats_enum xml_stats_enum;
 
 /*! XML flags
  */
-#define XML_FLAG_MARK      0x01 /* General-purpose eg expand and xpath_vec selection and
-                                 * diffs between candidate and running */
-#define XML_FLAG_TRANSIENT 0x02 /* Marker for dynamic algorithms, unmark asap */
-#define XML_FLAG_ADD       0x04 /* Node is added (commits) or parent added rec*/
-#define XML_FLAG_DEL       0x08 /* Node is deleted (commits) or parent deleted rec */
-#define XML_FLAG_CHANGE    0x10 /* Node is changed (commits) or child changed rec */
-#define XML_FLAG_NONE      0x20 /* Node is added as NETCONF edit-config operation=NONE */
-#define XML_FLAG_DEFAULT   0x40 /* Added when a value is set as default @see xml_default */
-#define XML_FLAG_TOP       0x80 /* Top datastore symbol */
-#define XML_FLAG_BODYKEY  0x100 /* Text parsing key to be translated from body to key */
-#define XML_FLAG_ANYDATA  0x200 /* Treat as anydata, eg mount-points before bound */
-#define XML_FLAG_CACHE_DIRTY 0x400 /* This part of XML tree is not synced to disk */
-#define XML_FLAG_SKIP        0x800 /* Node is skipped in xml_diff */
-#define XML_FLAG_DENY        0x1000 /* Marked as read denied by NACM  */
-#define XML_FLAG_DEL_ANC     0x2000 /* Target-tree ancestor of a deleted node */
-#define XML_FLAG_BODY        0x4000 /* Element has an inline body value (OPTMEM_XML_BODY mode) */
-#define XML_FLAG_ADD_ANC     0x8000 /* Source-tree ancestor of an added node (symmetric to DEL_ANC) */
+#define XML_FLAG_MARK        0x01   /* General-purpose eg expand and xpath_vec selection and
+                                     * diffs between candidate and running */
+#define XML_FLAG_ADD         0x02   /* Node is added (commits) or parent added rec*/
+#define XML_FLAG_DEL         0x04   /* Node is deleted (commits) or parent deleted rec */
+#define XML_FLAG_CHANGE      0x08   /* Node is changed (commits) or child changed rec */
+#define XML_FLAG_NONE        0x10   /* Node is added as NETCONF edit-config operation=NONE */
+#define XML_FLAG_DEFAULT     0x20   /* Added when a value is set as default @see xml_default */
+#define XML_FLAG_TOP         0x40   /* Top datastore symbol */
+#define XML_FLAG_BODYKEY     0x80   /* Parsing key to be translated from body to key before YANG-aware */
+#define XML_FLAG_ANYDATA     0x100  /* Treat as anydata, eg mount-points before bound */
+#define XML_FLAG_CACHE_DIRTY 0x200  /* This part of XML tree is not synced to disk */
+#define XML_FLAG_SKIP        0x400  /* Node is skipped in xml_diff */
+#define XML_FLAG_DENY        0x800  /* Marked as read denied by NACM  */
+#define XML_FLAG_DEL_ANC     0x1000 /* Target-tree ancestor of a deleted node */
+#define XML_FLAG_BODY        0x2000 /* Element has an inline body value (OPTMEM_XML_BODY mode) */
+#define XML_FLAG_ADD_ANC     0x4000 /* Source-tree ancestor of an added node (symmetric to DEL_ANC) */
+#define XML_FLAG_CV          0x8000 /* x_bodyval is struct xml_bodyval* with cv cache slot (lazy upgrade) */
 
 /*
  * Prototypes

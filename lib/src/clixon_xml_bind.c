@@ -114,7 +114,7 @@ xml_bind_netconf_message_id_optional(int val)
  *
  * May apply to other nodes?
  * Exception for bodies marked with XML_FLAG_BODYKEY, see text syntax parsing
- * @see text_mark_bodies
+ * @see text_populate_list
  */
 static int
 strip_body_objects(cxobj *xt)
@@ -126,17 +126,17 @@ strip_body_objects(cxobj *xt)
     if ((yt = xml_spec(xt)) != NULL){
         keyword = yang_keyword_get(yt);
         if (keyword == Y_LIST || keyword == Y_CONTAINER){
+#ifdef OPTMEM_XML_BODY
+            /* In OPTMEM_XML_BODY mode, body is stored inline in the element */
+            if (xml_flag(xt, XML_FLAG_BODY))
+                xml_body_reset(xt);
+#endif
             xb = NULL;
             /* Quits if marked object, assume all are same */
             while ((xb = xml_find_type(xt, NULL, "body", CX_BODY)) != NULL &&
                    !xml_flag(xb, XML_FLAG_BODYKEY)){
                 xml_purge(xb);
             }
-#ifdef OPTMEM_XML_BODY
-            /* In inline mode, also clear any inline body (e.g. whitespace in containers) */
-            if (xml_flag(xt, XML_FLAG_BODY) && !xml_flag(xt, XML_FLAG_BODYKEY))
-                xml_body_reset(xt);
-#endif
         }
     }
 

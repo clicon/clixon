@@ -115,21 +115,21 @@ clixon_text_syntax_parseerror(void *arg,
     return;
 }
 
-static cxobj*
-text_add_value(cxobj *xn,
-               char  *value)
+static int
+text_add_value(cvec *cvv,
+               char *value)
 {
-    cxobj *xb = NULL;
+    cg_var *cvi;
 
-    if ((xb = xml_new("body", xn, CX_BODY)) == NULL)
-        goto done;
-    if (xml_value_set(xb,  value) < 0){
-        xml_free(xb);
-        xb = NULL;
-        goto done;
+    if ((cvi = cvec_add(cvv, CGV_STRING)) == NULL){
+        clixon_err(OE_XML, errno, "cvec_add");
+        return -1;
     }
- done:
-    return xb;
+    if (cv_string_set(cvi, value) < 0){
+        clixon_err(OE_XML, errno, "cv_string_set");
+        return -1;
+    }
+    return 0;
 }
 
 /*! Create XML node prefix:id
@@ -185,49 +185,6 @@ strjoin(char *str0,
     return str0;
 }
 
-/*! Given a vector of XML bodies, transform it to a vector of ELEMENT entries copied from x1
- */
-static int
-text_element_create(clixon_xvec *xvec0,
-                     cxobj       *x1,
-                     clixon_xvec *xvec1)
-{
-    int    retval = -1;
-    cxobj *xb;
-    cxobj *x2;
-    int    i;
-
-    for (i=0; i<clixon_xvec_len(xvec1); i++){
-        xb = clixon_xvec_i(xvec1, i);
-        if ((x2 = xml_dup(x1)) == NULL)
-            goto done;
-        if (xml_addsub(x2, xb) < 0)
-            goto done;
-        if (clixon_xvec_append(xvec0, x2) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
-/*! Special mechanism to mark bodies so they will not be filtered as whitespace
- *
- * @see strip_body_objects text_populate_list
- */
-static int
-text_mark_bodies(clixon_xvec *xv)
-{
-    int    i;
-    cxobj *xb;
-
-    for (i=0; i<clixon_xvec_len(xv); i++){
-        xb = clixon_xvec_i(xv, i);
-        xml_flag_set(xb, XML_FLAG_BODYKEY);
-    }
-    return 0;
-}
-
 %}
 
 %%
@@ -249,16 +206,28 @@ stmts      : stmts stmt        { _PARSE_DEBUG("stmts->stmts stmt");
            ;
 
 stmt       : id values ';'     { _PARSE_DEBUG("stmt-> id value ;");
-                                 text_mark_bodies($2);
+                                 cvec   *cv = (cvec*)$2;
+                                 cg_var *cvi = NULL;
+                                 cxobj  *x2;
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
-                                 if (text_element_create($$, $1, $2) < 0) YYERROR;
+                                 while ((cvi = cvec_each(cv, cvi)) != NULL){
+                                     if ((x2 = xml_dup($1)) == NULL) YYERROR;
+                                     if (xml_body_set(x2, cv_string_get(cvi)) < 0) YYERROR;
+                                     if (clixon_xvec_append($$, x2) < 0) YYERROR;
+                                 }
                                  xml_free($1);
-                                 clixon_xvec_free($2);
+                                 cvec_free(cv);
                                }
            | id values '{' stmts '}'  { _PARSE_DEBUG("stmt-> id values { stmts }");
-                                 text_mark_bodies($2);
-                                 if (clixon_child_xvec_append($1, $2) < 0) YYERROR;
-                                 clixon_xvec_free($2);
+                                 cvec   *cv = (cvec*)$2;
+                                 cg_var *cvi = NULL;
+                                 cxobj  *xb;
+                                 while ((cvi = cvec_each(cv, cvi)) != NULL){
+                                     if ((xb = xml_new("body", $1, CX_BODY)) == NULL) YYERROR;
+                                     if (xml_value_set(xb, cv_string_get(cvi)) < 0) YYERROR;
+                                     xml_flag_set(xb, XML_FLAG_BODYKEY);
+                                 }
+                                 cvec_free(cv);
                                  if (clixon_child_xvec_append($1, $4) < 0) YYERROR;
                                  clixon_xvec_free($4);
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
@@ -266,10 +235,17 @@ stmt       : id values ';'     { _PARSE_DEBUG("stmt-> id value ;");
                                }
            | id '[' values ']'
                                { _PARSE_DEBUG("stmt-> id [ values ]");
+                                 cvec   *cv = (cvec*)$3;
+                                 cg_var *cvi = NULL;
+                                 cxobj  *x2;
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;
-                                 if (text_element_create($$, $1, $3) < 0) YYERROR;
+                                 while ((cvi = cvec_each(cv, cvi)) != NULL){
+                                     if ((x2 = xml_dup($1)) == NULL) YYERROR;
+                                     if (xml_body_set(x2, cv_string_get(cvi)) < 0) YYERROR;
+                                     if (clixon_xvec_append($$, x2) < 0) YYERROR;
+                                 }
                                  xml_free($1);
-                                 clixon_xvec_free($3);
+                                 cvec_free(cv);
                                }
            ;
 
@@ -279,16 +255,15 @@ id         : TOKEN             { _PARSE_DEBUG("id->TOKEN");
                                }
            ;
 
-/* Array of body objects, possibly empty */
+/* Array of string values, possibly empty */
 values     : values value      { _PARSE_DEBUG("values->values value");
-                                 cxobj* x;
-                                 if ((x = text_add_value(NULL, $2)) == NULL) YYERROR;;
+                                 cvec *cv = (cvec*)$1;
+                                 if (text_add_value(cv, $2) < 0) YYERROR;
                                  free($2);
-                                 if (clixon_xvec_append($1, x) < 0) YYERROR;
-                                 $$ = $1;
+                                 $$ = (void*)cv;
                                }
-           |                   { _PARSE_DEBUG("values->value");
-                                 if (($$ = clixon_xvec_new()) == NULL) YYERROR;
+           |                   { _PARSE_DEBUG("values->");
+                                 if (($$ = (void*)cvec_new(0)) == NULL) YYERROR;
                                }
            ;
 

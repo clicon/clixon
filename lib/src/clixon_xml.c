@@ -94,6 +94,10 @@
  */
 #define is_element(x) (xml_type(x)==CX_ELMNT)
 #define is_bodyattr(x) (xml_type(x)==CX_BODY || xml_type(x)==CX_ATTR)
+/* Get body string from x_bodyval regardless of whether XML_FLAG_CV is set */
+#define bodyval_str(x) (xml_flag((x), XML_FLAG_CV) \
+    ? ((struct xml_bodyval*)(x)->x_bodyval)->xbv_str \
+    : (x)->x_bodyval)
 
 /*
  * Types
@@ -224,7 +228,7 @@ struct xml{
     cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
 #endif
 #ifdef OPTMEM_XML_BODY /* Optimization: Remove bodies as separate objects */
-    struct xml_bodyval *x_bodyval;  /* Combined body string + cv cache (one allocation) */
+    char               *x_bodyval;  /* Body string (plain char*); when XML_FLAG_CV is set: struct xml_bodyval* */
 #endif
 };
 
@@ -371,7 +375,9 @@ xml_stats_one(cxobj         *x,
 #endif
 #ifdef OPTMEM_XML_BODY
             if (x->x_bodyval)
-                sz += sizeof(struct xml_bodyval) + strlen(x->x_bodyval->xbv_str) + 1;
+                sz += (xml_flag(x, XML_FLAG_CV)
+                    ? sizeof(struct xml_bodyval) + strlen(((struct xml_bodyval*)x->x_bodyval)->xbv_str) + 1
+                    : strlen(x->x_bodyval) + 1);
 #endif
             break;
         case CX_ATTR:
@@ -440,9 +446,10 @@ xml_stats_one(cxobj         *x,
             sz += cv_size(x->x_cv);
         }
 #else
-        if (xml_type(x) == CX_ELMNT && x->x_bodyval && x->x_bodyval->xbv_cv){
+        if (xml_type(x) == CX_ELMNT && xml_flag(x, XML_FLAG_CV) &&
+            ((struct xml_bodyval*)x->x_bodyval)->xbv_cv){
             nr++;
-            sz += cv_size(x->x_bodyval->xbv_cv);
+            sz += cv_size(((struct xml_bodyval*)x->x_bodyval)->xbv_cv);
         }
 #endif
         break;
@@ -455,7 +462,7 @@ xml_stats_one(cxobj         *x,
 #ifdef OPTMEM_XML_BODY
         if (xml_type(x) == CX_ELMNT && x->x_bodyval){
             nr++;
-            sz += strlen(x->x_bodyval->xbv_str) + 1;
+            sz += strlen(bodyval_str(x)) + 1;
         }
 #endif
         break;
@@ -907,7 +914,7 @@ xml_value(cxobj *xn)
 {
 #ifdef OPTMEM_XML_BODY
     if (is_element(xn)){
-        return xn->x_bodyval ? xn->x_bodyval->xbv_str : NULL;
+        return xn->x_bodyval ? bodyval_str(xn) : NULL;
     }
 #endif
     if (!is_bodyattr(xn))
@@ -934,22 +941,18 @@ xml_value_set(cxobj      *xn,
             clixon_err(OE_XML, EINVAL, "value is NULL");
             goto done;
         }
-        {
-            struct xml_bodyval *bv;
-            size_t              len = strlen(val) + 1;
-            if (xn->x_bodyval){
-                if (xn->x_bodyval->xbv_cv){
-                    cv_free(xn->x_bodyval->xbv_cv);
-                }
+        if (xn->x_bodyval){
+            if (xml_flag(xn, XML_FLAG_CV)){
+                cv_free(((struct xml_bodyval*)xn->x_bodyval)->xbv_cv);
                 free(xn->x_bodyval);
+                xml_flag_reset(xn, XML_FLAG_CV);
             }
-            if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
-                clixon_err(OE_XML, errno, "malloc");
-                goto done;
-            }
-            bv->xbv_cv = NULL;
-            memcpy(bv->xbv_str, val, len);
-            xn->x_bodyval = bv;
+            else
+                free(xn->x_bodyval);
+        }
+        if ((xn->x_bodyval = strdup(val)) == NULL){
+            clixon_err(OE_XML, errno, "strdup");
+            goto done;
         }
         xml_flag_set(xn, XML_FLAG_BODY);
         retval = 0;
@@ -996,28 +999,36 @@ xml_value_append(cxobj      *xn,
             clixon_err(OE_XML, EINVAL, "value is NULL");
             goto done;
         }
-        sz = strlen(val)+1;
-        {
-            struct xml_bodyval *bv;
-            if (xn->x_bodyval == NULL){
-                if ((bv = malloc(sizeof(struct xml_bodyval) + sz)) == NULL){
+        sz = strlen(val) + 1;
+        if (xn->x_bodyval == NULL){
+            if ((xn->x_bodyval = strdup(val)) == NULL){
+                clixon_err(OE_XML, errno, "strdup");
+                goto done;
+            }
+        }
+        else{
+            const char *old_str = bodyval_str(xn);
+            oldlen = strlen(old_str);
+            if (xml_flag(xn, XML_FLAG_CV)){
+                /* Downgrade: drop cv, copy string to plain allocation */
+                struct xml_bodyval *bv = (struct xml_bodyval*)xn->x_bodyval;
+                cv_free(bv->xbv_cv);
+                if ((newval = malloc(oldlen + sz)) == NULL){
                     clixon_err(OE_XML, errno, "malloc");
                     goto done;
                 }
-                bv->xbv_cv = NULL;
-                memcpy(bv->xbv_str, val, sz);
-                xn->x_bodyval = bv;
+                memcpy(newval, bv->xbv_str, oldlen);
+                free(bv);
+                xml_flag_reset(xn, XML_FLAG_CV);
             }
             else{
-                oldlen = strlen(xn->x_bodyval->xbv_str);
-                if ((bv = realloc(xn->x_bodyval, sizeof(struct xml_bodyval) + oldlen + sz)) == NULL){
+                if ((newval = realloc(xn->x_bodyval, oldlen + sz)) == NULL){
                     clixon_err(OE_XML, errno, "realloc");
                     goto done;
                 }
-                /* realloc preserves xbv_cv pointer */
-                memcpy(bv->xbv_str + oldlen, val, sz);
-                xn->x_bodyval = bv;
             }
+            memcpy(newval + oldlen, val, sz);
+            xn->x_bodyval = newval;
         }
         xml_flag_set(xn, XML_FLAG_BODY);
         retval = 0;
@@ -1712,9 +1723,9 @@ xml_cv(cxobj *x)
     if (!is_element(x))
         return NULL;
 #ifdef OPTMEM_XML_BODY
-    if (x->x_bodyval == NULL)
+    if (!xml_flag(x, XML_FLAG_CV))
         return NULL;
-    return x->x_bodyval->xbv_cv;
+    return ((struct xml_bodyval*)x->x_bodyval)->xbv_cv;
 #else
     return x->x_cv;
 #endif
@@ -1737,11 +1748,30 @@ xml_cv_set(cxobj  *x,
         return 0;
 #ifdef OPTMEM_XML_BODY
     if (x->x_bodyval == NULL)
-        return 0; /* no body: cannot cache */
-    if (x->x_bodyval->xbv_cv)
-        cv_free(x->x_bodyval->xbv_cv);
-    x->x_bodyval->xbv_cv = cv;
-    return 0;
+        return 0; /* no body string: cannot cache cv */
+    if (xml_flag(x, XML_FLAG_CV)){
+        struct xml_bodyval *bv = (struct xml_bodyval*)x->x_bodyval;
+        if (bv->xbv_cv)
+            cv_free(bv->xbv_cv);
+        bv->xbv_cv = cv;
+        return 0;
+    }
+    /* Upgrade: promote plain char* to struct xml_bodyval* */
+    {
+        size_t              len = strlen(x->x_bodyval) + 1;
+        struct xml_bodyval *bv;
+
+        if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
+            clixon_err(OE_XML, errno, "malloc");
+            return -1;
+        }
+        bv->xbv_cv = cv;
+        memcpy(bv->xbv_str, x->x_bodyval, len);
+        free(x->x_bodyval);
+        x->x_bodyval = (char*)bv;
+        xml_flag_set(x, XML_FLAG_CV);
+        return 0;
+    }
 #else
     if (x->x_cv)
         cv_free(x->x_cv);
@@ -2215,7 +2245,7 @@ xml_body(cxobj *xn)
     if (!is_element(xn))
         return NULL;
 #ifdef OPTMEM_XML_BODY
-    return xn->x_bodyval ? xn->x_bodyval->xbv_str : NULL;
+    return xn->x_bodyval ? bodyval_str(xn) : NULL;
 #else
     cxobj *xb;
     int    ixb = 0;
@@ -2266,21 +2296,20 @@ xml_body_set(cxobj      *xn,
     if (!is_element(xn))
         return 0;
     if (xn->x_bodyval){
-        if (xn->x_bodyval->xbv_cv)
-            cv_free(xn->x_bodyval->xbv_cv);
-        free(xn->x_bodyval);
+        if (xml_flag(xn, XML_FLAG_CV)){
+            cv_free(((struct xml_bodyval*)xn->x_bodyval)->xbv_cv);
+            free(xn->x_bodyval);
+            xml_flag_reset(xn, XML_FLAG_CV);
+        }
+        else
+            free(xn->x_bodyval);
+        xn->x_bodyval = NULL;
     }
-    xn->x_bodyval = NULL;
     if (val != NULL){
-        struct xml_bodyval *bv;
-        size_t              len = strlen(val) + 1;
-        if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
-            clixon_err(OE_XML, errno, "malloc");
+        if ((xn->x_bodyval = strdup(val)) == NULL){
+            clixon_err(OE_XML, errno, "strdup");
             return -1;
         }
-        bv->xbv_cv = NULL;
-        memcpy(bv->xbv_str, val, len);
-        xn->x_bodyval = bv;
     }
     xml_flag_set(xn, XML_FLAG_BODY);
     return 0;
@@ -2346,9 +2375,13 @@ xml_body_reset(cxobj *xn)
     if (!is_element(xn))
         return 0;
     if (xn->x_bodyval){
-        if (xn->x_bodyval->xbv_cv)
-            cv_free(xn->x_bodyval->xbv_cv);
-        free(xn->x_bodyval);
+        if (xml_flag(xn, XML_FLAG_CV)){
+            cv_free(((struct xml_bodyval*)xn->x_bodyval)->xbv_cv);
+            free(xn->x_bodyval);
+            xml_flag_reset(xn, XML_FLAG_CV);
+        }
+        else
+            free(xn->x_bodyval);
         xn->x_bodyval = NULL;
     }
     xml_flag_reset(xn, XML_FLAG_BODY);
@@ -2597,9 +2630,12 @@ xml_free0(cxobj *x)
             xml_nsctx_free(x->x_ns_cache);
 #ifdef OPTMEM_XML_BODY
         if (x->x_bodyval){
-            if (x->x_bodyval->xbv_cv)
-                cv_free(x->x_bodyval->xbv_cv);
-            free(x->x_bodyval);
+            if (xml_flag(x, XML_FLAG_CV)){
+                cv_free(((struct xml_bodyval*)x->x_bodyval)->xbv_cv);
+                free(x->x_bodyval);
+            }
+            else
+                free(x->x_bodyval);
         }
 #endif
 #ifdef XML_EXPLICIT_INDEX
@@ -2673,15 +2709,11 @@ xml_copy_one(cxobj *x0,
 #ifdef OPTMEM_XML_BODY
         if (xml_flag(x0, XML_FLAG_BODY)){
             if (x0->x_bodyval != NULL){
-                size_t              len = strlen(x0->x_bodyval->xbv_str) + 1;
-                struct xml_bodyval *bv;
-                if ((bv = malloc(sizeof(struct xml_bodyval) + len)) == NULL){
-                    clixon_err(OE_XML, errno, "malloc");
+                /* Copy body string only — no cv cache on fresh copy */
+                if ((x1->x_bodyval = strdup(bodyval_str(x0))) == NULL){
+                    clixon_err(OE_XML, errno, "strdup");
                     goto done;
                 }
-                bv->xbv_cv = NULL; /* do not copy stale cv cache */
-                memcpy(bv->xbv_str, x0->x_bodyval->xbv_str, len);
-                x1->x_bodyval = bv;
             }
             xml_flag_set(x1, XML_FLAG_BODY);
         }
