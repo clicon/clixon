@@ -235,7 +235,6 @@ typedef enum xml_stats_enum xml_stats_enum;
 #define XML_FLAG_DEL_ANC     0x1000 /* Target-tree ancestor of a deleted node */
 #define XML_FLAG_BODY        0x2000 /* Element has an inline body value (OPTMEM_XML_BODY mode) */
 #define XML_FLAG_ADD_ANC     0x4000 /* Source-tree ancestor of an added node (symmetric to DEL_ANC) */
-#define XML_FLAG_CV          0x8000 /* x_bodyval is struct xml_bodyval* with cv cache slot (lazy upgrade) */
 
 /*
  * Prototypes
