@@ -900,7 +900,8 @@ xp_relop(xp_ctx    *xc1,
     int     reverse = 0;
     double  n1, n2;
     char   *xb;
-    cg_var *cv1, *cv2;
+    cg_var *cv1 = NULL;
+    cg_var *cv2 = NULL;
     int     ret;
 
     if (xc1 == NULL || xc2 == NULL){

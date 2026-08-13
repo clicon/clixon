@@ -1025,11 +1025,9 @@ main(int    argc,
         if (clicon_option_dump1(h, stdout, config_dump_format, 1) < 0)
             goto done;
     }
-
     /* -1 option to run only once */
     if (once)
         goto ok;
-
     /* Debug dump of config options */
     clicon_option_dump(h, CLIXON_DBG_INIT);
     /* Daemonize and initiate logging. Note error is initiated here to make

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Scaling/ performance tests
-# CLI/Netconf/Restconf
+# NETCONF performance test
 # Lists (and leaf-lists)
 # Add, get and delete entries
 

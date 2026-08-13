@@ -1177,7 +1177,8 @@ xmldb_get_copy(clixon_handle h,
  * @retval    -1      Error
  * @note Use of 1 for OK
  * @code
- *   if ((ret = xmldb_get(xh, "running", NULL, "/interfaces/interface[name="eth"]", &xt)) < 0)
+ *   cxobj *xt;
+ *   if ((ret = xmldb_get(h, "running", NULL, "/interfaces/interface[name="eth"]", &xt)) < 0)
  *      err;
  *   if (ret == 0)
  *      err;
