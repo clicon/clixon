@@ -222,11 +222,10 @@ struct xml{
     cvec             *x_ns_cache;   /* Cached vector of namespaces (set by bind-yang) */
     yang_stmt        *x_spec;       /* Pointer to specification, eg yang,
                                        by reference, dont free */
-#ifndef OPTMEM_XML_BODY
-    cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
-#endif
 #ifdef OPTMEM_XML_BODY /* Optimization: Remove bodies as separate objects */
     struct xml_bodyval *x_bodyval;  /* Co-located body string and cv cache; NULL if no body */
+#else
+    cg_var           *x_cv;         /* Cached value as cligen variable (set by xml_cmp) */
 #endif
 };
 
@@ -423,7 +422,7 @@ xml_stats_one(cxobj         *x,
     case XML_STATS_NAME:
         if (xml_type(x) != CX_BODY && x->x_name){
             nr++;
-            sz += strlen(x->x_name) + 1;
+            sz += (x->x_prefix_len ? x->x_prefix_len + 1 : 0) + strlen(x->x_name) + 1;
         }
         break;
     case XML_STATS_PREFIX:
@@ -541,6 +540,8 @@ xml_name(cxobj *xn)
         return NULL;
     if (xml_type(xn) == CX_BODY)
         return "body";
+    if (xn->x_name == NULL && xn->x_spec != NULL)
+        return yang_argument_get(xn->x_spec);
     return xn->x_name;
 }
 
@@ -634,11 +635,11 @@ xml_prefix_set(cxobj      *xn,
     int    retval = -1;
 
     /* Save current name before freeing combined allocation */
-    if (xn->x_name && (name_copy = strdup(xn->x_name)) == NULL){
+    if ((name_copy = strdup(xml_name(xn) ? xml_name(xn) : "")) == NULL){
         clixon_err(OE_XML, errno, "strdup");
         goto done;
     }
-    /* Free combined allocation */
+    /* Free combined allocation (only if x_name is owned) */
     if (xn->x_name)
         free(xn->x_name - (xn->x_prefix_len ? xn->x_prefix_len + 1 : 0));
     xn->x_name = NULL;
@@ -1713,7 +1714,29 @@ xml_spec_set(cxobj     *x,
 {
     if (!is_element(x))
         return 0;
+    /* If name was previously borrowed from an old spec and we're changing to a
+     * different spec, restore the owned name first so xml_name() stays correct.
+     */
+    if (x->x_name == NULL && x->x_spec != NULL && spec != x->x_spec){
+        const char *old_name = yang_argument_get(x->x_spec);
+
+        if (old_name != NULL){
+            if ((x->x_name = strdup(old_name)) == NULL){
+                clixon_err(OE_XML, errno, "strdup");
+                return -1;
+            }
+        }
+    }
     x->x_spec = spec;
+    /* Borrow name from new spec: free the owned copy if no prefix and names match */
+    if (spec != NULL && x->x_prefix_len == 0 && x->x_name != NULL){
+        const char *yang_name = yang_argument_get(spec);
+
+        if (yang_name != NULL && strcmp(x->x_name, yang_name) == 0){
+            free(x->x_name);
+            x->x_name = NULL;
+        }
+    }
     return 0;
 }
 
