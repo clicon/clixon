@@ -328,3 +328,24 @@
  * Note, only some calls use this since a pre-step is to compute diffs
  */
 #define VALIDATE_INCREMENTAL
+
+/*! Derive default namespace from YANG spec instead of per-XML-instance caching
+ *
+ * For a YANG-bound XML data node without a namespace prefix, the default namespace
+ * always equals its own YANG module's namespace (yang_find_mynamespace(x_spec)),
+ * so it need not be cached per XML instance in x_ns_cache at all: xml2ns() derives
+ * it directly on a cache miss (prefix==NULL, x_spec set) and skips writing a
+ * NULL-prefix entry back to that cache.
+ *
+ * Applies to Y_LEAF/Y_LEAF_LIST/Y_LIST/Y_ANYXML/Y_ANYDATA. Y_CONTAINER is
+ * excluded: its union slot is already used by OPTIMIZE_NO_PRESENCE_CONTAINER's
+ * no-presence-default cache, so containers keep using the old per-XML-instance
+ * cache instead -- which already served them reasonably well, unlike leaves
+ * (mostly <=1 child, so they rarely qualified for that cache at all).
+ *
+ * XML-local prefixed namespaces (xmlns:foo="uri") are unaffected and still
+ * cached in x_ns_cache as before.
+ * Expected saving: eliminates the x_ns_cache cvec allocation on most leaf and
+ * list-entry nodes.
+ */
+#define OPTMEM_XML_NS_CACHE

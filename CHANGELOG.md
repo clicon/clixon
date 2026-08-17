@@ -24,14 +24,20 @@ Expected: September 2026
 ### Features
 
 * Refactor cli show compare command using RFC 9144
-* Memory optimization: XML name replaced by back-pointer to YANG argument
+* Memory optimization:
+  * XML struct optimizations
+  * Namespace cache use YANG namespace instead of per-XML-instance caching
+  * XML name replaced by back-pointer to YANG argument
 * Added LLVM libFuzzer unit support for yang, json, xml, xpath, api-path, etc
 * gRPC/gNMI:
   * Improved error handling: detailed error messages and status codes
   * Added STREAMS: SAMPLE and POLL
 * Improved gRPC/gNMI error handling: detailed error messages and status codes
-* Event handling: Improved fairness of low prio events
-  * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
+* Event handling:
+  * Switch to poll-based event handling (instead of select)
+  * You may promote interactive CLI client sockets using CLICON_SOCK_PRIO
+  * Improved fairness of events
+    * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
 * New: [NACM External Groups](https://github.com/clicon/clixon/issues/654)
   * Added explicit groupname attribute for cred-mode=NONE, for masquerading of groups
     * Added `-g <group>` option to the CLI

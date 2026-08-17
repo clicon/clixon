@@ -1343,6 +1343,19 @@ ys_cp_one(yang_stmt *ynew,
         yold->ys_nscache = NULL;
         break;
 #endif
+#ifdef OPTMEM_XML_NS_CACHE
+    /* Y_CONTAINER intentionally excluded: it does not use ys_myns (that union slot
+     * holds ysu_nopres_cache for containers, already handled above). */
+    case Y_LEAF:
+    case Y_LEAF_LIST:
+    case Y_LIST:
+    case Y_ANYXML:
+    case Y_ANYDATA:
+        /* Dont inherit yold's cached namespace: a duplicate (uses/augment/deviate/
+         * refine copy) may end up attributed to a different module than yold */
+        ynew->ys_myns = NULL;
+        break;
+#endif
     default:
         break;
     }
@@ -1848,7 +1861,18 @@ yang_find_mynamespace(yang_stmt *ys)
     yang_stmt *ymod = NULL; /* My module */
     yang_stmt *ynamespace;
     char      *ns = NULL;
+#ifdef OPTMEM_XML_NS_CACHE
+    int        cacheable;
+#endif
 
+#ifdef OPTMEM_XML_NS_CACHE
+    if (ys == NULL)
+        goto done;
+    /* ys_myns is a union slot shared with other keyword-specific fields */
+    cacheable = (yang_datanode(ys) && yang_keyword_get(ys) != Y_CONTAINER);
+    if (cacheable && ys->ys_myns != NULL) /* Return cached result, avoids ys_real_module walk */
+        return ys->ys_myns;
+#endif
     if (ys_real_module(ys, &ymod) < 0)
         goto done;
     if (ymod){
@@ -1858,6 +1882,10 @@ yang_find_mynamespace(yang_stmt *ys)
         }
         ns = yang_argument_get(ynamespace);
     }
+#ifdef OPTMEM_XML_NS_CACHE
+    if (cacheable)
+        ys->ys_myns = ns;             /* Cache for subsequent calls */
+#endif
  done:
     return ns;
 }

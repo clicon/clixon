@@ -523,9 +523,23 @@ xml2ns(cxobj      *x,
     int    retval = -1;
     char  *ns = NULL;
     cxobj *xp;
-
+#ifdef OPTMEM_XML_NS_CACHE
+    yang_stmt *y = NULL;
+#endif
     if ((ns = nscache_get(x, prefix)) != NULL)
         goto ok;
+#ifdef OPTMEM_XML_NS_CACHE
+    /* Fast path for YANG data nodes without prefix: a data node's namespace always equals its
+     * YANG module's namespace, so derive it directly — no attr scan, no parent
+     * walk, no per-instance caching needed.
+     * Y_CONTAINER is intentionally excluded: yang_find_mynamespace() does not
+     * cache for containers */
+    if (prefix == NULL && (y = xml_spec(x)) != NULL && yang_datanode(y) &&
+        yang_keyword_get(y) != Y_CONTAINER){
+        if ((ns = yang_find_mynamespace(y)) != NULL)
+            goto ok; /* skip caching: re-derivable from spec on each call */
+    }
+#endif
     if (prefix != NULL) /* xmlns:<prefix>="<uri>" */
         ns = xml_find_type_value(x, "xmlns", prefix, CX_ATTR);
     else{                /* xmlns="<uri>" */
@@ -545,12 +559,14 @@ xml2ns(cxobj      *x,
                 ns = NULL;
         }
     }
-    /* Set default namespace cache (since code is at this point,
-     * no cache was found
-     * If not, this is devastating when populating deep yang structures
+    /* Set default namespace cache (At this point, no cache was found)
      */
     if (ns &&
         xml_child_nr(x) > 1 &&  /* Dont set cache if few children: if 1 child typically a body */
+#ifdef OPTMEM_XML_NS_CACHE
+        /* Skip this cache for data nodes handled by the ys_myns fast path above */
+        !(prefix == NULL && y != NULL && yang_datanode(y) && yang_keyword_get(y) != Y_CONTAINER) &&
+#endif
         nscache_set(x, prefix, ns) < 0)
         goto done;
  ok:

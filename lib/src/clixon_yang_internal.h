@@ -99,7 +99,6 @@ struct yang_stmt {
                                         Y_REVISION_DATE (uint32)
                                         Y_UNKNOWN (optional argument)
                                         Y_WHEN: dependency depth: depth >= 0 walk up 'depth' ancestors
-
                                      */
     cvec              *ys_cvec;      /* List of stmt-specific variables 
                                         Y_EXTENSION: vector of instantiated UNKNOWNS
@@ -123,6 +122,10 @@ struct yang_stmt {
 #ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
         cxobj           *ysu_nopres_cache; /* Y_CONTAINER: no-presence XML cache */
 #endif
+#ifdef OPTMEM_XML_NS_CACHE
+        char            *ysu_myns;      /* Y_LEAF/LEAF_LIST/LIST/ANYXML/ANYDATA only, NOT
+                                          * Y_CONTAINER. Cached namespace, lazily assigned. */
+#endif
     } u;
 };
 
@@ -135,6 +138,9 @@ struct yang_stmt {
 #endif
 #ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
 #define ys_nopres_cache   u.ysu_nopres_cache
+#endif
+#ifdef OPTMEM_XML_NS_CACHE
+#define ys_myns           u.ysu_myns
 #endif
 
 #endif  /* _CLIXON_YANG_INTERNAL_H_ */
