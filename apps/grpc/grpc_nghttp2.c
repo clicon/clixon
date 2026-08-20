@@ -85,6 +85,12 @@ typedef struct grpc_conn {
 /* Global linked list of all live client connections */
 static grpc_conn_t *_grpc_conns = NULL;
 
+/* Forward declarations for functions used in on_data_chunk_cb */
+static int   grpc_send_response(grpc_conn_t *gc, int32_t stream_id,
+                                 const uint8_t *buf, size_t buflen,
+                                 int grpc_status, const char *grpc_msg);
+static cbuf *grpc_errmsg(void);
+
 /*! Per-response state for the data source read callback */
 typedef struct {
     uint8_t          *data;         /* gRPC-framed payload (owned) */
@@ -254,6 +260,11 @@ on_data_chunk_cb(nghttp2_session *session,
     grpc_stream_t *gs;
     size_t         newlen;
     uint8_t       *nb;
+    uint8_t       *resp_buf = NULL;
+    size_t         resp_len = 0;
+    uint32_t       msg_len;
+    int            gst;
+    cbuf          *cberr;
 
     if ((gs = grpc_stream_get(gc, stream_id)) == NULL)
         return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -273,6 +284,37 @@ on_data_chunk_cb(nghttp2_session *session,
     }
     memcpy(gs->gs_body + gs->gs_bodylen, data, len);
     gs->gs_bodylen += len;
+
+    /* Subscribe is a bidi-streaming RPC: the client never sends END_STREAM,
+     * so dispatch as soon as we have a complete LPM frame (5-byte prefix
+     * declares the payload length).  Other RPCs wait for END_STREAM. */
+    if (gs->gs_path != NULL &&
+        strcmp(gs->gs_path, "/gnmi.gNMI/Subscribe") == 0 &&
+        gs->gs_bodylen >= GRPC_PREFIX_LEN){
+        memcpy(&msg_len, gs->gs_body + 1, 4);
+        msg_len = ntohl(msg_len);
+        if (gs->gs_bodylen >= (size_t)(GRPC_PREFIX_LEN + msg_len)){
+            const uint8_t *req_proto     = gs->gs_body + GRPC_PREFIX_LEN;
+            size_t         req_proto_len = msg_len;
+
+            gst = GRPC_INTERNAL;
+            if (gnmi_subscribe(gc->gc_h, req_proto, req_proto_len,
+                               &resp_buf, &resp_len, &gst) < 0){
+                cberr = grpc_errmsg();
+                grpc_send_response(gc, stream_id, NULL, 0,
+                                   gst, cberr ? cbuf_get(cberr) : NULL);
+                if (cberr)
+                    cbuf_free(cberr);
+            }
+            else {
+                grpc_send_framed(gc, stream_id, resp_buf, resp_len,
+                                 GRPC_OK, NULL);
+                if (resp_buf)
+                    free(resp_buf);
+            }
+            grpc_stream_free(gc, gs);
+        }
+    }
     return 0;
 }
 
@@ -613,21 +655,9 @@ on_frame_recv_cb(nghttp2_session     *session,
             }
         }
         else if (strcmp(gs->gs_path, "/gnmi.gNMI/Subscribe") == 0){
-            gst = GRPC_INTERNAL;
-            if (gnmi_subscribe(gc->gc_h, req_proto, req_proto_len,
-                               &resp_buf, &resp_len, &gst) < 0){
-                cberr = grpc_errmsg();
-                grpc_send_response(gc, frame->hd.stream_id, NULL, 0,
-                                   gst, cberr ? cbuf_get(cberr) : NULL);
-                if (cberr)
-                    cbuf_free(cberr);
-            }
-            else {
-                grpc_send_framed(gc, frame->hd.stream_id, resp_buf, resp_len,
-                                 GRPC_OK, NULL);
-                if (resp_buf)
-                    free(resp_buf);
-            }
+            /* Already dispatched in on_data_chunk_cb when LPM frame was complete */
+            grpc_stream_free(gc, gs);
+            return 0;
         }
         else {
             grpc_send_response(gc, frame->hd.stream_id, NULL, 0,

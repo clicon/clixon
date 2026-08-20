@@ -617,6 +617,18 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
     localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
     0 "syncResponse"
 
+# gnmic subscribe test (skip if gnmic not installed)
+if which gnmic > /dev/null 2>&1; then
+    new "gnmic Subscribe ONCE — val path via gnmic"
+    expectpart "$(gnmic -a 127.0.0.1:${GRPC_PORT} --insecure subscribe \
+        --path "/example:val" \
+        --mode once \
+        --encoding json_ietf 2>&1)" \
+        0 "subscribe-test"
+else
+    echo "...skipped gnmic test: gnmic not installed"
+fi
+
 if [ $GR -ne 0 ]; then
     new "stop grpc"
     stop_grpc
