@@ -432,8 +432,12 @@ example_restconf_yang_mount(clixon_handle   h,
         /* In yang name+namespace is mandatory, but not revision */
         cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
         cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
-        if (_mount_revision_from_key && (revision = mount_point_key(xt)) != NULL)
-            cprintf(cb, "<revision>%s</revision>", revision);
+        if (_mount_revision_from_key && (revision = mount_point_key(xt)) != NULL){
+            cprintf(cb, "<revision>");
+            if (xml_chardata_cbuf_append(cb, 0, revision) < 0)
+                goto done;
+            cprintf(cb, "</revision>");
+        }
         //        cprintf(cb, "<revision>2022-11-01</revision>");
         cprintf(cb, "</module>");
         cprintf(cb, "</module-set>");
