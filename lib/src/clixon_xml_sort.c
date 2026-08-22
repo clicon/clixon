@@ -1599,6 +1599,10 @@ clixon_xml_find_index(cxobj        *xp,
 {
     int        retval = -1;
     yang_stmt *yc = NULL;
+    yang_stmt *yspec1;
+    yang_stmt *ymod;
+    yang_stmt *y1;
+    cxobj     *xc;
     int        ret;
 
     if (xvec == NULL){
@@ -1616,6 +1620,23 @@ clixon_xml_find_index(cxobj        *xp,
             yp = yang_find_module_by_namespace(yp, ns);
         if (yp)
             yc = yang_find_datanode(yp, name);
+    }
+    /* yp may originate from another YANG spec than the one the children of xp are bound to,
+     * eg if xp is an RFC 8528 schema mount-point where another revision of the same module
+     * is mounted. The optimized search below compares yang_order() which is only comparable
+     * within a single YANG spec, therefore re-resolve yc in the YANG spec actually used by
+     * the children of xp.
+     * See https://github.com/clicon/clixon-controller/issues/251
+     */
+    if (yc != NULL && ns != NULL &&
+        (xc = xml_child_i_type(xp, 0, CX_ELMNT)) != NULL &&
+        (y1 = xml_spec(xc)) != NULL &&
+        (yspec1 = ys_spec(y1)) != NULL &&
+        yspec1 != ys_spec(yc)){
+        if ((ymod = yang_find_module_by_namespace(yspec1, ns)) != NULL)
+            yc = yang_find_datanode(ymod, name);
+        else
+            yc = NULL;
     }
     if (yc){
         if ((ret = xml_find_index_yang(xp, yc, cvk, xvec)) < 0)

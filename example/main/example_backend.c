@@ -73,7 +73,7 @@
 #include <clixon/clixon_backend.h>
 
 /* Command line options to be passed to getopt(3) */
-#define BACKEND_EXAMPLE_OPTS "a:m:M:n:o:O:rsS:x:iuUtV:"
+#define BACKEND_EXAMPLE_OPTS "a:m:M:Rn:o:O:rsS:x:iuUtV:"
 
 /* Enabling this improves performance in tests, but there may trigger the "double XPath"
  * problem.
@@ -97,6 +97,15 @@ static char *_action_instanceid = NULL;
  */
 static char *_mount_yang = NULL;
 static char *_mount_namespace = NULL;
+
+/*! Yang schema mount revision from mount-point
+ *
+ * Start backend with -- -m <yang> -M <namespace> -R
+ * Use the key of the list enclosing the mount-point as revision of the mounted module.
+ * In this way different mount-points can mount different revisions of the same module.
+ * @see test_nacm_mount_revision.sh
+ */
+static int _mount_revision_from_key = 0;
 
 /*! Notification stream
  *
@@ -1085,6 +1094,30 @@ example_upgrade(clixon_handle    h,
     return retval;
 }
 
+/*! Return the key value of the list enclosing a mount-point, or NULL
+ *
+ * Used to give each mount-point an individual mounted YANG revision, see -R option
+ * @param[in]  xt   XML mount-point
+ * @retval     key  Value of first key of enclosing list
+ * @retval     NULL No enclosing list, or no key
+ */
+static char *
+mount_point_key(cxobj *xt)
+{
+    cxobj     *xp;
+    yang_stmt *yp;
+    cvec      *cvk;
+    cg_var    *cvi;
+
+    if ((xp = xml_parent(xt)) == NULL)
+        return NULL;
+    if ((yp = xml_spec(xp)) == NULL || yang_keyword_get(yp) != Y_LIST)
+        return NULL;
+    if ((cvk = yang_cvec_get(yp)) == NULL || (cvi = cvec_i(cvk, 0)) == NULL)
+        return NULL;
+    return xml_find_body(xp, cv_string_get(cvi));
+}
+
 /*! Example YANG schema mount
  *
  * Given an XML mount-point xt, return XML yang-lib modules-set
@@ -1107,6 +1140,7 @@ main_yang_mount(clixon_handle   h,
 {
     int   retval = -1;
     cbuf *cb = NULL;
+    char *revision = NULL;
 
     if (config)
         *config = 1;
@@ -1124,6 +1158,8 @@ main_yang_mount(clixon_handle   h,
         /* In yang name+namespace is mandatory, but not revision */
         cprintf(cb, "<name>%s</name>", _mount_yang); // mandatory
         cprintf(cb, "<namespace>%s</namespace>", _mount_namespace); // mandatory
+        if (_mount_revision_from_key && (revision = mount_point_key(xt)) != NULL)
+            cprintf(cb, "<revision>%s</revision>", revision);
         //        cprintf(cb, "<revision>2022-11-01</revision>");
         cprintf(cb, "</module>");
         cprintf(cb, "</module-set>");
@@ -1617,6 +1653,9 @@ clixon_plugin_init(clixon_handle h)
             break;
         case 'M':
             _mount_namespace = optarg;
+            break;
+        case 'R': /* mounted revision from mount-point list key (requires -m and -M) */
+            _mount_revision_from_key = 1;
             break;
         case 'n':
             _notification_stream_s = atoi(optarg);
