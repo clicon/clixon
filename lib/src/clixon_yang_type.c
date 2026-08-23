@@ -231,7 +231,7 @@ compile_pattern2regexp(clixon_handle h,
     retval = 1;
  done:
     if (re != NULL)
-        retval = regex_free(h, re);
+        regex_free(h, re);
     return retval;
 }
 
@@ -296,8 +296,18 @@ ys_resolve_type(yang_stmt *ytype,
         goto done;
     retval = 0;
  done:
-    if (regexps)
+    if (regexps) {
+        /* cvec_free does not free void pointer contents; drain compiled regexps */
+        if (retval != 0) {
+            cg_var *rcv = NULL;
+            while ((rcv = cvec_each(regexps, rcv)) != NULL) {
+                void *stored = cv_void_get(rcv);
+                if (stored != NULL)
+                    regex_free(h, stored);
+            }
+        }
         cvec_free(regexps);
+    }
     if (patterns)
         cvec_free(patterns);
     return retval;

@@ -473,9 +473,14 @@ regex_free(clixon_handle h,
     switch (clicon_yang_regexp(h)){
     case REGEXP_POSIX:
         retval = cligen_regex_posix_free(recomp);
+        /* cligen_regex_posix_compile malloc's regex_t; posix_free only calls regfree,
+         * so free the struct itself here */
+        if (recomp)
+            free(recomp);
         break;
     case REGEXP_LIBXML2:
         retval = cligen_regex_libxml2_free(recomp);
+        /* xmlRegFreeRegexp frees the struct internally; no extra free needed */
         break;
     default:
         clixon_err(OE_CFG, 0, "clicon_yang_regexp invalid value: %d", clicon_yang_regexp(h));
