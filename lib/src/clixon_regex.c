@@ -250,6 +250,7 @@ regexp_xsd2posix(const char *xsd,
     int    minus = 0;
     size_t len;
     size_t len1;
+    int    last_quantifier = 0; /* Track consecutive quantifiers +*? */
 
     if ((cb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
@@ -261,6 +262,7 @@ regexp_xsd2posix(const char *xsd,
         x = xsd[i];
         if (esc){
             esc = 0;
+            last_quantifier = 0; /* escaped sequences are atoms */
             switch (x){
             case '-': /* \- is translated to -], ie must be last in bracket */
                 minus++;
@@ -362,15 +364,30 @@ regexp_xsd2posix(const char *xsd,
             }
         }
         else if (x == '\\')
-            esc++;
-        else if (x == '$' && i != strlen(xsd)-1) /* Escape $ unless it is last */
+            esc++; /* last_quantifier preserved — \x sequence follows */
+        else if (x == '$' && i != strlen(xsd)-1){ /* Escape $ unless it is last */
             cprintf(cb, "\\%c", x);
+            last_quantifier = 0;
+        }
         else if (x == ']' && minus){
             cprintf(cb, "-]");
             minus = 0;
+            last_quantifier = 0;
         }
-        else
+        /* Consecutive quantifiers (+,*,?) are illegal in XSD and POSIX ERE.
+         * Skip any quantifier immediately following another quantifier to
+         * prevent exponential NFA state allocation in regcomp (DoS/OOM). */
+        else if (x == '+' || x == '*' || x == '?'){
+            if (!last_quantifier){
+                cprintf(cb, "%c", x);
+                last_quantifier = 1;
+            }
+            /* else: skip — consecutive/mixed quantifiers are invalid */
+        }
+        else {
             cprintf(cb, "%c", x);
+            last_quantifier = 0;
+        }
     }
     if ((*posix = strdup(cbuf_get(cb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
@@ -404,6 +421,13 @@ regex_compile(clixon_handle h,
 {
     int              retval = -1;
     char            *posix = NULL;    /* Transform to posix regex */
+
+    /* Reject excessively long patterns to prevent regcomp OOM/DoS */
+    if (strlen(regexp) > CLIXON_YANG_PATTERN_MAXLEN){
+        clixon_err(OE_YANG, 0, "YANG pattern exceeds max length (%zu > %d)",
+                   strlen(regexp), CLIXON_YANG_PATTERN_MAXLEN);
+        goto done;
+    }
 
     switch (clicon_yang_regexp(h)){
     case REGEXP_POSIX:

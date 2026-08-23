@@ -657,7 +657,6 @@ yang_expand_uses_node(clixon_handle h,
      * Is there a case when glen == 0?  YES AND THIS BREAKS
      */
     if (glen > 0){
-        int oldbuflen = yn->ys_len;
         /* size of existing elements up from i+1 (not uses-stmt) */
         size = (yang_len_get(yn) - ysi - 1)*sizeof(struct yang_stmt *);
         yn->ys_len += glen;
@@ -665,13 +664,11 @@ yang_expand_uses_node(clixon_handle h,
             clixon_err(OE_YANG, errno, "realloc");
             goto done;
         }
-        /* Here, glen last elements are not initialized.
-         * Zeroed here but will be assigned later in the "j" loop below
-         */
-        memset(&yn->ys_stmt[oldbuflen], 0, glen*sizeof(yang_stmt *));
-        /* Move existing elements if any */
+        /* Move existing elements right to make room for glen new slots at [ysi+1..ysi+glen] */
         if (size)
             memmove(&yn->ys_stmt[ysi+glen+1], &yn->ys_stmt[ysi+1], size);
+        /* Zero the glen target slots [ysi+1..ysi+glen] after memmove. */
+        memset(&yn->ys_stmt[ysi+1], 0, glen*sizeof(yang_stmt *));
     }
     /* Note: yang_desc_schema_nodeid() requires ygrouping2 to be in yspec tree,
      * due to correct module prefixes etc.

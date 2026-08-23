@@ -107,6 +107,7 @@
                                       * original. May also be due to deviations of derived trees
                                       */
 #define YANG_FLAG_FIND        0x4000 /* Dynamic flag in yang_find for recursive sub-modules */
+#define YANG_FLAG_RESOLVING   0x8000 /* Dynamic flag in yang_type_resolve to detect circular typedef chains */
 
 /*! Names of top-level data YANGs
  */

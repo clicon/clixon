@@ -2075,6 +2075,12 @@ xml_rm_children(cxobj          *xp,
 
     if (!is_element(xp))
         return 0;
+#ifdef OPTMEM_XML_BODY
+    /* Pre-OPTMEM semantics: bodies were CX_BODY children, removed when type is -1 or CX_BODY */
+    if (type == -1 || type == CX_BODY)
+        if (xml_body_reset(xp) < 0)
+            goto done;
+#endif
     for (i=0; i<xml_child_nr(xp);){
         xc = xml_child_i(xp, i);
         if (type != -1 && xml_type(xc) != type){
@@ -2715,6 +2721,12 @@ xml_copy_one(cxobj *x0,
         xml_spec_set(x1, xml_spec(x0));
 #ifdef OPTMEM_XML_BODY
         if (xml_flag(x0, XML_FLAG_BODY)){
+            /* Free any existing body on target before overwriting (avoid leak) */
+            if (x1->x_bodyval != NULL){
+                cv_free(x1->x_bodyval->xbv_cv);
+                free(x1->x_bodyval);
+                x1->x_bodyval = NULL;
+            }
             if (x0->x_bodyval != NULL){
                 size_t              len = strlen(x0->x_bodyval->xbv_str) + 1;
                 struct xml_bodyval *bv;

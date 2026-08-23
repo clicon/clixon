@@ -1372,6 +1372,13 @@ yang_type_resolve(yang_stmt   *yorig,
     yang_stmt   *yrmod; /* module where resolved type is looked for */
     int          ret;
 
+    /* Detect circular typedef chains: e.g. typedef A { type B; } typedef B { type A; } */
+    if (yang_flag_get(ytype, YANG_FLAG_RESOLVING)){
+        clixon_err(OE_YANG, 0, "Circular typedef detected when resolving \"%s\"",
+                   yang_argument_get(ytype));
+        goto done;
+    }
+    yang_flag_set(ytype, YANG_FLAG_RESOLVING);
     if (options)
         *options = 0x0;
     *yrestype    = NULL; /* Initialization of resolved type that may not be necessary */
@@ -1422,11 +1429,6 @@ yang_type_resolve(yang_stmt   *yorig,
             clixon_err(OE_DB, 0, "mandatory type object is not found");
             goto done;
         }
-        /* Cycle detection: if rytype is the same pointer as ytype, we have a circular typedef */
-        if (rytype == ytype){
-            clixon_err(OE_YANG, 0, "Circular typedef reference: \"%s\"", type);
-            goto done;
-        }
         /* Recursively resolve this new type */
         if (yang_type_resolve(yorig, ys, rytype, yrestype,
                               options, cvv,
@@ -1444,6 +1446,7 @@ yang_type_resolve(yang_stmt   *yorig,
   ok:
     retval = 0;
   done:
+    yang_flag_reset(ytype, YANG_FLAG_RESOLVING); /* always clear regardless of path */
 #if 1
     if (retval == 0 && yrestype != NULL && *yrestype == NULL){
         clixon_err(OE_YANG, 0, "No such type: \"%s\"", type);

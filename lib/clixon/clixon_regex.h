@@ -38,6 +38,11 @@
 #ifndef _CLIXON_REGEX_H_
 #define _CLIXON_REGEX_H_
 
+/*! Maximum YANG pattern string length accepted by regex_compile
+ * Patterns exceeding this are rejected to prevent regcomp OOM/DoS
+ */
+#define CLIXON_YANG_PATTERN_MAXLEN 4096
+
 /*
  * Prototypes
  */

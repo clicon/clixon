@@ -5,6 +5,10 @@
 # 3) Mandatory child
 # 4) Wrong order
 # 5) Too many
+# 6) Circular typedef
+# 7) Key leaf in grouping used with when (RFC 7950 Sec 7.21.5)
+# 8) Stacked regex quantifiers in YANG pattern
+# 9) Excessively long YANG pattern
 
 # circular inputs are ok
 
@@ -193,6 +197,87 @@ EOF
 
 new "Too many"
 expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "\"module\" has 2 children of type \"yang-version\", but only 1 allowed"
+
+# Circular typedef: my-string -> my-int -> my-string
+# Must fail with explicit error, not unbounded recursion/stack overflow
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    typedef my-string {
+        type my-int;
+    }
+    typedef my-int {
+        type my-string;
+    }
+    leaf import2{
+        type my-string;
+    }
+}
+EOF
+
+new "Circular typedef"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "Circular typedef"
+
+# Key leaf defined in grouping, used via 'uses' with 'when': RFC 7950 Sec 7.21.5
+# Error path previously caused use-after-free in grouping expansion
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    grouping address {
+        leaf name { type string; }
+        leaf value { type string; }
+    }
+    list entry {
+        key "name";
+        uses address {
+            when "value = 'special'";
+        }
+    }
+}
+EOF
+
+new "Key leaf in grouping used with when (RFC 7950 Sec 7.21.5)"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "Key leaf 'name' defined in grouping 'address' is used in a 'uses' statement"
+
+# Stacked regex quantifiers: previously caused exponential regcomp OOM/DoS
+# Redundant quantifiers are skipped: must terminate quickly without error
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type string {
+            pattern '[a-z]+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*+*';
+        }
+    }
+}
+EOF
+
+new "Stacked regex quantifiers in YANG pattern"
+expectpart "$(sudo timeout 10 $clixon_backend -s init -1 -f $cfg -l o)" 0 "Terminated" --not-- "Error"
+
+# Excessively long YANG pattern (> CLIXON_YANG_PATTERN_MAXLEN): OOM/DoS prevention
+longpat=$(printf '[a-z]%.0s' {1..900}) # 4500 chars > 4096
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type string {
+            pattern '${longpat}';
+        }
+    }
+}
+EOF
+
+new "Excessively long YANG pattern"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "exceeds max length"
 
 rm -rf "$dir"
 

@@ -158,8 +158,11 @@ RUN echo "disableAuthorization yes" >> /etc/snmp/snmptrapd.conf
 
 # For grpc/gnmi
 RUN apk add protobuf-c
+
 # For grpc/gnmi testing
 RUN apk update && apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing grpcurl
+
+RUN bash -c "$(curl -sL https://get-gnmic.openconfig.net)"
 
 # Dont need to expose restconf ports for internal tests
 #EXPOSE 80/tcp

@@ -1013,10 +1013,14 @@ from_client_close_session(clixon_handle h,
 {
     client_entry *ce = (client_entry *)arg;
     uint32_t      id = ce->ce_id;
+    int           s;
 
     if (release_all_dbs(h, ce, id) < 0)
         return -1;
+    s = ce->ce_s;
+    ce->ce_s = 0;
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
+    ce->ce_s = s;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     return 0;
 }
