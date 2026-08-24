@@ -2281,9 +2281,6 @@ validate_musts1(clixon_handle h,
                      yang_filename_get(ys_module(yc)),
                      yang_linenum_get(yc),
                      yang_argument_get(yc));
-        /* Deviate non-supported, see yang_deviation */
-        if (yang_flag_get(yc, YANG_FLAG_NOT_SUPPORT))
-            continue;
         xpath = yang_argument_get(yc);
 #ifdef VALIDATE_INCREMENTAL
         if (incrml &&

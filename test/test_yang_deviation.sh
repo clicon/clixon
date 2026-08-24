@@ -123,8 +123,8 @@ function testrun()
         new "Add example-base daytime - supported"
         expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
     else # Not supported
-        new "Add example-base daytime - not supported is OK"
-        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime></system></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+        new "Add example-base daytime - not supported expect unknown-element"
+        expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><system xmlns=\"urn:example:base\"><daytime>Sept17</daytime></system></config></edit-config></rpc>" "<rpc-error><error-type>application</error-type><error-tag>unknown-element</error-tag><error-info><bad-element>daytime</bad-element></error-info>" ""
     fi # daytime supported
 
     new "netconf commit"

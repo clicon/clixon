@@ -53,6 +53,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [deviate not-supported no longer removes the node from the schema, so a mandatory not-supported leaf makes every commit fail](https://github.com/clicon/clixon/issues/688)
+  * Revert flag-based solution (`YANG_FLAG_NOT_SUPPORT`)
 * Fixed: [Duplicate list entries created due to XML element reordering in transaction diffs](https://github.com/clicon/clixon/issues/678)
 * Fixed: [Validation fails for a union of leafrefs](https://github.com/clicon/clixon/issues/683)
 * Fixed: [Crash on show xpath with non-valid namespace prefix](https://github.com/clicon/clixon-controller/issues/250)

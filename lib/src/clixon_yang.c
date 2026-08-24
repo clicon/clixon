@@ -2742,7 +2742,15 @@ yang_deviation(yang_stmt *ys,
             continue;
         devop = yang_argument_get(yd);
         if (strcmp(devop, "not-supported") == 0){
-            yang_flag_set(ytarget, YANG_FLAG_NOT_SUPPORT);
+            /* RFC 7950 §7.20.3.2: the target node is not implemented by the
+             * server and MUST be removed from the schema tree entirely.
+             * Prune and free the node so that mandatory validation, xml_bind_yang, default population
+             * and autocli generation all see a clean tree. */
+            if (ys_prune_self(ytarget) < 0)
+                goto done;
+            if (ys_free(ytarget) < 0)
+                goto done;
+            goto ok; /* Target node removed; no other deviates possible */
         }
         else if (strcmp(devop, "add") == 0){
             inext = 0;
