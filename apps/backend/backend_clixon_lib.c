@@ -604,6 +604,60 @@ leafref_append_path(yang_stmt *yn,
  * @retval     0       OK
  * @retval    -1       Error
  */
+
+/*! Mark key leaves of all list nodes in a tree with cl:key="true" attribute
+ *
+ * Allows clients to identify key leaves without YANG access.
+ * The attribute is in the clixon-lib namespace (CLIXON_LIB_NS).
+ *
+ * @param[in]  x    XML node
+ * @param[in]  arg  Unused
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+xml_mark_list_keys_cb(cxobj *x,
+                      void  *arg)
+{
+    int        retval = -1;
+    cxobj     *xleaf;
+    cxobj     *xa;
+    yang_stmt *y;
+    cvec      *cvk;
+    cg_var    *cvi;
+    char      *keyname;
+
+    y = xml_spec(x);
+    if (y == NULL || yang_keyword_get(y) != Y_LIST){
+        retval = 0;
+        goto done;
+    }
+    cvk = yang_cvec_get(y); /* key cache, see ys_populate_list() */
+    if (cvk == NULL){
+        retval = 0;
+        goto done;
+    }
+    cvi = NULL;
+    while ((cvi = cvec_each(cvk, cvi)) != NULL){
+        keyname = cv_string_get(cvi);
+        if ((xleaf = xml_find(x, keyname)) == NULL)
+            continue;
+        /* Add cl:key="true" attribute to the key leaf */
+        if ((xa = xml_new("key", xleaf, CX_ATTR)) == NULL)
+            goto done;
+        if (xml_prefix_set(xa, CLIXON_LIB_PREFIX) < 0)
+            goto done;
+        if (xml_value_set(xa, "true") < 0)
+            goto done;
+        /* Declare the cl namespace on the leaf */
+        if (xmlns_set(xleaf, CLIXON_LIB_PREFIX, CLIXON_LIB_NS) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 static int
 from_client_config_path_info(clixon_handle h,
                              cxobj        *xe,
@@ -622,6 +676,7 @@ from_client_config_path_info(clixon_handle h,
     char      *str;
     char      *body;
     int        leafref_refer = 0;
+    int        mark_keys = 0;
     yang_stmt *ybot = NULL; /* yang spec of xpath */
     cxobj     *xerr = NULL;
     cvec      *nsc0 = NULL;
@@ -646,6 +701,8 @@ from_client_config_path_info(clixon_handle h,
     }
     if ((str = xml_find_body(xe, "leafref-refer")) != NULL)
         leafref_refer = strcmp(str, "true") == 0;
+    if ((str = xml_find_body(xe, "mark-keys")) != NULL)
+        mark_keys = strcmp(str, "true") == 0;
     body = xml_find_body(xe, "body");
     if ((xtop = xml_new(DATASTORE_TOP_SYMBOL, NULL, CX_ELMNT)) == NULL)
         goto done;
@@ -761,6 +818,11 @@ from_client_config_path_info(clixon_handle h,
     if (xmlns_set_all(xpt, nsc1) < 0)
         goto done;
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
+    /* Mark list key leaves if requested by client */
+    if (mark_keys){
+        if (xml_apply0(xtop, CX_ELMNT, xml_mark_list_keys_cb, NULL) < 0)
+            goto done;
+    }
     cprintf(cbret, "<xml xmlns=\"%s\">", CLIXON_LIB_NS);
     if (clixon_xml2cbuf1(cbret, xtop, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;

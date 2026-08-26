@@ -55,7 +55,9 @@ module clixon-config {
 
     revision 2026-06-01 {
         description
-            "Changed default values:
+            "Added options:
+                CLICON_CLI_DIFF_FORMAT
+             Changed default values:
                 CLICON_EVENT_SELECT: false
              Released in Clixon 7.9";
     }
@@ -532,6 +534,24 @@ module clixon-config {
             }
             enum file-inmem {
                 description "Both file and in-mem";
+            }
+        }
+    }
+    typedef cli_diff_type {
+        description
+            "CLI compare/diff output format";
+        type enumeration{
+            enum none {
+                description "No XPath/context";
+            }
+            enum context {
+                description
+                    "Configuration context around diff, for example:
+                     <top>
+                     - <old/>
+                     + <new/>
+                     </top>
+                     ";
             }
         }
     }
@@ -1168,6 +1188,12 @@ module clixon-config {
             default xml;
             description
                 "Default CLI output format.";
+        }
+        leaf CLICON_CLI_DIFF_FORMAT {
+            type cli_diff_type;
+            default none;
+            description
+                "CLI diff output format.";
         }
         leaf CLICON_CLI_PIPE_DIR {
             type string;

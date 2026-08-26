@@ -23,6 +23,7 @@ Expected: September 2026
 
 ### Features
 
+* Refactor cli show compare command using RFC 9144
 * Memory optimization: XML name replaced by back-pointer to YANG argument
 * Added LLVM libFuzzer unit support for yang, json, xml, xpath, api-path, etc
 * gRPC/gNMI:
@@ -42,8 +43,11 @@ Expected: September 2026
 Users may have to change how they access the system
 
 * New `clixon-config@2026-06-01.yang` revision
+   * Added option: CLICON_CLI_DIFF_FORMAT
    * Changed default value of `CLICON_EVENT_SELECT` to `false`, ie poll-based event handling
       * If you want to keep the select-based event-handling, set it to `true`.
+* New `clixon-lib@2026-06-01.yang` revision
+   * Extended `config-path-info` rpc with `mark-keys` paramater
 
 ### C/CLI-API changes on existing features
 

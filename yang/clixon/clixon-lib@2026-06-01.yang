@@ -60,6 +60,7 @@ module clixon-lib {
        - content (also RESTCONF)
        - depth   (also RESTCONF)
        - username
+       - groupname
        - autocommit
        - copystartup
        - transport (see RFC6022)
@@ -69,6 +70,20 @@ module clixon-lib {
        - link # For split multiple XML files
       ";
 
+    revision 2026-06-01 {
+        description
+            "Extended config-path-info rpc with mark-keys paramater
+             Released in Clixon 7.9";
+    }
+    revision 2026-03-01 {
+        description
+            "Added:
+                Extended stats rpc with xml-type paramater
+                Added xml-stats-type to : error-message
+                Added grpc as transport
+                debug flag: validate
+             Released in Clixon 7.8";
+    }
     revision 2025-12-01 {
         description
             "Added:
@@ -285,6 +300,10 @@ module clixon-lib {
                 description "Parser: XML,YANG, etc";
                 position 17;
             }
+            bit validate {
+                description "Validate config wrt YANG";
+                position 18;
+            }
             bit app {
                 description "External applications";
                 position 20;
@@ -349,6 +368,42 @@ module clixon-lib {
             }
         }
     }
+    typedef xml-stats-type {
+        description
+            "Types of XML size/nr statistics, ie which parts of XML struct info to return";
+        type enumeration {
+            enum all {
+                description "All fields";
+            }
+            enum element {
+                description "XML elements";
+            }
+            enum body {
+                description "XML bodies";
+            }
+            enum attr {
+                description "XML attributes";
+            }
+            enum name {
+                description "XML (node) names";
+            }
+            enum prefix {
+                description "XML prefixes";
+            }
+            enum childvec {
+                description "XML child vector";
+            }
+            enum ns-cache{
+                description "XML namespace cache";
+            }
+            enum cv{
+                description "XML CLIgen value";
+            }
+            enum value{
+                description "XML body value";
+            }
+        }
+    }
     identity snmp {
         description
             "SNMP";
@@ -369,6 +424,11 @@ module clixon-lib {
     identity cli {
         description
             "A CLI session";
+        base ncm:transport;
+    }
+    identity grpc {
+        description
+            "A gRPC/gNMI session";
         base ncm:transport;
     }
     extension ignore-compare {
@@ -460,7 +520,11 @@ module clixon-lib {
             leaf modules {
                 description "If enabled include per-module statistics";
                 type boolean;
-                mandatory false;
+            }
+            leaf xml-type {
+                description "Type of XML data";
+                type xml-stats-type;
+                default all;
             }
         }
         output {
@@ -713,6 +777,14 @@ module clixon-lib {
                 type boolean;
                 default false;
             }
+            leaf mark-keys {
+                description
+                    "If true, list key leaves in the returned xml are annotated with
+                     a cl:key=\"true\" attribute, allowing clients to identify keys
+                     without YANG access.";
+                type boolean;
+                default false;
+            }
             leaf body {
                 description
                     "If innermost XML is leaf, add body to xml output";
@@ -814,6 +886,31 @@ module clixon-lib {
             anyxml data {
                 description
                     "Contains the output format according to format setting.";
+            }
+        }
+    }
+    rpc nacm-autocli-filter-get {
+        description
+            "Return the NACM autocli filter for the current session user.
+             The CLI client calls this once at session start and uses the filter
+             in a local CLIgen node-filter callback to hide NACM-denied nodes
+             from tab-completion.";
+        output {
+            container nacm-autocli-filter {
+                description "NACM filter; empty if no restrictions apply.";
+                leaf deny-default {
+                    description
+                        "1 if read-default is deny (show only permitted paths),
+                         0 if read-default is permit (hide only denied paths).";
+                    type uint8;
+                }
+                leaf-list path {
+                    description
+                        "Normalized schema path (no namespace prefixes).
+                         If deny-default=0: explicitly denied paths.
+                         If deny-default=1: explicitly permitted paths.";
+                    type string;
+                }
             }
         }
     }
