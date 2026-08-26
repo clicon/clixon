@@ -2062,6 +2062,7 @@ clixon_rpc_clixon_cache(clixon_handle h,
  * @param[in]     nsc0          Namespace-context of xpath
  * @param[in]     leafref_refer XPath is extended by appending the path of the leafref to the original XPath.
  * @param[in]     body          If innermost XML is leaf, add body
+ * @param[in]     mark_keys     If true, server annotates list key leaves with cl:key="true"
  * @param[out]    xtop          XML data
  * @param[out]    api_path1     API path output
  * @param[out]    xpath1        XPath output
@@ -2082,6 +2083,7 @@ clixon_rpc_config_path_info(clixon_handle h,
                             const char   *xpath0,
                             cvec         *nsc0,
                             int           leafref_refer,
+                            int           mark_keys,
                             const char   *body,
                             cxobj        *xtop,
                             char        **api_path1,
@@ -2155,6 +2157,7 @@ clixon_rpc_config_path_info(clixon_handle h,
         }
     }
     cprintf(cb, "<leafref-refer>%s</leafref-refer>", leafref_refer?"true":"false");
+    cprintf(cb, "<mark-keys>%s</mark-keys>", mark_keys?"true":"false");
     if (body){
         cprintf(cb, "<body>");
         xml_chardata_cbuf_append(cb, 0, body);
@@ -2253,6 +2256,7 @@ clixon_rpc_config_path_info(clixon_handle h,
  * @param[in]     h          Clixon handle
  * @param[in]     api_path   API path
  * @param[in]     body       If innermost XML is leaf, add body
+ * @param[in]     mark_keys  If true, server annotates list key leaves with cl:key="true"
  * @param[out]    xtop       XML data
  * @param[out]    xpath      XPath output
  * @param[out]    nsc        Namespace context of XPath1
@@ -2265,11 +2269,12 @@ int
 clixon_rpc_api_path2xml(clixon_handle h,
                         const char   *api_path,
                         const char   *body,
+                        int           mark_keys,
                         cxobj        *xtop,
                         char        **xpath,
                         cvec        **nsc)
 {
-    return clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL, 0, body, xtop, NULL, xpath, nsc,
+    return clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL, 0, mark_keys, body, xtop, NULL, xpath, nsc,
                                        NULL, NULL, NULL, NULL, NULL);
 }
 

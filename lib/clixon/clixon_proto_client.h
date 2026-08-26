@@ -79,10 +79,10 @@ int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, c
                             cbuf *data);
 int clixon_rpc_nacm_autocli_filter(clixon_handle h, nacm_autocli_filter_t **nafp);
 int clixon_rpc_config_path_info(clixon_handle h, const char *api_path, int strict, const char *xpath, cvec *nsc0,
-                                int leafref_refer, const char *body, cxobj *xtop,
+                                int leafref_refer, int mark_keys, const char *body, cxobj *xtop,
                                 char **api_path1, char **xpath1, cvec **nsc1,
                                 char **symbol, char **prefix, char **ns, char **module, char **filename);
-int clixon_rpc_api_path2xml(clixon_handle h, const char *api_path, const char *body, cxobj *xtop, char **xpath, cvec **nsc);
+int clixon_rpc_api_path2xml(clixon_handle h, const char *api_path, const char *body, int mark_keys, cxobj *xtop, char **xpath, cvec **nsc);
 int clixon_rpc_translate_format(clixon_handle h, enum format_enum format, const char *xpath, cvec *nsc,
                                 cxobj *xt, int pretty, int skiptop, int cli_aware, const char *prepend, cbuf *cb);
 int clicon_rpc_restart_plugin(clixon_handle h, const char *plugin);

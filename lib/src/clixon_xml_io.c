@@ -520,6 +520,184 @@ clixon_xml2file(FILE             *f,
     return clixon_xml2file1(f, xn, level, pretty, prefix, fn, skiptop, autocliext, 0, 0, 0);
 }
 
+/*! Print list key leaves from API path predicates, YANG-free
+ *
+ * Parses predicates of the form [key=val][key2=val2] from the path step string
+ * and prints them as XML leaf elements using xml_find_body for values.
+ * This avoids YANG dependency for memory footprint reasons.
+ * @param[in]  f       Output file
+ * @param[in]  x       List XML node (contains key children)
+ * @param[in]  level   Indentation level in spaces
+ */
+static int
+xml_file_pre_keys(FILE  *f,
+                  cxobj *x,
+                  int    level)
+{
+    cxobj *xc;
+    cxobj *xa;
+    int    i;
+
+    /* Iterate element children; print those marked with cl:key="true" */
+    i = 0;
+    while ((xc = xml_child_iter(x, &i, CX_ELMNT)) != NULL){
+        if ((xa = xml_find_type(xc, CLIXON_LIB_PREFIX, "key", CX_ATTR)) == NULL)
+            continue;
+        if (strcmp(xml_value(xa), "true") != 0)
+            continue;
+        cligen_output(f, "%*s<%s>%s</%s>\n",
+                      level, "",
+                      xml_name(xc), xml_body(xc)?xml_body(xc):"", xml_name(xc));
+    }
+    return 0;
+}
+
+/*! Print XML opening tags and key from xbot's parent up to xtop (inclusive)
+ *
+ * Used to print the pre-context of a diff: opening tags of the ancestors from
+ * xbot's parent back up to xtop. Lists print the key values (as tagged by attribute cl:key)
+ * Example: tree <a><b/></a>, xtop=<a>, xbot=<b> prints "<a>\n"
+ * @param[in]  f      Output file
+ * @param[in]  xtop   Top ancestor node (included in output)
+ * @param[in]  xbot   Bottom node whose ancestors are printed (not included)
+ * @param[in]  level  Starting indentation level
+ * @param[in]  prefix Add string to beginning of each line
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @see clixon_xml2file_post for matching post-context
+ */
+int
+clixon_xml2file_pre(FILE       *f,
+                    cxobj      *xtop,
+                    cxobj      *xbot,
+                    int         level,
+                    const char *prefix)
+{
+    int     retval = -1;
+    cxobj **path = NULL;
+    int     pathlen = 0;
+    int     i;
+    cxobj  *x;
+    char   *name;
+    char   *namespace;
+    int     level1;
+
+    /* Count ancestors from xbot's parent up to and including xtop */
+    for (x = xml_parent(xbot); x != NULL; x = xml_parent(x)){
+        pathlen++;
+        if (x == xtop)
+            break;
+    }
+    if (x == NULL){
+        clixon_err(OE_XML, EINVAL, "xtop is not an ancestor of xbot");
+        goto done;
+    }
+    if ((path = malloc(pathlen * sizeof(cxobj *))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    /* Fill path: path[0]=xtop ... path[pathlen-1]=xbot's parent */
+    i = pathlen - 1;
+    for (x = xml_parent(xbot); x != NULL && i >= 0; x = xml_parent(x)){
+        path[i--] = x;
+        if (x == xtop)
+            break;
+    }
+    /* Print opening tags top-down, with key leaves for list nodes */
+    for (i = 0; i < pathlen; i++){
+        x = path[i];
+        name = xml_name(x);
+        namespace = xml_prefix(x);
+        level1 = (level + i) * PRETTYPRINT_INDENT;
+        if (prefix)
+            cligen_output(f, "%s", prefix);
+        cligen_output(f, "%*s<", level1, "");
+        if (namespace)
+            cligen_output(f, "%s:", namespace);
+        cligen_output(f, "%s>", name);
+        cligen_output(f, "\n");
+        /* Print key leaves (marked cl:key="true" by the server) for context */
+        xml_file_pre_keys(f, x, level1 + PRETTYPRINT_INDENT);
+    }
+    retval = 0;
+ done:
+    if (path)
+        free(path);
+    return retval;
+}
+
+/*! Print closing tags from xbot's parent up to xtop (inclusive)
+ *
+ * Used to print the post-context of a diff: closing tags of the ancestors from
+ * xbot's parent back up to xtop.
+ * Example: tree <a><b/></a>, xtop=<a>, xbot=<b> prints "</a>\n"
+ * @param[in]  f      Output file
+ * @param[in]  xtop   Top ancestor node (included in output)
+ * @param[in]  xbot   Bottom node whose ancestors are printed (not included)
+ * @param[in]  level  Starting indentation level
+ * @param[in]  prefix Add string to beginning of each line (if pretty)
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @see clixon_xml2file_pre for the matching pre-context function
+ */
+int
+clixon_xml2file_post(FILE       *f,
+                     cxobj      *xtop,
+                     cxobj      *xbot,
+                     int         level,
+                     const char *prefix)
+{
+    int     retval = -1;
+    cxobj **path = NULL;
+    int     pathlen = 0;
+    int     i;
+    cxobj  *x;
+    char   *name;
+    char   *namespace;
+    int     level1;
+
+    /* Count ancestors from xbot's parent up to and including xtop */
+    for (x = xml_parent(xbot); x != NULL; x = xml_parent(x)){
+        pathlen++;
+        if (x == xtop)
+            break;
+    }
+    if (x == NULL){
+        clixon_err(OE_XML, EINVAL, "xtop is not an ancestor of xbot");
+        goto done;
+    }
+    if ((path = malloc(pathlen * sizeof(cxobj *))) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    /* Fill path: path[0]=xtop ... path[pathlen-1]=xbot's parent */
+    i = pathlen - 1;
+    for (x = xml_parent(xbot); x != NULL && i >= 0; x = xml_parent(x)){
+        path[i--] = x;
+        if (x == xtop)
+            break;
+    }
+    /* Print closing tags bottom-up */
+    for (i = pathlen - 1; i >= 0; i--){
+        x = path[i];
+        name = xml_name(x);
+        namespace = xml_prefix(x);
+        level1 = (level + i) * PRETTYPRINT_INDENT;
+        if (prefix)
+            cligen_output(f, "%s", prefix);
+        cligen_output(f, "%*s</", level1, "");
+        if (namespace)
+            cligen_output(f, "%s:", namespace);
+        cligen_output(f, "%s>", name);
+        cligen_output(f, "\n");
+    }
+    retval = 0;
+ done:
+    if (path)
+        free(path);
+    return retval;
+}
+
 /*! Print an XML tree structure to an output stream
  *
  * Utility function eg in gdb. For code, use clixon_xml2file
@@ -1741,29 +1919,42 @@ clixon_xml_diff2cbuf(cbuf  *cb,
 
 /* Print an XML representation of one edit in a YANG Patch into a cbuf.
  *
- * @param[in]  *cb    CLIgen buffer
- * @param[in]  *xe    Edit XML subtree
- * @retval      0     OK
- * @retval     -1     Error
+ * @param[in] f     FILE pointer to output stream
+ * @param[in] xe    Edit XML subtree
+ * @param[in] level How many spaces to insert before each line
+ * @retval    0     OK
+ * @retval    1     Error
  */
 int
-clixon_yangpatch2cbuf(cbuf            *cb,
-                      cxobj           *xe)
+clixon_xml_yangpatch(FILE  *f,
+                     cxobj *xe,
+                     int    level)
 {
     int         retval = -1;
-    cxobj      *x;
+    cxobj      *xt;
+    cxobj      *xop;
+    cxobj      *xv;
+    cxobj      *xs;
     const char *op;
     const char *prefix;
 
-    if ((x = xml_find(xe, "target")) == NULL) {
+    if (strcmp(xml_name(xe), "edit") != 0){
+        clixon_err(OE_XML, EINVAL, "XML node is not edit");
         goto done;
     }
-    cprintf(cb, "%s\n", xml_body(x));
-
-    if ((x = xml_find(xe, "operation")) == NULL) {
+    if ((xt = xml_find(xe, "target")) == NULL) {
+        clixon_err(OE_XML, EINVAL, "Missing target in edit");
         goto done;
     }
-    op = xml_body(x);
+    if ((xop = xml_find(xe, "operation")) == NULL) {
+        clixon_err(OE_XML, EINVAL, "Missing operation in edit");
+        goto done;
+    }
+    if ((xv = xml_find(xe, "value")) == NULL){
+        clixon_err(OE_XML, EINVAL, "Missing value in edit");
+        goto done;
+    }
+    op = xml_body(xop);
     switch (op[0]) {
     case 'c': /* create */
         prefix = "+";
@@ -1772,9 +1963,11 @@ clixon_yangpatch2cbuf(cbuf            *cb,
         prefix = "-";
         break;
     case 'r': /* replace*/
-        if ((x = xml_find(xe, "source-value")) == NULL)
+        if ((xs = xml_find(xe, "source-value")) == NULL){
+            clixon_err(OE_XML, EINVAL, "Missing source-value in edit");
             goto done;
-        if (clixon_xml2cbuf1(cb, x, 1, 1, "-", -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+        }
+        if (clixon_xml2file(f, xs, level, 1, "-", cligen_output, 1, 0) < 0)
             goto done;
         prefix = "+";
         break;
@@ -1785,11 +1978,8 @@ clixon_yangpatch2cbuf(cbuf            *cb,
     default:
         goto done;
     }
-    if ((x = xml_find(xe, "value")) == NULL)
+    if (clixon_xml2file(f, xv, level, 1, prefix, cligen_output, 1, 0) < 0)
         goto done;
-    if (clixon_xml2cbuf1(cb, x, 1, 1, prefix, -1, 1, 0, WITHDEFAULTS_REPORT_ALL) < 0)
-        goto done;
-
      retval = 0;
 done:
      clixon_debug(CLIXON_DBG_XML | CLIXON_DBG_DETAIL, "retval: %d\n", retval);

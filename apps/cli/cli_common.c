@@ -417,7 +417,7 @@ cli_dbxml(clixon_handle       h,
                 goto done;
             }
         }
-        if (clixon_rpc_api_path2xml(h, api_path, body, xtop, &xpath, &nsc) < 0)
+        if (clixon_rpc_api_path2xml(h, api_path, body, 0, xtop, &xpath, &nsc) < 0)
             goto done;
         if ((xbot = xpath_first(xtop, nsc, "%s", xpath)) == NULL){
             clixon_err(OE_XML, 0, "No XML from XPath %s", xpath);
@@ -830,6 +830,44 @@ cli_validate(clixon_handle h,
     return retval;
 }
 
+/*! Given api-path, return xtop, xbottom and level for context printing
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  apipath API path to print context for
+ * @param[out] xtop0   Top-level XML node
+ * @param[out] xbot0   Bottom-level XML node
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+api_path_xtop_xbot(clixon_handle h,
+                   const char   *apipath,
+                   cxobj       **xtop0,
+                   cxobj       **xbot0)
+{
+    int    retval = -1;
+    char  *xpath = NULL;
+    cvec  *nsc = NULL;
+    cxobj *xtop;
+    cxobj *xbot;
+
+    if ((xtop = xml_new(NETCONF_INPUT_CONFIG, NULL, CX_ELMNT)) == NULL)
+        goto done;
+    if (clixon_rpc_api_path2xml(h, apipath, NULL, 1, xtop, &xpath, &nsc) < 0)
+        goto done;
+    if ((xbot = xpath_first(xtop, nsc, "%s", xpath)) == NULL){
+        clixon_err(OE_XML, 0, "No XML from XPath %s", xpath);
+        goto done;
+    }
+    if (xtop0)
+        *xtop0 = xtop;
+    if (xbot0)
+        *xbot0 = xbot;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Compare two datastore by name and formats
  *
  * @param[in]  h      Clixon handle
@@ -843,8 +881,8 @@ cli_validate(clixon_handle h,
 int
 compare_db_names(clixon_handle    h,
                  enum format_enum format,
-                 char            *db1,
-                 char            *db2)
+                 const char      *db1,
+                 const char      *db2)
 {
     int    retval = -1;
     cxobj *xc1 = NULL;
@@ -853,80 +891,118 @@ compare_db_names(clixon_handle    h,
     cbuf  *cb = NULL;
     cxobj *xret = NULL;
     cxobj *xe;
+    cxobj *xreply;
+    cxobj *xc;
     cxobj *x;
     int    i;
+    char  *dformat;
+    int    context;
+    int    level;
+    char  *apipath;
+    cxobj *xtop = NULL;
+    cxobj *xbot;
+    FILE  *f = stdout;
 
+    dformat = clicon_option_str(h, "CLICON_CLI_DIFF_FORMAT");
+    context = strcmp(dformat, "context") == 0;
     if (format == FORMAT_XML) { /* new implementation for xml format using rpc compare */
         if (clixon_rpc_nmda_compare(h, db1, db2, &xret) < 0) {
             clixon_err(OE_PLUGIN, 0, "clixon_rpc_nmda_compare");
             goto done;
         }
-        if (xpath_first(xret, NULL, "//no-matches") != NULL) {
-            retval = 0;
+        if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) == NULL){
+            clixon_err(OE_NETCONF, 0, "No rpc-reply");
             goto done;
         }
-        if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
-            goto done;
-        }
-        if ((xe = xpath_first(xret, NULL, "//differences/yang-patch")) == NULL) {
+        if (xpath_first(xreply, NULL, "no-matches") != NULL)
+            goto ok; /* no differences */
+        if ((xe = xpath_first(xreply, NULL, "differences/yang-patch")) == NULL) {
             clixon_err(OE_XML, ENOENT, "Expected yang-patch in rpc compare reply");
             goto done;
         }
-        cligen_output(stdout, "--- %s\n+++ %s\n", db1, db2);
+        cligen_output(f, "--- %s\n+++ %s\n", db1, db2);
         i = 0;
-        while ((x = xml_child_iter(xe, &i, -1)) != NULL)
-            clixon_yangpatch2cbuf(cb, x);
-        cligen_output(stdout, "%s", cbuf_get(cb));
-        retval = 0;
-        goto done;
+        while ((xc = xml_child_iter(xe, &i, CX_ELMNT)) != NULL){
+            if (strcmp(xml_name(xc), "edit") != 0)
+                continue;
+            if ((apipath = xml_find_body(xc, "target")) == NULL)
+                continue;
+            cligen_output(f, "%s\n", apipath);
+            if (context){
+                if (api_path_xtop_xbot(h, apipath, &xtop, &xbot) < 0)
+                    goto done;
+                level = 0;
+                for (x = xbot; x != NULL; x = xml_parent(x)){
+                    if (x == xtop)
+                        break;
+                    level++;
+                }
+                if (clixon_xml2file_pre(f, xtop, xbot, 0, NULL) < 0)
+                    goto done;
+                if (clixon_xml_yangpatch(f, xc, level) < 0)
+                    goto done;
+                if (clixon_xml2file_post(f, xtop, xbot, 0, NULL) < 0)
+                    goto done;
+            }
+            else {
+                if (clixon_xml_yangpatch(f, xc, 0) < 0)
+                    goto done;
+            }
+            if (xtop){
+                xml_free(xtop);
+                xtop = NULL;
+            }
+        }
     }
-    /* xml format handling complete */
-
-    if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
-        goto done;
-    if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
-        if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
+    else { /* Old implementation for non-xml for now */
+        if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
             goto done;
-        goto done;
-    }
-    if (clicon_rpc_get_config(h, NULL, db2, "/", NULL, NULL, &xc2) < 0)
-        goto done;
-    if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
-        if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
-            goto done;
-        goto done;
-    }
-    /* Note that TEXT uses a (new) structured in-mem algorithm while
-     * JSON and CLI uses (old) UNIX file diff.
-     */
-    switch (format){
-    case FORMAT_TEXT:
-        if ((cb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
+        if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
+            if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
+                goto done;
             goto done;
         }
-        if (clixon_text_diff2cbuf(cb, xc1, xc2) < 0)
+        if (clicon_rpc_get_config(h, NULL, db2, "/", NULL, NULL, &xc2) < 0)
             goto done;
-        cligen_output(stdout, "%s", cbuf_get(cb));
-        break;
-    case FORMAT_JSON:         /* XXX NYI */
-    case FORMAT_CLI:
-        if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
+        if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
+            if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
+                goto done;
             goto done;
-    default:
-        goto done;
+        }
+        /* Note that TEXT uses a (new) structured in-mem algorithm while
+         * JSON and CLI uses (old) UNIX file diff.
+         */
+        switch (format){
+        case FORMAT_TEXT:
+            if ((cb = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            if (clixon_text_diff2cbuf(cb, xc1, xc2) < 0)
+                goto done;
+            cligen_output(f, "%s", cbuf_get(cb));
+            break;
+        case FORMAT_JSON:         /* XXX NYI */
+        case FORMAT_CLI:
+            if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
+                goto done;
+        default:
+            goto done;
+        }
     }
+ ok:
     retval = 0;
-  done:
+ done:
+    if (xret)
+        xml_free(xret);
+    if (xtop)
+        xml_free(xtop);
     if (cb)
         cbuf_free(cb);
     if (xc1)
         xml_free(xc1);
     if (xc2)
         xml_free(xc2);
-    if (xret)
-        xml_free(xret);
     return retval;
 }
 

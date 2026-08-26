@@ -312,7 +312,7 @@ expand_dbvar(clixon_handle h,
      * Issue: with NACM, the rpc can fail but dont want to return error / -1, instead return empty list
      */
     if (clixon_rpc_config_path_info(h, api_path, 0, NULL, NULL,
-                                    leafref_refer, NULL, NULL,
+                                    leafref_refer, 0, NULL, NULL,
                                     NULL, &xpath, &nsc,
                                     NULL, NULL, NULL, NULL, NULL) < 0){
         /* Try local call to find xpath and nsc, but this may not work over mountpoints */
@@ -1089,7 +1089,7 @@ show_conf_xpath(clixon_handle h,
     }
     /* Get XPath and namespace context from api_path */
     if (clixon_rpc_config_path_info(h, NULL, 0, xpath0, nsc0,
-                                    0, NULL, NULL,
+                                    0, 0, NULL, NULL,
                                     NULL, &xpath, &nsc,
                                     NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
@@ -1391,7 +1391,7 @@ cli_show_auto_mode(clixon_handle h,
         if (yang_mount_get(yu, mtxpath, &yspec) < 0)
             goto done;
     }
-    if (clixon_rpc_api_path2xml(h, api_path, NULL, NULL, &xpath, &nsc) < 0)
+    if (clixon_rpc_api_path2xml(h, api_path, NULL, 0, NULL, &xpath, &nsc) < 0)
         goto done;
     if (xpath == NULL){
         clixon_err(OE_FATAL, 0, "Invalid api-path: %s", api_path);
@@ -2344,7 +2344,7 @@ cli_show_config_info(clixon_handle h,
     if (cli_apipath(h, cvv, mtdomain, mtspec, api_path_fmt, NULL, &api_path) < 0)
         goto done;
     if (clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL,
-                                    0, NULL, NULL, NULL, &xpath, &nsc,
+                                    0, 0, NULL, NULL, NULL, &xpath, &nsc,
                                     &symbol, &prefix, &ns, &module, &filename) < 0)
         goto done;
     cligen_output(stdout, "Symbol:     %s\n", symbol);
