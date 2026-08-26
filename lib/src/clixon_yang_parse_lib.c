@@ -556,7 +556,7 @@ yang_expand_uses_node(clixon_handle h,
     char      *id = NULL;
     char      *prefix = NULL;
     yang_stmt *ygrouping;  /* grouping original */
-    yang_stmt *ygrouping2; /* grouping copy */
+    yang_stmt *ygrouping2 = NULL; /* grouping copy */
     yang_stmt *ygp;        /* parent of ygrouping */
     yang_stmt *yg;         /* grouping child */
     yang_stmt *yr;         /* refinement */
@@ -568,6 +568,7 @@ yang_expand_uses_node(clixon_handle h,
     int        k;
     yang_stmt *ywhen;
     int        inext;
+    int        ygrouping2_inserted = 0; /* Track if ygrouping2 is in the tree */
 
     /* Split argument into prefix and name */
     if (nodeid_split(yang_argument_get(ys), &prefix, &id) < 0)
@@ -623,6 +624,7 @@ yang_expand_uses_node(clixon_handle h,
         goto done;
     if (ys_cp_one(ygrouping2, ygrouping) < 0){
         ys_free(ygrouping2);
+        ygrouping2 = NULL;
         goto done;
     }
     {
@@ -630,6 +632,8 @@ yang_expand_uses_node(clixon_handle h,
         yang_stmt *yco; /* old child */
         int        i;
 
+        /* Null out child slots before filling: ys_cp_one copies the pointer array */
+        memset(ygrouping2->ys_stmt, 0, ygrouping2->ys_len * sizeof(yang_stmt *));
         for (i=0; i<ygrouping2->ys_len; i++){
             yco = ygrouping->ys_stmt[i];
             if ((ycn = ys_dup(yco, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
@@ -675,6 +679,7 @@ yang_expand_uses_node(clixon_handle h,
      */
     if (yn_insert(ygp, ygrouping2) < 0)
         goto done;
+    ygrouping2_inserted = 1;
     /* Iterate through refinements and modify grouping copy
      * See RFC 7950 7.13.2 yrt is the refine target node
      */
@@ -701,12 +706,14 @@ yang_expand_uses_node(clixon_handle h,
     /* Note: prune here to make dangling again after while loop */
     if (ys_prune_self(ygrouping2) < 0)
         goto done;
+    ygrouping2_inserted = 0;
     /* Then copy and insert each child element from ygrouping2 to yn */
     k=0;
     for (j=0; j<yang_len_get(ygrouping2); j++){
         yg = ygrouping2->ys_stmt[j]; /* Child of refined copy */
         /* Only replace data/schemanodes */
         if (!yang_schemanode(yg) && yang_keyword_get(yg) != Y_UNKNOWN){
+            ygrouping2->ys_stmt[j] = NULL; /* Null before free to avoid use-after-free on error path */
             ys_free(yg);
             continue;
         }
@@ -732,15 +739,22 @@ yang_expand_uses_node(clixon_handle h,
         if (yang_flag_get(ys, YANG_FLAG_NOKEY))
             yang_flag_set(yg, YANG_FLAG_NOKEY);
         yn->ys_stmt[ysi+k+1] = yg;
+        ygrouping2->ys_stmt[j] = NULL; /* Mark as transferred; dont free on error path */
         yg->ys_parent = yn;
         yang_flag_set(yg, YANG_FLAG_GROUPING);
         k++;
     }
-    /* Remove the grouping copy */
+    /* Remove the grouping copy (children already transferred or freed above) */
     ygrouping2->ys_len = 0; /* Cant do with get access function */
     ys_free(ygrouping2);
     retval = 0;
  done:
+    if (retval < 0 && ygrouping2 != NULL){
+        if (ygrouping2_inserted)
+            ys_prune_self(ygrouping2);
+        /* NULLed slots (transferred children) are skipped by ys_free */
+        ys_free(ygrouping2);
+    }
     if (prefix)
         free(prefix);
     if (id)
