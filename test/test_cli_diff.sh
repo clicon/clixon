@@ -145,7 +145,7 @@ new "check compare xml"
 expectpart "$($clixon_cli -1 -f $cfg  show compare xml)" 0 "^--- running" "^+++ candidate" "^/clixon-example:top" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>"
 
 new "check compare xml with context"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show compare xml)" 0 "^--- running" "^+++ candidate" "^/clixon-example:top" "\+\ *<top xmlns=\"urn:example:clixon\">" "\+\ *<section>" "\+\ *<name>x</name>" "\+\ *<table>" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show compare xml)" 0 "^--- running" "^+++ candidate" "\+\ *<top xmlns=\"urn:example:clixon\">" "\+\ *<section>" "\+\ *<name>x</name>" "\+\ *<table>" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>"
 
 new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\-" data

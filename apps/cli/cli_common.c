@@ -927,7 +927,6 @@ compare_db_names(clixon_handle    h,
                 continue;
             if ((apipath = xml_find_body(xc, "target")) == NULL)
                 continue;
-            cligen_output(f, "%s\n", apipath);
             if (context){
                 if (api_path_xtop_xbot(h, apipath, &xtop, &xbot) < 0)
                     goto done;
@@ -945,6 +944,7 @@ compare_db_names(clixon_handle    h,
                     goto done;
             }
             else {
+                cligen_output(f, "%s\n", apipath);
                 if (clixon_xml_yangpatch(f, xc, 0) < 0)
                     goto done;
             }
