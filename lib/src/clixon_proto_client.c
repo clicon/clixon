@@ -2574,18 +2574,20 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
 
 /* Make a clixon compare call from client to backend server
  *
- * @param[in]   h       Clixon handle
- * @param[in]   db1     Source datastore
- * @param[in]   db2     Target datastore
- * @param[out]  xt      Pointer to roc reply to be freed by caller, or NULL
- * @retval      0       rpc reply ok
- * @retval     -1       Error
+ * @param[in]   h            Clixon handle
+ * @param[in]   db1          Source datastore
+ * @param[in]   db2          Target datastore
+ * @param[in]   order_ignore If 1, do not report pure reorderings of ordered-by user lists
+ * @param[out]  xt           Pointer to roc reply to be freed by caller, or NULL
+ * @retval      0            rpc reply ok
+ * @retval     -1            Error
 */
 
 int
 clixon_rpc_nmda_compare(clixon_handle   h,
                         const char     *db1,
                         const char     *db2,
+                        int             order_ignore,
                         cxobj         **xt)
 {
     int        retval = -1;
@@ -2612,6 +2614,8 @@ clixon_rpc_nmda_compare(clixon_handle   h,
         NETCONF_COMPARE_NAMESPACE, NETCONF_DATASTORES_NAMESPACE);
     cprintf(cb, "<source>ds:%s</source>", db1);
     cprintf(cb, "<target>ds:%s</target>", db2);
+    if (order_ignore)
+        cprintf(cb, "<order-ignore xmlns=\"%s\">true</order-ignore>", CLIXON_LIB_NS);
     cprintf(cb, "</compare></rpc>");
     if (clicon_rpc_msg(h, cb, &xret) < 0)
         goto done;

@@ -48,6 +48,7 @@ Users may have to change how they access the system
       * If you want to keep the select-based event-handling, set it to `true`.
 * New `clixon-lib@2026-06-01.yang` revision
    * Extended `config-path-info` rpc with `mark-keys` paramater
+   * Augmented ietf-nmda-compare compare rpc with order-ignore parameter
 
 ### C/CLI-API changes on existing features
 

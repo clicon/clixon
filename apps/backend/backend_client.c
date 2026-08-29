@@ -1320,6 +1320,7 @@ from_client_get_schema(clixon_handle h,
  *
  * @param[in]   h      Clixon handle
  * @param[in]   xpath  XPath note
+ * @param[in]   flags  Comparison flags, see DIFF_FLAG_ORDER_IGNORE et al
  * @param[in]   db1    First datastore
  * @param[in]   db2    Second datastore
  * @param[out]  cbret  CLIgen buff with NETCONF reply
@@ -1330,6 +1331,7 @@ static int
 datastore_compare(clixon_handle h,
                   char         *xpath,
                   cvec         *nsc,
+                  uint16_t      flags,
                   db_elmnt     *de1,
                   db_elmnt     *de2,
                   cbuf         *cbret)
@@ -1406,7 +1408,9 @@ datastore_compare(clixon_handle h,
     if (xml_rootchild(xdiff, 0, &xdiff) < 0)
         goto done;
     xpatch = xml_find_type(xdiff, NULL, "yang-patch", CX_ELMNT);
-    if (clixon_xml_diff2patch(x1, x2, 0x0, xpatch) < 0)
+    /* DIFF_FLAG_ORDER_IGNORE: treat ordered-by user lists as sets, as local
+     * xml_diff2cbuf does, see https://github.com/clicon/clixon/issues/475 */
+    if (clixon_xml_diff2patch(x1, x2, flags, xpatch) < 0)
         goto done;
     if (xpath_first(xpatch, NULL, "edit") == NULL){
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><no-matches xmlns=\"%s\"/></rpc-reply>",
@@ -1464,6 +1468,8 @@ from_client_compare(clixon_handle h,
     char         *xpath1 = NULL;
     char         *xpath = NULL;
     cvec         *nsc = NULL;
+    char         *body;
+    uint16_t      flags = 0x0;
 
     if (xml_find(xe, "all") != NULL){
         if (netconf_operation_not_supported(cbret, "application", "all not supported") < 0)
@@ -1534,7 +1540,11 @@ from_client_compare(clixon_handle h,
         if (xml_nsctx_node(xpath_filter, &nsc) < 0)
             goto done;
     }
-    if (datastore_compare(h, xpath, nsc, de1, de2, cbret) < 0)
+    /* order-ignore, clixon-lib augment of compare input */
+    if ((body = xml_find_body(xe, "order-ignore")) != NULL &&
+        strcmp(body, "true") == 0)
+        flags |= DIFF_FLAG_ORDER_IGNORE;
+    if (datastore_compare(h, xpath, nsc, flags, de1, de2, cbret) < 0)
         goto done;
  ok:
     retval = 0;

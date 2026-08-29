@@ -12,6 +12,9 @@ module clixon-lib {
     import ietf-yang-metadata {
         prefix "md";
     }
+    import ietf-nmda-compare {
+        prefix "cmp";
+    }
     organization
         "Clicon / Clixon";
 
@@ -73,6 +76,7 @@ module clixon-lib {
     revision 2026-06-01 {
         description
             "Extended config-path-info rpc with mark-keys paramater
+             Augmented ietf-nmda-compare compare rpc with order-ignore parameter
              Released in Clixon 7.9";
     }
     revision 2026-03-01 {
@@ -731,6 +735,18 @@ module clixon-lib {
             anydata data {
                 description "Get cache data";
             }
+        }
+    }
+    augment "/cmp:compare/cmp:input" {
+        description
+            "Clixon extension of the RFC 9144 compare rpc";
+        leaf order-ignore {
+            description
+                "If true, treat ordered-by user lists as unordered sets,
+                 ie do not report pure reorderings as differences.
+                 If false, RFC 9144 semantics: order changes are reported.";
+            type boolean;
+            default false;
         }
     }
     rpc config-path-info {

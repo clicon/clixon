@@ -906,7 +906,7 @@ compare_db_names(clixon_handle    h,
     dformat = clicon_option_str(h, "CLICON_CLI_DIFF_FORMAT");
     context = strcmp(dformat, "context") == 0;
     if (format == FORMAT_XML) { /* new implementation for xml format using rpc compare */
-        if (clixon_rpc_nmda_compare(h, db1, db2, &xret) < 0) {
+        if (clixon_rpc_nmda_compare(h, db1, db2, 1, &xret) < 0) {
             clixon_err(OE_PLUGIN, 0, "clixon_rpc_nmda_compare");
             goto done;
         }
