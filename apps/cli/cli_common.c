@@ -874,20 +874,22 @@ api_path_xtop_xbot(clixon_handle h,
 
 /*! Print a single compare in human readable format. The input is a yangpatch-edit subtree with operation and value.
  *
- * @param[in] f      FILE pointer to output stream
- * @param[in] x      XML subtree
- * @param[in] prefix String to prepend to each line
- * @param[in] level  Indentation level
- * @param[in] format Output format
- * @retval    0      OK
- * @retval    1      Error
+ * @param[in] f       FILE pointer to output stream
+ * @param[in] x       XML subtree
+ * @param[in] prefix  String to prepend to each line
+ * @param[in] level   Indentation level
+ * @param[in] format  Output format
+ * @param[in] command CLI command to prepend to each line (only for FORMAT_CLI), or NULL
+ * @retval    0       OK
+ * @retval    1       Error
  */
 static int
 compare_db_edit2file(FILE            *f,
                      cxobj           *x,
                      const char      *prefix,
                      int              level,
-                     enum format_enum format)
+                     enum format_enum format,
+                     const char      *command)
 {
     int   retval = -1;
     char *body = NULL;
@@ -921,6 +923,8 @@ compare_db_edit2file(FILE            *f,
         cprintf(cbsubst, "%s", prefix);
         for (i=0; i<level*PRETTYPRINT_INDENT; i++)
             cprintf(cbsubst, " ");
+        if (format == FORMAT_CLI && command != NULL)
+            cprintf(cbsubst, "%s", command);
         if ((cb = cbuf_new()) == NULL){
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
@@ -946,18 +950,19 @@ compare_db_edit2file(FILE            *f,
 /*! Compare two datastore by name and formats
  *
  * @param[in]  h      Clixon handle
- * @param[in]  format Output format
- * @param[in]  db1    Name of first datastrore
- * @param[in]  db2    Name of second datastrore
- * @retval     0      OK
- * @retval    -1      Error
- * @note JSON and CLI are NYI
+ * @param[in]  format  Output format
+ * @param[in]  db1     Name of first datastrore
+ * @param[in]  db2     Name of second datastrore
+ * @param[in]  command CLI command to prepend to each line (only for FORMAT_CLI), or NULL
+ * @retval     0       OK
+ * @retval    -1       Error
  */
 static int
 compare_db_names(clixon_handle    h,
                  enum format_enum format,
                  const char      *db1,
-                 const char      *db2)
+                 const char      *db2,
+                 const char      *command)
 {
     int                retval = -1;
     cxobj             *xret = NULL;
@@ -1041,7 +1046,7 @@ compare_db_names(clixon_handle    h,
                 goto done;
             }
             prefix = "- ";
-            if (compare_db_edit2file(f, xs, prefix, context?level:0, format) < 0)
+            if (compare_db_edit2file(f, xs, prefix, context?level:0, format, command) < 0)
                 goto done;
             prefix = "+ ";
             break;
@@ -1054,7 +1059,7 @@ compare_db_names(clixon_handle    h,
             clixon_err(OE_XML, EINVAL, "Unknown operation %s", yang_patch_op_int2str(op));
             goto done;
         }
-        if (compare_db_edit2file(f, xv, prefix, context?level:0, format) < 0)
+        if (compare_db_edit2file(f, xv, prefix, context?level:0, format, command) < 0)
             goto done;
         if (context){
             if (clixon_xml2file_post(f, xtop, xbot, 0, NULL) < 0)
@@ -1080,7 +1085,12 @@ compare_db_names(clixon_handle    h,
  *
  * @param[in]   h     Clixon handle
  * @param[in]   cvv
- * @param[in]   argv  <db1> <db2> <format>
+ * @param[in]   argv  <db1> <db2> <format> [<command>]
+ *   <db1>     Name of first datastore
+ *   <db2>     Name of second datastore
+ *   <format>  "xml"|"json"|"text"|"cli" (see format_enum)
+ *   <command> Optional CLI command to prepend to each line, only for "cli" format
+ *             (eg "set ") so that the diff is a set of replayable CLI commands
  * @retval      0     OK
  * @retval     -1     Error
  */
@@ -1094,15 +1104,18 @@ compare_dbs(clixon_handle h,
     char            *db1;
     char            *db2;
     char            *formatstr;
+    char            *command = NULL;
     int              ret;
 
-    if (cvec_len(argv) != 3){
-        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: <db1> <db2> <format>");
+    if (cvec_len(argv) < 3 || cvec_len(argv) > 4){
+        clixon_err(OE_PLUGIN, EINVAL, "Expected arguments: <db1> <db2> <format> [<command>]");
         goto done;
     }
     db1 = cv_string_get(cvec_i(argv, 0));
     db2 = cv_string_get(cvec_i(argv, 1));
     formatstr = cv_string_get(cvec_i(argv, 2));
+    if (cvec_len(argv) == 4)
+        command = cv_string_get(cvec_i(argv, 3));
     if ((ret = format_str2int(formatstr)) < 0){
         clixon_err(OE_XML, 0, "format not found %s", formatstr);
         goto done;
@@ -1117,7 +1130,7 @@ compare_dbs(clixon_handle h,
         }
         format = ret;
     }
-    if (compare_db_names(h, format, db1, db2) < 0)
+    if (compare_db_names(h, format, db1, db2, command) < 0)
         goto done;
     retval = 0;
  done:

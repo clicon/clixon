@@ -150,11 +150,17 @@ expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show comp
 new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\- "
 
+new "check compare json"
+expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^/clixon-example:top" "name\": \"a\"" "value\": \"17\"" "name\": \"b\"" "value\": \"42\"" "name\": \"d\"" "value\": \"98\"" --not-- "^\- "
+
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
 new "check compare xml no-matches"
 expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "^$"
+
+new "check compare json no-matches"
+expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^$"
 
 new "check running"
 expectpart "$($clixon_cli -1 -f $cfg show config running)" 0 "^<top xmlns=\"urn:example:clixon\"><section><name>x</name><table><parameter><name>a</name><value>17</value></parameter><parameter><name>b</name><value>42</value></parameter><parameter><name>d</name><value>98</value></parameter></table></section></top>$"
@@ -179,6 +185,9 @@ expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show comp
 
 new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^/clixon-example:top/section=x/table/parameter=a" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value 98;" "^+\ *value 99;"
+
+new "check compare json b"
+expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^/clixon-example:top/section=x/table/parameter=a" "name\": \"a\"" "value\": \"17\"" "^/clixon-example:top/section=x/table/parameter=c" "name\": \"c\"" "value\": \"72\"" "^/clixon-example:top/section=x/table/parameter=d/value" "value\": \"98\"" "value\": \"99\""
 
 new "delete section x"
 expectpart "$($clixon_cli -1 -f $cfg delete top section x)" 0 "^$"
@@ -229,9 +238,12 @@ expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show comp
 new "check compare multi text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\-\ *parameter a1 a2 {" "^\-\ *17" "^\-\ *18" "^+\ *parameter c1 c2 {" "^+\ *72" "^+\ *73" "^+\ *97" "^\-\ *99" "^/clixon-example:top/section=y/multi/parameter=d1,d2"  --not-- "parameter b1 b2 {"
 
+new "check compare multi json"
+expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^/clixon-example:top/section=y/multi/parameter=a1,a2" "first\": \"a1\"" "second\": \"a2\"" "\"17\"" "\"18\"" "^/clixon-example:top/section=y/multi/parameter=c1,c2" "first\": \"c1\"" "second\": \"c2\"" "\"72\"" "\"73\"" "^/clixon-example:top/section=y/multi/parameter=d1,d2/value=97" "^/clixon-example:top/section=y/multi/parameter=d1,d2/value=99" --not-- "b1"
+
 # XXX --not-- "^+\ *value \["
 
-# NYI: json, cli
+# NYI: cli
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"
