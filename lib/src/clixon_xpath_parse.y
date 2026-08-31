@@ -589,7 +589,11 @@ functioncall : NCNAME '(' ')'
 string      : string CHARS  {
                          int len = strlen($1);
                          int len2 = strlen($2);
-                         $$ = realloc($1, len+len2 + 1);
+                         if (($$ = realloc($1, len+len2 + 1)) == NULL){
+                             free($1);
+                             free($2);
+                             _YYERROR("realloc");
+                         }
                          memcpy($$+len, $2, len2+1);
                          free($2);
                          _PARSE_DEBUG("string-> string CHAR");

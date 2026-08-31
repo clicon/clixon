@@ -1061,6 +1061,12 @@ from_client_kill_session(clixon_handle h,
          goto done;
     if (ret == 0)
         goto ok;
+    /* RFC 6241 4.4.9: a session MUST NOT kill its own session.  */
+    if (id == ce->ce_id){
+        if (netconf_invalid_value(cbret, "protocol", "Cannot kill own session") < 0)
+            goto done;
+        goto ok;
+    }
     /* may or may not be in active client list, probably not */
     if ((ce1 = backend_client_find(h, id)) != NULL){
         backend_client_rm(h, ce1); /* Removes client struct */

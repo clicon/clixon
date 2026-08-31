@@ -585,9 +585,13 @@ xml_chardata_encode(char      **escp,
     slen = strlen(str);
     for (i=0; i<slen; i++){
         if (cdata){
-            if (strncmp(&str[i], "]]>", strlen("]]>")) == 0)
+            if (strncmp(&str[i], "]]>", strlen("]]>")) == 0){
                 cdata = 0;
-            len++;
+                len += 3;
+                i += 2;
+            }
+            else
+                len++;
         }
         else
             switch (str[i]){
@@ -1152,8 +1156,9 @@ clixon_unicode2utf8_one(uint16_t uc16,
         goto done;
     }
     else{
-        clixon_err(OE_UNIX, EINVAL, "unicode2utf error");
-        goto done;
+        *utfstr++=224+uc16/4096;
+        *utfstr++=128+(uc16/64)%64;
+        *utfstr++=128+uc16%64;
     }
     *utfstr++=0;
     retval = 0;

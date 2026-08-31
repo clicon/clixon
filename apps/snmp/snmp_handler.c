@@ -893,6 +893,10 @@ snmp_table_get(clixon_handle               h,
         goto done;
     }
     /* read through keys and create cvk */
+    if (oidslen < oidtlen+1){
+        clixon_err(OE_YANG, 0, "OID scalar length %zu shorter than table length %zu", oidslen, oidtlen+1);
+        goto fail;
+    }
     oidilen = oidslen-(oidtlen+1);
     oidi = oids+oidtlen+1;
     /* Add keys */
@@ -1058,6 +1062,11 @@ snmp_table_set(clixon_handle               h,
         goto done;
     }
     /* read through keys and create cvk */
+    if (oidslen < oidtlen+1){
+        clixon_err(OE_YANG, 0, "OID scalar length %zu shorter than table length %zu", oidslen, oidtlen+1);
+        *err = SNMP_NOSUCHOBJECT;
+        goto fail;
+    }
     oidilen = oidslen-(oidtlen+1);
     oidi = oids+oidtlen+1;
     /* Add keys */
