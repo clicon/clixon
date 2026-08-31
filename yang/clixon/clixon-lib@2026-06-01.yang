@@ -76,7 +76,7 @@ module clixon-lib {
     revision 2026-06-01 {
         description
             "Extended config-path-info rpc with mark-keys paramater
-             Augmented ietf-nmda-compare compare rpc with order-ignore parameter
+             Augmented ietf-nmda-compare compare rpc with order-ignore and format parameters
              Released in Clixon 7.9";
     }
     revision 2026-03-01 {
@@ -747,6 +747,16 @@ module clixon-lib {
                  If false, RFC 9144 semantics: order changes are reported.";
             type boolean;
             default false;
+        }
+        leaf format {
+            description
+                "Encoding of the value/source-value contents in the reply.
+                 xml (default): structured XML as defined by RFC 9144.
+                 text/json/cli: value and source-value instead contain a
+                 single CDATA-encoded string body with the content rendered
+                 in that format.";
+            type cl:datastore_format;
+            default xml;
         }
     }
     rpc config-path-info {

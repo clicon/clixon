@@ -48,6 +48,18 @@
 /*
  * Types
  */
+/*! YANG-patch edit operations, see "operation" enum in ietf-yang-patch.yang (RFC 8072) */
+enum yang_patch_op{
+    YANG_PATCH_OP_UNKNOWN = -1,
+    YANG_PATCH_OP_CREATE = 0,
+    YANG_PATCH_OP_DELETE,
+    YANG_PATCH_OP_INSERT,
+    YANG_PATCH_OP_MERGE,
+    YANG_PATCH_OP_MOVE,
+    YANG_PATCH_OP_REPLACE,
+    YANG_PATCH_OP_REMOVE,
+};
+
 /*! Rebase struct, pointers to existing objects */
 struct diff_rebase{
     cxobj  **dr_addparent;  /* Parent to addsub copy of child object */
@@ -78,6 +90,8 @@ int            xml_rebase(clixon_handle h, cxobj *x0, cxobj *x1, cxobj *x2,
                           int *conflict, cbuf *cbret, diff_rebase_t *dr);
 int            clixon_xml_diff2patch(cxobj *x0, cxobj *x1, uint16_t flags, cxobj *xdiff);
 int            clixon_xml_diff_nacm_read(clixon_handle h, cxobj *xt, const char *xpath);
+enum yang_patch_op yang_patch_op_str2int(const char *str);
+const char    *yang_patch_op_int2str(enum yang_patch_op op);
 
 /* Backward compatible 7.8 */
 static int inline

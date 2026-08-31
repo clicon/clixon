@@ -99,6 +99,46 @@ typedef struct  {
 /* Forward declaration */
 static int xml_diff2patch(cxobj *x1, cxobj *x2, uint16_t flags, cxobj *xpatch, int *nr);
 
+/* Mapping between YANG-patch operation strings and C enum,
+ * see "operation" enum in ietf-yang-patch.yang (RFC 8072)
+ */
+static const map_str2int yang_patch_op_map[] = {
+    {"create",  YANG_PATCH_OP_CREATE},
+    {"delete",  YANG_PATCH_OP_DELETE},
+    {"insert",  YANG_PATCH_OP_INSERT},
+    {"merge",   YANG_PATCH_OP_MERGE},
+    {"move",    YANG_PATCH_OP_MOVE},
+    {"replace", YANG_PATCH_OP_REPLACE},
+    {"remove",  YANG_PATCH_OP_REMOVE},
+    {NULL,      -1}
+};
+
+/*! Map from YANG-patch operation string to C enum
+ *
+ * @param[in]  str  Operation string, eg "create"
+ * @retval     op   Operation enum
+ * @retval     YANG_PATCH_OP_UNKNOWN  Not found (or str is NULL)
+ */
+enum yang_patch_op
+yang_patch_op_str2int(const char *str)
+{
+    if (str == NULL)
+        return YANG_PATCH_OP_UNKNOWN;
+    return clicon_str2int(yang_patch_op_map, str);
+}
+
+/*! Map from YANG-patch operation enum to string
+ *
+ * @param[in]  op    Operation enum
+ * @retval     str   Operation string
+ * @retval     NULL  Not found
+ */
+const char *
+yang_patch_op_int2str(enum yang_patch_op op)
+{
+    return clicon_int2str(yang_patch_op_map, op);
+}
+
 /*! Compute if two XML trees are equal or not
  *
  * @param[in]  x0   First XML tree

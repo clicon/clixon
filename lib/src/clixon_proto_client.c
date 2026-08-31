@@ -2578,23 +2578,24 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
  * @param[in]   db1          Source datastore
  * @param[in]   db2          Target datastore
  * @param[in]   order_ignore If 1, do not report pure reorderings of ordered-by user lists
+ * @param[in]   format       Output data format
  * @param[out]  xt           Pointer to roc reply to be freed by caller, or NULL
  * @retval      0            rpc reply ok
  * @retval     -1            Error
-*/
-
+ */
 int
-clixon_rpc_nmda_compare(clixon_handle   h,
-                        const char     *db1,
-                        const char     *db2,
-                        int             order_ignore,
-                        cxobj         **xt)
+clixon_rpc_nmda_compare(clixon_handle    h,
+                        const char      *db1,
+                        const char      *db2,
+                        int              order_ignore,
+                        enum format_enum format,
+                        cxobj          **xt)
 {
-    int        retval = -1;
-    cbuf      *cb = NULL;
-    cxobj     *xret = NULL;
-    char      *username;
-    uint32_t   session_id;
+    int      retval = -1;
+    cbuf    *cb = NULL;
+    cxobj   *xret = NULL;
+    char    *username;
+    uint32_t session_id;
 
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "db1: %s, db2: %s", db1, db2);
     if (session_id_check(h, &session_id) < 0)
@@ -2616,6 +2617,8 @@ clixon_rpc_nmda_compare(clixon_handle   h,
     cprintf(cb, "<target>ds:%s</target>", db2);
     if (order_ignore)
         cprintf(cb, "<order-ignore xmlns=\"%s\">true</order-ignore>", CLIXON_LIB_NS);
+    if (format)
+        cprintf(cb, "<format xmlns=\"%s\">%s</format>", CLIXON_LIB_NS, format_int2str(format));
     cprintf(cb, "</compare></rpc>");
     if (clicon_rpc_msg(h, cb, &xret) < 0)
         goto done;

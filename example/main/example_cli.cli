@@ -101,8 +101,10 @@ show("Show a particular state of the system"){
        @|example_pipe, cli_show_options();
     }
     compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "default");{
-    		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
-		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
+       xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
+       json("Show comparison in json"), compare_dbs("running", "candidate", "json");
+       cli("Show comparison in cli format"), compare_dbs("running", "candidate", "cli");
+       text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
     pagination("Show list pagination") xpath("Show configuration") <xpath:string>("XPATH expression"), cli_pagination("use xpath var", "es", "https://example.com/ns/example-social", "default", "10");
     configuration("Show configuration"), cli_show_auto_mode("candidate", "default", true, false, "explicit", "set ");{

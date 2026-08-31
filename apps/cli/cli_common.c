@@ -865,6 +865,81 @@ api_path_xtop_xbot(clixon_handle h,
         *xbot0 = xbot;
     retval = 0;
  done:
+    if (xpath)
+        free(xpath);
+    if (nsc)
+        cvec_free(nsc);
+    return retval;
+}
+
+/*! Print a single compare in human readable format. The input is a yangpatch-edit subtree with operation and value.
+ *
+ * @param[in] f      FILE pointer to output stream
+ * @param[in] x      XML subtree
+ * @param[in] prefix String to prepend to each line
+ * @param[in] level  Indentation level
+ * @param[in] format Output format
+ * @retval    0      OK
+ * @retval    1      Error
+ */
+static int
+compare_db_edit2file(FILE            *f,
+                     cxobj           *x,
+                     const char      *prefix,
+                     int              level,
+                     enum format_enum format)
+{
+    int   retval = -1;
+    char *body = NULL;
+    cbuf *cbsubst = NULL;
+    cbuf *cb = NULL;
+    int   i;
+
+    if (format != FORMAT_XML && (body = xml_body(x)) != NULL){
+        if (strncmp(body, "<![CDATA[", strlen("<![CDATA[")) == 0){
+            char *cdata = body + strlen("<![CDATA[");
+            char *end = strstr(cdata, "]]>");
+            if (end != NULL)
+                *end = '\0';
+            body = cdata;
+        }
+    }
+    switch (format){
+    case FORMAT_XML:
+        if (clixon_xml2file(f, x, level, 1, prefix, cligen_output, 1, 0) < 0)
+            goto done;
+        break;
+    case FORMAT_JSON:
+    case FORMAT_TEXT:
+    case FORMAT_CLI:
+        if (body == NULL)
+            break;
+        if ((cbsubst = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(cbsubst, "%s", prefix);
+        for (i=0; i<level*PRETTYPRINT_INDENT; i++)
+            cprintf(cbsubst, " ");
+        if ((cb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        if (clixon_newline_prepend(body, cbuf_get(cbsubst), cb) < 0)
+            goto done;
+        cligen_output(f, "%s", cbuf_get(cb));
+        break;
+    default:
+        clixon_err(OE_PLUGIN, 0, "format: %s not implemented", format_int2str(format));
+        goto done;
+        break;
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (cbsubst)
+        cbuf_free(cbsubst);
     return retval;
 }
 
@@ -878,117 +953,117 @@ api_path_xtop_xbot(clixon_handle h,
  * @retval    -1      Error
  * @note JSON and CLI are NYI
  */
-int
+static int
 compare_db_names(clixon_handle    h,
                  enum format_enum format,
                  const char      *db1,
                  const char      *db2)
 {
-    int    retval = -1;
-    cxobj *xc1 = NULL;
-    cxobj *xc2 = NULL;
-    cxobj *xerr = NULL;
-    cbuf  *cb = NULL;
-    cxobj *xret = NULL;
-    cxobj *xe;
-    cxobj *xreply;
-    cxobj *xc;
-    cxobj *x;
-    int    i;
-    char  *dformat;
-    int    context;
-    int    level;
-    char  *apipath;
-    cxobj *xtop = NULL;
-    cxobj *xbot;
-    FILE  *f = stdout;
+    int                retval = -1;
+    cxobj             *xret = NULL;
+    cxobj             *xreply;
+    cxobj             *xp;
+    cxobj             *xe;
+    cxobj             *xop;
+    cxobj             *xv;
+    cxobj             *xs;
+    cxobj             *x;
+    cxobj             *xtop = NULL;
+    cxobj             *xbot;
+    char              *dformat;
+    int                context;
+    char              *apipath;
+    enum yang_patch_op op;
+    const char        *prefix;
+    int                i;
+    int                level;
+    FILE              *f = stdout;
 
-    dformat = clicon_option_str(h, "CLICON_CLI_DIFF_FORMAT");
-    context = strcmp(dformat, "context") == 0;
-    if (format == FORMAT_XML) { /* new implementation for xml format using rpc compare */
-        if (clixon_rpc_nmda_compare(h, db1, db2, 1, &xret) < 0) {
-            clixon_err(OE_PLUGIN, 0, "clixon_rpc_nmda_compare");
-            goto done;
-        }
-        if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) == NULL){
-            clixon_err(OE_NETCONF, 0, "No rpc-reply");
-            goto done;
-        }
-        if (xpath_first(xreply, NULL, "no-matches") != NULL)
-            goto ok; /* no differences */
-        if ((xe = xpath_first(xreply, NULL, "differences/yang-patch")) == NULL) {
-            clixon_err(OE_XML, ENOENT, "Expected yang-patch in rpc compare reply");
-            goto done;
-        }
-        cligen_output(f, "--- %s\n+++ %s\n", db1, db2);
-        i = 0;
-        while ((xc = xml_child_iter(xe, &i, CX_ELMNT)) != NULL){
-            if (strcmp(xml_name(xc), "edit") != 0)
-                continue;
-            if ((apipath = xml_find_body(xc, "target")) == NULL)
-                continue;
-            if (context){
-                if (api_path_xtop_xbot(h, apipath, &xtop, &xbot) < 0)
-                    goto done;
-                level = 0;
-                for (x = xbot; x != NULL; x = xml_parent(x)){
-                    if (x == xtop)
-                        break;
-                    level++;
-                }
-                if (clixon_xml2file_pre(f, xtop, xbot, 0, NULL) < 0)
-                    goto done;
-                if (clixon_xml_yangpatch(f, xc, level) < 0)
-                    goto done;
-                if (clixon_xml2file_post(f, xtop, xbot, 0, NULL) < 0)
-                    goto done;
-            }
-            else {
-                cligen_output(f, "%s\n", apipath);
-                if (clixon_xml_yangpatch(f, xc, 0) < 0)
-                    goto done;
-            }
-            if (xtop){
-                xml_free(xtop);
-                xtop = NULL;
-            }
-        }
+    if (clixon_rpc_nmda_compare(h, db1, db2, 1, format, &xret) < 0)
+        goto done;
+    if ((xreply = xml_find_type(xret, NULL, "rpc-reply", CX_ELMNT)) == NULL){
+        clixon_err(OE_NETCONF, 0, "No rpc-reply");
+        goto done;
     }
-    else { /* Old implementation for non-xml for now */
-        if (clicon_rpc_get_config(h, NULL, db1, "/", NULL, NULL, &xc1) < 0)
-            goto done;
-        if ((xerr = xpath_first(xc1, NULL, "/rpc-error")) != NULL){
-            if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
-                goto done;
+    if (xpath_first(xreply, NULL, "no-matches") != NULL)
+        goto ok; /* no differences */
+    if ((xp = xpath_first(xreply, NULL, "differences/yang-patch")) == NULL) {
+        clixon_err(OE_XML, ENOENT, "Expected yang-patch in rpc compare reply");
+        goto done;
+    }
+    cligen_output(f, "--- %s\n+++ %s\n", db1, db2);
+    i = 0;
+    while ((xe = xml_child_iter(xp, &i, CX_ELMNT)) != NULL){
+        if (strcmp(xml_name(xe), "edit") != 0)
+            continue;
+        if ((apipath = xml_find_body(xe, "target")) == NULL)
+            continue;
+        if ((xop = xml_find(xe, "operation")) == NULL) {
+            clixon_err(OE_XML, EINVAL, "Missing operation in edit");
             goto done;
         }
-        if (clicon_rpc_get_config(h, NULL, db2, "/", NULL, NULL, &xc2) < 0)
-            goto done;
-        if ((xerr = xpath_first(xc2, NULL, "/rpc-error")) != NULL){
-            if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
-                goto done;
+        if ((xv = xml_find(xe, "value")) == NULL){
+            clixon_err(OE_XML, EINVAL, "Missing value in edit");
             goto done;
         }
-        /* Note that TEXT uses a (new) structured in-mem algorithm while
-         * JSON and CLI uses (old) UNIX file diff.
-         */
-        switch (format){
-        case FORMAT_TEXT:
-            if ((cb = cbuf_new()) == NULL){
-                clixon_err(OE_UNIX, errno, "cbuf_new");
+        xs = xml_find(xe, "source-value");
+        op = yang_patch_op_str2int(xml_body(xop));
+        dformat = clicon_option_str(h, "CLICON_CLI_DIFF_FORMAT");
+        context = strcmp(dformat, "context") == 0;
+        xtop = NULL;
+        level = 0;
+        if (api_path_xtop_xbot(h, apipath, &xtop, &xbot) < 0)
+            goto done;
+        for (x = xbot; x != NULL; x = xml_parent(x)){
+            if (x == xtop)
+                break;
+            level++;
+        }
+        if (context){
+            if (clixon_xml2file_pre(f, xtop, xbot, 0, NULL) < 0)
+                goto done;
+        }
+        else{
+            cligen_output(f, "%s\n", apipath);
+        }
+        switch (op) {
+        case YANG_PATCH_OP_CREATE:
+            prefix = "+ ";
+            break;
+        case YANG_PATCH_OP_DELETE:
+        case YANG_PATCH_OP_REMOVE:
+            prefix = "- ";
+            break;
+        case YANG_PATCH_OP_REPLACE:
+            if (xs == NULL){
+                clixon_err(OE_XML, EINVAL, "Missing source-value in edit");
                 goto done;
             }
-            if (clixon_text_diff2cbuf(cb, xc1, xc2) < 0)
+            prefix = "- ";
+            if (compare_db_edit2file(f, xs, prefix, context?level:0, format) < 0)
                 goto done;
-            cligen_output(f, "%s", cbuf_get(cb));
+            prefix = "+ ";
             break;
-        case FORMAT_JSON:         /* XXX NYI */
-        case FORMAT_CLI:
-            if (clixon_compare_xmls(xc1, xc2, format) < 0) /* astext? */
-                goto done;
+        case YANG_PATCH_OP_MOVE:
+            prefix = "~ ";
+            clixon_err(OE_XML, EINVAL, "Move operation not supported");
+            /* not currently supported */
+            goto done;
         default:
+            clixon_err(OE_XML, EINVAL, "Unknown operation %s", yang_patch_op_int2str(op));
             goto done;
         }
+        if (compare_db_edit2file(f, xv, prefix, context?level:0, format) < 0)
+            goto done;
+        if (context){
+            if (clixon_xml2file_post(f, xtop, xbot, 0, NULL) < 0)
+                goto done;
+        }
+        if (xtop){
+            xml_free(xtop);
+            xtop = NULL;
+        }
+        cligen_output(f, "\n");
     }
  ok:
     retval = 0;
@@ -997,12 +1072,6 @@ compare_db_names(clixon_handle    h,
         xml_free(xret);
     if (xtop)
         xml_free(xtop);
-    if (cb)
-        cbuf_free(cb);
-    if (xc1)
-        xml_free(xc1);
-    if (xc2)
-        xml_free(xc2);
     return retval;
 }
 

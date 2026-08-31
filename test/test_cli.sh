@@ -130,12 +130,15 @@ debug("Debugging parts of the system"){
 }
 show("Show a particular state of the system"){
     xpath("Show configuration") <xpath:string>("XPATH expression") <ns:string>("Namespace"), show_conf_xpath("candidate");
-    compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "xml");{
-    		     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
-		     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
+    compare("Compare candidate and running databases"), compare_dbs("running", "candidate", "default");{
+                     cli("Show comparison as cli commands"), compare_dbs("running", "candidate", "cli");
+                     xml("Show comparison in xml"), compare_dbs("running", "candidate", "xml");
+                     json("Show comparison in json"), compare_dbs("running", "candidate", "json");
+                     text("Show comparison in text"), compare_dbs("running", "candidate", "text");
     }
     configuration("Show configuration"), cli_show_auto_mode("candidate", "text", true, false);{
             cli("Show configuration as CLI commands"), cli_show_auto_mode("candidate", "cli", true, false, "explicit", "set ");
+            json("Show configuration as JSON"), cli_show_auto_mode("candidate", "json", true, false);
             xml("Show configuration as XML"), cli_show_auto_mode("candidate", "xml", true, false);
             text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
   }
@@ -232,7 +235,7 @@ expectpart "$($clixon_cli -1 -f $cfg copy interface eth/0/0 to eth99)" 0 "^$"
 new "cli success validate"
 expectpart "$($clixon_cli -1 -f $cfg -l o validate)" 0 "^$"
 
-new "cli compare diff"
+new "cli compare diff text"
 expectpart "$($clixon_cli -1 -f $cfg -l o show compare text)" 0 "+\ *address 1.2.3.4"
 
 new "cli start shell"

@@ -465,7 +465,7 @@ new "show compare xml"
 expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "\-\ *<y0 xmlns=\"urn:example:order\">e</y0>" --not-- "<y0 xmlns=\"urn:example:order\">a</y0>" "<y0 xmlns=\"urn:example:order\">b</y0>" "<y0 xmlns=\"urn:example:order\">c</y0>" "<y0 xmlns=\"urn:example:order\">d</y0>" "+  <y0 xmlns=\"urn:example:order\">e</y0>"
 
 new "show compare curly"
-expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "\-\ *order-example:y0" "\-     e" --not-- "+  order-example:y0" "\-     a" "+     e"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "\-\ *order-example:y0" "\- *e" --not-- "+ *order-example:y0" "\- *a" "+     e"
 
 new "validate"
 expectpart "$($clixon_cli -1 -f $cfg validate)" 0 "^$"

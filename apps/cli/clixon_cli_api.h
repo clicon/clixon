@@ -83,7 +83,6 @@ int cli_quit(clixon_handle h, cvec *vars, cvec *argv);
 int cli_commit(clixon_handle h, cvec *vars, cvec *argv);
 int cli_validate(clixon_handle h, cvec *vars, cvec *argv);
 int cli_update(clixon_handle h, cvec *vars, cvec *argv);
-int compare_db_names(clixon_handle h, enum format_enum format, const char *db1, const char *db2);
 int compare_dbs(clixon_handle h, cvec *vars, cvec *argv);
 int load_config_file(clixon_handle h, cvec *vars, cvec *argv);
 int save_config_file(clixon_handle h, cvec *vars, cvec *argv);

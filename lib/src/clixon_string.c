@@ -1274,6 +1274,47 @@ clixon_str_subst(char *str,
     return retval;
 }
 
+/*! Prepend a sub-string to start of each line occurrences of a specific character
+ *
+ * @param[in]  str    Input string
+ * @param[in]  substr Prefix string, eg "+  "
+ * @param[out] cb     Result buffer (assumed created on entry)
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @code
+ *   cbuf *cb = cbuf_new();
+ *   if (clixon_str_char_append("a\nb",  "\\n", cb) < 0)
+ *      err;
+ *   // cbuf_get(cb) is "a\\nb"
+ * @endcode
+ */
+int
+clixon_newline_prepend(const char *str,
+                       const char *substr,
+                       cbuf       *cb)
+{
+    int         retval = -1;
+    const char *s;
+    const char  ch = '\n';
+
+    if (str == NULL || substr == NULL || cb == NULL){
+        clixon_err(OE_UNIX, EINVAL, "str, substr or cb is NULL");
+        goto done;
+    }
+    cbuf_append_str(cb, substr);
+    for (s = str; *s; s++){
+        if (*s == ch && strlen(s) > 1){
+            cbuf_append(cb, *s);
+            cbuf_append_str(cb, substr);
+        }
+        else
+            cbuf_append(cb, *s);
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Replacer for non-posix memmem() function for binary strstr
  *
  * @param[in]  haystack  Input string

@@ -1316,11 +1316,102 @@ from_client_get_schema(clixon_handle h,
     return retval;
 }
 
+/*! Replace XML contents of value/source-value in a yang-patch with formatted string body
+ *
+ * Used by the format parameter of the compare rpc (clixon-lib augment): the anydata
+ * value nodes get a single string body rendered in the given format instead of XML.
+ * The string is chardata-encoded when the reply is serialized.
+ * @param[in]  h       Clixon handle
+ * @param[in]  xpatch  Yang-patch XML tree on level <yang-patch>
+ * @param[in]  format  One of FORMAT_TEXT, FORMAT_JSON, FORMAT_CLI
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+compare_patch_value_format(clixon_handle    h,
+                           cxobj           *xpatch,
+                           enum format_enum format)
+{
+    int         retval = -1;
+    cxobj      *xedit = NULL;
+    cxobj      *xv;
+    cxobj      *xc;
+    cbuf       *cb = NULL;
+    cbuf       *cbc = NULL;
+    const char *valnames[] = {"value", "source-value"};
+    const char *str;
+    size_t      i;
+
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if ((cbc = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    while ((xedit = xml_child_each(xpatch, xedit, CX_ELMNT)) != NULL){
+        if (strcmp(xml_name(xedit), "edit") != 0)
+            continue;
+        for (i = 0; i < sizeof(valnames)/sizeof(valnames[0]); i++){
+            if ((xv = xml_find_type(xedit, NULL, valnames[i], CX_ELMNT)) == NULL)
+                continue;
+            if ((xc = xml_find_type(xv, NULL, NULL, CX_ELMNT)) == NULL)
+                continue;
+            cbuf_reset(cb);
+            switch (format){
+            case FORMAT_TEXT:
+                if (clixon_text2cbuf(cb, xc, 0, 0, 0) < 0)
+                    goto done;
+                break;
+            case FORMAT_JSON:
+                if (xml2json_cbuf_vec(cb, &xc, 1, 1, 0) < 0)
+                    goto done;
+                break;
+            case FORMAT_CLI:
+                if (clixon_cli2cbuf(h, cb, xc, NULL, 0) < 0)
+                    goto done;
+                break;
+            default:
+                clixon_err(OE_XML, EINVAL, "Unsupported compare format %s",
+                           format_int2str(format));
+                goto done;
+            }
+            xml_rm(xc);
+            xml_free(xc);
+            /* CDATA-encode the formatted string so it is passed through raw
+             * in the XML reply, split any embedded "]]>" between sections */
+            cbuf_reset(cbc);
+            cprintf(cbc, "<![CDATA[");
+            for (str = cbuf_get(cb); *str; str++){
+                if (strncmp(str, "]]>", 3) == 0){
+                    cprintf(cbc, "]]]]><![CDATA[>");
+                    str += 2;
+                }
+                else
+                    cbuf_append(cbc, *str);
+            }
+            cprintf(cbc, "]]>");
+            if (xml_body_set(xv, cbuf_get(cbc)) < 0)
+                goto done;
+        }
+    }
+    retval = 0;
+ done:
+    if (cb)
+        cbuf_free(cb);
+    if (cbc)
+        cbuf_free(cbc);
+    return retval;
+}
+
 /*! Given two datastores and xpath, return diff in textual form
  *
  * @param[in]   h      Clixon handle
  * @param[in]   xpath  XPath note
  * @param[in]   flags  Comparison flags, see DIFF_FLAG_ORDER_IGNORE et al
+ * @param[in]   format Encoding of value/source-value: FORMAT_XML is RFC 9144 XML,
+ *                     text/json/cli are rendered as string bodies
  * @param[in]   db1    First datastore
  * @param[in]   db2    Second datastore
  * @param[out]  cbret  CLIgen buff with NETCONF reply
@@ -1328,13 +1419,14 @@ from_client_get_schema(clixon_handle h,
  * @retval     -1      Error
  */
 static int
-datastore_compare(clixon_handle h,
-                  char         *xpath,
-                  cvec         *nsc,
-                  uint16_t      flags,
-                  db_elmnt     *de1,
-                  db_elmnt     *de2,
-                  cbuf         *cbret)
+datastore_compare(clixon_handle    h,
+                  char            *xpath,
+                  cvec            *nsc,
+                  uint16_t         flags,
+                  enum format_enum format,
+                  db_elmnt        *de1,
+                  db_elmnt        *de2,
+                  cbuf            *cbret)
 {
     int        retval = -1;
     char      *db1;
@@ -1412,6 +1504,9 @@ datastore_compare(clixon_handle h,
      * xml_diff2cbuf does, see https://github.com/clicon/clixon/issues/475 */
     if (clixon_xml_diff2patch(x1, x2, flags, xpatch) < 0)
         goto done;
+    if (format != FORMAT_XML && format != FORMAT_DEFAULT)
+        if (compare_patch_value_format(h, xpatch, format) < 0)
+            goto done;
     if (xpath_first(xpatch, NULL, "edit") == NULL){
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><no-matches xmlns=\"%s\"/></rpc-reply>",
                 NETCONF_BASE_NAMESPACE, NETCONF_COMPARE_NAMESPACE);
@@ -1470,6 +1565,8 @@ from_client_compare(clixon_handle h,
     cvec         *nsc = NULL;
     char         *body;
     uint16_t      flags = 0x0;
+    enum format_enum format = FORMAT_XML;
+    int           ret;
 
     if (xml_find(xe, "all") != NULL){
         if (netconf_operation_not_supported(cbret, "application", "all not supported") < 0)
@@ -1544,7 +1641,22 @@ from_client_compare(clixon_handle h,
     if ((body = xml_find_body(xe, "order-ignore")) != NULL &&
         strcmp(body, "true") == 0)
         flags |= DIFF_FLAG_ORDER_IGNORE;
-    if (datastore_compare(h, xpath, nsc, flags, de1, de2, cbret) < 0)
+    /* format, clixon-lib augment of compare input */
+    if ((body = xml_find_body(xe, "format")) != NULL){
+        if ((ret = format_str2int(body)) < 0){
+            if (netconf_invalid_value(cbret, "protocol", "unknown format") < 0)
+                goto done;
+            goto ok;
+        }
+        format = ret;
+        if (format != FORMAT_XML && format != FORMAT_DEFAULT &&
+            format != FORMAT_TEXT && format != FORMAT_JSON && format != FORMAT_CLI){
+            if (netconf_operation_not_supported(cbret, "application", "format not supported") < 0)
+                goto done;
+            goto ok;
+        }
+    }
+    if (datastore_compare(h, xpath, nsc, flags, format, de1, de2, cbret) < 0)
         goto done;
  ok:
     retval = 0;

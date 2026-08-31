@@ -69,35 +69,8 @@
 
 #ifdef CLIXON_YANG_PATCH
 
-enum yang_patch_op{
-    YANG_PATCH_OP_CREATE,
-    YANG_PATCH_OP_DELETE,
-    YANG_PATCH_OP_INSERT,
-    YANG_PATCH_OP_MERGE,
-    YANG_PATCH_OP_MOVE,
-    YANG_PATCH_OP_REPLACE,
-    YANG_PATCH_OP_REMOVE
-};
+/* yang_patch_op enum, yang_patch_op_str2int: see clixon_xml_diff.h */
 typedef enum yang_patch_op yang_patch_op_t;
-
-/* Yang patch operations according to RFC 8072
- */
-static const map_str2int yang_patch_op_map[] = {
-    {"create",     YANG_PATCH_OP_CREATE},
-    {"delete",     YANG_PATCH_OP_DELETE},
-    {"insert",     YANG_PATCH_OP_INSERT},
-    {"merge",      YANG_PATCH_OP_MERGE},
-    {"move",       YANG_PATCH_OP_MOVE},
-    {"replace",    YANG_PATCH_OP_REPLACE},
-    {"remove",     YANG_PATCH_OP_REMOVE},
-    {NULL,         -1}
-};
-
-static const yang_patch_op_t
-yang_patch_op2int(char *op)
-{
-    return clicon_str2int(yang_patch_op_map, op);
-}
 
 /*! Add square brackets after the surrounding curly brackets in JSON
  *
@@ -653,7 +626,7 @@ yang_patch_do_edit(clixon_handle  h,
         clixon_err(OE_YANG, 0, "operation mandatory element not found");
         goto done;
     }
-    operation = yang_patch_op2int(xml_body(x));
+    operation = yang_patch_op_str2int(xml_body(x));
     /* target and operation are mandatory */
     if (target_val == NULL){
         clixon_err(OE_YANG, 0, "operation/target: mandatory element not found");
