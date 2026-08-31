@@ -62,9 +62,14 @@
 #define GRPC_UNAUTHENTICATED     16
 
 int grpc_listen_init(clixon_handle h, uint16_t port);
-int grpc_send_framed(void *gc_opaque, int32_t stream_id,
-                     const uint8_t *framed_buf, size_t framed_len,
-                     int grpc_status, const char *grpc_msg);
+int grpc_stream_open(void *gc_opaque, int32_t stream_id);
+int grpc_stream_write(void *gc_opaque, int32_t stream_id,
+                      const uint8_t *buf, size_t len);
+int grpc_stream_finish(void *gc_opaque, int32_t stream_id,
+                       int grpc_status, const char *grpc_msg);
+int grpc_stream_sub_set(void *gc_opaque, int32_t stream_id,
+                        void *sub, void (*closecb)(void *));
+void *grpc_stream_sub_get(void *gc_opaque, int32_t stream_id);
 void grpc_conns_free_all(void);
 
 #endif /* _GRPC_NGHTTP2_H_ */

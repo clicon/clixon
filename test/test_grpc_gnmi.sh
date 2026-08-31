@@ -27,6 +27,7 @@ fi
 
 # Skip if clixon_grpc not installed
 : ${clixon_grpc:=$(which clixon_grpc 2>/dev/null)}
+
 if [ -z "$clixon_grpc" ]; then
     echo "...skipped: clixon_grpc not installed (use --enable-grpc)"
     rm -rf $dir
@@ -627,6 +628,102 @@ if which gnmic > /dev/null 2>&1; then
         0 "subscribe-test"
 else
     echo "...skipped gnmic test: gnmic not installed"
+fi
+
+# -------------------------------------------------------------------
+# Subscribe STREAM (SAMPLE) tests
+# -------------------------------------------------------------------
+new "gNMI Subscribe STREAM ON_CHANGE — expect Unimplemented"
+expectpart "$(grpcurl $GRPCURL_OPTS -max-time 5 \
+    -d '{"subscribe":{"mode":"STREAM","subscription":[{"path":{"elem":[{"name":"val"}]},"mode":"ON_CHANGE"}]}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
+    76 "Unimplemented" "ON_CHANGE"
+
+new "gNMI Subscribe with Poll as first message — expect InvalidArgument"
+expectpart "$(grpcurl $GRPCURL_OPTS -max-time 5 \
+    -d '{"poll":{}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
+    67 "InvalidArgument"
+
+# Run a SAMPLE subscription in background, collect updates, then kill it
+new "gNMI Subscribe STREAM SAMPLE — start background subscription"
+grpcurl $GRPCURL_OPTS \
+    -d '{"subscribe":{"mode":"STREAM","encoding":"ASCII","subscription":[{"path":{"elem":[{"name":"val"}]},"mode":"SAMPLE","sample_interval":1000000000}]}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe > $dir/stream.out 2>&1 &
+PID=$!
+sleep 4
+kill $PID 2> /dev/null
+wait $PID 2> /dev/null
+
+new "gNMI Subscribe STREAM SAMPLE — expect initial update + syncResponse"
+expectpart "$(cat $dir/stream.out)" 0 "subscribe-test" "syncResponse"
+
+new "gNMI Subscribe STREAM SAMPLE — expect at least 3 periodic updates"
+cnt=$(grep -c "subscribe-test" $dir/stream.out)
+if [ $cnt -lt 3 ]; then
+    err "at least 3 sampled updates" "$cnt"
+fi
+
+# suppress_redundant: value unchanged -> only the initial update is sent
+new "gNMI Subscribe STREAM SAMPLE suppress_redundant — start background subscription"
+grpcurl $GRPCURL_OPTS \
+    -d '{"subscribe":{"mode":"STREAM","encoding":"ASCII","subscription":[{"path":{"elem":[{"name":"val"}]},"mode":"SAMPLE","sample_interval":1000000000,"suppress_redundant":true}]}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe > $dir/stream2.out 2>&1 &
+PID=$!
+sleep 3
+kill $PID 2> /dev/null
+wait $PID 2> /dev/null
+
+new "gNMI Subscribe STREAM SAMPLE suppress_redundant — expect exactly 1 update"
+cnt=$(grep -c "subscribe-test" $dir/stream2.out)
+if [ $cnt -ne 1 ]; then
+    err "exactly 1 update (redundant suppressed)" "$cnt"
+fi
+
+if which gnmic > /dev/null 2>&1; then
+    new "gnmic Subscribe STREAM SAMPLE — start background subscription"
+    gnmic -a 127.0.0.1:${GRPC_PORT} --insecure subscribe \
+        --path "/example:val" \
+        --mode stream --stream-mode sample --sample-interval 1s \
+        > $dir/stream3.out 2>&1 &
+    PID=$!
+    sleep 3
+    kill $PID 2> /dev/null
+    wait $PID 2> /dev/null
+
+    new "gnmic Subscribe STREAM SAMPLE — expect updates"
+    expectpart "$(cat $dir/stream3.out)" 0 "subscribe-test"
+else
+    echo "...skipped gnmic stream test: gnmic not installed"
+fi
+
+# -------------------------------------------------------------------
+# Subscribe POLL tests
+# grpcurl -d @ reads streaming requests from stdin: send the initial
+# SubscribeRequest, then a Poll message, then close stdin and kill.
+# -------------------------------------------------------------------
+new "gNMI Subscribe POLL — initial + one poll in background"
+(echo '{"subscribe":{"mode":"POLL","encoding":"ASCII","subscription":[{"path":{"elem":[{"name":"val"}]}}]}}'; \
+ sleep 1; \
+ echo '{"poll":{}}'; \
+ sleep 1) | grpcurl $GRPCURL_OPTS -d @ \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe > $dir/poll.out 2>&1 &
+PID=$!
+sleep 4
+kill $PID 2> /dev/null
+wait $PID 2> /dev/null
+
+new "gNMI Subscribe POLL — expect update value"
+expectpart "$(cat $dir/poll.out)" 0 "subscribe-test" "syncResponse"
+
+new "gNMI Subscribe POLL — expect 2 update+sync rounds (initial + poll)"
+cnt=$(grep -c "subscribe-test" $dir/poll.out)
+if [ $cnt -ne 2 ]; then
+    err "2 updates (initial + 1 poll)" "$cnt"
+fi
+cnt=$(grep -c "syncResponse" $dir/poll.out)
+if [ $cnt -ne 2 ]; then
+    err "2 syncResponses (initial + 1 poll)" "$cnt"
 fi
 
 if [ $GR -ne 0 ]; then

@@ -63,13 +63,29 @@
 #include "grpc_nghttp2.h"
 #include "banned.h"
 
-/*! Per-stream state — accumulated headers and body for one gRPC call */
+/*! Per-stream state — accumulated headers and body for one gRPC call
+ *
+ * For long-lived (server-streaming) responses the stream also carries an
+ * output queue (gs_outbuf/gs_outoff) served by stream_data_source_cb, a
+ * finished flag with trailer status, and an opaque subscription state with
+ * a close callback so that upper layers (gNMI) can clean up when the
+ * HTTP/2 stream or connection goes away.
+ */
 typedef struct grpc_stream {
     int32_t  gs_stream_id;
     char    *gs_path;
     uint8_t *gs_body;
     size_t   gs_bodylen;
     size_t   gs_bodyalloc;
+    struct grpc_conn *gs_conn;     /* backpointer to connection */
+    cbuf    *gs_outbuf;            /* queued response bytes (LPM-framed) */
+    size_t   gs_outoff;            /* bytes of gs_outbuf already sent */
+    int      gs_open;              /* response headers submitted */
+    int      gs_finished;          /* no more data: send trailers when drained */
+    int      gs_status;            /* grpc-status for trailers */
+    char    *gs_msg;               /* grpc-message for trailers (owned) */
+    void    *gs_sub;               /* opaque subscription state (upper layer) */
+    void   (*gs_closecb)(void *);  /* called with gs_sub when stream is freed */
     struct grpc_stream *gs_next;
 } grpc_stream_t;
 
@@ -117,6 +133,7 @@ grpc_stream_get(grpc_conn_t *gc,
         return NULL;
     }
     gs->gs_stream_id = stream_id;
+    gs->gs_conn = gc;
     gs->gs_next = gc->gc_streams;
     gc->gc_streams = gs;
     return gs;
@@ -139,10 +156,16 @@ grpc_stream_free(grpc_conn_t   *gc,
             break;
         }
     }
+    if (gs->gs_closecb)
+        gs->gs_closecb(gs->gs_sub);
     if (gs->gs_path)
         free(gs->gs_path);
     if (gs->gs_body)
         free(gs->gs_body);
+    if (gs->gs_outbuf)
+        cbuf_free(gs->gs_outbuf);
+    if (gs->gs_msg)
+        free(gs->gs_msg);
     free(gs);
 }
 
@@ -260,8 +283,6 @@ on_data_chunk_cb(nghttp2_session *session,
     grpc_stream_t *gs;
     size_t         newlen;
     uint8_t       *nb;
-    uint8_t       *resp_buf = NULL;
-    size_t         resp_len = 0;
     uint32_t       msg_len;
     int            gst;
     cbuf          *cberr;
@@ -287,32 +308,59 @@ on_data_chunk_cb(nghttp2_session *session,
 
     /* Subscribe is a bidi-streaming RPC: the client never sends END_STREAM,
      * so dispatch as soon as we have a complete LPM frame (5-byte prefix
-     * declares the payload length).  Other RPCs wait for END_STREAM. */
+     * declares the payload length).  Each parsed frame is consumed from the
+     * body buffer so that subsequent requests (e.g. POLL) on the same stream
+     * are framed correctly.  Other RPCs wait for END_STREAM. */
     if (gs->gs_path != NULL &&
-        strcmp(gs->gs_path, "/gnmi.gNMI/Subscribe") == 0 &&
-        gs->gs_bodylen >= GRPC_PREFIX_LEN){
-        memcpy(&msg_len, gs->gs_body + 1, 4);
-        msg_len = ntohl(msg_len);
-        if (gs->gs_bodylen >= (size_t)(GRPC_PREFIX_LEN + msg_len)){
-            const uint8_t *req_proto     = gs->gs_body + GRPC_PREFIX_LEN;
-            size_t         req_proto_len = msg_len;
-
-            gst = GRPC_INTERNAL;
-            if (gnmi_subscribe(gc->gc_h, req_proto, req_proto_len,
-                               &resp_buf, &resp_len, &gst) < 0){
-                cberr = grpc_errmsg();
-                grpc_send_response(gc, stream_id, NULL, 0,
-                                   gst, cberr ? cbuf_get(cberr) : NULL);
-                if (cberr)
-                    cbuf_free(cberr);
+        strcmp(gs->gs_path, "/gnmi.gNMI/Subscribe") == 0){
+        while (gs->gs_bodylen >= GRPC_PREFIX_LEN){
+            memcpy(&msg_len, gs->gs_body + 1, 4);
+            msg_len = ntohl(msg_len);
+            /* Reject oversized frames.  Also guards the arithmetic below
+             * against 32-bit overflow: GRPC_PREFIX_LEN + msg_len is widened
+             * to size_t explicitly. */
+            if (msg_len > GRPC_REQUEST_BODY_MAX){
+                clixon_log(gc->gc_h, LOG_WARNING,
+                           "gRPC LPM frame length %u exceeds %d bytes, resetting stream",
+                           msg_len, GRPC_REQUEST_BODY_MAX);
+                return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE; /* reset stream */
+            }
+            if (gs->gs_bodylen < (size_t)GRPC_PREFIX_LEN + (size_t)msg_len)
+                break;
+            if (gs->gs_sub != NULL){
+                /* A subscription is already active on this stream:
+                 * handle subsequent SubscribeRequest (Poll) */
+                if (gnmi_subscribe_poll(gc->gc_h, gc, stream_id,
+                                        gs->gs_body + GRPC_PREFIX_LEN,
+                                        msg_len) < 0)
+                    grpc_stream_finish(gc, stream_id, GRPC_INTERNAL,
+                                       "poll handling failed");
             }
             else {
-                grpc_send_framed(gc, stream_id, resp_buf, resp_len,
-                                 GRPC_OK, NULL);
-                if (resp_buf)
-                    free(resp_buf);
+                gst = GRPC_INTERNAL;
+                if (gnmi_subscribe(gc->gc_h, gc, stream_id,
+                                   gs->gs_body + GRPC_PREFIX_LEN, msg_len,
+                                   &gst) < 0){
+                    /* Error before the response stream was opened */
+                    cberr = grpc_errmsg();
+                    grpc_send_response(gc, stream_id, NULL, 0,
+                                       gst, cberr ? cbuf_get(cberr) : NULL);
+                    if (cberr)
+                        cbuf_free(cberr);
+                }
             }
-            grpc_stream_free(gc, gs);
+            /* Consume the parsed frame.  Note gs may have been freed if the
+             * stream closed synchronously; re-lookup to be safe. */
+            for (gs = gc->gc_streams; gs != NULL; gs = gs->gs_next)
+                if (gs->gs_stream_id == stream_id)
+                    break;
+            if (gs == NULL)
+                break;
+            gs->gs_bodylen -= (size_t)GRPC_PREFIX_LEN + (size_t)msg_len;
+            if (gs->gs_bodylen > 0)
+                memmove(gs->gs_body,
+                        gs->gs_body + (size_t)GRPC_PREFIX_LEN + (size_t)msg_len,
+                        gs->gs_bodylen);
         }
     }
     return 0;
@@ -455,42 +503,98 @@ grpc_send_response(grpc_conn_t    *gc,
     return retval;
 }
 
-/*! Send a gRPC response with a pre-framed (already LPM-wrapped) buffer
+/*! nghttp2 read_callback for long-lived (streaming) responses
  *
- * Like grpc_send_response() but the caller provides a buffer that already
- * contains N concatenated Length-Prefixed-Message frames.  Used for Subscribe
- * ONCE which must send multiple SubscribeResponse messages before trailers.
+ * Serves bytes from the per-stream output queue (gs_outbuf).  When the
+ * queue is empty and the stream is not finished, the transfer is deferred
+ * until grpc_stream_write()/grpc_stream_finish() resumes it.  When finished
+ * and drained, grpc-status trailers are submitted.
+ */
+static ssize_t
+stream_data_source_cb(nghttp2_session     *session,
+                      int32_t              stream_id,
+                      uint8_t             *buf,
+                      size_t               length,
+                      uint32_t            *data_flags,
+                      nghttp2_data_source *source,
+                      void                *user_data)
+{
+    grpc_stream_t *gs = source->ptr;
+    size_t         avail;
+    size_t         n = 0;
+    char           status_str[16];
+    nghttp2_nv     trailers[2];
+    int            ntrailers = 1;
+
+    avail = cbuf_len(gs->gs_outbuf) - gs->gs_outoff;
+    if (avail > 0){
+        n = avail > length ? length : avail;
+        memcpy(buf, cbuf_get(gs->gs_outbuf) + gs->gs_outoff, n);
+        gs->gs_outoff += n;
+        avail -= n;
+        if (avail == 0){
+            /* Queue drained: compact so it does not grow unbounded */
+            cbuf_reset(gs->gs_outbuf);
+            gs->gs_outoff = 0;
+        }
+    }
+    if (avail == 0){
+        if (!gs->gs_finished)
+            return n > 0 ? (ssize_t)n : NGHTTP2_ERR_DEFERRED;
+        /* Signal: no more DATA bytes, but do NOT close stream with END_STREAM
+         * on this DATA frame; trailers (a HEADERS+END_STREAM frame) come next. */
+        *data_flags |= NGHTTP2_DATA_FLAG_EOF | NGHTTP2_DATA_FLAG_NO_END_STREAM;
+        snprintf(status_str, sizeof status_str, "%d", gs->gs_status);
+        trailers[0].name     = (uint8_t *)"grpc-status";
+        trailers[0].namelen  = 11;
+        trailers[0].value    = (uint8_t *)status_str;
+        trailers[0].valuelen = strlen(status_str);
+        trailers[0].flags    = NGHTTP2_NV_FLAG_NONE;
+        if (gs->gs_msg != NULL){
+            trailers[1].name     = (uint8_t *)"grpc-message";
+            trailers[1].namelen  = 12;
+            trailers[1].value    = (uint8_t *)gs->gs_msg;
+            trailers[1].valuelen = strlen(gs->gs_msg);
+            trailers[1].flags    = NGHTTP2_NV_FLAG_NONE;
+            ntrailers = 2;
+        }
+        nghttp2_submit_trailer(session, stream_id, trailers, ntrailers);
+    }
+    return (ssize_t)n;
+}
+
+/*! Open a long-lived gRPC response stream: submit 200 headers + deferred body
  *
- * @param[in]  gc          Connection
+ * The response body is served from the stream output queue; use
+ * grpc_stream_write() to append LPM-framed messages and grpc_stream_finish()
+ * to terminate with trailers.
+ *
+ * @param[in]  gc_opaque   Connection
  * @param[in]  stream_id   HTTP/2 stream
- * @param[in]  framed_buf  Pre-built LPM-framed buffer (caller owns)
- * @param[in]  framed_len  Length of framed_buf
- * @param[in]  grpc_status gRPC status code (0 = OK)
- * @param[in]  grpc_msg    Human-readable error message (may be NULL); copied
  * @retval     0           OK
  * @retval    -1           Error
  */
 int
-grpc_send_framed(void           *gc_opaque,
-                 int32_t         stream_id,
-                 const uint8_t  *framed_buf,
-                 size_t          framed_len,
-                 int             grpc_status,
-                 const char     *grpc_msg)
+grpc_stream_open(void    *gc_opaque,
+                 int32_t  stream_id)
 {
-    grpc_conn_t        *gc = gc_opaque;
-    int                 retval = -1;
-    uint8_t            *frame = NULL;
-    nghttp2_nv          resp_hdrs[2];
-    nghttp2_data_provider dp;
-    buf_src_t          *src = NULL;
+    int                    retval = -1;
+    grpc_conn_t           *gc = gc_opaque;
+    grpc_stream_t         *gs;
+    nghttp2_nv             resp_hdrs[2];
+    nghttp2_data_provider  dp;
 
-    if ((frame = malloc(framed_len)) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
+    if ((gs = grpc_stream_get(gc, stream_id)) == NULL)
+        goto done;
+    if (gs->gs_open){
+        clixon_err(OE_NGHTTP2, 0, "stream %d already open", stream_id);
         goto done;
     }
-    memcpy(frame, framed_buf, framed_len);
-
+    if (gs->gs_outbuf == NULL &&
+        (gs->gs_outbuf = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
     resp_hdrs[0].name      = (uint8_t *)":status";
     resp_hdrs[0].namelen   = 7;
     resp_hdrs[0].value     = (uint8_t *)"200";
@@ -502,35 +606,138 @@ grpc_send_framed(void           *gc_opaque,
     resp_hdrs[1].valuelen  = 16;
     resp_hdrs[1].flags     = NGHTTP2_NV_FLAG_NONE;
 
-    if ((src = malloc(sizeof *src)) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
-        goto done;
-    }
-    src->data        = frame;
-    src->len         = framed_len;
-    src->offset      = 0;
-    src->session     = gc->gc_session;
-    src->stream_id   = stream_id;
-    src->grpc_status   = grpc_status;
-    src->grpc_message  = grpc_msg ? strdup(grpc_msg) : NULL;
-    frame = NULL;
-
-    dp.source.ptr    = src;
-    dp.read_callback = buf_data_source_cb;
-    src = NULL;
-
+    dp.source.ptr    = gs;
+    dp.read_callback = stream_data_source_cb;
     if (nghttp2_submit_response(gc->gc_session, stream_id,
                                 resp_hdrs, 2, &dp) != 0){
         clixon_err(OE_NGHTTP2, 0, "nghttp2_submit_response");
         goto done;
     }
+    gs->gs_open = 1;
     retval = 0;
  done:
-    if (frame)
-        free(frame);
-    if (src)
-        free(src);
     return retval;
+}
+
+/*! Append (already LPM-framed) bytes to an open response stream and flush
+ *
+ * May be called from any context (e.g. a timer callback): resumes the
+ * deferred data source and drives nghttp2_session_send() directly.
+ *
+ * @param[in]  gc_opaque   Connection
+ * @param[in]  stream_id   HTTP/2 stream (must be opened with grpc_stream_open)
+ * @param[in]  buf         LPM-framed message bytes
+ * @param[in]  len         Length of buf
+ * @retval     0           OK
+ * @retval    -1           Error
+ */
+int
+grpc_stream_write(void          *gc_opaque,
+                  int32_t        stream_id,
+                  const uint8_t *buf,
+                  size_t         len)
+{
+    int            retval = -1;
+    grpc_conn_t   *gc = gc_opaque;
+    grpc_stream_t *gs;
+
+    if ((gs = grpc_stream_get(gc, stream_id)) == NULL)
+        goto done;
+    if (!gs->gs_open || gs->gs_finished){
+        clixon_err(OE_NGHTTP2, 0, "stream %d not open for writing", stream_id);
+        goto done;
+    }
+    if (len > 0 &&
+        cbuf_append_buf(gs->gs_outbuf, (char *)buf, len) < 0){
+        clixon_err(OE_UNIX, errno, "cbuf_append_buf");
+        goto done;
+    }
+    nghttp2_session_resume_data(gc->gc_session, stream_id);
+    nghttp2_session_send(gc->gc_session);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Finish an open response stream: send remaining data, then trailers
+ *
+ * @param[in]  gc_opaque   Connection
+ * @param[in]  stream_id   HTTP/2 stream
+ * @param[in]  grpc_status gRPC status code (0 = OK)
+ * @param[in]  grpc_msg    Human-readable error message (may be NULL); copied
+ * @retval     0           OK
+ * @retval    -1           Error
+ */
+int
+grpc_stream_finish(void       *gc_opaque,
+                   int32_t     stream_id,
+                   int         grpc_status,
+                   const char *grpc_msg)
+{
+    int            retval = -1;
+    grpc_conn_t   *gc = gc_opaque;
+    grpc_stream_t *gs;
+
+    if ((gs = grpc_stream_get(gc, stream_id)) == NULL)
+        goto done;
+    if (!gs->gs_open || gs->gs_finished){
+        clixon_err(OE_NGHTTP2, 0, "stream %d not open", stream_id);
+        goto done;
+    }
+    gs->gs_finished = 1;
+    gs->gs_status = grpc_status;
+    if (grpc_msg != NULL &&
+        (gs->gs_msg = strdup(grpc_msg)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    nghttp2_session_resume_data(gc->gc_session, stream_id);
+    nghttp2_session_send(gc->gc_session);
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Attach opaque subscription state and close callback to a stream
+ *
+ * closecb is invoked with sub when the stream (or its connection) is freed,
+ * allowing the upper layer to unregister timers and free its state.
+ *
+ * @param[in]  gc_opaque   Connection
+ * @param[in]  stream_id   HTTP/2 stream
+ * @param[in]  sub         Opaque subscription state
+ * @param[in]  closecb     Cleanup callback (may be NULL)
+ * @retval     0           OK
+ * @retval    -1           Error
+ */
+int
+grpc_stream_sub_set(void    *gc_opaque,
+                    int32_t  stream_id,
+                    void    *sub,
+                    void   (*closecb)(void *))
+{
+    grpc_conn_t   *gc = gc_opaque;
+    grpc_stream_t *gs;
+
+    if ((gs = grpc_stream_get(gc, stream_id)) == NULL)
+        return -1;
+    gs->gs_sub = sub;
+    gs->gs_closecb = closecb;
+    return 0;
+}
+
+/*! Get opaque subscription state attached to a stream (NULL if none) */
+void *
+grpc_stream_sub_get(void    *gc_opaque,
+                    int32_t  stream_id)
+{
+    grpc_conn_t   *gc = gc_opaque;
+    grpc_stream_t *gs;
+
+    for (gs = gc->gc_streams; gs != NULL; gs = gs->gs_next)
+        if (gs->gs_stream_id == stream_id)
+            return gs->gs_sub;
+    return NULL;
 }
 
 /*! Build a human-readable error message for the gRPC grpc-message trailer
@@ -655,8 +862,10 @@ on_frame_recv_cb(nghttp2_session     *session,
             }
         }
         else if (strcmp(gs->gs_path, "/gnmi.gNMI/Subscribe") == 0){
-            /* Already dispatched in on_data_chunk_cb when LPM frame was complete */
-            grpc_stream_free(gc, gs);
+            /* Dispatched in on_data_chunk_cb; the stream may still be
+             * serving responses (STREAM mode) — client END_STREAM only
+             * half-closes the request side.  Cleanup happens in
+             * on_stream_close_cb when the stream fully closes. */
             return 0;
         }
         else {

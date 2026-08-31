@@ -25,6 +25,9 @@ Expected: September 2026
 
 * Memory optimization: XML name replaced by back-pointer to YANG argument
 * Added LLVM libFuzzer unit support for yang, json, xml, xpath, api-path, etc
+* gRPC/gNMI:
+  * Improved error handling: detailed error messages and status codes
+  * Added STREAMS: SAMPLE and POLL
 * Improved gRPC/gNMI error handling: detailed error messages and status codes
 * Event handling: Improved fairness of low prio events
   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority

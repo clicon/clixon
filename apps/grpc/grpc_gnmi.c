@@ -45,6 +45,8 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <syslog.h>
+#include <sys/time.h>
 
 #include <protobuf-c/protobuf-c.h>
 
@@ -1269,46 +1271,322 @@ gnmi_lpm_append(cbuf          *cb,
     return 0;
 }
 
-/*! Handle gNMI Subscribe RPC — ONCE mode only
+/* Default sample interval when the client requests 0 (target-defined) */
+#define GNMI_SAMPLE_INTERVAL_DEFAULT_NS (10ULL*1000000000ULL)
+
+/* Minimum accepted sample interval (smaller values are clamped) */
+#define GNMI_SAMPLE_INTERVAL_MIN_NS     (100ULL*1000000ULL)
+
+/* Forward declaration */
+typedef struct gnmi_sub gnmi_sub_t;
+
+/*! Per-subscription-path state for a STREAM subscription */
+typedef struct gnmi_sub_entry {
+    gnmi_sub_t         *se_sub;         /* Backpointer to subscription */
+    Gnmi__Subscription *se_s;           /* Points into se_sub->sb_req, not owned */
+    uint64_t            se_interval_ns; /* Effective sample interval */
+    char               *se_lastval;     /* Last sent JSON value, owned */
+    struct timeval      se_lastsent;    /* Time of last sent update */
+    int                 se_timer;       /* Sample timer registered */
+} gnmi_sub_entry_t;
+
+/*! State of one active gNMI STREAM subscription (one per Subscribe stream) */
+struct gnmi_sub {
+    clixon_handle           sb_h;
+    void                   *sb_gc;        /* Transport connection, opaque */
+    int32_t                 sb_stream_id; /* HTTP/2 stream */
+    Gnmi__SubscribeRequest *sb_req;       /* Unpacked request, owned */
+    int                     sb_poll;      /* POLL mode (no timers) */
+    gnmi_sub_entry_t       *sb_entries;
+    size_t                  sb_nentries;
+};
+
+/*! Append one LPM-framed SubscribeResponse(update) for a path to a cbuf
  *
- * For ONCE mode: queries each subscribed path once, returns a stream of
- * SubscribeResponse(update) messages followed by a final sync_response.
- * STREAM and POLL modes are not yet implemented.
+ * Queries the datastore for the path, JSON-encodes the result into a
+ * TypedValue(ASCII) update wrapped in a Notification/SubscribeResponse,
+ * and appends the packed message as a gRPC LPM frame to framecb.
+ *
+ * @param[in]  h           Clixon handle
+ * @param[in]  gpath       gNMI path to query
+ * @param[in]  framecb     Output buffer for the LPM frame
+ * @param[out] jsonp       If non-NULL, malloced copy of the JSON value
+ * @param[out] grpc_status gRPC status code on error
+ * @retval     0           OK
+ * @retval    -1           Error
+ */
+static int
+gnmi_sub_frame_update(clixon_handle h,
+                      Gnmi__Path   *gpath,
+                      cbuf         *framecb,
+                      char        **jsonp,
+                      int          *grpc_status)
+{
+    int                      retval = -1;
+    Gnmi__SubscribeResponse  sresp = GNMI__SUBSCRIBE_RESPONSE__INIT;
+    Gnmi__Notification       notif = GNMI__NOTIFICATION__INIT;
+    Gnmi__Update             upd = GNMI__UPDATE__INIT;
+    Gnmi__Update            *updp = &upd;
+    Gnmi__TypedValue         tv = GNMI__TYPED_VALUE__INIT;
+    cxobj                   *xret = NULL;
+    cbuf                    *jsoncb = NULL;
+    uint8_t                 *pbuf = NULL;
+    size_t                   pbuflen;
+    char                    *asciistr = NULL;
+
+    if (gnmi_get_one_path(h, gpath, CONTENT_ALL, &xret, grpc_status) < 0)
+        goto done;
+    if ((jsoncb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (clixon_json2cbuf(jsoncb, xret, 0, 0, 0, 0) < 0)
+        goto done;
+    if ((asciistr = strdup(cbuf_get(jsoncb))) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+    tv.value_case = GNMI__TYPED_VALUE__VALUE_ASCII_VAL;
+    tv.ascii_val  = asciistr;
+
+    upd.path = gpath;
+    upd.val  = &tv;
+
+    notif.timestamp = (int64_t)time(NULL) * (int64_t)1000000000;
+    notif.update    = &updp;
+    notif.n_update  = 1;
+
+    sresp.response_case = GNMI__SUBSCRIBE_RESPONSE__RESPONSE_UPDATE;
+    sresp.update        = &notif;
+
+    pbuflen = gnmi__subscribe_response__get_packed_size(&sresp);
+    if ((pbuf = malloc(pbuflen)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    gnmi__subscribe_response__pack(&sresp, pbuf);
+    if (gnmi_lpm_append(framecb, pbuf, pbuflen) < 0)
+        goto done;
+    if (jsonp != NULL){
+        *jsonp = asciistr;
+        asciistr = NULL;
+    }
+    retval = 0;
+ done:
+    if (xret)
+        xml_free(xret);
+    if (jsoncb)
+        cbuf_free(jsoncb);
+    if (pbuf)
+        free(pbuf);
+    if (asciistr)
+        free(asciistr);
+    return retval;
+}
+
+/*! Append one LPM-framed SubscribeResponse(sync_response) to a cbuf
+ *
+ * @param[in]  framecb  Output buffer for the LPM frame
+ * @retval     0        OK
+ * @retval    -1        Error
+ */
+static int
+gnmi_sub_frame_sync(cbuf *framecb)
+{
+    int                      retval = -1;
+    Gnmi__SubscribeResponse  sresp = GNMI__SUBSCRIBE_RESPONSE__INIT;
+    uint8_t                 *pbuf = NULL;
+    size_t                   pbuflen;
+
+    sresp.response_case = GNMI__SUBSCRIBE_RESPONSE__RESPONSE_SYNC_RESPONSE;
+    sresp.sync_response = 1;
+    pbuflen = gnmi__subscribe_response__get_packed_size(&sresp);
+    if ((pbuf = malloc(pbuflen)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    gnmi__subscribe_response__pack(&sresp, pbuf);
+    if (gnmi_lpm_append(framecb, pbuf, pbuflen) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (pbuf)
+        free(pbuf);
+    return retval;
+}
+
+/* Forward declaration: timer callback needed by gnmi_sub_close */
+static int gnmi_sub_sample_cb(int fd, void *arg);
+
+/*! Free a STREAM subscription: unregister timers and release all state
+ *
+ * Registered as transport stream close callback via grpc_stream_sub_set(),
+ * invoked when the HTTP/2 stream or connection is closed.
+ *
+ * @param[in]  arg  gnmi_sub_t
+ */
+static void
+gnmi_sub_close(void *arg)
+{
+    gnmi_sub_t *sb = (gnmi_sub_t *)arg;
+    size_t      i;
+
+    if (sb == NULL)
+        return;
+    for (i = 0; i < sb->sb_nentries; i++){
+        if (sb->sb_entries[i].se_timer)
+            clixon_event_unreg_timeout(gnmi_sub_sample_cb, &sb->sb_entries[i]);
+        if (sb->sb_entries[i].se_lastval)
+            free(sb->sb_entries[i].se_lastval);
+    }
+    if (sb->sb_entries)
+        free(sb->sb_entries);
+    if (sb->sb_req)
+        gnmi__subscribe_request__free_unpacked(sb->sb_req, NULL);
+    free(sb);
+}
+
+/*! (Re-)arm the sample timer for one subscription entry
+ *
+ * @param[in]  se  Subscription entry
+ * @retval     0   OK
+ * @retval    -1   Error
+ */
+static int
+gnmi_sub_entry_arm(gnmi_sub_entry_t *se)
+{
+    struct timeval t;
+    struct timeval add;
+
+    gettimeofday(&t, NULL);
+    add.tv_sec  = se->se_interval_ns / 1000000000ULL;
+    add.tv_usec = (se->se_interval_ns % 1000000000ULL) / 1000;
+    timeradd(&t, &add, &t);
+    if (clixon_event_reg_timeout(t, gnmi_sub_sample_cb, se, "gnmi sample") < 0)
+        return -1;
+    se->se_timer = 1;
+    return 0;
+}
+
+/*! Timer callback: sample one subscribed path and send an update
+ *
+ * Honors suppress_redundant (skip unchanged values) and heartbeat_interval
+ * (force an update even if unchanged after the heartbeat elapses).
+ * On error the response stream is finished with an error status and the
+ * timer is not re-armed; state is freed when the stream closes.
+ *
+ * @param[in]  fd   Not used (timer)
+ * @param[in]  arg  gnmi_sub_entry_t
+ * @retval     0    OK (always: an error must not stop the event loop)
+ */
+static int
+gnmi_sub_sample_cb(int   fd,
+                   void *arg)
+{
+    gnmi_sub_entry_t *se = (gnmi_sub_entry_t *)arg;
+    gnmi_sub_t       *sb = se->se_sub;
+    cbuf             *framecb = NULL;
+    char             *jsonstr = NULL;
+    int               send = 1;
+    int               gst = GRPC_INTERNAL;
+    struct timeval    now;
+    struct timeval    diff;
+    uint64_t          elapsed_ns;
+
+    se->se_timer = 0;
+    if ((framecb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto fail;
+    }
+    if (gnmi_sub_frame_update(sb->sb_h, se->se_s->path, framecb,
+                              &jsonstr, &gst) < 0)
+        goto fail;
+    if (se->se_s->suppress_redundant &&
+        se->se_lastval != NULL &&
+        strcmp(se->se_lastval, jsonstr) == 0){
+        send = 0;
+        if (se->se_s->heartbeat_interval > 0){
+            gettimeofday(&now, NULL);
+            timersub(&now, &se->se_lastsent, &diff);
+            elapsed_ns = (uint64_t)diff.tv_sec * 1000000000ULL +
+                (uint64_t)diff.tv_usec * 1000ULL;
+            if (elapsed_ns >= se->se_s->heartbeat_interval)
+                send = 1;
+        }
+    }
+    if (send){
+        if (grpc_stream_write(sb->sb_gc, sb->sb_stream_id,
+                              (uint8_t *)cbuf_get(framecb),
+                              cbuf_len(framecb)) < 0)
+            goto fail;
+        if (se->se_lastval)
+            free(se->se_lastval);
+        se->se_lastval = jsonstr;
+        jsonstr = NULL;
+        gettimeofday(&se->se_lastsent, NULL);
+    }
+    if (gnmi_sub_entry_arm(se) < 0)
+        goto fail;
+ out:
+    if (framecb)
+        cbuf_free(framecb);
+    if (jsonstr)
+        free(jsonstr);
+    return 0;
+ fail:
+    clixon_log(sb->sb_h, LOG_WARNING, "gNMI sample failed, terminating subscription: %s",
+               clixon_err_reason());
+    grpc_stream_finish(sb->sb_gc, sb->sb_stream_id, gst, clixon_err_reason());
+    goto out;
+}
+
+/*! Handle gNMI Subscribe RPC — ONCE and STREAM(SAMPLE) modes
+ *
+ * ONCE: queries each subscribed path once, sends a stream of
+ * SubscribeResponse(update) messages followed by a final sync_response and
+ * gRPC trailers.
+ *
+ * STREAM: sends initial updates (unless updates_only) and sync_response,
+ * then keeps the HTTP/2 stream open and samples each path periodically
+ * (SAMPLE and TARGET_DEFINED subscription modes; ON_CHANGE is not yet
+ * implemented).  Subscription state is attached to the transport stream and
+ * freed when the stream or connection closes.
+ *
+ * POLL: sends initial updates and sync_response, then keeps the stream open;
+ * subsequent Poll requests are handled by gnmi_subscribe_poll().
+ *
+ * On success (retval 0) all responses have been sent, or scheduled, via the
+ * transport stream API; on error (retval -1) nothing has been submitted on
+ * the HTTP/2 stream and the caller should send an error response using
+ * grpc_status.
  *
  * @param[in]  h            Clixon handle
+ * @param[in]  gc_opaque    Transport connection (opaque)
+ * @param[in]  stream_id    HTTP/2 stream id
  * @param[in]  req_buf      Serialized SubscribeRequest
  * @param[in]  req_len      Length of req_buf
- * @param[out] resp_buf     Caller-owned pre-framed LPM buffer (multiple responses)
- * @param[out] resp_len     Length of resp_buf
  * @param[out] grpc_status  gRPC status code on error
  * @retval     0            OK
- * @retval    -1            Error
+ * @retval    -1            Error (before the response stream was opened)
  */
 int
 gnmi_subscribe(clixon_handle  h,
+               void          *gc_opaque,
+               int32_t        stream_id,
                const uint8_t *req_buf,
                size_t         req_len,
-               uint8_t      **resp_buf,
-               size_t        *resp_len,
                int           *grpc_status)
 {
-    int                          retval = -1;
-    Gnmi__SubscribeRequest      *req = NULL;
-    Gnmi__SubscriptionList      *sublist;
-    Gnmi__SubscribeResponse      sresp = GNMI__SUBSCRIBE_RESPONSE__INIT;
-    Gnmi__Notification           notif = GNMI__NOTIFICATION__INIT;
-    Gnmi__Update                 upd = GNMI__UPDATE__INIT;
-    Gnmi__Update                *updp = NULL;
-    Gnmi__TypedValue             tv = GNMI__TYPED_VALUE__INIT;
-    Gnmi__SubscribeResponse      sync_sresp = GNMI__SUBSCRIBE_RESPONSE__INIT;
-    cbuf                        *framecb = NULL;
-    cbuf                        *jsoncb = NULL;
-    uint8_t                     *pbuf = NULL;
-    size_t                       pbuflen;
-    size_t                       i;
-    cxobj                       *xret = NULL;
-    char                        *jsonstr;
-    char                        *asciistr = NULL;
+    int                     retval = -1;
+    Gnmi__SubscribeRequest *req = NULL;
+    Gnmi__SubscriptionList *sublist;
+    Gnmi__Subscription     *sub;
+    gnmi_sub_t             *sb = NULL;
+    gnmi_sub_entry_t       *se;
+    cbuf                   *framecb = NULL;
+    size_t                  i;
+    int                     stream_mode = 0;
+    int                     poll_mode = 0;
 
     *grpc_status = GRPC_INTERNAL;
 
@@ -1318,123 +1596,224 @@ gnmi_subscribe(clixon_handle  h,
         *grpc_status = GRPC_INVALID_ARGUMENT;
         goto done;
     }
-
     if (req->request_case != GNMI__SUBSCRIBE_REQUEST__REQUEST_SUBSCRIBE){
         clixon_err(OE_UNIX, 0, "SubscribeRequest is not a SUBSCRIBE (case=%d)",
                    req->request_case);
         *grpc_status = GRPC_INVALID_ARGUMENT;
         goto done;
     }
-
     sublist = req->subscribe;
     if (sublist == NULL){
         clixon_err(OE_UNIX, 0, "SubscribeRequest has no SubscriptionList");
         *grpc_status = GRPC_INVALID_ARGUMENT;
         goto done;
     }
-
-    if (sublist->mode != GNMI__SUBSCRIPTION_LIST__MODE__ONCE){
-        clixon_err(OE_UNIX, 0, "Subscribe mode %d not implemented (only ONCE supported)",
+    switch (sublist->mode){
+    case GNMI__SUBSCRIPTION_LIST__MODE__ONCE:
+        break;
+    case GNMI__SUBSCRIPTION_LIST__MODE__STREAM:
+        stream_mode = 1;
+        break;
+    case GNMI__SUBSCRIPTION_LIST__MODE__POLL:
+        stream_mode = 1;
+        poll_mode = 1;
+        break;
+    default:
+        clixon_err(OE_UNIX, 0, "Subscribe mode %d not implemented",
                    sublist->mode);
         *grpc_status = GRPC_UNIMPLEMENTED;
         goto done;
     }
-
     if ((framecb = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-
-    for (i = 0; i < sublist->n_subscription; i++){
-        if (xret){
-            xml_free(xret);
-            xret = NULL;
-        }
-        if (gnmi_get_one_path(h, sublist->subscription[i]->path,
-                              CONTENT_ALL, &xret, grpc_status) < 0)
-            goto done;
-
-        if ((jsoncb = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
+    if (stream_mode){
+        /* Allocate subscription state; validate per-subscription modes */
+        if ((sb = calloc(1, sizeof *sb)) == NULL){
+            clixon_err(OE_UNIX, errno, "calloc");
             goto done;
         }
-        if (clixon_json2cbuf(jsoncb, xret, 0, 0, 0, 0) < 0)
-            goto done;
-        jsonstr = cbuf_get(jsoncb);
-
-        /* Build TypedValue with ASCII encoding */
-        if ((asciistr = strdup(jsonstr)) == NULL){
-            clixon_err(OE_UNIX, errno, "strdup");
-            goto done;
-        }
-        tv.value_case  = GNMI__TYPED_VALUE__VALUE_ASCII_VAL;
-        tv.ascii_val   = asciistr;
-
-        /* Build Update */
-        gnmi__update__init(&upd);
-        upd.path  = sublist->subscription[i]->path;
-        upd.val   = &tv;
-        updp = &upd;
-
-        /* Build Notification */
-        gnmi__notification__init(&notif);
-        notif.timestamp = (int64_t)time(NULL) * (int64_t)1000000000;
-        notif.update    = &updp;
-        notif.n_update  = 1;
-
-        /* Build SubscribeResponse with update */
-        gnmi__subscribe_response__init(&sresp);
-        sresp.response_case = GNMI__SUBSCRIBE_RESPONSE__RESPONSE_UPDATE;
-        sresp.update        = &notif;
-
-        pbuflen = gnmi__subscribe_response__get_packed_size(&sresp);
-        if ((pbuf = malloc(pbuflen)) == NULL){
-            clixon_err(OE_UNIX, errno, "malloc");
+        sb->sb_h = h;
+        sb->sb_gc = gc_opaque;
+        sb->sb_stream_id = stream_id;
+        sb->sb_req = req;
+        sb->sb_poll = poll_mode;
+        req = NULL; /* sb now owns the unpacked request */
+        sublist = sb->sb_req->subscribe;
+        if (sublist->n_subscription > 0 &&
+            (sb->sb_entries = calloc(sublist->n_subscription,
+                                     sizeof *sb->sb_entries)) == NULL){
+            clixon_err(OE_UNIX, errno, "calloc");
             goto done;
         }
-        gnmi__subscribe_response__pack(&sresp, pbuf);
-        if (gnmi_lpm_append(framecb, pbuf, pbuflen) < 0)
-            goto done;
-        free(pbuf); pbuf = NULL;
-
-        free(asciistr); asciistr = NULL;
-        cbuf_free(jsoncb); jsoncb = NULL;
+        for (i = 0; i < sublist->n_subscription; i++){
+            sub = sublist->subscription[i];
+            se = &sb->sb_entries[i];
+            se->se_sub = sb;
+            se->se_s = sub;
+            if (!poll_mode){
+                if (sub->mode == GNMI__SUBSCRIPTION_MODE__ON_CHANGE){
+                    clixon_err(OE_UNIX, 0, "Subscription mode ON_CHANGE not implemented");
+                    *grpc_status = GRPC_UNIMPLEMENTED;
+                    goto done;
+                }
+                /* SAMPLE and TARGET_DEFINED: periodic sampling */
+                se->se_interval_ns = sub->sample_interval;
+                if (se->se_interval_ns == 0)
+                    se->se_interval_ns = GNMI_SAMPLE_INTERVAL_DEFAULT_NS;
+                else if (se->se_interval_ns < GNMI_SAMPLE_INTERVAL_MIN_NS)
+                    se->se_interval_ns = GNMI_SAMPLE_INTERVAL_MIN_NS;
+            }
+            sb->sb_nentries++;
+        }
     }
+    /* Build initial updates + sync_response; updates_only sends sync only */
+    if (!sublist->updates_only){
+        for (i = 0; i < sublist->n_subscription; i++){
+            se = stream_mode ? &sb->sb_entries[i] : NULL;
+            if (gnmi_sub_frame_update(h, sublist->subscription[i]->path,
+                                      framecb,
+                                      se != NULL ? &se->se_lastval : NULL,
+                                      grpc_status) < 0)
+                goto done;
+            if (se != NULL)
+                gettimeofday(&se->se_lastsent, NULL);
+        }
+    }
+    if (gnmi_sub_frame_sync(framecb) < 0)
+        goto done;
 
-    /* Final sync_response message */
-    gnmi__subscribe_response__init(&sync_sresp);
-    sync_sresp.response_case = GNMI__SUBSCRIBE_RESPONSE__RESPONSE_SYNC_RESPONSE;
-    sync_sresp.sync_response = 1;
-
-    pbuflen = gnmi__subscribe_response__get_packed_size(&sync_sresp);
-    if ((pbuf = malloc(pbuflen)) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
+    /* Open response stream and send initial frames.  From this point errors
+     * are reported on the stream itself (retval 0) since headers are out. */
+    if (grpc_stream_open(gc_opaque, stream_id) < 0)
+        goto done;
+    if (grpc_stream_write(gc_opaque, stream_id,
+                          (uint8_t *)cbuf_get(framecb),
+                          cbuf_len(framecb)) < 0){
+        grpc_stream_finish(gc_opaque, stream_id, GRPC_INTERNAL, "write failed");
+        retval = 0;
         goto done;
     }
-    gnmi__subscribe_response__pack(&sync_sresp, pbuf);
-    if (gnmi_lpm_append(framecb, pbuf, pbuflen) < 0)
-        goto done;
-    free(pbuf); pbuf = NULL;
+    if (!stream_mode){
+        /* ONCE: all data sent, terminate with OK trailers */
+        if (grpc_stream_finish(gc_opaque, stream_id, GRPC_OK, NULL) < 0){
+            retval = 0;
+            goto done;
+        }
+    }
+    else {
+        /* STREAM/POLL: attach subscription to transport stream; STREAM also
+         * starts sample timers, POLL waits for Poll requests */
+        if (grpc_stream_sub_set(gc_opaque, stream_id, sb, gnmi_sub_close) < 0){
+            grpc_stream_finish(gc_opaque, stream_id, GRPC_INTERNAL, "internal error");
+            retval = 0;
+            goto done;
+        }
+        if (!poll_mode){
+            for (i = 0; i < sb->sb_nentries; i++){
+                if (gnmi_sub_entry_arm(&sb->sb_entries[i]) < 0){
+                    grpc_stream_finish(gc_opaque, stream_id, GRPC_INTERNAL,
+                                       "timer registration failed");
+                    break;
+                }
+            }
+        }
+        sb = NULL; /* owned by transport stream; freed via gnmi_sub_close */
+    }
+    retval = 0;
+ done:
+    if (sb)
+        gnmi_sub_close(sb);
+    if (req)
+        gnmi__subscribe_request__free_unpacked(req, NULL);
+    if (framecb)
+        cbuf_free(framecb);
+    return retval;
+}
 
-    *resp_len = cbuf_len(framecb);
-    if ((*resp_buf = malloc(*resp_len)) == NULL){
-        clixon_err(OE_UNIX, errno, "malloc");
+/*! Handle a subsequent SubscribeRequest on an already-active Subscribe stream
+ *
+ * Per gNMI spec 3.5.1.5.3 only Poll messages are valid after the initial
+ * SubscribeRequest, and only for POLL-mode subscriptions.  On a valid Poll
+ * the current value of every subscribed path is sent, followed by a
+ * sync_response.  Protocol violations terminate the response stream with an
+ * error status; retval is 0 since errors are reported on the stream itself.
+ *
+ * @param[in]  h            Clixon handle
+ * @param[in]  gc_opaque    Transport connection (opaque)
+ * @param[in]  stream_id    HTTP/2 stream id
+ * @param[in]  req_buf      Serialized SubscribeRequest
+ * @param[in]  req_len      Length of req_buf
+ * @retval     0            OK (including errors reported on the stream)
+ * @retval    -1            Fatal error
+ */
+int
+gnmi_subscribe_poll(clixon_handle  h,
+                    void          *gc_opaque,
+                    int32_t        stream_id,
+                    const uint8_t *req_buf,
+                    size_t         req_len)
+{
+    int                     retval = -1;
+    Gnmi__SubscribeRequest *req = NULL;
+    gnmi_sub_t             *sb;
+    cbuf                   *framecb = NULL;
+    size_t                  i;
+    int                     gst = GRPC_INTERNAL;
+
+    sb = (gnmi_sub_t *)grpc_stream_sub_get(gc_opaque, stream_id);
+    if (sb == NULL){
+        grpc_stream_finish(gc_opaque, stream_id, GRPC_INVALID_ARGUMENT,
+                           "no active subscription on stream");
+        retval = 0;
         goto done;
     }
-    memcpy(*resp_buf, cbuf_get(framecb), *resp_len);
+    req = gnmi__subscribe_request__unpack(NULL, req_len, req_buf);
+    if (req == NULL){
+        grpc_stream_finish(gc_opaque, stream_id, GRPC_INVALID_ARGUMENT,
+                           "malformed SubscribeRequest");
+        retval = 0;
+        goto done;
+    }
+    if (req->request_case != GNMI__SUBSCRIBE_REQUEST__REQUEST_POLL){
+        grpc_stream_finish(gc_opaque, stream_id, GRPC_INVALID_ARGUMENT,
+                           "only Poll allowed after initial SubscribeRequest");
+        retval = 0;
+        goto done;
+    }
+    if (!sb->sb_poll){
+        grpc_stream_finish(gc_opaque, stream_id, GRPC_INVALID_ARGUMENT,
+                           "Poll on non-POLL subscription");
+        retval = 0;
+        goto done;
+    }
+    if ((framecb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    for (i = 0; i < sb->sb_nentries; i++){
+        if (gnmi_sub_frame_update(sb->sb_h, sb->sb_entries[i].se_s->path,
+                                  framecb, NULL, &gst) < 0){
+            grpc_stream_finish(gc_opaque, stream_id, gst, clixon_err_reason());
+            retval = 0;
+            goto done;
+        }
+    }
+    if (gnmi_sub_frame_sync(framecb) < 0)
+        goto done;
+    if (grpc_stream_write(gc_opaque, stream_id,
+                          (uint8_t *)cbuf_get(framecb),
+                          cbuf_len(framecb)) < 0){
+        grpc_stream_finish(gc_opaque, stream_id, GRPC_INTERNAL, "write failed");
+        retval = 0;
+        goto done;
+    }
     retval = 0;
  done:
     if (req)
         gnmi__subscribe_request__free_unpacked(req, NULL);
-    if (xret)
-        xml_free(xret);
-    if (jsoncb)
-        cbuf_free(jsoncb);
     if (framecb)
         cbuf_free(framecb);
-    if (pbuf)
-        free(pbuf);
-    if (asciistr)
-        free(asciistr);
     return retval;
 }

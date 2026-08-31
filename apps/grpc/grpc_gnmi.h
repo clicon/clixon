@@ -59,10 +59,16 @@ int gnmi_set(clixon_handle  h,
              int           *grpc_status);
 
 int gnmi_subscribe(clixon_handle  h,
+                   void          *gc_opaque,
+                   int32_t        stream_id,
                    const uint8_t *req_buf,
                    size_t         req_len,
-                   uint8_t      **resp_buf,
-                   size_t        *resp_len,
                    int           *grpc_status);
+
+int gnmi_subscribe_poll(clixon_handle  h,
+                        void          *gc_opaque,
+                        int32_t        stream_id,
+                        const uint8_t *req_buf,
+                        size_t         req_len);
 
 #endif /* _GRPC_GNMI_H_ */
