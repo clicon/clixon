@@ -1011,6 +1011,7 @@ compare_db_names(clixon_handle    h,
         dformat = clicon_option_str(h, "CLICON_CLI_DIFF_FORMAT");
         context = strcmp(dformat, "context") == 0;
         xtop = NULL;
+        xbot = NULL;
         level = 0;
         if (api_path_xtop_xbot(h, apipath, &xtop, &xbot) < 0)
             goto done;
