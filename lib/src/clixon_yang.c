@@ -1021,6 +1021,18 @@ ys_free1(yang_stmt *ys,
     cg_var         *cv;
     cvec           *cvv;
 
+    /* Purge stale entries in the global "when"/"mymodule" shortcut maps:
+     * (1) ys itself may be a key (eg an unknown/augmented node with a shortcut), and
+     * (2) ys may be a value referenced by other (surviving) nodes' shortcuts, eg
+     *     ys is a module or a "when" node. If not removed, those other nodes would
+     *     keep a dangling pointer to this freed node causing a use-after-free.
+     */
+    if (yang_flag_get(ys, YANG_FLAG_WHEN) != 0x0)
+        clixon_ptr2ptr_del(&_yang_when_map, &_yang_when_map_len, ys);
+    clixon_ptr2ptr_delval(&_yang_when_map, &_yang_when_map_len, ys);
+    if (yang_flag_get(ys, YANG_FLAG_MYMODULE) != 0x0)
+        clixon_ptr2ptr_del(&_yang_mymodule_map, &_yang_mymodule_map_len, ys);
+    clixon_ptr2ptr_delval(&_yang_mymodule_map, &_yang_mymodule_map_len, ys);
     if ((cv = ys->ys_cv) != NULL){
         ys->ys_cv = NULL;
         cv_free(cv);

@@ -96,6 +96,7 @@ int         clixon_str2ptr_print(FILE *f, map_str2ptr *mptab);
 void       *clixon_ptr2ptr(map_ptr2ptr *mptab, size_t len, void *ptr);
 int         clixon_ptr2ptr_add(map_ptr2ptr **mptab, size_t *len, void *ptr0, void *ptr1);
 int         clixon_ptr2ptr_del(map_ptr2ptr **mptab, size_t *len, void *ptr0);
+int         clixon_ptr2ptr_delval(map_ptr2ptr **mptab, size_t *len, void *ptr1);
 int         clixon_ptr2ptr_print(FILE *f, map_ptr2ptr *mptab, size_t len);
 
 #endif  /* _CLIXON_MAP_H_ */

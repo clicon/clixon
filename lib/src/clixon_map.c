@@ -478,6 +478,45 @@ clixon_ptr2ptr_del(map_ptr2ptr **mptabp,
     return 0;
 }
 
+/*! Remove all pointer pairs from mptab map by value ptr1
+ *
+ * The map is sorted/searchable by ptr0 (key) only, so this is a linear scan.
+ * Used to purge stale entries when the object pointed-to by ptr1 is freed,
+ * eg a "shortcut" map where several keys may reference the same freed value,
+ * to avoid dangling pointers.
+ * @param[in,out]  mptabp  Ptr to ptr map (may be reallocated)
+ * @param[in,out]  lenp    Length of map
+ * @param[in]      ptr1    Value pointer to remove (all entries with this value)
+ * @retval         0       OK (removed or not found)
+ * @retval        -1       Error
+ */
+int
+clixon_ptr2ptr_delval(map_ptr2ptr **mptabp,
+                      size_t       *lenp,
+                      void         *ptr1)
+{
+    struct map_ptr2ptr *mptab;
+    size_t              len;
+    size_t              i;
+
+    if (mptabp == NULL || *mptabp == NULL)
+        return 0;
+    mptab = *mptabp;
+    len = *lenp;
+    i = 0;
+    while (i < len){
+        if (mptab[i].mp_p1 == ptr1){
+            if (i + 1 < len)
+                memmove(&mptab[i], &mptab[i+1], (len - i - 1) * sizeof(*mptab));
+            len--;
+        }
+        else
+            i++;
+    }
+    *lenp = len;
+    return 0;
+}
+
 /*! Print a str2ptr map
  *
  * @param[in]  f     FILE
