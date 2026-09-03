@@ -268,6 +268,10 @@ cli_interactive(clixon_handle h)
             cligen_exiting_set(cli_cligen(h), 1);
             continue;
         }
+        /* Persist history now instead of only at exit, so a crash or kill
+         * does not lose commands entered in this session. */
+        if (cli_history_save(h) < 0)
+            goto done;
         /* Here errors are handled */
         if (clicon_parse(h, cmd, &new_mode, &result, NULL) < 0)
             goto done;
