@@ -1665,7 +1665,6 @@ xml_diff2cbuf_leaf(cbuf      *cb,
  *
  * YANG dependent,
  * Skip objects marked with XML_FLAG_DENY
- * Uses underlying XML diff algorithm with better result than clixon_compare_xmls
  * @param[out] cb      CLIgen buffer
  * @param[in]  x0      First XML tree
  * @param[in]  x1      Second XML tree
@@ -1680,7 +1679,6 @@ xml_diff2cbuf_leaf(cbuf      *cb,
  *    cligen_output(stdout, "%s", cbuf_get(cb));
  * @endcode
  * @see xml_diff which returns diff sets
- * @see clixon_compare_xmls which uses files and is independent of YANG
  * @see text_diff2cbuf for curly
  * @see xml_tree_equal Equal or not
  * @see xml_diff       Diff sets
@@ -1893,7 +1891,6 @@ xml_diff2cbuf(cbuf  *cb,
 /*! Print XML diff of two cxobj trees into a cbuf
  *
  * YANG dependent
- * Uses underlying XML diff algorithm with better result than clixon_compare_xmls
  * @param[out] cb      CLIgen buffer
  * @param[in]  x0      First XML tree
  * @param[in]  x1      Second XML tree
@@ -1906,7 +1903,6 @@ xml_diff2cbuf(cbuf  *cb,
  *    cligen_output(stdout, "%s", cbuf_get(cb));
  * @endcode
  * @see xml_diff which returns diff sets
- * @see clixon_compare_xmls which uses files and is independent of YANG
  * @see clixon_text_diff2cbuf
  */
 int
