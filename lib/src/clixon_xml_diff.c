@@ -1810,7 +1810,6 @@ xml_diff2patch(cxobj   *x1,
  *    cligen_output(stdout, "%s", cbuf_get(cb));
  * @endcode
  * @see xml_diff which returns diff sets
- * @see clixon_compare_xmls which uses files and is independent of YANG
  * @see xml_diff2cbuf
  * @see clixon_xml_diff_nacm_read  Call before to mark NACM non-readable nodes
  * @note  ordered-by user should use LCS (Longest common subsequence) but does not
