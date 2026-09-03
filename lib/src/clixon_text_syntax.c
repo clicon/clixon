@@ -825,7 +825,6 @@ text_diff2cbuf_ordered_by_user(cbuf      *cb,
  * +  value [
  * +     97
  * -     99
- * @see clixon_compare_xmls which uses files and is independent of YANG
  * @see xml_diff2cbuf  for XML
  * @see xml_tree_equal Equal or not
  * @see xml_diff       Diff sets
