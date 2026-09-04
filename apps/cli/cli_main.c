@@ -75,6 +75,8 @@
 #define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:g:o:"
 
 static char *_restarg = NULL; /* what remains after options XXX just to avoid mem-leakage, try to fix wo global var */
+static long  _hist_offset = 0; /* byte offset up to which the CLI history file has
+                                 * been read into this session (see cli_history_sync) */
 
 /*! Check if there is a CLI history file and if so dump the CLI histiry to it
  *
@@ -116,6 +118,70 @@ cli_history_load(clixon_handle h)
         clixon_err(OE_UNIX, errno, "cligen_hist_file_load");
         goto done;
     }
+    /* Remember how far we have read, so cli_history_sync() only merges
+     * entries appended by other sessions after this point. */
+    _hist_offset = ftell(f);
+ ok:
+    retval = 0;
+ done:
+    wordfree(&result);
+    if (f)
+        fclose(f);
+    return retval;
+}
+
+/*! Merge history entries from concurrent sessions, then append our own line
+ *
+ * Modeled on zsh's SHARE_HISTORY: instead of rewriting the whole history
+ * file (which would race with, and clobber, other concurrently running CLI
+ * sessions writing to the same file), read only the bytes appended by other
+ * sessions since we last looked, fold them into our in-memory history, then
+ * append just the command the user entered. The file is never truncated
+ * here, only ever read from an offset and appended to.
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  cmd  Command line the user just entered (already added to h's
+ *                  in-memory history by cliread())
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+cli_history_sync(clixon_handle h,
+                  const char   *cmd)
+{
+    int       retval = -1;
+    char     *filename;
+    FILE     *f = NULL;
+    wordexp_t result = {0,}; /* for tilde expansion */
+    int       ret;
+
+    if ((filename = clicon_option_str(h, "CLICON_CLI_HIST_FILE")) == NULL)
+        goto ok; /* ignore */
+    if ((ret = wordexp(filename, &result, WRDE_NOCMD)) != 0){
+        clixon_err(OE_UNIX, errno, "wordexp(%s) %d", filename, ret);
+        goto done;
+    }
+    /* 1. Merge in whatever other sessions appended since we last synced */
+    if ((f = fopen(result.we_wordv[0], "r")) != NULL){
+        if (fseek(f, _hist_offset, SEEK_SET) == 0 &&
+            cligen_hist_file_load(cli_cligen(h), f) < 0){
+            clixon_err(OE_UNIX, errno, "cligen_hist_file_load");
+            goto done;
+        }
+        fclose(f);
+        f = NULL;
+    }
+    /* 2. Append only our own new entry -- never rewrite the file */
+    if ((f = fopen(result.we_wordv[0], "a")) == NULL){
+        clixon_log(h, LOG_DEBUG, "Warning: Could not open CLI history file for writing: %s: %s",
+                   result.we_wordv[0], strerror(errno));
+        goto ok;
+    }
+    if (fprintf(f, "%s\n", cmd) < 0 || fflush(f) != 0){
+        clixon_err(OE_UNIX, errno, "write CLI history file");
+        goto done;
+    }
+    _hist_offset = ftell(f);
  ok:
     retval = 0;
  done:
@@ -268,6 +334,13 @@ cli_interactive(clixon_handle h)
             cligen_exiting_set(cli_cligen(h), 1);
             continue;
         }
+        /* Persist history now instead of only at exit, so a crash or kill
+         * does not lose commands entered in this session. Uses an
+         * append-only merge (like zsh SHARE_HISTORY) rather than
+         * rewriting the file, so concurrent CLI sessions don't clobber
+         * each other's entries. */
+        if (cli_history_sync(h, cmd) < 0)
+            goto done;
         /* Here errors are handled */
         if (clicon_parse(h, cmd, &new_mode, &result, NULL) < 0)
             goto done;
