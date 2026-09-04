@@ -1428,11 +1428,11 @@ Optional Features:
                           http/1 only
   --enable-netsnmp        Enable net-snmp Clixon YANG mapping
   --enable-grpc           Enable gRPC/gNMI northbound interface
-  --enable-xml-child-each-wrapper
+  --disable-xml-child-each-wrapper
                           Enable xml_child_each wrapper
-  --enable-optmem-xml-body
+  --disable-optmem-xml-body
                           Fold body value into element struct (no CX_BODY
-                          child), default: no
+                          child)
 
 
 Optional Packages:
@@ -5934,7 +5934,7 @@ then :
    fi
 
 else $as_nop
-   enable_xml_child_each_wrapper=no
+   enable_xml_child_each_wrapper=yes
 fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: xml-child-each-wrapper is: ${enable_xml_child_each_wrapper}" >&5
@@ -5960,7 +5960,7 @@ then :
    fi
 
 else $as_nop
-   enable_optmem_xml_body=no
+   enable_optmem_xml_body=yes
 fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: optmem-xml-body is: ${enable_optmem_xml_body}" >&5

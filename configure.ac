@@ -385,14 +385,14 @@ fi
 # This can be enabled by --enable-xml-child-each-wrapper in which xml_child_each uses a wrapper to xml_child_iter
 # for memory footprint optimization, but make calls to xml_child_each slower
 # This variable should eventually be permanently enabled
-AC_ARG_ENABLE(xml-child-each-wrapper, AS_HELP_STRING([--enable-xml-child-each-wrapper],[Enable xml_child_each wrapper]),[
+AC_ARG_ENABLE(xml-child-each-wrapper, AS_HELP_STRING([--disable-xml-child-each-wrapper],[Enable xml_child_each wrapper]),[
    if test "$enableval" = no; then
       enable_xml_child_each_wrapper=no
    else
       enable_xml_child_each_wrapper=yes
    fi
   ],
-  [ enable_xml_child_each_wrapper=no])
+  [ enable_xml_child_each_wrapper=yes])
 AC_MSG_RESULT(xml-child-each-wrapper is: ${enable_xml_child_each_wrapper})
 
 if test "${enable_xml_child_each_wrapper}" = "yes"; then
@@ -402,14 +402,14 @@ fi
 
 # Fold CX_BODY child into element struct field x_bodyval for memory optimization
 # This can be enabled by --enable-optmem-xml-body; once migration is complete it will be the default
-AC_ARG_ENABLE(optmem-xml-body, AS_HELP_STRING([--enable-optmem-xml-body],[Fold body value into element struct (no CX_BODY child), default: no]),[
+AC_ARG_ENABLE(optmem-xml-body, AS_HELP_STRING([--disable-optmem-xml-body],[Fold body value into element struct (no CX_BODY child)]),[
    if test "$enableval" = no; then
       enable_optmem_xml_body=no
    else
       enable_optmem_xml_body=yes
    fi
   ],
-  [ enable_optmem_xml_body=no])
+  [ enable_optmem_xml_body=yes])
 AC_MSG_RESULT(optmem-xml-body is: ${enable_optmem_xml_body})
 
 if test "${enable_optmem_xml_body}" = "yes"; then
