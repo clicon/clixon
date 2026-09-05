@@ -151,7 +151,7 @@ new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\- "
 
 new "check compare json"
-expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^/clixon-example:top" "name\": \"a\"" "value\": \"17\"" "name\": \"b\"" "value\": \"42\"" "name\": \"d\"" "value\": \"98\"" --not-- "^\- "
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top;+ {;+\ *\"clixon-example:top\": {;+\ *\"section\": \[;+\ *{;+\ *\"name\": \"x\",;+\ *\"table\": {;+\ *\"parameter\": \[;+\ *{;+\ *\"name\": \"a\",;+\ *\"value\": \"17\";+\ *},;+\ *{;+\ *\"name\": \"b\",;+\ *\"value\": \"42\";+\ *},;+\ *{;+\ *\"name\": \"d\",;+\ *\"value\": \"98\";+\ *};+\ *];+\ *};+\ *};+\ *];+\ *};+ }"
 
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
@@ -187,7 +187,7 @@ new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^/clixon-example:top/section=x/table/parameter=a" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value 98;" "^+\ *value 99;"
 
 new "check compare json b"
-expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^/clixon-example:top/section=x/table/parameter=a" "name\": \"a\"" "value\": \"17\"" "^/clixon-example:top/section=x/table/parameter=c" "name\": \"c\"" "value\": \"72\"" "^/clixon-example:top/section=x/table/parameter=d/value" "value\": \"98\"" "value\": \"99\""
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=a;- {;-\ *\"clixon-example:parameter\": \[;-\ *{;-\ *\"name\": \"a\",;-\ *\"value\": \"17\";-\ *};-\ *];- };/clixon-example:top/section=x/table/parameter=c;+ {;+\ *\"clixon-example:parameter\": \[;+\ *{;+\ *\"name\": \"c\",;+\ *\"value\": \"72\";+\ *};+\ *];+ };/clixon-example:top/section=x/table/parameter=d/value;- {;-\ *\"clixon-example:value\": \"98\";- };+ {;+\ *\"clixon-example:value\": \"99\";+ }"
 
 new "delete section x"
 expectpart "$($clixon_cli -1 -f $cfg delete top section x)" 0 "^$"
@@ -239,7 +239,7 @@ new "check compare multi text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\-\ *parameter a1 a2 {" "^\-\ *17" "^\-\ *18" "^+\ *parameter c1 c2 {" "^+\ *72" "^+\ *73" "^+\ *97" "^\-\ *99" "^/clixon-example:top/section=y/multi/parameter=d1,d2"  --not-- "parameter b1 b2 {"
 
 new "check compare multi json"
-expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "^/clixon-example:top/section=y/multi/parameter=a1,a2" "first\": \"a1\"" "second\": \"a2\"" "\"17\"" "\"18\"" "^/clixon-example:top/section=y/multi/parameter=c1,c2" "first\": \"c1\"" "second\": \"c2\"" "\"72\"" "\"73\"" "^/clixon-example:top/section=y/multi/parameter=d1,d2/value=97" "^/clixon-example:top/section=y/multi/parameter=d1,d2/value=99" --not-- "b1"
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=y/multi/parameter=a1,a2;- {;-\ *\"clixon-example:parameter\": \[;-\ *{;-\ *\"first\": \"a1\",;-\ *\"second\": \"a2\",;-\ *\"value\": \[;-\ *\"17\",;-\ *\"18\";-\ *];-\ *};-\ *];- };/clixon-example:top/section=y/multi/parameter=c1,c2;+ {;+\ *\"clixon-example:parameter\": \[;+\ *{;+\ *\"first\": \"c1\",;+\ *\"second\": \"c2\",;+\ *\"value\": \[;+\ *\"72\",;+\ *\"73\";+\ *];+\ *};+\ *];+ };/clixon-example:top/section=y/multi/parameter=d1,d2/value=97;+ {;+\ *\"clixon-example:value\": \[;+\ *\"97\";+\ *];+ };/clixon-example:top/section=y/multi/parameter=d1,d2/value=99;- {;-\ *\"clixon-example:value\": \[;-\ *\"99\";-\ *];- }"
 
 # XXX --not-- "^+\ *value \["
 
