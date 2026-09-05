@@ -1266,6 +1266,7 @@ xml2json_cbuf_vec(cbuf      *cb,
                 pretty?"\n":"",
                 pretty?"\n":""); /* top object */
     }
+    cprintf(cb, "\n");
     retval = 0;
  done:
     if (nsc)
