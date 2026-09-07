@@ -418,6 +418,7 @@ clixon_event_unreg_timeout(int (*fn)(int, void*),
  * @retval    >0    Nr of elements to read on fd
  * @retval     0    Nothing to read/empty fd
  * @retval    -1    Error
+ * @see clixon_event_poll_hup  For checking hangup/error conditions
  */
 int
 clixon_event_poll(int fd)
@@ -436,6 +437,41 @@ clixon_event_poll(int fd)
         goto done;
     }
     retval = ret;
+ done:
+    return retval;
+}
+
+/*! Poll a file descriptor for a hangup/error condition, without regard to readable data
+ *
+ * Check for POLLHUP/POLLERR/POLLNVAL. Those are always reported in revents by the kernel regardless of
+ * the requested events, so by requesting no events at all, a nonzero return can only mean a
+ * hangup/error/invalid-fd condition, never plain readability.
+ * Useful eg to detect an already-dead peer connection (crashed, reset, sub-process exited)
+ * before attempting to use it, without mistaking ordinary buffered data for a dead connection.
+ * @param[in]  fd   File descriptor
+ * @retval     1    Hangup/error/invalid condition detected (POLLHUP/POLLERR/POLLNVAL)
+ * @retval     0    No such condition detected (fd may or may not have data to read)
+ * @retval    -1    Error
+ * @see clixon_event_poll  For checking readability instead
+ */
+int
+clixon_event_poll_hup(int fd)
+{
+    int           retval = -1;
+    struct pollfd pfd = {0,};
+    int           ret;
+
+    if (_event_select){
+        retval = 0;
+        goto done;
+    }
+    pfd.fd = fd;
+    pfd.events = 0;
+    if ((ret = poll(&pfd, 1, 0)) < 0){
+        clixon_err(OE_EVENTS, errno, "poll");
+        goto done;
+    }
+    retval = (ret > 0 && (pfd.revents & (POLLHUP|POLLERR|POLLNVAL))) ? 1 : 0;
  done:
     return retval;
 }

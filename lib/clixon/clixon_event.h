@@ -70,6 +70,7 @@ int clixon_event_reg_timeout(struct timeval t,  int (*fn)(int, void*),
                              void *arg, const char *str);
 int clixon_event_unreg_timeout(int (*fn)(int, void*), void *arg);
 int clixon_event_poll(int fd);
+int clixon_event_poll_hup(int fd);
 int clixon_event_loop(clixon_handle h);
 int clixon_event_exit(void);
 int clixon_event_init(clixon_handle h);

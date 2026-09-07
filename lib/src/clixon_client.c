@@ -192,7 +192,6 @@ clixon_client_hello(int         sock,
         goto done;
     retval = 0;
  done:
-    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (msg)
         cbuf_free(msg);
     return retval;
