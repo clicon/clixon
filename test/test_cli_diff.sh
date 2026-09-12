@@ -54,8 +54,16 @@ module clixon-example {
                 leaf name{
                    type string;
                 }
+                leaf nonumber{
+                    type boolean;
+                    default "true";
+                }
                 leaf value{
                    type string;
+                }
+                leaf number{
+                   type int32;
+                   default 42;
                 }
              }
          }
@@ -73,6 +81,15 @@ module clixon-example {
                 }
              }
          }
+     }
+     container debug{
+        presence "debug flag";
+        container param{
+            leaf level{
+                type int32;
+                default 1;
+            }
+        }
      }
   }
 }
@@ -141,17 +158,20 @@ expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter b value 4
 new "add d"
 expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter d value 98)" 0 "^$"
 
+#expectpart "$($clixon_cli -1 -f $cfg show configuration candidate)" 0 "^$"
+
+
 new "check compare xml"
-expectpart "$($clixon_cli -1 -f $cfg  show compare xml)" 0 "^--- running" "^+++ candidate" "^/clixon-example:top" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>"
+expectpart "$($clixon_cli -1 -f $cfg  show compare xml)" 0 "^--- running" "^+++ candidate" "^/clixon-example:top" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>" --not-- "number"
 
 new "check compare xml with context"
-expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show compare xml)" 0 "^--- running" "^+++ candidate" "\+\ *<top xmlns=\"urn:example:clixon\">" "\+\ *<section>" "\+\ *<name>x</name>" "\+\ *<table>" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>"
+expectpart "$($clixon_cli -1 -f $cfg -o CLICON_CLI_DIFF_FORMAT=context show compare xml)" 0 "^--- running" "^+++ candidate" "\+\ *<top xmlns=\"urn:example:clixon\">" "\+\ *<section>" "\+\ *<name>x</name>" "\+\ *<table>" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>" --not-- "number"
 
 new "check compare text"
-expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\- "
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^+\ *clixon-example:top {" --not-- "^\- " "number"
 
 new "check compare json"
-expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top;+ {;+\ *\"clixon-example:top\": {;+\ *\"section\": \[;+\ *{;+\ *\"name\": \"x\",;+\ *\"table\": {;+\ *\"parameter\": \[;+\ *{;+\ *\"name\": \"a\",;+\ *\"value\": \"17\";+\ *},;+\ *{;+\ *\"name\": \"b\",;+\ *\"value\": \"42\";+\ *},;+\ *{;+\ *\"name\": \"d\",;+\ *\"value\": \"98\";+\ *};+\ *];+\ *};+\ *};+\ *];+\ *};+ }"
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top;+ {;+\ *\"clixon-example:top\": {;+\ *\"section\": \[;+\ *{;+\ *\"name\": \"x\",;+\ *\"table\": {;+\ *\"parameter\": \[;+\ *{;+\ *\"name\": \"a\",;+\ *\"value\": \"17\";+\ *},;+\ *{;+\ *\"name\": \"b\",;+\ *\"value\": \"42\";+\ *},;+\ *{;+\ *\"name\": \"d\",;+\ *\"value\": \"98\";+\ *};+\ *];+\ *};+\ *};+\ *];+\ *};+ }" --not-- "number"
 
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
@@ -187,7 +207,7 @@ new "check compare text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^/clixon-example:top/section=x/table/parameter=a" "^\-\ *parameter a {" "^+\ *parameter c {" "^\-\ *value 98;" "^+\ *value 99;"
 
 new "check compare json b"
-expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=a;- {;-\ *\"clixon-example:parameter\": \[;-\ *{;-\ *\"name\": \"a\",;-\ *\"value\": \"17\";-\ *};-\ *];- };/clixon-example:top/section=x/table/parameter=c;+ {;+\ *\"clixon-example:parameter\": \[;+\ *{;+\ *\"name\": \"c\",;+\ *\"value\": \"72\";+\ *};+\ *];+ };/clixon-example:top/section=x/table/parameter=d/value;- {;-\ *\"clixon-example:value\": \"98\";- };+ {;+\ *\"clixon-example:value\": \"99\";+ }"
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=a;- {;-\ *\"clixon-example:parameter\": \[;-\ *{;-\ *\"name\": \"a\",;-\ *\"value\": \"17\";-\ *};-\ *];- };;/clixon-example:top/section=x/table/parameter=c;+ {;+\ *\"clixon-example:parameter\": \[;+\ *{;+\ *\"name\": \"c\",;+\ *\"value\": \"72\";+\ *};+\ *];+ };;/clixon-example:top/section=x/table/parameter=d/value;- {;-\ *\"clixon-example:value\": \"98\";- };+ {;+\ *\"clixon-example:value\": \"99\";+ }"
 
 new "delete section x"
 expectpart "$($clixon_cli -1 -f $cfg delete top section x)" 0 "^$"
@@ -239,9 +259,61 @@ new "check compare multi text"
 expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "^\-\ *parameter a1 a2 {" "^\-\ *17" "^\-\ *18" "^+\ *parameter c1 c2 {" "^+\ *72" "^+\ *73" "^+\ *97" "^\-\ *99" "^/clixon-example:top/section=y/multi/parameter=d1,d2"  --not-- "parameter b1 b2 {"
 
 new "check compare multi json"
-expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=y/multi/parameter=a1,a2;- {;-\ *\"clixon-example:parameter\": \[;-\ *{;-\ *\"first\": \"a1\",;-\ *\"second\": \"a2\",;-\ *\"value\": \[;-\ *\"17\",;-\ *\"18\";-\ *];-\ *};-\ *];- };/clixon-example:top/section=y/multi/parameter=c1,c2;+ {;+\ *\"clixon-example:parameter\": \[;+\ *{;+\ *\"first\": \"c1\",;+\ *\"second\": \"c2\",;+\ *\"value\": \[;+\ *\"72\",;+\ *\"73\";+\ *];+\ *};+\ *];+ };/clixon-example:top/section=y/multi/parameter=d1,d2/value=97;+ {;+\ *\"clixon-example:value\": \[;+\ *\"97\";+\ *];+ };/clixon-example:top/section=y/multi/parameter=d1,d2/value=99;- {;-\ *\"clixon-example:value\": \[;-\ *\"99\";-\ *];- }"
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=y/multi/parameter=a1,a2;- {;-\ *\"clixon-example:parameter\": \[;-\ *{;-\ *\"first\": \"a1\",;-\ *\"second\": \"a2\",;-\ *\"value\": \[;-\ *\"17\",;-\ *\"18\";-\ *];-\ *};-\ *];- };;/clixon-example:top/section=y/multi/parameter=c1,c2;+ {;+\ *\"clixon-example:parameter\": \[;+\ *{;+\ *\"first\": \"c1\",;+\ *\"second\": \"c2\",;+\ *\"value\": \[;+\ *\"72\",;+\ *\"73\";+\ *];+\ *};+\ *];+ };;/clixon-example:top/section=y/multi/parameter=d1,d2/value=97;+ {;+\ *\"clixon-example:value\": \[;+\ *\"97\";+\ *];+ };;/clixon-example:top/section=y/multi/parameter=d1,d2/value=99;- {;-\ *\"clixon-example:value\": \[;-\ *\"99\";-\ *];- }"
 
-# XXX --not-- "^+\ *value \["
+new "set ad without default"
+expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter ad value 34)" 0 "^$"
+
+new "commit"
+expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "check compare xml without default value"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml )" 0 "^$"
+
+new "set default value for ad"
+expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter ad number 340)" 0 "^$"
+
+new "check compare xml with default value set"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=ad/number;+ <number xmlns=\"urn:example:clixon\">340</number>"
+
+new "check compare json with default value set"
+expectpart "$($clixon_cli -1 -f $cfg show compare json | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=ad/number;+ {;+    \"clixon-example:number\": 340;+ }"
+
+new "check compare text with default value set"
+expectpart "$($clixon_cli -1 -f $cfg show compare text | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=ad/number;+ number 340;"
+
+new "check compare cli with default value set"
+expectpart "$($clixon_cli -1 -f $cfg show compare cli | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=ad/number;+ set number 340;;"
+
+new "commit"
+expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "set presence container debug"
+expectpart "$($clixon_cli -1 -f $cfg set top debug )" 0 "^$"
+
+new "check compare xml presence container"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1"
+
+new "check compare text presence container"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1"
+
+new "commit"
+expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "set level 3"
+expectpart "$($clixon_cli -1 -f $cfg set top debug param level 3)" 0 "^$"
+
+new "check compare xml presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1" "3"
+
+new "check compare text presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1" "3"
+
+new "check compare json presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "level" "1" "3"
+
+new "check compare cli presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare cli)" 0 "level" "1" "3"
 
 # NYI: cli
 

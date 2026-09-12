@@ -1409,6 +1409,67 @@ xml_rebase(clixon_handle  h,
     return retval;
 }
 
+/*! in_presence helper function to find an ancestor presence container
+ *
+ * @param[in]  x      XML tree
+ * @retval     1      Presence container found
+ * @retval     0      Not found
+ */
+
+static int
+in_presence(cxobj *x) {
+    int        in = 0;
+    yang_stmt *y;
+
+    while (x != NULL) {
+        y = xml_spec(x);
+        if (y != NULL &&
+            yang_keyword_get(y) == Y_CONTAINER &&
+            yang_find(y, Y_PRESENCE, NULL) != NULL) {
+            in = 1;
+            break;
+        }
+        x = xml_parent(x);
+    }
+    return in;
+}
+
+/*! trim_patch helper function to remove default leaf nodes from yang patch
+ *
+ * @param[in]  x      XML tree
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+
+static int
+trim_patch(cxobj *x) {
+    int        retval = -1;
+    cxobj     *xc;
+    int        ix = 0;
+
+    if (x == NULL)
+        goto done;
+
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL){
+        trim_patch(xc); /* traverse subtree */
+        if (xml_flag(xc, XML_FLAG_DEFAULT)){
+            if (in_presence(xml_parent(xc))) {
+                if (xml_flag_reset(xc, XML_FLAG_DEFAULT) < 0)
+                    goto done;
+            }
+            else {
+                /* remove default value if not in presence container */
+                if (xml_purge(xc) < 0)
+                    goto done;;
+                ix--; /* restart iteration after removing subtree */
+            }
+        }
+     }
+     retval = 0;
+done:
+     return retval;
+  }
+
 /*! xml_diff2patch helper function to create or delete node
  *
  * @param[in]  xn      XML tree
@@ -1450,6 +1511,8 @@ xml_diff2patch_create_delete(cxobj *xn,
     if (xml_nsctx_node(xn, &nsc) < 0)
         goto done;
     if ((xcp = xml_dup(xn)) == NULL)
+        goto done;
+    if (trim_patch(xcp) < 0)
         goto done;
     if (xml_addsub(xv, xcp) < 0)
         goto done;
@@ -1528,6 +1591,8 @@ xml_diff2patch_change_leaf(cxobj *x1,
     if (xml_nsctx_node(x1, &nsc1) < 0)
         goto done;
     if ((xcp = xml_dup(x1)) == NULL)
+        goto done;
+    if (xml_flag_reset(xcp, XML_FLAG_DEFAULT) < 0)
         goto done;
     if (xml_addsub(xv, xcp) < 0)
         goto done;
@@ -1768,7 +1833,11 @@ xml_diff2patch(cxobj   *x1,
                 if (b0 == NULL && b1 == NULL)
                     ;
                 else if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
-                    if (xml_diff2patch_change_leaf(x1c, x2c, xpatch, nr) < 0)
+                    if (xml_flag(x1c, XML_FLAG_DEFAULT) && !in_presence(xml_parent(x1c))) {
+                        if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
+                            goto done;
+                    }
+                    else if (xml_diff2patch_change_leaf(x1c, x2c, xpatch, nr) < 0)
                         goto done;
                 }
             }
