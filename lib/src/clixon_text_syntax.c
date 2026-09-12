@@ -110,7 +110,11 @@ tleaf(cxobj *x)
             break;
     if (xc == NULL)
         return -1; /* n/a */
+#ifdef OPTMEM_XML_BODY
+    return (xml_child_nr_notype(xc, CX_ATTR) == 0 && !xml_flag(xc, XML_FLAG_BODY));
+#else
     return (xml_child_nr_notype(xc, CX_ATTR) == 0);
+#endif
 }
 
 /*! For text2 output: compute with-defaults: if object should be printed or not
