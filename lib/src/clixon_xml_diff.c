@@ -1421,16 +1421,27 @@ trim_patch(cxobj *x) {
     int        retval = -1;
     cxobj     *xc;
     int        ix = 0;
+    cxobj     *xy;
+    yang_stmt *y = NULL;
 
     if (x == NULL)
         goto done;
 
-     while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL){
+    while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL){
         trim_patch(xc); /* traverse subtree */
         if (xml_flag(xc, XML_FLAG_DEFAULT)) {
-           if (xml_purge(xc) < 0)
-              goto done;;
-           ix--; /* restart iteration after removing subtree */
+            /* find closest ancestor container */
+            for (xy = xc; xy != NULL; xy = xml_parent(xy)) {
+                y = xml_spec(xy);
+                if (y != NULL && yang_keyword_get(y) == Y_CONTAINER) 
+                    break;
+            }
+            if (y == NULL || yang_find(y, Y_PRESENCE, NULL) == NULL) {
+                /* remove default value if not in presence container */
+                if (xml_purge(xc) < 0)
+                    goto done;;
+                ix--; /* restart iteration after removing subtree */
+            }
         }
      }
      retval = 0;
@@ -1677,6 +1688,8 @@ xml_diff2patch(cxobj   *x1,
     cxobj     *x2c = NULL; /* x2 child */
     cxobj     *xi;
     cxobj     *xj;
+    cxobj     *xy;
+    yang_stmt *y = NULL;
     yang_stmt *y0c;
     yang_stmt *y1c;
     int        extflag;
@@ -1799,7 +1812,14 @@ xml_diff2patch(cxobj   *x1,
                 if (b0 == NULL && b1 == NULL)
                     ;
                 else if (b0 == NULL || b1 == NULL || strcmp(b0, b1) != 0){
-                    if (xml_flag(x1c, XML_FLAG_DEFAULT)) {
+                    /* find closest ancestor container */
+                    for (xy = x1c; xy != NULL; xy = xml_parent(xy)) {
+                        y = xml_spec(xy);
+                        if (y != NULL && yang_keyword_get(y) == Y_CONTAINER)
+                            break;
+                    }
+                    if (xml_flag(x1c, XML_FLAG_DEFAULT) &&
+                        (y == NULL || yang_find(y, Y_PRESENCE, NULL) == NULL)) {
                         if (xml_diff2patch_create_delete(x2c, 1, xpatch, nr) < 0)
                             goto done;
                     }

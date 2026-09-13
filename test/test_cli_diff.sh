@@ -54,6 +54,10 @@ module clixon-example {
                 leaf name{
                    type string;
                 }
+                leaf nonumber{
+                    type boolean;
+                    default "true";
+                }
                 leaf value{
                    type string;
                 }
@@ -77,7 +81,14 @@ module clixon-example {
                 }
              }
          }
-      }
+     }
+     container debug{
+        presence "debug flag";
+        leaf level{
+            type int32;
+            default 1;
+        }
+     }
   }
 }
 EOF
@@ -130,7 +141,7 @@ if [ $BE -ne 0 ]; then
         err
     fi
     new "start backend -s init -f $cfg"
-    start_backend -s init -f $cfg -D default -lf/home/debian/clixon/log
+    start_backend -s init -f $cfg
 fi
 
 new "wait backend"
@@ -271,6 +282,31 @@ expectpart "$($clixon_cli -1 -f $cfg show compare text | tr '\n' ';')" 0 "^--- r
 
 new "check compare cli with default value set"
 expectpart "$($clixon_cli -1 -f $cfg show compare cli | tr '\n' ';')" 0 "^--- running;+++ candidate;/clixon-example:top/section=x/table/parameter=ad/number;+ set number 340;;"
+
+new "commit"
+expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "set presence container debug"
+expectpart "$($clixon_cli -1 -f $cfg set top debug )" 0 "^$"
+
+new "check compare xml presence container"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1"
+
+#new "check compare text presence container"
+#expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1"
+
+new "commit"
+expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
+
+new "set level 3"
+expectpart "$($clixon_cli -1 -f $cfg set top debug level 3)" 0 "^$"
+
+new "check compare xml presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1" "3"
+
+#new "check compare text presence container"
+#expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1" "3"
+
 
 # NYI: cli
 
