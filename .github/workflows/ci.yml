@@ -5,6 +5,7 @@ on:
     branches:
        - master
        - test-actions
+       - show-compare
   pull_request:
     branches: [ master ]
 
