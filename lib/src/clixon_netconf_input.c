@@ -131,31 +131,16 @@ netconf_input_read2(int            s,
 {
     int     retval = -1;
     ssize_t len;
-    int     restarts = 0;
-    int     maxrestarts = 5;
 
     memset(buf, 0, buflen);
-    while ((len = read(s, buf, buflen)) < 0) {
-        switch (errno){
-        case EINTR:
-        case EAGAIN:
-            if (restarts++ >= maxrestarts){
-                clixon_log(NULL, LOG_ERR, "%s: read: %s", __func__, strerror(errno));
-                goto done;
-            }
-            break;       /* Try again */
-        case ECONNRESET: /* Connection reset by peer */
-        case EPIPE:      /* Client shutdown */
-        case EBADF:      /* Client shutdown - freebsd */
-            len = 0;     /* Emulate EOF */
-            break;
-        default:
+    if ((len = clixon_rw_retry(read, s, buf, buflen, 5)) < 0){
+        if (clixon_sig_atomic_get() != 0)
+            /* User-initiated interrupt (eg ^C): abort now instead of retrying */
+            clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: read: interrupted", __func__);
+        else
             clixon_log(NULL, LOG_ERR, "%s: read: %s", __func__, strerror(errno));
-            goto done;
-        }
-        if (len == 0)
-            break;
-    } /* read */
+        goto done;
+    }
     clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "len:%ld", len);
     if (len == 0){  /* EOF */
         clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "len==0, closing");

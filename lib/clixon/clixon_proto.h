@@ -47,6 +47,12 @@
 int clixon_inet2sin(const char *addrtype, const char *addrstr, uint16_t port,
                     struct sockaddr *sa, size_t *sa_len);
 
+/* User-interrupt (^C) sentinel shared with atomicio() and netconf_input_read2() */
+void clixon_sig_atomic_reset(void);
+int  clixon_sig_atomic_get(void);
+ssize_t clixon_rw_retry(ssize_t (*fn)(int, void *, size_t), int fd, void *buf,
+                        size_t n, int maxrestarts);
+
 /* Connect */
 int clixon_rpc_connect_unix(clixon_handle h, const char *sockpath, int *sock0);
 int clixon_rpc_connect_inet(clixon_handle h, const char *dst, uint16_t port,

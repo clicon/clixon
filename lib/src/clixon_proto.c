@@ -85,6 +85,38 @@
 
 static int _atomicio_sig = 0;
 
+/*! Reset the atomicio/msg_rcv user-interrupt (^C) sentinel
+ *
+ * Call before a blocking read one wants to be interruptible by SIGINT when
+ * the "intr" signal handling has been installed (see clixon_msg_rcv11()).
+ * @see clixon_sig_atomic_get
+ */
+void
+clixon_sig_atomic_reset(void)
+{
+    _atomicio_sig = 0;
+}
+
+/*! Get the atomicio/msg_rcv user-interrupt (^C) sentinel
+ *
+ * @retval  0  No user-initiated interrupt (eg SIGINT) seen since last reset
+ * @retval !=0 A user-initiated interrupt was received: a blocking read
+ *             should abort instead of retrying on EINTR
+ * @see clixon_sig_atomic_reset
+ * @see atomicio_sig_handler
+ */
+int
+clixon_sig_atomic_get(void)
+{
+    return _atomicio_sig;
+}
+
+static void
+atomicio_sig_handler(int arg)
+{
+    _atomicio_sig++;
+}
+
 /*! Given family, addr str, port, return sockaddr and length
  *
  * @param[in]  addrtype  Address family: inet:ipv4-address or inet:ipv6-address
@@ -308,6 +340,65 @@ clixon_rpc_connect(clixon_handle h,
     return retval;
 }
 
+/*! Retry a read(2)/write(2)-like syscall on transient errors
+ *
+ * Common retry/interrupt/EOF-emulation logic shared by atomicio() (loops this
+ * until n bytes are transferred) and netconf_input_read2() (calls this once,
+ * partial transfer is fine for a stream read).
+ * Retries on EINTR (unless caused by a user-initiated interrupt, see
+ * clixon_sig_atomic_get()) and EAGAIN, up to maxrestarts times. Translates
+ * ECONNRESET/EPIPE/EBADF (peer closed) into a clean EOF (return 0) rather
+ * than an error.
+ * @param[in]  fn          I/O function, eg read/write
+ * @param[in]  fd          File descriptor, eg socket
+ * @param[in]  buf         Buffer to read to or write from
+ * @param[in]  n           Number of bytes to attempt
+ * @param[in]  maxrestarts Give up after this many transient EINTR/EAGAIN
+ *                         retries; 0 means retry indefinitely
+ * @retval     m           Bytes transferred, 0 < m <= n
+ * @retval     0           EOF (real or emulated, eg peer closed)
+ * @retval    -1           Fatal error (see errno), or user-initiated interrupt:
+ *                         call clixon_sig_atomic_get() immediately after to
+ *                         distinguish the two (non-zero: interrupted)
+ * @note To disable the retry logic, install a signal handler for SIGINT with SIG_IGN. Then EINTR will be
+ *       returned to the caller
+ * @see atomicio
+ * @see netconf_input_read2
+ */
+ssize_t
+clixon_rw_retry(ssize_t (*fn)(int, void *, size_t),
+                int       fd,
+                void     *buf,
+                size_t    n,
+                int       maxrestarts)
+{
+    ssize_t res;
+    int     restarts = 0;
+
+    for (;;){
+        clixon_sig_atomic_reset();
+        res = fn(fd, buf, n);
+        if (res >= 0)
+            return res;
+        switch (errno){
+        case EINTR:
+            if (clixon_sig_atomic_get() != 0)
+                return -1; /* User-initiated interrupt (eg ^C): abort now */
+            /* Fallthrough: some other, transient interrupt: retry */
+        case EAGAIN:
+            if (maxrestarts > 0 && restarts++ >= maxrestarts)
+                return -1;
+            continue;
+        case ECONNRESET: /* Connection reset by peer */
+        case EPIPE:      /* Client shutdown */
+        case EBADF:      /* Client shutdown - freebsd */
+            return 0;    /* Emulate EOF */
+        default:
+            return -1;
+        }
+    }
+}
+
 /*! Ensure all of data on socket comes through. fn is either read or write
  *
  * Just called for read(2)
@@ -317,6 +408,8 @@ clixon_rpc_connect(clixon_handle h,
  * @retval     n   Bytes written (see man 2 read)
  * @retval     0   EOF
  * @retval    -1   Error
+ * @note To disable the retry logic, install a signal handler for SIGINT with SIG_IGN. Then EINTR will be
+ *       returned to the caller
  */
 static ssize_t
 atomicio(ssize_t (*fn) (int, void *, size_t),
@@ -329,29 +422,11 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
     ssize_t pos = 0;
 
     while (n > pos) {
-        _atomicio_sig = 0;
-        res = (fn)(fd, s + pos, n - pos);
-        switch (res) {
-        case -1:
-            if (errno == EINTR){
-                if (_atomicio_sig == 0)
-                    continue;
-            }
-            else if (errno == EAGAIN)
-                continue;
-            else if (errno == ECONNRESET)/* Connection reset by peer */
-                res = 0;
-            else if (errno == EPIPE)     /* Client shutdown */
-                res = 0;
-            else if (errno == EBADF)     /* client shutdown - freebsd */
-                res = 0;
-        case 0: /* fall thru */
-            return (res);
-        default:
-            pos += res;
-        }
+        if ((res = clixon_rw_retry(fn, fd, s + pos, n - pos, 0)) <= 0)
+            return res;
+        pos += res;
     }
-    return (pos);
+    return pos;
 }
 
 /*! Send a message using NETCONF without encapsulation
@@ -568,17 +643,11 @@ clixon_msg_send11(int         s,
     return retval;
 }
 
-static void
-atomicio_sig_handler(int arg)
-{
-    _atomicio_sig++;
-}
-
 /*! Receive a message using unified NETCONF w chunked framing
  *
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[in]   descr  Description of peer for logging
- * @param[in]   intr   If set, make a ^C cause an error
+ * @param[in]   intr   If set, make a ^C cause an error by ignoring SIGINT
  * @param[out]  cb     Incoming message, created
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK (check eof)
