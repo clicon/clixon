@@ -84,9 +84,11 @@ module clixon-example {
      }
      container debug{
         presence "debug flag";
-        leaf level{
-            type int32;
-            default 1;
+        container param{
+            leaf level{
+                type int32;
+                default 1;
+            }
         }
      }
   }
@@ -299,7 +301,7 @@ new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
 
 new "set level 3"
-expectpart "$($clixon_cli -1 -f $cfg set top debug level 3)" 0 "^$"
+expectpart "$($clixon_cli -1 -f $cfg set top debug param level 3)" 0 "^$"
 
 new "check compare xml presence container new level"
 expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1" "3"
