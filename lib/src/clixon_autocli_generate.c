@@ -236,6 +236,7 @@ gen_mtpoint_add(cbuf      *cb,
  *                            alternative in the enclosing choice)
  * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to the expand
  *                            callback to signal that leafrefs should be followed.
+ * @param[in]  preference     Optional CLIgen preference override (zero uses the default)
  * @param[in]  expandfn       Expand callback name to use, or NULL for GENERATE_EXPAND_XMLDB
  * @param[out] cb             The string where the result format string is inserted.
  * @retval     0              OK
@@ -248,6 +249,7 @@ cli_expand_var_generate1(yang_stmt  *ys,
                          uint8_t     fraction_digits,
                          int         pre,
                          int         leafref_refer,
+                         uint32_t    preference,
                          const char *expandfn,
                          cbuf       *cb)
 {
@@ -259,6 +261,8 @@ cli_expand_var_generate1(yang_stmt  *ys,
     if (pre)
         cprintf(cb, "|");
     cprintf(cb, "<%s:%s",  yang_argument_get(ys), cvtypestr);
+    if (preference)
+        cprintf(cb, " preference:%u", preference);
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
         cprintf(cb, " fraction-digits:%u", fraction_digits);
     cprintf(cb, " %s(\"candidate\",\"%s\"",
@@ -294,6 +298,7 @@ cli_expand_var_generate1(yang_stmt  *ys,
  * @retval    -1      Error
  * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to
  *                             expand_dbvar() to signal that leafrefs should be followed.
+ * @param[in]  preference  Optional CLIgen preference override (zero uses the default)
  * @see expand_dbvar  This is where the expand string is used
  * @see CLIXON_AUTOCLI_NS "expand" extension  Overrides expand_dbvar() with custom callback(s)
  * @note XXX only fraction_digits handled, should also have mincv, maxcv, pattern
@@ -306,6 +311,7 @@ cli_expand_var_generate(clixon_handle h,
                         uint8_t       fraction_digits,
                         int           pre,
                         int           leafref_refer,
+                        uint32_t      preference,
                         cbuf         *cb)
 {
     int     retval = -1;
@@ -324,14 +330,14 @@ cli_expand_var_generate(clixon_handle h,
         goto done;
     if (cvec_len(expandfns) == 0){
         if (cli_expand_var_generate1(ys, cvtypestr, options, fraction_digits, pre,
-                                     leafref_refer, NULL, cb) < 0)
+                                     leafref_refer, preference, NULL, cb) < 0)
             goto done;
     }
     else {
         for (i = 0; i < cvec_len(expandfns); i++){
             cv = cvec_i(expandfns, i);
             if (cli_expand_var_generate1(ys, cvtypestr, options, fraction_digits,
-                                         pre || i > 0, leafref_refer,
+                                         pre || i > 0, leafref_refer, preference,
                                          cv_string_get(cv), cb) < 0)
                 goto done;
         }
@@ -964,6 +970,10 @@ yang2cli_var_union_one(clixon_handle h,
     else {
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;
+        /* Leafrefs in unions are single values, not the rest of the command.
+         * The backend validates the value against the referenced type. */
+        if (restype && strcmp(restype, "leafref") == 0)
+            cvtype = CGV_STRING;
         if ((retval = yang2cli_leaf_var_sub(h, ys, ytype, helptext, cvtype,
                                             options, cvv, patterns, fraction_digits, patpref, cb)) < 0)
             goto done;
@@ -1242,11 +1252,17 @@ yang2cli_leaf_var(clixon_handle h,
          * Note: also set when restype=="leafref" because yang_path_arg may fail to resolve the
          * referred node client-side (e.g. grouping with submodule prefix scope); the backend
          * handles leafref resolution independently. */
+        /* Use a single token while retaining the old rest variable's preference.
+         * An enum and a leafref completion may offer the same value; the enum
+         * must win to avoid an ambiguous command. See test_cli_union_leafref.sh. */
+        if (strcmp(restype, "union") == 0)
+            cvtypestr = "string";
         if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
                                            options, fraction_digits, regular_value,
                                            leafref_refer ||
                                            strcmp(restype, "union") == 0 ||
                                            strcmp(restype, "leafref") == 0,
+                                           strcmp(restype, "union") == 0 ? COV_PREF_REST : 0,
                                            cb)) < 0)
             goto done;
         if (ret == 1)
