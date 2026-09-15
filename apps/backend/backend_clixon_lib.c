@@ -389,7 +389,8 @@ from_client_restart_plugin(clixon_handle h,
  * from y is used. Unless the element is .., .
  * @param[in,out] cb0     Result XPath as cbuf
  * @param[in]     xpath1  Input XPath
- * @param[in]     y       Yang of xpath1
+ * @param[in]     y       Context node for unprefixed identifiers
+ * @param[in]     ypath   Path statement defining explicit prefixes
  * @param[in,out] nsc     Namespace
  * @retval        0       OK
  * @retval       -1       Error
@@ -407,6 +408,7 @@ static int
 xpath_append(cbuf      *cb0,
              char      *xpath1,
              yang_stmt *y,
+             yang_stmt *ypath,
              cvec      *nsc)
 {
     int    retval = -1;
@@ -464,7 +466,7 @@ xpath_append(cbuf      *cb0,
             /* If prefix is not in nsc, it needs to be added */
             if (prefix && cvec_find(nsc, prefix) == NULL){
                 ns = NULL;
-                if ((ret = yang_find_namespace_by_prefix(y, prefix, &ns)) < 0)
+                if ((ret = yang_find_namespace_by_prefix(ypath, prefix, &ns)) < 0)
                     goto done;
                 if (ret == 0){
                     clixon_err(OE_DB, 0, "Prefix %s does not have an associated namespace", prefix);
@@ -538,7 +540,7 @@ leafref_append_path(yang_stmt *yn,
             clixon_err(OE_DB, 0, "Leafref %s requires path statement", resolved_name);
             goto done;
         }
-        if (xpath_append(cbxpath, yang_argument_get(ypath), yn, nsc) < 0)
+        if (xpath_append(cbxpath, yang_argument_get(ypath), yn, ypath, nsc) < 0)
             goto done;
     }
     else if (strcmp(resolved_name, "union") == 0){
@@ -570,7 +572,7 @@ leafref_append_path(yang_stmt *yn,
                 goto done;
             }
             cbuf_append_str(cb_one, cbuf_get(cb_orig));
-            if (xpath_append(cb_one, yang_argument_get(ypath), yn, nsc) < 0)
+            if (xpath_append(cb_one, yang_argument_get(ypath), yn, ypath, nsc) < 0)
                 goto done;
             if (!first)
                 cprintf(cbxpath, " | ");
