@@ -476,6 +476,51 @@ clixon_event_poll_hup(int fd)
     return retval;
 }
 
+/*! Block waiting for a file descriptor to become readable, with a timeout
+ *
+ * Block for up to `timeout` waiting for data, instead of just an instantaneous check.
+ * Intended for one-shot, outside-the-main-loop waits, not as a replacement for the
+ * fd/timer registration model of clixon_event_reg_fd()/clixon_event_reg_timeout()/clixon_event_loop().
+ * Since this function does not handle systen timers and event handling present in the main loop, it should
+ * be used sparsely, in contrast with other non-blocking poll functions, and never used in the backend,
+ * unless used with threads/forks.
+ * On EINTR, returns -1 with errno set to EINTR without logging an error,
+ * since an interrupting signal (eg user ^C, or SIGCHLD) is often expected and
+ * benign; the caller is responsible for inspecting errno and deciding whether
+ * to retry or abort.
+ * @param[in]  fd       File descriptor
+ * @param[in]  timeout  Max time to wait, or NULL to wait indefinitely
+ * @retval     1        Readable
+ * @retval     0        Timeout expired, fd not readable
+ * @retval    -1        Error, see errno (EINTR: interrupted by a signal)
+ * @see clixon_event_poll  For non-blocking) check
+ * @note  Does not handle system timers and event handling present in the regular event loop
+ */
+int
+clixon_event_poll_timeout(int              fd,
+                          struct timeval   *timeout)
+{
+    int           retval = -1;
+    struct pollfd pfd = {0,};
+    int           ms;
+    int           ret;
+
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    if (timeout == NULL)
+        ms = -1; /* poll(2): infinite wait */
+    else
+        ms = timeout->tv_sec * 1000 + timeout->tv_usec / 1000;
+    if ((ret = poll(&pfd, 1, ms)) < 0){
+        if (errno != EINTR)
+            clixon_err(OE_EVENTS, errno, "poll");
+        goto done;
+    }
+    retval = ret; /* 0: timeout, 1: readable */
+ done:
+    return retval;
+}
+
 /*! Handle signal interrupt
  *
  * Signals are in three classes:
