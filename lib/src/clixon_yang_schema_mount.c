@@ -347,6 +347,98 @@ yang_mount_set(yang_stmt *y)
     return 0;
 }
 
+/*! Remove a mount-point xpath binding from all yspecs except one, across all domains
+ *
+ * yang_mount_get() (the low-level lookup used at parse/bind time) resolves a
+ * mount-point purely by scanning ALL yspecs in ALL domains for one whose cvec
+ * contains the given xpath string; the domain of the requesting caller is not
+ * used as a filter at lookup time. This means an xpath must be bound to at
+ * most one yspec at any given time, or the wrong (eg stale, from an earlier
+ * connect/parse cycle) yspec may be matched first, depending on tree
+ * iteration order.
+ * Call this before (re-)adding an xpath binding to a yspec (see
+ * yang_mount_xpath_bind()), so that any stale binding left over from an
+ * earlier cycle (eg where the domain changed, or the xpath was bound to a
+ * shared yspec that has since diverged) is removed first.
+ * @param[in]  h        Clixon handle
+ * @param[in]  xpath    Mount-point xpath to remove any stale binding of
+ * @param[in]  keep     Yspec to keep as-is (may be NULL to remove from all yspecs)
+ * @retval     0        OK
+ * @retval    -1        Error
+ * @see yang_mount_xpath_bind
+ */
+static int
+yang_mount_xpath_unbind(clixon_handle h,
+                       const char   *xpath,
+                       yang_stmt    *keep)
+{
+    int        retval = -1;
+    yang_stmt *ymounts;
+    yang_stmt *ydomain;
+    yang_stmt *yspec;
+    cg_var    *cv;
+    int        inext;
+    int        inext2;
+
+    if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, ENOENT, "Top-level yang mounts not found");
+        goto done;
+    }
+    inext = 0;
+    ydomain = NULL;
+    while ((ydomain = yn_iter(ymounts, &inext)) != NULL) {
+        inext2 = 0;
+        yspec = NULL;
+        while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
+            if (yspec == keep)
+                continue;
+            if (yang_keyword_get(yspec) != Y_SPEC)
+                continue;
+            if ((cv = cvec_find(yang_cvec_get(yspec), xpath)) == NULL)
+                continue;
+            /* cvec_del() resets/frees cv internally */
+            cvec_del(yang_cvec_get(yspec), cv);
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! (Re-)bind a mount-point xpath to a yspec, ensuring a unique binding
+ *
+ * First removes any stale binding of this xpath from other yspecs (see
+ * yang_mount_xpath_unbind()), then adds it to the given yspec unless already
+ * present. This must be called every time a device/mount-point is (re-)
+ * connected, even if the yspec already existed (eg reconnect with a cached
+ * yspec), since yang_mount_get() requires the xpath to be bound whenever the
+ * mount is used, and a stale binding elsewhere would otherwise take priority
+ * depending on iteration order.
+ * @param[in]  h        Clixon handle
+ * @param[in]  yspec    Yspec to bind xpath to
+ * @param[in]  xpath    Mount-point xpath to bind
+ * @retval     0        OK
+ * @retval    -1        Error
+ * @see yang_mount_xpath_unbind
+ */
+int
+yang_mount_xpath_bind(clixon_handle h,
+                      yang_stmt    *yspec,
+                      const char   *xpath)
+{
+    int retval = -1;
+
+    if (yang_mount_xpath_unbind(h, xpath, yspec) < 0)
+        goto done;
+    if (cvec_find(yang_cvec_get(yspec), xpath) == NULL){
+        if (yang_cvec_add(yspec, CGV_STRING, xpath) == NULL)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Given an XML mount-point return YANG mount and XPath
  *
  * @param[in]  h     Clixon handle

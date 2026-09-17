@@ -61,6 +61,7 @@ int yang_mount_get_xpath(clixon_handle h, const char *domain, const char *spec, 
 int yang_mount_get(yang_stmt *yu, const char *xpath, yang_stmt **yspec);
 int yang_mount_get_yspec_any(yang_stmt *y, yang_stmt **yspec);
 int yang_mount_set(yang_stmt *yu);
+int yang_mount_xpath_bind(clixon_handle h, yang_stmt *yspec, const char *xpath);
 int xml_yang_mount_get(clixon_handle h, cxobj *x, validate_level *vl, char **xpathp, yang_stmt **yspec);
 int yang_mount_xtop2xmnt(cxobj *xtop, cvec **cvvp);
 int yang_schema_mount_statedata(clixon_handle h, yang_stmt *yspec, const char *xpath, cvec *nsc, cxobj **xret, cxobj **xerr);

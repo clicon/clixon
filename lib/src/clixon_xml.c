@@ -3353,7 +3353,7 @@ xml_search_index_get(cxobj *x,
 int
 xml_init(clixon_handle h)
 {
-    clixon_debug(OE_XML, "sizeof xml:%lu", sizeof(struct xml));
+    clixon_debug(CLIXON_DBG_XML, "sizeof xml:%lu", sizeof(struct xml));
     return 0;
 }
 
