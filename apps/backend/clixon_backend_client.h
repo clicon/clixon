@@ -68,6 +68,9 @@ struct client_entry{
                                            "cl:", where cl is ensured to be declared ie by
                                            netconf-monitoring state */
     char                 *ce_source_host; /* Host identifier of the NETCONF client */
+    int                   ce_prio;    /* 1 if this client's socket has been promoted to
+                                          CLIXON_EVENT_PRIO_HIGH (see CLICON_SOCK_PRIO and
+                                          from_client_hello()), 0 otherwise (default prio) */
     struct timeval        ce_time;    /* Time at the server at which the session was established. */
     uint32_t              ce_in_rpcs ;       /* Number of correct <rpc> messages received. */
     uint32_t              ce_in_bad_rpcs;    /* Not correct <rpc> messages */

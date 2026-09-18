@@ -77,6 +77,7 @@ module clixon-lib {
         description
             "Extended config-path-info rpc with mark-keys paramater
              Augmented ietf-nmda-compare compare rpc with order-ignore and format parameters
+             Augmented ietf-netconf-monitoring session list with priority leaf
              Released in Clixon 7.9";
     }
     revision 2026-03-01 {
@@ -434,6 +435,23 @@ module clixon-lib {
         description
             "A gRPC/gNMI session";
         base ncm:transport;
+    }
+    augment "/ncm:netconf-state/ncm:sessions/ncm:session" {
+        description
+            "Clixon extension: expose the event-loop priority of a session's
+             backend socket, for operational visibility into CLICON_SOCK_PRIO";
+        leaf priority {
+            description
+                "Event-loop priority of this session's backend socket.
+                 'high' if the socket has been promoted (see CLICON_SOCK_PRIO),
+                 'low' otherwise, which is also the default for all sessions
+                 while CLICON_SOCK_PRIO is disabled.";
+            type enumeration {
+                enum low;
+                enum high;
+            }
+            default low;
+        }
     }
     extension ignore-compare {
         description

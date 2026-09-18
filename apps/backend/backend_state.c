@@ -240,6 +240,8 @@ backend_monitoring_state_get(clixon_handle h,
         cprintf(cb, "<in-bad-rpcs>%u</in-bad-rpcs>", ce->ce_in_bad_rpcs);
         cprintf(cb, "<out-rpc-errors>%u</out-rpc-errors>", ce->ce_out_rpc_errors);
         cprintf(cb, "<out-notifications>%u</out-notifications>", ce->ce_out_notifications);
+        cprintf(cb, "<priority xmlns=\"%s\">%s</priority>",
+                CLIXON_LIB_NS, ce->ce_prio ? "high" : "low");
         cprintf(cb, "</session>");
     }
     cprintf(cb, "</sessions>");

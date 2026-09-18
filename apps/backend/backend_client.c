@@ -1672,6 +1672,44 @@ from_client_compare(clixon_handle h,
     return retval;
 }
 
+/*! Promote a client's socket to high event priority, if its transport matches
+ *
+ * Called once the client's transport is known (from the internal hello).
+ * Only clients whose transport equals transport are promoted; eg an
+ * interactive human CLI session benefits from being serviced ahead of
+ * bulk/background traffic (NETCONF, RESTCONF, gRPC, SNMP) or downstream sockets.
+ * @param[in]  ce         Client entry, ce_transport must already be set
+ * @param[in]  transport  Transport identity to promote, eg "cl:cli". Clients
+ *                        with any other (or no) ce_transport are left alone.
+ * @retval     0   OK
+ * @retval    -1   Error
+ * @see CLICON_SOCK_PRIO
+ * @see clixon_event_reg_fd_prio
+ */
+static int
+from_client_prio_promote(client_entry *ce,
+                         const char   *transport)
+{
+    int retval = -1;
+
+    if (ce->ce_prio)
+        goto ok; /* already promoted, eg duplicate hello */
+    if (ce->ce_transport == NULL || strcmp(ce->ce_transport, transport) != 0)
+        goto ok; /* not the transport we promote */
+    if (clixon_event_unreg_fd(ce->ce_s, from_client) < 0)
+        goto done;
+    if (clixon_event_reg_fd_prio(ce->ce_s, from_client, (void*)ce,
+                                 "local netconf client socket", CLIXON_EVENT_PRIO_HIGH) < 0)
+        goto done;
+    ce->ce_prio = 1;
+    clixon_debug(CLIXON_DBG_BACKEND, "socket %d (%s) promoted to high event priority",
+                ce->ce_s, ce->ce_transport);
+ ok:
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Clixon hello to check liveness
  *
  * @param[in]  h       Clixon handle
@@ -1701,6 +1739,9 @@ from_client_hello(clixon_handle  h,
             clixon_err(OE_UNIX, errno, "strdup");
             goto done;
         }
+        if (clicon_option_bool(h, "CLICON_SOCK_PRIO") &&
+            from_client_prio_promote(ce, "cl:cli") < 0)
+            goto done;
     }
     if ((val = xml_find_type_value(xe, "cl", "source-host", CX_ATTR)) != NULL){
         if (ce->ce_source_host)

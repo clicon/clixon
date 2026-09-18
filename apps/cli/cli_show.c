@@ -2194,8 +2194,8 @@ cli_show_sessions(clixon_handle h,
         locked_by = xml_body(x);
     }
     if (!detail && veclen){
-        cligen_output(stdout, "%-8s %-10s %-15s %-10s %-15s\n", "Id", "User", "Type", "Locks", "Time");
-        cligen_output(stdout, "===============================================================\n");
+        cligen_output(stdout, "%-8s %-10s %-15s %-6s %-10s %-15s\n", "Id", "User", "Type", "Prio", "Locks", "Time");
+        cligen_output(stdout, "===========================================================================\n");
     }
     clicon_session_id_get(h, &session_id);
     for (i=0; i<veclen; i++){
@@ -2217,6 +2217,8 @@ cli_show_sessions(clixon_handle h,
             cligen_output(stdout, "%-11s",  b?b:"");
             b = xml_find_body(xsess, "transport");
             cligen_output(stdout, "%-16s",  b?b:"");
+            b = xml_find_body(xsess, "priority");
+            cligen_output(stdout, "%-7s",  b?b:"");
             if (locked_by && strcmp(sid, locked_by) == 0)
                 cligen_output(stdout, "%-11s", "candidate");
             else

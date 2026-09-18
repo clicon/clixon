@@ -25,6 +25,7 @@ cat <<EOF > $cfg
   <CLICON_CLI_DIR>/usr/local/lib/$APPNAME/cli</CLICON_CLI_DIR>
   <CLICON_CLI_MODE>$APPNAME</CLICON_CLI_MODE>
   <CLICON_SOCK>/usr/local/var/run/$APPNAME.sock</CLICON_SOCK>
+  <CLICON_SOCK_PRIO>true</CLICON_SOCK_PRIO>
   <CLICON_BACKEND_DIR>/usr/local/lib/$APPNAME/backend</CLICON_BACKEND_DIR>
   <CLICON_BACKEND_PIDFILE>/usr/local/var/run/$APPNAME.pidfile</CLICON_BACKEND_PIDFILE>
   <CLICON_XMLDB_DIR>$dir</CLICON_XMLDB_DIR>
@@ -101,7 +102,13 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS>
 
 # Session 2.1.4
 new "Retrieve Session"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions><session><session-id>[1-9][0-9]*</session-id><transport ${LIBNS1}>cl:netconf</transport><username>.*</username><login-time>.*</login-time><in-rpcs>[0-9][0-9]*</in-rpcs><in-bad-rpcs>[0-9][0-9]*</in-bad-rpcs><out-rpc-errors>[0-9][0-9]*</out-rpc-errors><out-notifications>[0-9][0-9]*</out-notifications></session>.*</sessions></netconf-state></data></rpc-reply>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"subtree\"><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions/></netconf-state></filter></get></rpc>" "<rpc-reply $DEFAULTNS><data><netconf-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\"><sessions><session><session-id>[1-9][0-9]*</session-id><transport ${LIBNS1}>cl:netconf</transport><username>.*</username><login-time>.*</login-time><in-rpcs>[0-9][0-9]*</in-rpcs><in-bad-rpcs>[0-9][0-9]*</in-bad-rpcs><out-rpc-errors>[0-9][0-9]*</out-rpc-errors><out-notifications>[0-9][0-9]*</out-notifications><priority ${LIBNS}>low</priority></session>.*</sessions></netconf-state></data></rpc-reply>"
+
+# CLICON_SOCK_PRIO promotes an interactive CLI session (only) to high event
+# priority; a session calling "show sessions" sees its own entry (marked "*"),
+# so no separate held-open session is needed to observe this.
+new "check cli session is prioritized via show sessions"
+expectpart "$($clixon_cli -1 -f $cfg show sessions)" 0 "cl:cli" "high"
 
 # Statistics 2.1.5
 new "Retrieve Statistics"

@@ -49,6 +49,10 @@ Users may have to change how they access the system
 * New `clixon-lib@2026-06-01.yang` revision
    * Extended `config-path-info` rpc with `mark-keys` paramater
    * Augmented ietf-nmda-compare compare rpc with order-ignore and format parameter
+* Changed meaning of `CLICON_SOCK_PRIO`: now promotes only CLI client sockets to high priority, not every client socket
+   * Previously enabling it gave every backend client (CLI, NETCONF, RESTCONF, gRPC, SNMP) high priority
+   * If you relied on the old blanket behavior, there is no config equivalent for it currently
+   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
 
 ### C/CLI-API changes on existing features
 

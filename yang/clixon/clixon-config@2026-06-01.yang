@@ -59,6 +59,8 @@ module clixon-config {
                 CLICON_CLI_DIFF_FORMAT
              Changed default values:
                 CLICON_EVENT_SELECT: false
+             Changed semantics:
+                CLICON_SOCK_PRIO: now promotes only interactive CLI client to high prio
              Released in Clixon 7.9";
     }
     revision 2026-03-01 {
@@ -1248,21 +1250,16 @@ module clixon-config {
             type boolean;
             default false;
             description
-                "Register the backend's local client (NETCONF) data sockets as
-                 high-priority events.
-                 If enabled, established client request sockets are serviced
-                 before lower-priority events (such as the server/accept socket
-                 and any other non-prio sockets) in each event-loop cycle, thus
-                 prioritizing in-progress client requests over accepting new
-                 connections. Round-robin fairness among non-prio events is
-                 preserved.
-                 This is useful if the backend opens other sockets, such as the
-                 controller (device connections), which should not delay client
-                 request processing.
-                 This option only selects the priority the backend assigns to its
-                 own client sockets; the underlying per-fd priority API
-                 (clixon_event_reg_fd_prio / CLIXON_EVENT_PRIO_HIGH) is always
-                 available to plugins independent of this option.";
+                "Promote interactive CLI client sockets to high-priority events.
+                 A client's transport is not known until it sends its internal
+                 hello (see the RFC 6022 transport extension), so every client
+                 starts at low priority when it connects; if this option is
+                 enabled, a client whose hello identifies it as 'cli' is then
+                 promoted to high priority. High-priority sockets are serviced
+                 before lower-priority events (such as the server/accept socket,
+                 other client sockets, and any other non-prio sockets) in each
+                 event-loop cycle. Round-robin fairness among non-prio events is
+                 preserved.";
         }
         leaf CLICON_AUTOCOMMIT {
             type int32;
