@@ -294,8 +294,8 @@ expectpart "$($clixon_cli -1 -f $cfg set top debug )" 0 "^$"
 new "check compare xml presence container"
 expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1"
 
-#new "check compare text presence container"
-#expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1"
+new "check compare text presence container"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1"
 
 new "commit"
 expectpart "$($clixon_cli -1 -f $cfg commit)" 0 "^$"
@@ -306,9 +306,14 @@ expectpart "$($clixon_cli -1 -f $cfg set top debug param level 3)" 0 "^$"
 new "check compare xml presence container new level"
 expectpart "$($clixon_cli -1 -f $cfg show compare xml)" 0 "level" "1" "3"
 
-#new "check compare text presence container"
-#expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1" "3"
+new "check compare text presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare text)" 0 "level" "1" "3"
 
+new "check compare json presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare json)" 0 "level" "1" "3"
+
+new "check compare cli presence container new level"
+expectpart "$($clixon_cli -1 -f $cfg show compare cli)" 0 "level" "1" "3"
 
 # NYI: cli
 

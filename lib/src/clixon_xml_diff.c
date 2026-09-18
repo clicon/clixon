@@ -1452,11 +1452,17 @@ trim_patch(cxobj *x) {
 
     while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL){
         trim_patch(xc); /* traverse subtree */
-        if (xml_flag(xc, XML_FLAG_DEFAULT) && !in_presence(xml_parent(xc))) {
-            /* remove default value if not in presence container */
-            if (xml_purge(xc) < 0)
-                goto done;;
-            ix--; /* restart iteration after removing subtree */
+        if (xml_flag(xc, XML_FLAG_DEFAULT)){
+            if (in_presence(xml_parent(xc))) {
+                if (xml_flag_reset(xc, XML_FLAG_DEFAULT) < 0)
+                    goto done;
+            }
+            else {
+                /* remove default value if not in presence container */
+                if (xml_purge(xc) < 0)
+                    goto done;;
+                ix--; /* restart iteration after removing subtree */
+            }
         }
      }
      retval = 0;
@@ -1585,6 +1591,8 @@ xml_diff2patch_change_leaf(cxobj *x1,
     if (xml_nsctx_node(x1, &nsc1) < 0)
         goto done;
     if ((xcp = xml_dup(x1)) == NULL)
+        goto done;
+    if (xml_flag_reset(xcp, XML_FLAG_DEFAULT) < 0)
         goto done;
     if (xml_addsub(xv, xcp) < 0)
         goto done;
