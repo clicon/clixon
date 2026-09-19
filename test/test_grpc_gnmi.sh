@@ -612,6 +612,18 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
     localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
     0 "subscribe-test" "syncResponse"
 
+new "gNMI Subscribe ONCE with JSON_IETF encoding (expect jsonIetfVal key)"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"subscribe":{"mode":"ONCE","encoding":"JSON_IETF","subscription":[{"path":{"elem":[{"name":"val"}]}}]}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
+    0 "jsonIetfVal"
+
+new "gNMI Subscribe ONCE with JSON encoding (expect jsonVal key)"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"subscribe":{"mode":"ONCE","encoding":"JSON","subscription":[{"path":{"elem":[{"name":"val"}]}}]}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
+    0 "jsonVal"
+
 new "gNMI Subscribe ONCE — root path: expect multiple fields"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"subscribe":{"mode":"ONCE","encoding":"ASCII","subscription":[{"path":{"elem":[]}}]}}' \

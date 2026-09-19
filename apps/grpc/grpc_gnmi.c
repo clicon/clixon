@@ -1304,11 +1304,13 @@ struct gnmi_sub {
 /*! Append one LPM-framed SubscribeResponse(update) for a path to a cbuf
  *
  * Queries the datastore for the path, JSON-encodes the result into a
- * TypedValue(ASCII) update wrapped in a Notification/SubscribeResponse,
- * and appends the packed message as a gRPC LPM frame to framecb.
+ * TypedValue update (encoded per @p encoding, matching how Get() encodes its
+ * response, see gnmi_get()) wrapped in a Notification/SubscribeResponse, and
+ * appends the packed message as a gRPC LPM frame to framecb.
  *
  * @param[in]  h           Clixon handle
  * @param[in]  gpath       gNMI path to query
+ * @param[in]  encoding    Requested encoding (SubscriptionList.encoding)
  * @param[in]  framecb     Output buffer for the LPM frame
  * @param[out] jsonp       If non-NULL, malloced copy of the JSON value
  * @param[out] grpc_status gRPC status code on error
@@ -1316,11 +1318,12 @@ struct gnmi_sub {
  * @retval    -1           Error
  */
 static int
-gnmi_sub_frame_update(clixon_handle h,
-                      Gnmi__Path   *gpath,
-                      cbuf         *framecb,
-                      char        **jsonp,
-                      int          *grpc_status)
+gnmi_sub_frame_update(clixon_handle  h,
+                      Gnmi__Path    *gpath,
+                      Gnmi__Encoding encoding,
+                      cbuf          *framecb,
+                      char         **jsonp,
+                      int           *grpc_status)
 {
     int                      retval = -1;
     Gnmi__SubscribeResponse  sresp = GNMI__SUBSCRIBE_RESPONSE__INIT;
@@ -1332,7 +1335,7 @@ gnmi_sub_frame_update(clixon_handle h,
     cbuf                    *jsoncb = NULL;
     uint8_t                 *pbuf = NULL;
     size_t                   pbuflen;
-    char                    *asciistr = NULL;
+    char                    *jsonstr = NULL;
 
     if (gnmi_get_one_path(h, gpath, CONTENT_ALL, &xret, grpc_status) < 0)
         goto done;
@@ -1342,12 +1345,30 @@ gnmi_sub_frame_update(clixon_handle h,
     }
     if (clixon_json2cbuf(jsoncb, xret, 0, 0, 0, 0) < 0)
         goto done;
-    if ((asciistr = strdup(cbuf_get(jsoncb))) == NULL){
+    if ((jsonstr = strdup(cbuf_get(jsoncb))) == NULL){
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
-    tv.value_case = GNMI__TYPED_VALUE__VALUE_ASCII_VAL;
-    tv.ascii_val  = asciistr;
+    /* Encode response value according to requested encoding, same mapping
+     * as gnmi_get(). Default (JSON=0) is treated as JSON_IETF for RFC7951
+     * compliance. */
+    switch (encoding){
+    case GNMI__ENCODING__ASCII:
+        tv.value_case = GNMI__TYPED_VALUE__VALUE_ASCII_VAL;
+        tv.ascii_val  = jsonstr;
+        break;
+    case GNMI__ENCODING__JSON:
+        tv.value_case    = GNMI__TYPED_VALUE__VALUE_JSON_VAL;
+        tv.json_val.data = (uint8_t *)jsonstr;
+        tv.json_val.len  = strlen(jsonstr);
+        break;
+    case GNMI__ENCODING__JSON_IETF:
+    default:
+        tv.value_case         = GNMI__TYPED_VALUE__VALUE_JSON_IETF_VAL;
+        tv.json_ietf_val.data = (uint8_t *)jsonstr;
+        tv.json_ietf_val.len  = strlen(jsonstr);
+        break;
+    }
 
     upd.path = gpath;
     upd.val  = &tv;
@@ -1368,8 +1389,8 @@ gnmi_sub_frame_update(clixon_handle h,
     if (gnmi_lpm_append(framecb, pbuf, pbuflen) < 0)
         goto done;
     if (jsonp != NULL){
-        *jsonp = asciistr;
-        asciistr = NULL;
+        *jsonp = jsonstr;
+        jsonstr = NULL;
     }
     retval = 0;
  done:
@@ -1379,8 +1400,8 @@ gnmi_sub_frame_update(clixon_handle h,
         cbuf_free(jsoncb);
     if (pbuf)
         free(pbuf);
-    if (asciistr)
-        free(asciistr);
+    if (jsonstr)
+        free(jsonstr);
     return retval;
 }
 
@@ -1498,7 +1519,8 @@ gnmi_sub_sample_cb(int   fd,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto fail;
     }
-    if (gnmi_sub_frame_update(sb->sb_h, se->se_s->path, framecb,
+    if (gnmi_sub_frame_update(sb->sb_h, se->se_s->path,
+                              sb->sb_req->subscribe->encoding, framecb,
                               &jsonstr, &gst) < 0)
         goto fail;
     if (se->se_s->suppress_redundant &&
@@ -1673,7 +1695,7 @@ gnmi_subscribe(clixon_handle  h,
         for (i = 0; i < sublist->n_subscription; i++){
             se = stream_mode ? &sb->sb_entries[i] : NULL;
             if (gnmi_sub_frame_update(h, sublist->subscription[i]->path,
-                                      framecb,
+                                      sublist->encoding, framecb,
                                       se != NULL ? &se->se_lastval : NULL,
                                       grpc_status) < 0)
                 goto done;
@@ -1794,6 +1816,7 @@ gnmi_subscribe_poll(clixon_handle  h,
     }
     for (i = 0; i < sb->sb_nentries; i++){
         if (gnmi_sub_frame_update(sb->sb_h, sb->sb_entries[i].se_s->path,
+                                  sb->sb_req->subscribe->encoding,
                                   framecb, NULL, &gst) < 0){
             grpc_stream_finish(gc_opaque, stream_id, gst, clixon_err_reason());
             retval = 0;
