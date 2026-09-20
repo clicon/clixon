@@ -1415,9 +1415,9 @@ xml_rebase(clixon_handle  h,
  * @retval     1      Presence container found
  * @retval     0      Not found
  */
-
 static int
-in_presence(cxobj *x) {
+in_presence(cxobj *x)
+{
     int        in = 0;
     yang_stmt *y;
 
@@ -1440,16 +1440,15 @@ in_presence(cxobj *x) {
  * @retval     0       OK
  * @retval    -1       Error
  */
-
 static int
-trim_patch(cxobj *x) {
-    int        retval = -1;
-    cxobj     *xc;
-    int        ix = 0;
+trim_patch(cxobj *x)
+{
+    int    retval = -1;
+    cxobj *xc;
+    int    ix = 0;
 
     if (x == NULL)
         goto done;
-
     while ((xc = xml_child_iter(x, &ix, CX_ELMNT)) != NULL){
         trim_patch(xc); /* traverse subtree */
         if (xml_flag(xc, XML_FLAG_DEFAULT)){
@@ -1464,11 +1463,11 @@ trim_patch(cxobj *x) {
                 ix--; /* restart iteration after removing subtree */
             }
         }
-     }
-     retval = 0;
-done:
-     return retval;
-  }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
 
 /*! xml_diff2patch helper function to create or delete node
  *

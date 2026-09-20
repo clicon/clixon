@@ -158,9 +158,6 @@ expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter b value 4
 new "add d"
 expectpart "$($clixon_cli -1 -f $cfg set top section x table parameter d value 98)" 0 "^$"
 
-#expectpart "$($clixon_cli -1 -f $cfg show configuration candidate)" 0 "^$"
-
-
 new "check compare xml"
 expectpart "$($clixon_cli -1 -f $cfg  show compare xml)" 0 "^--- running" "^+++ candidate" "^/clixon-example:top" "^\+\ *<parameter>" "^\+\ *<name>a</name>" "^\+\ *<value>17</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>b</name>" "^\+\ *<value>42</value>" "^\+\ *</parameter>" "^\+\ *<parameter>" "^\+\ *<name>d</name>" "^\+\ *<value>98</value>" "^\+\ *</parameter>" --not-- "number"
 
