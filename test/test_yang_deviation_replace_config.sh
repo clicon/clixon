@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Yang deviate replace config regression test
+# Yang deviate replace config/mandatory regression test
 # See RFC 7950 5.6.3 and 7.20.3
 #
 # Regression test for a NULL-pointer dereference in yang_deviation()
@@ -11,6 +11,13 @@
 # unconditionally call ys_prune_self()/ys_free() on that NULL pointer,
 # crashing the backend on startup with a SIGSEGV in yang_parent_get()
 # (called from ys_prune_self()) while loading YANG.
+#
+# Also covers "deviate replace { mandatory ...; }" against a target with
+# no explicit "mandatory" sub-statement (implicit default is "false" per
+# RFC 7950 7.6.5): before the corresponding fix, this was spuriously
+# rejected with a "node does not exist in target" error, since the
+# "mandatory" property, like "config", always exists per RFC 7950 (with
+# its default value) even when no explicit sub-statement is present.
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = "$0" ]; then exit 0; else return 0; fi
@@ -37,7 +44,9 @@ cat <<EOF > $cfg
 EOF
 
 # Base module: "top" has no explicit config sub-statement (implicit
-# config true, inherited), "leaf a" likewise has none.
+# config true, inherited), "leaf a" likewise has none. "leaf b" keeps
+# "top" (a non-presence container) from being pruned
+
 cat <<EOF > $fyangbase
 module example-base{
     yang-version 1.1;
@@ -47,14 +56,16 @@ module example-base{
         leaf a {
             type string;
         }
+        leaf b {
+            type string;
+        }
     }
 }
 EOF
 
 # Deviation module: "deviate replace { config ...; }" against nodes
-# that have no explicit config sub-statement. Before the fix, loading
-# this deviation crashed the backend (SIGSEGV in yang_parent_get(),
-# called via ys_prune_self() from yang_deviation()).
+# that have no explicit config sub-statement, and "deviate replace
+# { mandatory ...; }" against a leaf with no explicit mandatory sub-stmt
 cat <<EOF > $fyangdev
 module example-deviations{
    yang-version 1.1;
@@ -71,6 +82,7 @@ module example-deviations{
    deviation /base:top/base:a {
       deviate replace {
          config true;
+         mandatory true;
       }
    }
 }
@@ -89,11 +101,17 @@ fi
 new "wait backend"
 wait_backend
 
-new "Add leaf a (deviated node still usable after replace config)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:base\"><a>hello</a></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+new "Add leaf a and b (deviated node still usable after replace config)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:base\"><a>hello</a><b>world</b></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 new "netconf validate ok"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "Delete leaf a (deviated mandatory true)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><top xmlns=\"urn:example:base\"><a xmlns:nc=\"${BASENS}\" nc:operation=\"delete\"/></top></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "netconf validate fail (leaf a is deviated mandatory)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>missing-element</error-tag><error-info><bad-element>a</bad-element></error-info><error-severity>error</error-severity><error-message>Missing mandatory XML a node"
 
 if [ "$BE" -ne 0 ]; then
     new "Kill backend"

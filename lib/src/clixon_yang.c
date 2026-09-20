@@ -2781,7 +2781,7 @@ yang_deviation(yang_stmt *ys,
                                                   &max) < 0)
                         goto done;
                     if (max == 1){
-                        clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" added but node already exist in target %s",
+                        clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" added but node already exists in target %s",
                                    nodeid,
                                    yang_key2str(kw), yang_argument_get(yc),
                                    yang_argument_get(ytarget));
@@ -2816,7 +2816,11 @@ yang_deviation(yang_stmt *ys,
                     continue;
                 ytc = yang_find(ytarget, kw, NULL);
                 switch (kw){
-                case Y_CONFIG: /* special case: implicit default is config true */
+                case Y_CONFIG:        /* special case: implicit default is config true */
+                case Y_MANDATORY:     /* special case: implicit default is mandatory false */
+                case Y_MIN_ELEMENTS:  /* special case: implicit default is min-elements 0 */
+                case Y_MAX_ELEMENTS:  /* special case: implicit default is max-elements unbounded */
+                case Y_ORDERED_BY:    /* special case: implicit default is ordered-by system */
                     break;
                 default:
                     if (ytc == NULL){
@@ -2828,8 +2832,8 @@ yang_deviation(yang_stmt *ys,
                     }
                     break;
                 }
-                /* ytc may legitimately be NULL here: Y_CONFIG (above) allows
-                 * a target with no explicit config statement */
+                /* ytc may legitimately be NULL here: the keywords listed above
+                 * all have an RFC 7950-defined implicit default */
                 if (ytc != NULL &&
                     !(_yang_use_orig && yang_orig_get(ytarget) != NULL && uses_orig_ptr(kw))){
                     /* Remove old */
@@ -2867,7 +2871,7 @@ yang_deviation(yang_stmt *ys,
                 if (kw == Y_UNKNOWN)
                     continue;
                 if ((ytc = yang_find(ytarget, kw, NULL)) == NULL){
-                    clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" replaced but node does not exist in target %s",
+                    clixon_err(OE_YANG, 0, "deviation %s: \"%s %s\" deleted but node does not exist in target %s",
                                nodeid,
                                yang_key2str(kw), yang_argument_get(yc),
                                yang_argument_get(ytarget));
