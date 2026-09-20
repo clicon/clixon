@@ -255,6 +255,18 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
     localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
     0 "jsonVal"
 
+# gnmi.proto's "encoding" field is a plain (non-optional) proto3 scalar, so
+# an omitted field is indistinguishable on the wire from an explicit
+# encoding=JSON (both unpack to the enum's zero value). Locking in that the
+# omitted case therefore returns jsonVal, not jsonIetfVal: "fixing" this to
+# special-case the omitted field would also hijack genuine explicit JSON
+# requests, since there is no way to tell them apart.
+new "gNMI Get val with no encoding field (expect jsonVal key, proto3 default)"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"path":[{"elem":[{"name":"val"}]}],"type":"ALL"}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Get 2>&1)" \
+    0 "jsonVal"
+
 new "gNMI Get val with ASCII encoding (expect asciiVal with hello)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"path":[{"elem":[{"name":"val"}]}],"type":"ALL","encoding":"ASCII"}' \
@@ -621,6 +633,13 @@ expectpart "$(grpcurl $GRPCURL_OPTS \
 new "gNMI Subscribe ONCE with JSON encoding (expect jsonVal key)"
 expectpart "$(grpcurl $GRPCURL_OPTS \
     -d '{"subscribe":{"mode":"ONCE","encoding":"JSON","subscription":[{"path":{"elem":[{"name":"val"}]}}]}}' \
+    localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
+    0 "jsonVal"
+
+# See the matching Get test above for why omitted == explicit JSON here.
+new "gNMI Subscribe ONCE with no encoding field (expect jsonVal key, proto3 default)"
+expectpart "$(grpcurl $GRPCURL_OPTS \
+    -d '{"subscribe":{"mode":"ONCE","subscription":[{"path":{"elem":[{"name":"val"}]}}]}}' \
     localhost:${GRPC_PORT} gnmi.gNMI/Subscribe 2>&1)" \
     0 "jsonVal"
 

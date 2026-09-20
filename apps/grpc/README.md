@@ -22,14 +22,19 @@ Status:
 - Capabilities, returns loaded YANG modules + encodings (JSON_IETF, JSON, ASCII)
 - Get (XPath build, namespace handling)
 - Set (update/replace/delete)
-- Subscribe RPC (ONCE)
+- Subscribe RPC (ONCE, STREAM with SAMPLE/TARGET_DEFINED, POLL)
 - Module qualified names, unqualified node fallback
 - Bool, double, ascii typed values
-- Leaf-list Get
+- Leaf-list Get (works via JSON subtree serialization, not special-cased)
 
 Remaining:
 - TLS
+- Authentication
+- NACM
 - Leaf-list Set
-- Subscribe RPC (STREAM/POLL)
-- Notifications
+- Subscribe ON_CHANGE
 - Mount-point support
+- Prefix field (GetRequest/SetRequest, silently ignored)
+- Path wildcards (*, ...)
+- union_replace
+- use_models

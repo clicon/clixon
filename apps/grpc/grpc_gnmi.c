@@ -726,8 +726,7 @@ gnmi_get(clixon_handle  h,
             goto done;
         }
         gnmi__typed_value__init(upd->val);
-        /* Encode response value according to requested encoding.
-         * Default (JSON=0) is treated as JSON_IETF for RFC7951 compliance. */
+        /* Encode response value according to requested encoding. */
         switch (req->encoding){
         case GNMI__ENCODING__ASCII:
             upd->val->value_case = GNMI__TYPED_VALUE__VALUE_ASCII_VAL;
@@ -1349,9 +1348,7 @@ gnmi_sub_frame_update(clixon_handle  h,
         clixon_err(OE_UNIX, errno, "strdup");
         goto done;
     }
-    /* Encode response value according to requested encoding, same mapping
-     * as gnmi_get(). Default (JSON=0) is treated as JSON_IETF for RFC7951
-     * compliance. */
+    /* Encode response value according to requested encoding */
     switch (encoding){
     case GNMI__ENCODING__ASCII:
         tv.value_case = GNMI__TYPED_VALUE__VALUE_ASCII_VAL;
