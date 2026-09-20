@@ -2828,9 +2828,10 @@ yang_deviation(yang_stmt *ys,
                     }
                     break;
                 }
-                if (_yang_use_orig && yang_orig_get(ytarget) != NULL && uses_orig_ptr(kw))
-                    ;
-                else {
+                /* ytc may legitimately be NULL here: Y_CONFIG (above) allows
+                 * a target with no explicit config statement */
+                if (ytc != NULL &&
+                    !(_yang_use_orig && yang_orig_get(ytarget) != NULL && uses_orig_ptr(kw))){
                     /* Remove old */
                     if (ys_prune_self(ytc) < 0)
                         goto done;
