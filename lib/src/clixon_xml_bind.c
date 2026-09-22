@@ -867,10 +867,18 @@ xml_bind_yang_rpc_method(clixon_handle h,
     int        retval = -1;
     yang_stmt *yrpc;    /* yang node */
     yang_stmt *ymod=NULL; /* yang module */
-    char      *rpcname; /* RPC name */
+    char      *rpcname = NULL;
+    char      *name0;
     int        ret;
 
-    rpcname = xml_name(x);
+    if ((name0 = xml_name(x)) == NULL){
+        clixon_err(OE_XML, EINVAL, "RPC XML node has no name");
+        goto done;
+    }
+    if ((rpcname = strdup(name0)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
     if ((ret = xml_rpc_isaction(x)) < 0)
         goto done;
     if (ret == 1){
@@ -901,6 +909,8 @@ xml_bind_yang_rpc_method(clixon_handle h,
  ok:
     retval = 1;
  done:
+    if (rpcname)
+        free(rpcname);
     return retval;
  fail:
     retval = 0;
