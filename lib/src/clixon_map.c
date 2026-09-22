@@ -160,9 +160,9 @@ str2ptr_search1(const map_str2ptr *mptab,
                 map_str2ptr      **found)
 {
     const map_str2ptr *mp;
-    int                mid;
+    size_t             mid;
     int                cmp;
-    int                i;
+    size_t             i;
 
     if (upper < low)
         return 0; /* not found */
@@ -171,16 +171,19 @@ str2ptr_search1(const map_str2ptr *mptab,
         return 0; /* not found */
     mp = &mptab[mid];
     if ((cmp = clicon_strcmp(str, mp->mp_str)) == 0){
+        /* mid may land anywhere within a run of equal keys: walk backward to
+         * the start of the run so "first" actually the first, not where a forward scan happens to stop. */
         i = mid;
-        while (i < len && clicon_strcmp(str, mptab[i].mp_str) == 0){
-            mp = &mptab[i];
-            i++;
-        }
-        *found = (map_str2ptr *)mp;
+        while (i > 0 && clicon_strcmp(str, mptab[i-1].mp_str) == 0)
+            i--;
+        *found = (map_str2ptr *)&mptab[i];
         return 1; /* found */
     }
-    else if (cmp < 0)
+    else if (cmp < 0){
+        if (mid == 0)
+            return 0; /* nothing left below index 0: not found */
         return str2ptr_search1(mptab, str, low, mid-1, len, found);
+    }
     else
         return str2ptr_search1(mptab, str, mid+1, upper, len, found);
 }
@@ -251,7 +254,10 @@ str2ptr_qsort(const void* arg1,
             else if (y == mp2->mp_ptr)
                 i2 = i;
             if (i1 >= 0 && i2 >= 0){
-                eq = i1 < i2;
+                /* qsort requires a proper tri-state result, not a boolean:
+                 * (i1 < i2) alone would wrongly report "equal" whenever
+                 * i1 > i2 instead of "greater". */
+                eq = (i1 < i2) ? -1 : (i1 > i2 ? 1 : 0);
                 break;
             }
         }
@@ -291,18 +297,20 @@ clixon_str2ptr(map_str2ptr *mptab,
  *
  * @param[in]  f     FILE
  * @param[in]  mptab String to ptr map
+ * @param[in]  len   Length of map
  * @retval     0     OK
  */
 int
 clixon_str2ptr_print(FILE        *f,
-                     map_str2ptr *mptab)
+                     map_str2ptr *mptab,
+                     size_t       len)
 {
     map_str2ptr *mp = NULL;
-    int          i;
+    size_t       i;
 
     i = 0;
-    for (mp = &mptab[0]; mp->mp_str; mp++)
-        fprintf(f, "%d %s %p\n", i++, mp->mp_str, mp->mp_ptr);
+    for (mp = &mptab[0]; i<len; mp++)
+        fprintf(f, "%d %s %p\n", (int)i++, mp->mp_str, mp->mp_ptr);
     return 0;
 }
 
@@ -329,7 +337,7 @@ ptr2ptr_search(const map_ptr2ptr *mptab,
                map_ptr2ptr      **found)
 {
     const map_ptr2ptr *mp;
-    int                mid;
+    size_t             mid;
     int                cmp;
     size_t             i;
 
@@ -367,8 +375,11 @@ ptr2ptr_search(const map_ptr2ptr *mptab,
         *found = (map_ptr2ptr *)mp;
         return 1; /* found */
     }
-    else if (cmp < 0)
+    else if (cmp < 0){
+        if (mid == 0)
+            return 0; /* nothing left below index 0: not found */
         return ptr2ptr_search(mptab, ptr, low, mid-1, len, exact, found);
+    }
     else
         return ptr2ptr_search(mptab, ptr, mid+1, upper, len, exact, found);
 }
