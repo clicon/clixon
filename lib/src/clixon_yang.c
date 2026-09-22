@@ -1075,12 +1075,6 @@ ys_free1(yang_stmt *ys,
             xml_free(ys->ys_nopres_cache);
         break;
 #endif
-#ifdef OPTIMIZE_YSPEC_NAMESPACE
-    case Y_SPEC:
-        if (ys->ys_nscache)
-            free(ys->ys_nscache);
-        break;
-#endif
     default:
         break;
     }
@@ -1211,11 +1205,6 @@ yn_realloc(yang_stmt *yn)
         return -1;
     }
     yn->ys_stmt[yn->ys_len - 1] = NULL; /* init field */
-#ifdef OPTIMIZE_YSPEC_NAMESPACE
-    if (yn->ys_keyword == Y_SPEC && yn->ys_nscache){         /* Clear cache */
-        yspec_nscache_clear(yn);
-    }
-#endif
     return 0;
 }
 
@@ -1336,11 +1325,6 @@ ys_cp_one(yang_stmt *ynew,
 #ifdef OPTIMIZE_NO_PRESENCE_CONTAINER
     case Y_CONTAINER:
         yold->ys_nopres_cache = NULL;
-        break;
-#endif
-#ifdef OPTIMIZE_YSPEC_NAMESPACE
-    case Y_SPEC:
-        yold->ys_nscache = NULL;
         break;
 #endif
 #ifdef OPTMEM_XML_NS_CACHE

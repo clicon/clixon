@@ -222,12 +222,6 @@
  */
 #define XML_DEFAULT_WHEN_TWICE
 
-/*! If set, make optimized lookup of yspec + namespace -> module
- *
- * see yang_find_module_by_namespace
- */
-#undef OPTIMIZE_YSPEC_NAMESPACE
-
 /*! If set, make optimization of non-presence default container
  *
  * Save the default XML in YANG and reuse next time
