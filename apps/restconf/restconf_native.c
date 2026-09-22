@@ -79,15 +79,13 @@
 #include "restconf_stream.h"
 #include "banned.h"
 
-/* Max seconds a connection may wait for a complete HTTP/1 request header
- * before being closed. See #667. */
-#define RESTCONF_HEADER_TIMEOUT_S 10
+/* Max seconds a request's header block may stay incomplete before the
+ * connection is closed. */
+ #define RESTCONF_HEADER_TIMEOUT_S 10
 
 /* Forward */
 static int restconf_idle_cb(int fd, void *arg);
 static int restconf_header_timeout_cb(int fd, void *arg);
-static int restconf_header_timer_reg(restconf_conn *rc);
-static int restconf_header_timer_unreg(restconf_conn *rc);
 
 /*! Create restconf stream
  *
@@ -780,11 +778,15 @@ restconf_http1_process(restconf_conn *rc,
             strncmp(inbuf, "PATCH ",   6) == 0 ||
             strncmp(inbuf, "DELETE ",  7) == 0;
         if (looks_http && my_memmem(inbuf, buflen, "\r\n\r\n", 4) == NULL){
-            if (restconf_header_timer_reg(rc) < 0)
+            /* http/1 is sequential (one request in flight per connection):
+             * only count this request once across repeated partial reads of same incomplete header. */
+            if (rc->rc_headers_pending == 0 &&
+                restconf_header_timer_inc(rc) < 0)
                 goto done;
             goto ok;
         }
-        if (restconf_header_timer_unreg(rc) < 0)
+        if (rc->rc_headers_pending > 0 &&
+            restconf_header_timer_dec(rc) < 0)
             goto done;
         if (clixon_http1_parse_string(h, rc, cbuf_get(sd->sd_inbuf)) < 0){
             /* XXX This does not work for SSL */
@@ -1123,44 +1125,57 @@ restconf_idle_timer_unreg(restconf_conn *rc)
     return clixon_event_unreg_timeout(restconf_idle_cb, rc);
 }
 
-/*! Register one-shot timer that bounds the wait for a complete HTTP/1 header
+/*! Count one more request/stream with an incomplete header block
  *
- * Prevents a peer from holding a connection open indefinitely by sending only
- * part of an HTTP request line / headers. Fires once after
- * RESTCONF_HEADER_TIMEOUT_S; the callback closes the socket. See #667.
+ * Sets the one-shot header-timeout timer on the 0->1 transition (ie when this
+ * is the first incomplete request/stream on the connection); a later call
+ * while already >0 just increments the count without touching the timer, so
+ * the deadline reflects when the *oldest* still-incomplete request/stream
+ * started, not the most recent one. See RESTCONF_HEADER_TIMEOUT_S above
  *
  * @param[in]  rc   Restconf connection
  * @retval     0    OK
  * @retval    -1    Error
  */
-static int
-restconf_header_timer_reg(restconf_conn *rc)
+int
+restconf_header_timer_inc(restconf_conn *rc)
 {
     int            retval = -1;
     struct timeval now;
     struct timeval t;
     struct timeval to = {RESTCONF_HEADER_TIMEOUT_S, 0};
 
-    if (rc->rc_header_timer)
+    if (rc->rc_headers_pending++ > 0)
         goto ok;
     gettimeofday(&now, NULL);
     timeradd(&now, &to, &t);
     if (clixon_event_reg_timeout(t, restconf_header_timeout_cb, rc,
-                                 "restconf http/1 header timeout") < 0)
+                                 "restconf header timeout") < 0)
         goto done;
-    rc->rc_header_timer = 1;
  ok:
     retval = 0;
  done:
     return retval;
 }
 
-static int
-restconf_header_timer_unreg(restconf_conn *rc)
+/*! One fewer request/stream with an incomplete header block
+ *
+ * Clears the timer only once the count returns to 0, ie once every
+ * request/stream that was incomplete is now either complete or gone.
+ *
+ * @param[in]  rc   Restconf connection
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+restconf_header_timer_dec(restconf_conn *rc)
 {
-    if (!rc->rc_header_timer)
+    if (rc->rc_headers_pending <= 0){
+        clixon_err(OE_RESTCONF, EINVAL, "rc_headers_pending underflow");
+        return -1;
+    }
+    if (--rc->rc_headers_pending > 0)
         return 0;
-    rc->rc_header_timer = 0;
     return clixon_event_unreg_timeout(restconf_header_timeout_cb, rc);
 }
 
@@ -1180,7 +1195,7 @@ restconf_header_timeout_cb(int   fd,
     if (rc == NULL)
         return -1;
     clixon_debug(CLIXON_DBG_RESTCONF, "%d header timeout, closing", rc->rc_s);
-    rc->rc_header_timer = 0;
+    rc->rc_headers_pending = 0;
     return restconf_close_ssl_socket(rc, __func__, 0);
 }
 
@@ -1208,8 +1223,11 @@ restconf_connection_close1(restconf_conn *rc)
         goto done;
     }
     clixon_event_unreg_fd(rc->rc_s, restconf_connection);
-    if (restconf_header_timer_unreg(rc) < 0)
-        goto done;
+    if (rc->rc_headers_pending > 0){
+        rc->rc_headers_pending = 0;
+        if (clixon_event_unreg_timeout(restconf_header_timeout_cb, rc) < 0)
+            goto done;
+    }
     /* re-set timer */
     if (rc->rc_callhome){
         if (rsock->rs_periodic)

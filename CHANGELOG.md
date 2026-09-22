@@ -75,6 +75,7 @@ Developers may need to change their code
 * Fixed: [Yang deviation statement "deviate replace { config true; }" targeting a node with no explicit config statement crashed the backend with a NULL pointer dereference](https://github.com/clicon/clixon/issues/695)
 * Fixed: Yang deviation statement `deviate replace` targeting a node with no explicit `mandatory`, `min-elements`, `max-elements`, or `ordered-by` sub-statement was rejected
 * Fixed: [Incremental mandatory validation forced a full re-check of every ancestor of a deleted node up to the document root, incorrectly re-surfacing unrelated, previously-accepted missing-mandatory data the transaction never touched, and could block deleting the last entry of a list](https://github.com/clicon/clixon/issues/691)
+* Fixed: [Restconf partial-header timeout](https://github.com/clicon/clixon/issues/667) timeout is now generalized to also cover HTTP/2, not only HTTP/1
 * Fixed: NETCONF kill-session could kill own session
 * Fixed: [deviate not-supported no longer removes the node from the schema, so a mandatory not-supported leaf makes every commit fail](https://github.com/clicon/clixon/issues/688)
   * Revert flag-based solution (`YANG_FLAG_NOT_SUPPORT`)

@@ -101,6 +101,8 @@ typedef struct  {
     void                 *sd_req;       /* Lib-specific request */
     int                   sd_upgrade2;  /* Upgrade to http/2 */
     uint8_t              *sd_settings2; /* Settings for upgrade to http/2 request */
+    int                   sd_hdr_pending; /* http/2 only: this stream is currently counted in
+                                           * sd_conn->rc_headers_pending */
 } restconf_stream_data;
 
 typedef struct restconf_socket restconf_socket;
@@ -131,7 +133,10 @@ typedef struct restconf_conn {
     struct timeval        rc_t;         /* Timestamp of last read/write activity, used by callhome
                                            idle-timeout algorithm */
     int                   rc_event_stream;    /* Event notification stream socket (maybe in sd?) */
-    int                   rc_header_timer; /* HTTP/1 partial header timeout active, see #667 */
+    int                   rc_headers_pending; /* Count of requests/streams with an incomplete
+                                                * header block; bounds how long via a timeout,
+                                                * see restconf_header_timer_inc() in
+                                                * restconf_native.c and #667 */
 } restconf_conn;
 
 /* Restconf per socket handle
@@ -189,6 +194,8 @@ restconf_conn    *restconf_conn_new(clixon_handle h, int s, restconf_socket *soc
 int               ssl_x509_name_oneline(SSL *ssl, char **oneline);
 
 int               restconf_close_ssl_socket(restconf_conn *rc, const char *callfn, int sslerr0);
+int               restconf_header_timer_inc(restconf_conn *rc);
+int               restconf_header_timer_dec(restconf_conn *rc);
 int               restconf_connection_sanity(clixon_handle h, restconf_conn *rc, restconf_stream_data *sd);
 int               native_buf_write(clixon_handle h, char *buf, size_t buflen, restconf_conn *rc, const char *callfn);
 restconf_native_handle *restconf_native_handle_get(clixon_handle h);

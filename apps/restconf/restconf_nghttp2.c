@@ -602,13 +602,20 @@ on_frame_recv_callback(nghttp2_session     *session,
     switch (frame->hd.type) {
     case NGHTTP2_DATA:
     case NGHTTP2_HEADERS:
+        /* For DATA and HEADERS frame, this callback may be called after
+         * on_stream_close_callback. Check that stream still alive.
+         */
+        if ((sd = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id)) == NULL)
+            return 0;
+        if (frame->hd.type == NGHTTP2_HEADERS && sd->sd_hdr_pending){
+            /* Headers block for this stream (including any CONTINUATION
+             * frames) is fully received */
+            sd->sd_hdr_pending = 0;
+            if (restconf_header_timer_dec(rc) < 0)
+                goto done;
+        }
         /* Check that the client request has finished */
         if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-            /* For DATA and HEADERS frame, this callback may be called after
-             * on_stream_close_callback. Check that stream still alive. 
-             */
-            if ((sd = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id)) == NULL)
-                return 0;
             /* Query vector, ie the ?a=x&b=y stuff */
             query = restconf_param_get(rc->rc_h, "REQUEST_URI");
             if (query != NULL && (query = index(query, '?')) != NULL){
@@ -736,9 +743,18 @@ on_stream_close_callback(nghttp2_session   *session,
                          nghttp2_error_code error_code,
                          void              *user_data)
 {
-    //    restconf_conn *rc = (restconf_conn *)user_data;
+    restconf_conn        *rc = (restconf_conn *)user_data;
+    restconf_stream_data *sd;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%d %s", error_code, nghttp2_strerror(error_code));
+    /* Stream aborted (eg RST_STREAM) before its header block completed:
+     * release its header-timeout count so it is not left stuck counted forever. */
+    if ((sd = nghttp2_session_get_stream_user_data(session, stream_id)) != NULL &&
+        sd->sd_hdr_pending){
+        sd->sd_hdr_pending = 0;
+        if (restconf_header_timer_dec(rc) < 0)
+            return -1;
+    }
 #if 0 // NOTNEEDED /* XXX think this is not necessary? */
     if (error_code){
         if (restconf_close_ssl_socket(rc, __func__, 0) < 0)
@@ -767,6 +783,13 @@ on_begin_headers_callback(nghttp2_session     *session,
         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
         sd = restconf_stream_data_new(rc, frame->hd.stream_id);
         nghttp2_session_set_stream_user_data(session, frame->hd.stream_id, sd);
+        /* Bound how long this stream's header block may stay incomplete,
+         * partial HEADERS/CONTINUATION frames indefinitely on its own. */
+        if (sd != NULL){
+            if (restconf_header_timer_inc(rc) < 0)
+                return NGHTTP2_ERR_CALLBACK_FAILURE;
+            sd->sd_hdr_pending = 1;
+        }
     }
     return 0;
 }
