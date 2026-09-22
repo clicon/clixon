@@ -1988,7 +1988,11 @@ validate_when1(clixon_handle h,
 /*! Incremental-aware mandatory check for a single XML node
  *
  * Checks that all mandatory children are present. Skips unchanged subtrees
- * when incrml is set and neither CHANGE, ADD nor DEL_ANC is set on xt.
+ * when incrml is set and neither CHANGE, ADD nor DEL_DIRECT is set on xt.
+ *
+ * DEL_DIRECT (rather than the widely ancestor-propagated DEL_ANC) is the
+ * right test here: a node's own mandatory-child-exists constraint can only
+ * be invalidated by a deletion among its immediate children.
  * @param[in]  h      Clixon handle
  * @param[in]  xt     XML node being validated
  * @param[in]  yt     Yang spec of xt
@@ -2010,7 +2014,7 @@ validate_mandatory1(clixon_handle h,
 
     if (incrml &&
         !(xml_flag(xt, XML_FLAG_CHANGE) || xml_flag(xt, XML_FLAG_ADD) ||
-          xml_flag(xt, XML_FLAG_DEL_ANC))){
+          xml_flag(xt, XML_FLAG_DEL_DIRECT))){
         clixon_debug(CLIXON_DBG_VALIDATE, "%s: skip mandatory: %s (unchanged)",
                      __func__, xml_name(xt));
         goto ok;

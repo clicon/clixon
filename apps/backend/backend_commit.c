@@ -228,7 +228,7 @@ compute_diffs(clixon_handle       h,
     xml_apply0(td->td_src, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
                (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE|XML_FLAG_ADD_ANC));
     xml_apply0(td->td_target, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset,
-               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE|XML_FLAG_DEL_ANC));
+               (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE|XML_FLAG_DEL_ANC|XML_FLAG_DEL_DIRECT));
     /* 3. Compute differences */
     if (xml_diff(td->td_src,
                  td->td_target,
@@ -255,10 +255,12 @@ compute_diffs(clixon_handle       h,
          * deleted node. Without this, the target parent has no FLAG_CHANGE and
          * the mandatory check would be incorrectly skipped.
          * XML_FLAG_DEL_ANC is used (rather than XML_FLAG_CHANGE) so that this
-         * propagation does not affect any other logic that uses XML_FLAG_CHANGE. */
+         * propagation does not affect any other logic that uses XML_FLAG_CHANGE.
+         * XML_FLAG_DEL_DIRECT is set only on xtarget_equiv itself */
         xtarget_equiv = find_target_equiv(xn, td->td_src, td->td_target);
         if (xtarget_equiv != NULL){
             xml_flag_set(xtarget_equiv, XML_FLAG_DEL_ANC);
+            xml_flag_set(xtarget_equiv, XML_FLAG_DEL_DIRECT);
             xml_apply_ancestor(xtarget_equiv, (xml_applyfn_t*)xml_flag_set, (void*)XML_FLAG_DEL_ANC);
         }
     }

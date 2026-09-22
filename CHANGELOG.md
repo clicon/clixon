@@ -65,13 +65,16 @@ Developers may need to change their code
   * For backward-compatability run configure with:
     `--disable-xml-child-each-wrapper`
 * See the [C API Migration Guide](https://clixon-docs.readthedocs.io/en/latest/migration.html) for full details and code examples
-* New XML flag: `XML_FLAG_ADD_ANC` is added symmetric to `XML_FLAG_DEL_ANC`
+* New XML flags:
+  * `XML_FLAG_ADD_ANC` is added symmetric to `XML_FLAG_DEL_ANC`
+  * `XML_FLAG_DEL_DIRECT` marks only the direct target-tree parent of a deleted node
 
 ### Corrected Bugs
 
 * Fixed: gRPC/gNMI Subscribe always encoded update values as ASCII (a plain JSON string), ignoring the subscription's requested encoding; it now respects `JSON_IETF`/`JSON`/`ASCII` (like Get already did)
 * Fixed: [Yang deviation statement "deviate replace { config true; }" targeting a node with no explicit config statement crashed the backend with a NULL pointer dereference](https://github.com/clicon/clixon/issues/695)
 * Fixed: Yang deviation statement `deviate replace` targeting a node with no explicit `mandatory`, `min-elements`, `max-elements`, or `ordered-by` sub-statement was rejected
+* Fixed: [Incremental mandatory validation forced a full re-check of every ancestor of a deleted node up to the document root, incorrectly re-surfacing unrelated, previously-accepted missing-mandatory data the transaction never touched, and could block deleting the last entry of a list](https://github.com/clicon/clixon/issues/691)
 * Fixed: NETCONF kill-session could kill own session
 * Fixed: [deviate not-supported no longer removes the node from the schema, so a mandatory not-supported leaf makes every commit fail](https://github.com/clicon/clixon/issues/688)
   * Revert flag-based solution (`YANG_FLAG_NOT_SUPPORT`)
