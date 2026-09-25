@@ -111,6 +111,8 @@ fi
 
 new "cli load arrow-up save -> create two copies of long string"
 expecteof "$clixon_cli -f $cfg" 0 "q" "" 
+
+new "cli second invocation appends a second copy"
 expecteof "$clixon_cli -f $cfg" 0 "" "" 2> /dev/null
 
 new "Check histfile contains two copies of long string"

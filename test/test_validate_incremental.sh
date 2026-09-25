@@ -420,6 +420,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
    </edit-config></rpc>" \
   "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
+new "validate candidate with deleted mandatory leaf (expect error)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
   "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" \
   "<rpc-error>" "" \

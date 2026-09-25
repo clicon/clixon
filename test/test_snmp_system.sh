@@ -217,8 +217,14 @@ validate_oid $NAME_ORTABLE2 $NAME_ORTABLE2 "STRING" "Entry 2 description"
 
 new "Get table sysORTable $OID_ORTABLE"
 expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 1 description.*" "IP-MIB::ip" "1:7:10:33.44"
+
+new "Get table sysORTable second entry"
 expectpart "$($snmptable $OID_ORTABLE)" 0 ".*Entry 2 description.*" "IF-MIB::ifTable" "129:20:58:31.11"
+
+new "Get table sysORTable by name"
 expectpart "$($snmptable $NAME_ORTABLE)" 0 ".*Entry 1 description.*" "IP-MIB::ip" "1:7:10:33.44"
+
+new "Get table sysORTable by name second entry"
 expectpart "$($snmptable $NAME_ORTABLE)" 0 ".*Entry 2 description.*" "IF-MIB::ifTable" "129:20:58:31.11"
 
 new "Walk the tables..."

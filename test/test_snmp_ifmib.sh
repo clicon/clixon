@@ -487,6 +487,8 @@ expectpart "$($snmpwalk IF-MIB::ifRcvAddressTable)" 0 "IF-MIB::ifRcvAddressAddre
 new "Walk ifXTable"
 expectpart "$($snmpwalk IF-MIB::ifXTable)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
            "IF-MIB::ifName.2 = STRING: ifname2"
+
+new "Walk ifXTable by OID"
 expectpart "$($snmpwalk $OID30)" 0 "IF-MIB::ifName.1 = STRING: ifname1" \
            "IF-MIB::ifName.2 = STRING: ifname2"
 

@@ -53,6 +53,8 @@ wait_backend
 
 new "cli add oc-if interface eth1 target for leafref"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth1)" 0 "^$"
+
+new "cli add oc-if interface eth1 config name"
 expectpart "$($clixon_cli -1 -f $cfg set interfaces interface eth1 config name eth1)" 0 "^$"
 
 new "cli tab-complete qos interface-ref leafref"
