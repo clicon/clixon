@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [7.9.0](#790) Expected: September 2026
+* [7.9.0](#790) 25 September 2026
 * [7.8.0](#780) 29 May 2026
 * [7.7.0](#770) 21 February 2026
 * [7.6.0](#760) 21 November 2025
@@ -19,11 +19,13 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 7.9.0
-Expected: September 2026
+25 September 2026
 
 ### Features
 
 * Refactor cli show compare command using RFC 9144
+  * Revised output format
+  * Improved performance
 * Memory optimization:
   * XML struct optimizations
   * Namespace cache use YANG namespace instead of per-XML-instance caching
@@ -31,12 +33,12 @@ Expected: September 2026
 * Added LLVM libFuzzer unit support for yang, json, xml, xpath, api-path, etc
 * gRPC/gNMI:
   * Improved error handling: detailed error messages and status codes
-  * Added STREAMS: SAMPLE and POLL
-* Improved gRPC/gNMI error handling: detailed error messages and status codes
+  * Added Subscribe for telemetry: SAMPLE and POLL
+  * Still experimental, lacking TLS, etc
 * Event handling:
   * Switch to poll-based event handling (instead of select)
-  * You may promote interactive CLI client sockets using CLICON_SOCK_PRIO
-  * Improved fairness of events
+  * Promote interactive CLI client sockets using CLICON_SOCK_PRIO (revised semantics)
+  * Improved fairness
     * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
 * New: [NACM External Groups](https://github.com/clicon/clixon/issues/654)
   * Added explicit groupname attribute for cred-mode=NONE, for masquerading of groups
@@ -52,19 +54,18 @@ Users may have to change how they access the system
    * Added option: CLICON_CLI_DIFF_FORMAT
    * Changed default value of `CLICON_EVENT_SELECT` to `false`, ie poll-based event handling
       * If you want to keep the select-based event-handling, set it to `true`.
+   * Changed semantics of `CLICON_SOCK_PRIO` now promote only interactive CLI clients to high prio
 * New `clixon-lib@2026-06-01.yang` revision
    * Extended `config-path-info` rpc with `mark-keys` paramater
    * Augmented ietf-nmda-compare compare rpc with order-ignore and format parameter
-* Changed meaning of `CLICON_SOCK_PRIO`: now promotes only CLI client sockets to high priority, not every client socket
-   * Previously enabling it gave every backend client (CLI, NETCONF, RESTCONF, gRPC, SNMP) high priority
-   * If you relied on the old blanket behavior, there is no config equivalent for it currently
-   * See: https://clixon-docs.readthedocs.io/en/latest/misc.html#socket-event-priority
+   * Augmented ietf-netconf-monitoring session list with priority
 
 ### C/CLI-API changes on existing features
 
 Developers may need to change their code
 
-* New XML body API: `xml_body_set()`, `xml_body_append()`, `xml_body_reset()` replace direct manipulation of `CX_BODY` child nodes
+* New XML body API: `xml_body_set()`, `xml_body_append()`, `xml_body_reset()`
+  * Replaces direct manipulation of `CX_BODY` child nodes
   * For backward-compatability run configure with:
     `--disable-optmem-xml-body`
 * XML child iteration: `xml_child_each()` replaced by `xml_child_iter()`
@@ -77,7 +78,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
-* Fixed: gRPC/gNMI Subscribe always encoded update values as ASCII (a plain JSON string), ignoring the subscription's requested encoding; it now respects `JSON_IETF`/`JSON`/`ASCII` (like Get already did)
+* Fixed: gRPC/gNMI Subscribe always encoded update values as ASCII (a plain JSON string), ignoring the subscription's requested encoding; it now respects `JSON_IETF`/`JSON`/`ASCII`
 * Fixed: [Yang deviation statement "deviate replace { config true; }" targeting a node with no explicit config statement crashed the backend with a NULL pointer dereference](https://github.com/clicon/clixon/issues/695)
 * Fixed: Yang deviation statement `deviate replace` targeting a node with no explicit `mandatory`, `min-elements`, `max-elements`, or `ordered-by` sub-statement was rejected
 * Fixed: [Incremental mandatory validation forced a full re-check of every ancestor of a deleted node up to the document root, incorrectly re-surfacing unrelated, previously-accepted missing-mandatory data the transaction never touched, and could block deleting the last entry of a list](https://github.com/clicon/clixon/issues/691)
