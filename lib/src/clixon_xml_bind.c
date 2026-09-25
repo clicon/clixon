@@ -166,7 +166,11 @@ populate_self_parent(clixon_handle h,
     yang_stmt *y = NULL;     /* yang node */
     yang_stmt *yparent;      /* yang parent */
     cxobj     *xp = NULL;    /* xml parent */
-    char      *name;
+    char      *name0;
+    char      *name = NULL;  /* owned copy: xml_name(xt) may be invalidated below by
+                               * xml_spec_set(xt, y) when y's argument (eg a freshly
+                               * added anydata node named after xt) matches xt's own
+                               * name -- that frees xt's x_name */
     char      *ns = NULL;    /* XML namespace of xt */
     char      *nsy = NULL;   /* Yang namespace of xt */
     cbuf      *cb = NULL;
@@ -175,7 +179,14 @@ populate_self_parent(clixon_handle h,
     int        ret;
     int        ns_resolved = 0;
 
-    name = xml_name(xt);
+    if ((name0 = xml_name(xt)) == NULL){
+        clixon_err(OE_XML, EINVAL, "XML node has no name");
+        goto done;
+    }
+    if ((name = strdup(name0)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
     /* optimization for massive lists - use the first element as role model */
     if (xsibling &&
         xml_child_nr_type(xt, CX_ATTR) == 0){
@@ -295,6 +306,8 @@ populate_self_parent(clixon_handle h,
 #endif
     retval = 1;
  done:
+    if (name)
+        free(name);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -323,13 +336,24 @@ populate_self_top(clixon_handle h,
     int        retval = -1;
     yang_stmt *y = NULL;     /* yang node */
     yang_stmt *ymod;         /* yang module */
-    char      *name;
+    char      *name0;
+    char      *name = NULL;  /* owned copy: xml_name(xt) may be invalidated below by
+                               * xml_spec_set(xt, y) when y's argument (eg a freshly
+                               * added anydata node named after xt) matches xt's own
+                               * name -- that frees xt's x_name */
     char      *ns = NULL;    /* XML namespace of xt */
     char      *nsy = NULL;   /* Yang namespace of xt */
     cbuf      *cb = NULL;
     cxobj     *xp;
 
-    name = xml_name(xt);
+    if ((name0 = xml_name(xt)) == NULL){
+        clixon_err(OE_XML, EINVAL, "XML node has no name");
+        goto done;
+    }
+    if ((name = strdup(name0)) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
     if (yspec == NULL){
         if (xerr &&
             netconf_bad_element_xml(xerr, "application", name, "Missing yang spec") < 0)
@@ -401,6 +425,8 @@ populate_self_top(clixon_handle h,
     xml_spec_set(xt, y);
     retval = 1;
  done:
+    if (name)
+        free(name);
     if (cb)
         cbuf_free(cb);
     return retval;
