@@ -21,6 +21,8 @@
 ## 7.9.0
 25 September 2026
 
+The Clixon 7.9 release features a new show compare implementation following RFC 9144, optimization of XML memory footprint, new fuzzing and reentrant parsers.
+
 ### Features
 
 * Refactor cli show compare command using RFC 9144
