@@ -338,15 +338,15 @@ expand_dbvar(clixon_handle h,
     /* Get configuration based on cbxpath */
     if (clixon_rpc_get_config1(h, NULL, dbstr, cbuf_get(cbxpath), nsc, NULL, YB_NONE, &xt) < 0)
         goto done;
+    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
+        goto ok;
+    }
     if ((ret = xml_bind_yang_mnt(h, xt, YB_MODULE, yspec0, 0, 1, &xerr)) < 0)
         goto done;
     if (ret == 0){
         if ((xe = xpath_first(xerr, NULL, "/rpc-error")) != NULL)
             clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
-        goto ok;
-    }
-    if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Get configuration");
         goto ok;
     }
     if (xpath_vec(xt, nsc, "%s", &xvec, &xlen, cbuf_get(cbxpath)) < 0)

@@ -1,5 +1,6 @@
 # Clixon Changelog
 
+* [8.0.0](#790) Expected: January 2027
 * [7.9.0](#790) 25 September 2026
 * [7.8.0](#780) 29 May 2026
 * [7.7.0](#770) 21 February 2026
@@ -17,6 +18,13 @@
 * [6.2.0](#620) 30 April 2023
 * [6.1.0](#610) 19 Feb 2023
 * [6.0.0](#600) 29 Nov 2022
+
+## 8.0.0
+Expected: January 2026
+
+### Corrected Bugs
+
+* Fixed: [CLI: Leafref tab-completion fails when entry key value contains literal '/'. (ie name='e/0')](https://github.com/clicon/clixon/issues/699)
 
 ## 7.9.0
 25 September 2026

@@ -421,6 +421,7 @@ xpath_append(cbuf      *cb0,
     char  *xpath0;
     char  *ns;
     int    j;
+    int    depth;
     int    ret;
 
     if (cb0 == NULL){
@@ -446,12 +447,18 @@ xpath_append(cbuf      *cb0,
             initialups = 0;
         else if (strcmp(id, "..") == 0){
             if (initialups){
-                /* Subtract from xpath0 */
+                /* Subtract from xpath0 up to the last top-level '/', ie not one
+                 * inside a [...] predicate. */
+                depth = 0;
                 for (j=cbuf_len(cb0); j >= 0; j--){
-                    if (xpath0[j] != '/')
-                        continue;
-                    cbuf_trunc(cb0, j);
-                    break;
+                    if (xpath0[j] == ']')
+                        depth++;
+                    else if (xpath0[j] == '[')
+                        depth--;
+                    else if (xpath0[j] == '/' && depth == 0){
+                        cbuf_trunc(cb0, j);
+                        break;
+                    }
                 }
             }
             else{
