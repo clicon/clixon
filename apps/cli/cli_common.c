@@ -990,6 +990,10 @@ compare_db_names(clixon_handle    h,
         clixon_err(OE_NETCONF, 0, "No rpc-reply");
         goto done;
     }
+    if ((xe = xpath_first(xreply, NULL, "rpc-error")) != NULL){
+        clixon_err_netconf(h, OE_NETCONF, 0, xe, "Compare datastores");
+        goto done;
+    }
     if (xpath_first(xreply, NULL, "no-matches") != NULL)
         goto ok; /* no differences */
     if ((xp = xpath_first(xreply, NULL, "differences/yang-patch")) == NULL) {

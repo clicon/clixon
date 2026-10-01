@@ -1896,6 +1896,10 @@ cli_show_statistics(clixon_handle h,
                 cprintf(cb, "</rpc>");
                 if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
                     goto done;
+                if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+                    clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+                    goto done;
+                }
                 if (xml_rootchild(xret, 0, &xret) < 0)
                     goto done;
                 if ((cb2 = cbuf_new()) == NULL){
@@ -1973,6 +1977,10 @@ cli_show_statistics(clixon_handle h,
                     cprintf(cb, "</rpc>");
                     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, NULL) < 0)
                         goto done;
+                    if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
+                        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
+                        goto done;
+                    }
                     if (xml_rootchild(xret, 0, &xret) < 0)
                         goto done;
                     if ((cb2 = cbuf_new()) == NULL){

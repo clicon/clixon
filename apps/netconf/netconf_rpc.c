@@ -654,6 +654,8 @@ netconf_application_rpc(clixon_handle h,
          */
         if (0)
         if ((youtput = yang_find(yrpc, Y_OUTPUT, NULL)) != NULL){
+            if (xpath_first(*xret, NULL, "//rpc-error") != NULL)
+                goto ok;
             xoutput=xpath_first(*xret, NULL, "/");
             xml_spec_set(xoutput, youtput); /* needed for xml_bind_yang */
             if ((ret = xml_bind_yang(h, xoutput, YB_MODULE, yspec, 0, &xerr)) < 0)
