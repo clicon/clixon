@@ -239,6 +239,7 @@ gen_mtpoint_add(cbuf      *cb,
  * @retval    -1      Error
  * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to
  *                             expand_dbvar() to signal that leafrefs should be followed.
+ * @param[in]  preference  Optional CLIgen preference override (zero uses the default)
  * @see expand_dbvar  This is where the expand string is used
  * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
  */
@@ -250,6 +251,7 @@ cli_expand_var_generate(clixon_handle h,
                         uint8_t       fraction_digits,
                         int           pre,
                         int           leafref_refer,
+                        uint32_t      preference,
                         cbuf         *cb)
 {
     int        retval = -1;
@@ -265,6 +267,8 @@ cli_expand_var_generate(clixon_handle h,
     if (pre)
         cprintf(cb, "|");
     cprintf(cb, "<%s:%s",  yang_argument_get(ys), cvtypestr);
+    if (preference)
+        cprintf(cb, " preference:%u", preference);
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
         cprintf(cb, " fraction-digits:%u", fraction_digits);
     cprintf(cb, " %s(\"candidate\",\"%s\"",
@@ -903,6 +907,10 @@ yang2cli_var_union_one(clixon_handle h,
     else {
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;
+        /* Leafrefs in unions are single values, not the rest of the command.
+         * The backend validates the value against the referenced type. */
+        if (restype && strcmp(restype, "leafref") == 0)
+            cvtype = CGV_STRING;
         if ((retval = yang2cli_leaf_var_sub(h, ys, ytype, helptext, cvtype,
                                             options, cvv, patterns, fraction_digits, patpref, cb)) < 0)
             goto done;
@@ -1181,11 +1189,16 @@ yang2cli_leaf_var(clixon_handle h,
          * Note: also set when restype=="leafref" because yang_path_arg may fail to resolve the
          * referred node client-side (e.g. grouping with submodule prefix scope); the backend
          * handles leafref resolution independently. */
+        /* Preserve child commands, but retain the rest variable's preference
+         * so expanded values do not compete with explicit union alternatives. */
+        if (strcmp(restype, "union") == 0)
+            cvtypestr = "string";
         if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
                                            options, fraction_digits, regular_value,
                                            leafref_refer ||
                                            strcmp(restype, "union") == 0 ||
                                            strcmp(restype, "leafref") == 0,
+                                           strcmp(restype, "union") == 0 ? COV_PREF_REST : 0,
                                            cb)) < 0)
             goto done;
         if (ret == 1)
