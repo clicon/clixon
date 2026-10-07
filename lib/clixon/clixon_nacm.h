@@ -64,6 +64,8 @@ int nacm_datanode_write(clixon_handle h, cxobj *xr, cxobj *xt,
                         enum nacm_access access,
                         const char *username, cxobj *xnacm, cbuf *cbret);
 int nacm_access_pre(clixon_handle h, const char *peername, const char *username, cxobj **xnacmp, cbuf *cbret);
+int nacm_user_groups(clixon_handle h, const char *username, char ***groupsp, int *ngroupsp);
+int nacm_group_users(clixon_handle h, const char *groupname, char ***usersp, int *nusersp);
 int verify_nacm_user(clixon_handle h, enum nacm_credentials_t cred, const char *peername, const char *nacmname,
                      const char *rpcname, cbuf *cbret);
 int nacm_init(clixon_handle h);

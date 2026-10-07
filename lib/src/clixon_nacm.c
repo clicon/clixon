@@ -1438,6 +1438,249 @@ nacm_access_check(clixon_handle h,
     goto done;
 }
 
+/*! Load the currently active NACM configuration tree, per CLICON_NACM_MODE
+ *
+ * Same tree resolution as the start of nacm_access_pre(), factored out so
+ * read-only group/user lookups (nacm_user_groups(), nacm_group_users())
+ * don't need to run inside an NACM RPC/data enforcement pass. This is a
+ * best-effort config read, not an access decision: on a datastore read
+ * error it returns "no config" (xnacmp set to NULL) rather than failing,
+ * since callers only use it to answer "what groups/users exist", not to
+ * gate access.
+ *
+ * @param[in]  h      Clixon handle
+ * @param[out] xnacmp NACM XML tree (the <nacm> element), or NULL if no NACM
+ *                     config exists or NACM is disabled. Free with xml_free().
+ * @retval     0      OK (xnacmp may be NULL)
+ * @retval    -1      Error
+ */
+static int
+nacm_config_get(clixon_handle h,
+                cxobj       **xnacmp)
+{
+    int    retval = -1;
+    char  *mode;
+    cxobj *x;
+    cxobj *xnacm0 = NULL;
+    cxobj *xnacm = NULL;
+    cvec  *nsc = NULL;
+    cxobj *xerr = NULL;
+    int    ret;
+
+    *xnacmp = NULL;
+    mode = clicon_option_str(h, "CLICON_NACM_MODE");
+    if (mode == NULL || strcmp(mode, "disabled") == 0){
+        retval = 0;
+        goto done;
+    }
+    else if (strcmp(mode, "external") == 0){
+        if ((x = clicon_nacm_ext(h)) != NULL)
+            if ((xnacm0 = xml_dup(x)) == NULL)
+                goto done;
+    }
+    else if (strcmp(mode, "internal") == 0){
+        if ((ret = xmldb_get0(h, "running", YB_MODULE, NULL, "nacm", 1, 0, &xnacm0, NULL, &xerr)) < 0)
+            goto done;
+        if (ret == 0){ /* datastore validation failed: treat as no config, not an error */
+            retval = 0;
+            goto done;
+        }
+    }
+    else{
+        clixon_err(OE_XML, 0, "Invalid NACM mode: %s", mode);
+        goto done;
+    }
+    if (xnacm0 == NULL){
+        retval = 0;
+        goto done;
+    }
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+        goto done;
+    if ((xnacm = xpath_first(xnacm0, nsc, "nacm")) == NULL){
+        retval = 0;
+        goto done;
+    }
+    if (xml_rootchild_node(xnacm0, xnacm) < 0)
+        goto done;
+    xnacm0 = NULL;
+    *xnacmp = xnacm;
+    xnacm = NULL;
+    retval = 0;
+ done:
+    if (nsc)
+        xml_nsctx_free(nsc);
+    if (xnacm0)
+        xml_free(xnacm0);
+    if (xnacm)
+        xml_free(xnacm);
+    if (xerr)
+        xml_free(xerr);
+    return retval;
+}
+
+/*! Get names of all NACM groups a user is statically assigned to
+ *
+ * Looks up static group membership ("groups/group[user-name=username]") in
+ * the currently active NACM configuration (see CLICON_NACM_MODE). Does not
+ * include groups added dynamically via "enable-external-groups" (the OS
+ * groups of a connected peer), since resolving those needs a live
+ * transport-layer peer identity this standalone lookup does not have --
+ * see user2groups() for plain OS group membership instead.
+ *
+ * @param[in]  h         Clixon handle
+ * @param[in]  username  NACM user name to look up
+ * @param[out] groupsp   Malloced array of malloced group name strings, or
+ *                        NULL if the user is in no group. Caller frees each
+ *                        entry and the array.
+ * @param[out] ngroupsp  Number of entries in *groupsp
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
+int
+nacm_user_groups(clixon_handle h,
+                 const char   *username,
+                 char       ***groupsp,
+                 int          *ngroupsp)
+{
+    int      retval = -1;
+    cxobj   *xnacm = NULL;
+    cxobj  **gvec = NULL;
+    size_t   glen = 0;
+    cvec    *nsc = NULL;
+    char   **groups = NULL;
+    char   **g2;
+    int      ngroups = 0;
+    char    *gname;
+    int      i;
+
+    if (username == NULL){
+        clixon_err(OE_XML, EINVAL, "username is NULL");
+        goto done;
+    }
+    if (nacm_config_get(h, &xnacm) < 0)
+        goto done;
+    if (xnacm == NULL)
+        goto ok; /* no NACM config: no groups */
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+        goto done;
+    if (xpath_vec(xnacm, nsc, "groups/group[user-name='%s']", &gvec, &glen, username) < 0)
+        goto done;
+    for (i = 0; i < glen; i++){
+        if ((gname = xml_find_body(gvec[i], "name")) == NULL)
+            continue;
+        if ((g2 = realloc(groups, (ngroups + 1) * sizeof(char *))) == NULL){
+            clixon_err(OE_UNIX, errno, "realloc");
+            goto done;
+        }
+        groups = g2;
+        if ((groups[ngroups] = strdup(gname)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        ngroups++;
+    }
+ ok:
+    *groupsp = groups;
+    *ngroupsp = ngroups;
+    groups = NULL;
+    retval = 0;
+ done:
+    if (groups){
+        for (i = 0; i < ngroups; i++)
+            if (groups[i])
+                free(groups[i]);
+        free(groups);
+    }
+    if (gvec)
+        free(gvec);
+    if (nsc)
+        xml_nsctx_free(nsc);
+    if (xnacm)
+        xml_free(xnacm);
+    return retval;
+}
+
+/*! Get names of all users statically assigned to a NACM group
+ *
+ * Looks up the "user-name" leaf-list of "groups/group[name=groupname]" in
+ * the currently active NACM configuration (see CLICON_NACM_MODE).
+ *
+ * @param[in]  h         Clixon handle
+ * @param[in]  groupname NACM group name to look up
+ * @param[out] usersp    Malloced array of malloced user name strings, or
+ *                        NULL if the group is empty or does not exist.
+ *                        Caller frees each entry and the array.
+ * @param[out] nusersp   Number of entries in *usersp
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
+int
+nacm_group_users(clixon_handle h,
+                 const char   *groupname,
+                 char       ***usersp,
+                 int          *nusersp)
+{
+    int      retval = -1;
+    cxobj   *xnacm = NULL;
+    cxobj   *xgroup;
+    cxobj  **uvec = NULL;
+    size_t   ulen = 0;
+    cvec    *nsc = NULL;
+    char   **users = NULL;
+    char   **u2;
+    int      nusers = 0;
+    char    *uname;
+    int      i;
+
+    if (groupname == NULL){
+        clixon_err(OE_XML, EINVAL, "groupname is NULL");
+        goto done;
+    }
+    if (nacm_config_get(h, &xnacm) < 0)
+        goto done;
+    if (xnacm == NULL)
+        goto ok; /* no NACM config: no users */
+    if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
+        goto done;
+    if ((xgroup = xpath_first(xnacm, nsc, "groups/group[name='%s']", groupname)) == NULL)
+        goto ok; /* group does not exist: no users */
+    if (xpath_vec(xgroup, nsc, "user-name", &uvec, &ulen) < 0)
+        goto done;
+    for (i = 0; i < ulen; i++){
+        if ((uname = xml_body(uvec[i])) == NULL)
+            continue;
+        if ((u2 = realloc(users, (nusers + 1) * sizeof(char *))) == NULL){
+            clixon_err(OE_UNIX, errno, "realloc");
+            goto done;
+        }
+        users = u2;
+        if ((users[nusers] = strdup(uname)) == NULL){
+            clixon_err(OE_UNIX, errno, "strdup");
+            goto done;
+        }
+        nusers++;
+    }
+ ok:
+    *usersp = users;
+    *nusersp = nusers;
+    users = NULL;
+    retval = 0;
+ done:
+    if (users){
+        for (i = 0; i < nusers; i++)
+            if (users[i])
+                free(users[i]);
+        free(users);
+    }
+    if (uvec)
+        free(uvec);
+    if (nsc)
+        xml_nsctx_free(nsc);
+    if (xnacm)
+        xml_free(xnacm);
+    return retval;
+}
+
 /*! NACM intial pre- access control enforcements
  *
  * Initial NACM steps and common to all NACM access validation.
