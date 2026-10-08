@@ -412,6 +412,25 @@ expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "string-length(\"12345\")")
 new "xpath string-length path"
 expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "string-length(aaa/name)")" 0 "number:3"
 
+# mod: XPath 1.0 3.5, remainder from a truncating division
+new "xpath 5 mod 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "5 mod 2")" 0 "number:1.0"
+
+new "xpath 5 mod -2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "5 mod -2")" 0 "number:1.0"
+
+new "xpath -5 mod 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "-5 mod 2")" 0 "number:-1.0"
+
+new "xpath 5.5 mod 2"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "5.5 mod 2")" 0 "number:1.5"
+
+new "xpath 1 mod 0 is NaN, not crash"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "1 mod 0")" 0 "number:" "nan"
+
+new "xpath 1 mod 0.5, divisor truncated to int was 0"
+expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "1 mod 0.5")" 0 "number:0.0"
+
 # translate
 new "xpath translate" # modified
 expectpart "$($clixon_util_xpath -D $DBG -f $xml2 -p "translate(\"bar\", \"abc\",\"DEF\")")" 0 "string:EDr$"
