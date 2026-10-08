@@ -763,7 +763,9 @@ xp_numop(xp_ctx    *xc1,
             xr->xc_number = n1/n2;
             break;
         case XO_MOD:
-            xr->xc_number = ((int)n1)%((int)n2);
+            /* XPath 1.0 3.5: remainder from a truncating division, as fmod().
+             * Integer % crashes with SIGFPE if n2 truncates to 0 */
+            xr->xc_number = fmod(n1, n2);
             break;
         case XO_ADD:
             xr->xc_number = n1+n2;
