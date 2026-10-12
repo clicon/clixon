@@ -93,6 +93,11 @@
  */
 #define XML_TOP_SYMBOL "top"
 
+/*! Max depth of XML tree
+ * TODO: is not fully deployed
+ */
+#define XML_MAX_ANCESTORS 64
+
 /*
  * Types
  */

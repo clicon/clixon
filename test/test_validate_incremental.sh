@@ -104,16 +104,14 @@ module test {
       }
    }
 
-   /* sectionD: deeply nested lists with a mandatory leaf.
-    * Models the scenario where a mandatory leaf is deleted inside a
-    * container that is nested under multiple list levels.
-    * find_target_equiv() must correctly navigate to the innerContainer
-    * in the target tree so that XML_FLAG_DEL_ANC is set and the
-    * mandatory check is not skipped. */
-   container sectionD {
-      list outerList {
-         key name;
-         leaf name {
+   /* sectionE: list with a COMPOSITE key (k1, k2) */
+   container sectionE {
+      list pair {
+         key "k1 k2";
+         leaf k1 {
+            type string;
+         }
+         leaf k2 {
             type string;
          }
          list innerList {
@@ -588,18 +586,21 @@ new "Check: sectionC minmax checked after delete (DEL_ANC propagation)"
 expectpart "$(grep 'minmax.*sectionC' $LOGFILE)" 0 "check minmax" --not-- "skip minmax"
 
 # ---------------------------------------------------------------------------
-# Test F: Nested lists — mandatory leaf deletion must trigger mandatory check.
-# This tests find_target_equiv() with multi-level list paths.
-# Setup: outerList[name=o1]/innerList[name=i1]/innerContainer/{required,optional}
-# Delete "required" (mandatory true) → validate must fail.
+# Test F: Composite-key list — mandatory leaf deletion must trigger mandatory
+# check even when a sibling entry shares the first key value.
 # ---------------------------------------------------------------------------
-new "Setup sectionD: add outerList[o1]/innerList[i1]/innerContainer with required+optional"
+new "Setup sectionE: add pair[shared,A] (no innerList) and pair[shared,B]/innerList[i1]/innerContainer"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
   "<rpc $DEFAULTNS><edit-config><target><candidate/></target>
      <config>
-       <sectionD xmlns=\"urn:example:test\">
-         <outerList>
-           <name>o1</name>
+       <sectionE xmlns=\"urn:example:test\">
+         <pair>
+           <k1>shared</k1>
+           <k2>A</k2>
+         </pair>
+         <pair>
+           <k1>shared</k1>
+           <k2>B</k2>
            <innerList>
              <name>i1</name>
              <innerContainer>
@@ -607,43 +608,44 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
                <optional>opt-value</optional>
              </innerContainer>
            </innerList>
-         </outerList>
-       </sectionD>
+         </pair>
+       </sectionE>
      </config>
    </edit-config></rpc>" \
   "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "commit sectionD setup (mandatory leaf present, OK)"
+new "commit sectionE setup (mandatory leaf present, OK)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
   "<rpc $DEFAULTNS><commit/></rpc>" \
   "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "Delete mandatory leaf sectionD/outerList[o1]/innerList[i1]/innerContainer/required"
+new "Delete mandatory leaf sectionE/pair[shared,B]/innerList[i1]/innerContainer/required"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
   "<rpc $DEFAULTNS><edit-config><target><candidate/></target>
      <config>
-       <sectionD xmlns=\"urn:example:test\">
-         <outerList>
-           <name>o1</name>
+       <sectionE xmlns=\"urn:example:test\">
+         <pair>
+           <k1>shared</k1>
+           <k2>B</k2>
            <innerList>
              <name>i1</name>
              <innerContainer>
                <required xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\">req-value</required>
              </innerContainer>
            </innerList>
-         </outerList>
-       </sectionD>
+         </pair>
+       </sectionE>
      </config>
    </edit-config></rpc>" \
   "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
-new "validate after deleting mandatory leaf (nested lists) — must fail"
+new "validate after deleting mandatory leaf (composite-key list) — must fail"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
   "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" \
   "<rpc-error>" "" \
   --not-- "<ok/>"
 
-new "discard-changes after nested mandatory deletion"
+new "discard-changes after composite-key mandatory deletion"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
   "<rpc $DEFAULTNS><discard-changes/></rpc>" \
   "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"

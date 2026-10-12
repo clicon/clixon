@@ -125,10 +125,11 @@ generic_validate(clixon_handle       h,
 /*! Find the node in the target tree that corresponds to a source-tree ancestor
  *
  * When a leaf is deleted (exists only in source), its parent in the source tree
- * may still have a counterpart in the target tree. This function walks up the
- * source chain from xsrc to (but not including) the source root xsroot,
- * building the path, then walks down the target tree xttop following the same
- * path using name + first key value matching.
+ * may still have a counterpart in the target tree. This function recurses up
+ * the source chain from xsrc to (but not including) the source root xsroot,
+ * then, as the recursion unwinds, matches each ancestor back down into the
+ * target tree xttop using name + all key values, arriving at the target
+ * equivalent of xsrc's parent.
  *
  * Called from compute_diffs to propagate XML_FLAG_CHANGE into target ancestors
  * of deleted nodes so that mandatory checks are not incorrectly skipped.
@@ -136,77 +137,87 @@ generic_validate(clixon_handle       h,
  * @param[in]  xsrc    Source node whose target-equivalent ancestor we seek
  * @param[in]  xsroot  Root of the source tree (stop before this)
  * @param[in]  xttop   Root of the target tree to search in
- * @retval     xt      Target node equivalent to xsrc's parent; NULL if not found
+ * @param[in]  depth   Recursion depth, guards against pathological nesting
+ * @retval     xt      Target node equivalent to xsrc's parent
+ * @retval     NULL    Not found
  */
+static cxobj *
+find_target_equiv1(cxobj *xsrc,
+                   cxobj *xsroot,
+                   cxobj *xttop,
+                   int    depth)
+{
+    cxobj      *xp;
+    cxobj      *xt;
+    cxobj      *xmatch = NULL;
+    const char *name;
+    yang_stmt  *ys;
+    cvec       *keycvv;
+    int         nkeys;
+    cxobj      *xc;
+    int         ix2;
+    int         k;
+    int         allmatch = 1;
+    cg_var     *kv;
+    const char *keyname;
+    const char *keyval;
+    const char *bstr;
+
+    if ((xp = xml_parent(xsrc)) == NULL || xp == xsroot)
+        return xttop; /* xsrc is a direct child of src root: target root is the equivalent */
+    if (depth >= XML_MAX_ANCESTORS)
+        return NULL;
+    /* Recurse up first to get the target equivalent of xp's OWN parent, ie the
+     * target-tree container that xp itself should be matched down into below. */
+    if ((xt = find_target_equiv1(xp, xsroot, xttop, depth + 1)) == NULL)
+        return NULL;
+    name = xml_name(xp);
+    ys = xml_spec(xp);
+    if (ys != NULL &&
+        yang_keyword_get(ys) == Y_LIST){
+        /* For list entries: find the child of xt whose element name matches
+         * xp's name and whose key children all have the same values. */
+        keycvv = yang_cvec_get(ys);
+        nkeys  = keycvv ? cvec_len(keycvv) : 0;
+        if (nkeys > 0){
+            ix2 = 0;
+            while ((xc = xml_child_iter(xt, &ix2, CX_ELMNT)) != NULL){
+                allmatch = 1;
+                if (strcmp(xml_name(xc), name) != 0)
+                    continue;
+                for (k = 0; k < nkeys; k++){
+                    kv      = cvec_i(keycvv, k);
+                    keyname = cv_string_get(kv);
+                    if (keyname == NULL ||
+                        (keyval = xml_find_body(xp, keyname)) == NULL){
+                        allmatch = 0;
+                        break;
+                    }
+                    bstr = xml_find_body(xc, keyname);
+                    if (bstr == NULL || strcmp(bstr, keyval) != 0){
+                        allmatch = 0;
+                        break;
+                    }
+                }
+                if (allmatch){
+                    xmatch = xc;
+                    break;
+                }
+            }
+        }
+    }
+    /* Fall back to simple name match */
+    if (xmatch == NULL)
+        xmatch = xml_find(xt, name);
+    return xmatch;
+}
+
 static cxobj *
 find_target_equiv(cxobj *xsrc,
                   cxobj *xsroot,
                   cxobj *xttop)
 {
-    cxobj  *path[64]; /* ancestor path from xsrc up to xsroot, excl xsroot */
-    int     depth = 0;
-    cxobj  *xp;
-    cxobj  *xt;
-    int     j;
-
-    /* Collect ancestors of xsrc up to (but not including) xsroot */
-    xp = xml_parent(xsrc);
-    while (xp != NULL && xp != xsroot && depth < 64){
-        path[depth++] = xp;
-        xp = xml_parent(xp);
-    }
-    if (depth == 0){
-        return xttop;  /* deleted node is a direct child of src root; flag target root */
-    }
-    /* Walk the path top-down through the target tree */
-    xt = xttop;
-    for (j = depth - 1; j >= 0; j--){
-        cxobj      *xsnode = path[j];
-        const char *name   = xml_name(xsnode);
-        yang_stmt  *ys     = xml_spec(xsnode);
-        cxobj      *xmatch = NULL;
-
-        if (ys != NULL &&
-            yang_keyword_get(ys) == Y_LIST){
-            /* For list entries: find the child of xt whose element name matches
-             * xsnode's name and whose first key child has the same value.
-             * E.g. for exportingProcess[name=vpp] under ipfix-config, iterate
-             * children of xt named "exportingProcess" and pick the one containing
-             * <name>vpp</name>. */
-            cvec   *keycvv = yang_cvec_get(ys);
-            cg_var *kv     = keycvv ? cvec_i(keycvv, 0) : NULL;
-
-            if (kv != NULL){
-                const char *keyname = cv_string_get(kv);
-                const char *keyval;
-
-                if (keyname != NULL &&
-                    (keyval = xml_find_body(xsnode, keyname)) != NULL){
-                    cxobj      *xc;
-                    int         ix2 = 0;
-
-                    while ((xc = xml_child_iter(xt, &ix2, CX_ELMNT)) != NULL){
-                        const char *bstr;
-
-                        if (strcmp(xml_name(xc), name) != 0)
-                            continue;
-                        bstr = xml_find_body(xc, keyname);
-                        if (bstr != NULL && strcmp(bstr, keyval) == 0){
-                            xmatch = xc;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        /* Fall back to simple name match */
-        if (xmatch == NULL)
-            xmatch = xml_find(xt, name);
-        if (xmatch == NULL)
-            return NULL; /* not in target */
-        xt = xmatch;
-    }
-    return xt;
+    return find_target_equiv1(xsrc, xsroot, xttop, 0);
 }
 
 /*! Given a transaction src/target, compute diffs and set flags

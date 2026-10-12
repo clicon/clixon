@@ -32,6 +32,7 @@ Expected: January 2026
 
 ### Corrected Bugs
 
+* Fixed: [Mandatory leaf deletion is incorrectly accepted when a sibling list entry exists](https://github.com/clicon/clixon/issues/704)
 * Fixed: [CLI: Leafref tab-completion fails when entry key value contains literal '/'. (ie name='e/0')](https://github.com/clicon/clixon/issues/699)
 
 ## 7.9.0
