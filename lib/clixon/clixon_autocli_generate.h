@@ -51,7 +51,7 @@
 #define GROUPING_CALLBACK "prepend_me"
 #define MTPOINT_PREFIX    "mtpoint"
 
-/* variable expand function */
+/*! Variable expand function, can be customized with clixon-autocli:expand extension */
 #define GENERATE_EXPAND_XMLDB "expand_dbvar"
 
 /* Name of autocli CLIgen treename */

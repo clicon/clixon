@@ -22,6 +22,14 @@
 ## 8.0.0
 Expected: January 2026
 
+### Features
+
+* New autocli YANG extension `expand`
+  * Override the default `expand_dbvar()` CLI tab-completion callback with a custom callback
+  * For cases where valid values cannot be derived from existing XML instances in the candidate db alone
+* New `clixon-autocli@2026-10-01.yang` revision
+  * Added extension: `expand`
+
 ### Corrected Bugs
 
 * Fixed: [CLI: Leafref tab-completion fails when entry key value contains literal '/'. (ie name='e/0')](https://github.com/clicon/clixon/issues/699)

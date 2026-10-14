@@ -119,6 +119,41 @@ mycallback(clixon_handle h,
     return retval;
 }
 
+/*! Example custom CLI expand callback, for the autocli "expand" extension
+ *
+ * Demonstrates overriding the default GENERATE_EXPAND_XMLDB (expand_dbvar) with a custom callback.
+ * This callback offers a fixed set of values: red/green/blue.
+ * Registered on a YANG leaf via:
+ *   autocli:expand "cli_expand_fixed";
+ * @see expand_dbvar  The default this replaces; same calling convention
+ */
+int
+cli_expand_fixed(void *h,
+                 char *name,
+                 cvec *cvv,
+                 cvec *argv,
+                 cvec *commands,
+                 cvec *helptexts)
+{
+    int retval = -1;
+
+    if (cvec_add_string(commands, NULL, "red") < 0)
+        goto done;
+    if (cvec_add_string(helptexts, NULL, "Fixed example value") < 0)
+        goto done;
+    if (cvec_add_string(commands, NULL, "green") < 0)
+        goto done;
+    if (cvec_add_string(helptexts, NULL, "Fixed example value") < 0)
+        goto done;
+    if (cvec_add_string(commands, NULL, "blue") < 0)
+        goto done;
+    if (cvec_add_string(helptexts, NULL, "Fixed example value") < 0)
+        goto done;
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Start bash from cli callback
  *
  * Typical usage: shell("System Bash") <source:rest>, cli_start_shell();

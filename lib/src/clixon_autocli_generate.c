@@ -240,6 +240,7 @@ gen_mtpoint_add(cbuf      *cb,
  * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to
  *                             expand_dbvar() to signal that leafrefs should be followed.
  * @see expand_dbvar  This is where the expand string is used
+ * @see CLIXON_AUTOCLI_NS "expand" extension  Overrides expand_dbvar() with a custom callback
  * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
  */
 static int
@@ -252,14 +253,19 @@ cli_expand_var_generate(clixon_handle h,
                         int           leafref_refer,
                         cbuf         *cb)
 {
-    int        retval = -1;
-    char      *api_path_fmt = NULL;
-    int        extvalue = 0;
+    int   retval = -1;
+    char *api_path_fmt = NULL;
+    int   extvalue = 0;
+    char *expandfn = NULL;
 
     if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
         goto done;
     if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL)
         goto hide;
+    /* Allow an override of the default GENERATE_EXPAND_XMLDB/expand_dbvar() callback with
+     * a custom one */
+    if (yang_extension_value(ys, "expand", CLIXON_AUTOCLI_NS, NULL, &expandfn) < 0)
+        goto done;
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
         goto done;
     if (pre)
@@ -268,7 +274,7 @@ cli_expand_var_generate(clixon_handle h,
     if (options & YANG_OPTIONS_FRACTION_DIGITS)
         cprintf(cb, " fraction-digits:%u", fraction_digits);
     cprintf(cb, " %s(\"candidate\",\"%s\"",
-            GENERATE_EXPAND_XMLDB,
+            expandfn ? expandfn : GENERATE_EXPAND_XMLDB,
             api_path_fmt);
     if (leafref_refer)
         cprintf(cb, ",\"leafref-refer\"");

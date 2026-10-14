@@ -41,6 +41,11 @@ module clixon-autocli{
 
        ***** END LICENSE BLOCK *****";
 
+    revision 2026-10-01 {
+        description
+            "Added extension expand
+             Released in Clixon 8.0";
+    }
     revision 2025-12-01 {
         description
             "Added explicit enabled option
@@ -107,6 +112,19 @@ module clixon-autocli{
              Instead of using the YANG argument name, use new argument instead.
              Only implemented for YANG leafs";
         argument new;
+    }
+    extension expand {
+        description
+            "Use a custom CLI expand callback instead of the default GENERATE_EXPAND_XMLDB/expand_dbvar().
+             This is for cases where the set of valid values for a leaf cannot be
+             derived from existing XML instances in the candidate db alone, eg a
+             name synthesized from another list, or values enumerated from live
+             device state.
+             The named function must accept the same calling convention as
+             expand_dbvar(): it is invoked as function(\"candidate\", api-path-fmt
+             [,\"leafref-refer\"] [,mountpoint]).
+             Only implemented for YANG leafs";
+        argument function;
     }
     typedef autocli-op {
         description

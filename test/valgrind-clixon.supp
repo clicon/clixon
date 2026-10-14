@@ -68,6 +68,14 @@
    fun:*
    fun:_dl_close_worker
 }
+{
+   supp9-dlopen-rtld-global
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*
+   fun:*
+   fun:add_to_global_resize
+}
 # obsolete
 {
    supp1x
