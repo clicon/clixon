@@ -20,10 +20,11 @@
 * [6.0.0](#600) 29 Nov 2022
 
 ## 8.0.0
-Expected: January 2026
+Expected: January 2027
 
 ### Features
 
+* Added anthropic/OSS-scanner support
 * New autocli YANG extension `expand`
   * Override the default `expand_dbvar()` CLI tab-completion callback with a custom callback
   * For cases where valid values cannot be derived from existing XML instances in the candidate db alone
@@ -36,7 +37,7 @@ Expected: January 2026
 * Fixed: [CLI: Leafref tab-completion fails when entry key value contains literal '/'. (ie name='e/0')](https://github.com/clicon/clixon/issues/699)
 
 ## 7.9.0
-25 September 2026
+25 September 2027
 
 The Clixon 7.9 release features a new show compare implementation following RFC 9144, optimization of XML memory footprint, new fuzzing and reentrant parsers.
 
