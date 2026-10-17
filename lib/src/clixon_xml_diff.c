@@ -539,7 +539,7 @@ xml_diff(cxobj     *x0,
         goto ok;
     }
     if (x0 == NULL){
-        if (cxvec_append(x0, second, secondlen) < 0)
+        if (cxvec_append(x1, second, secondlen) < 0)
             goto done;
         goto ok;
     }
