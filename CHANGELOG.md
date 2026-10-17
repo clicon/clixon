@@ -1,6 +1,6 @@
 # Clixon Changelog
 
-* [8.0.0](#790) Expected: January 2027
+* [8.0.0](#800) Expected: January 2027
 * [7.9.0](#790) 25 September 2026
 * [7.8.0](#780) 29 May 2026
 * [7.7.0](#770) 21 February 2026
