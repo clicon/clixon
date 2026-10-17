@@ -118,10 +118,10 @@ struct xpath_tree{
     struct xpath_tree *xs_c0;     /* child 0 */
     struct xpath_tree *xs_c1;     /* child 1 */
     int                xs_match;  /* meta: match this node */
-#ifdef XPATH_CURRENT_OPTIMIZE
+    /* Unconditional (not only XPATH_CURRENT_OPTIMIZE): struct layout must not depend on
+     * compile options, see https://github.com/clicon/clixon/issues/698 */
     void              *xs_cached_result;   /* xp_ctx *: cached evaluation result */
     void              *xs_cached_initial;  /* cxobj *: xc_initial for which cache is valid */
-#endif
 };
 typedef struct xpath_tree xpath_tree;
 
