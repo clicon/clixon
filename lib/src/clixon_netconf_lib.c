@@ -1806,6 +1806,8 @@ netconf_trymerge(cxobj       *x,
  *   validate (8.6)
  *   startup (8.7)
  *   xpath (8.9)
+ * Also enables the ietf-list-pagination features clixon implements
+ * unconditionally (sort-by, where, offset)
  * @see netconf_module_load  that is called later
  */
 int
@@ -1826,6 +1828,15 @@ netconf_module_features(clixon_handle h)
                                 YB_PARENT,  NULL, &xc, NULL) < 0)
         goto done;
     if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-netconf:xpath</CLICON_FEATURE>",
+                                YB_PARENT, NULL, &xc, NULL) < 0)
+        goto done;
+    if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-list-pagination:sort-by</CLICON_FEATURE>",
+                                YB_PARENT, NULL, &xc, NULL) < 0)
+        goto done;
+    if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-list-pagination:where</CLICON_FEATURE>",
+                                YB_PARENT, NULL, &xc, NULL) < 0)
+        goto done;
+    if (clixon_xml_parse_string("<CLICON_FEATURE>ietf-list-pagination:offset</CLICON_FEATURE>",
                                 YB_PARENT, NULL, &xc, NULL) < 0)
         goto done;
     retval = 0;

@@ -24,12 +24,15 @@ Expected: January 2027
 
 ### Features
 
+* Added RESTCONF `filter` query parameter for event streams
 * Added anthropic/OSS-scanner support
 * New autocli YANG extension `expand`
   * Override the default `expand_dbvar()` CLI tab-completion callback with a custom callback
   * For cases where valid values cannot be derived from existing XML instances in the candidate db alone
 * New `clixon-autocli@2026-10-01.yang` revision
   * Added extension: `expand`
+* Updated to `ietf-list-pagination@2026-10-09` / `ietf-list-pagination-nc@2026-10-09` draft revisions
+  * `sort-by` (renamed from `sort`), `where`, and `offset` are now `if-feature`-gated by the draft
 
 ### Corrected Bugs
 
