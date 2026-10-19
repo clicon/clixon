@@ -178,6 +178,12 @@ restconf_subscription(clixon_handle  h,
             cv2cbuf(cv, cb);
             cprintf(cb, "</stopTime>");
         }
+        else if (strcmp(vname, "filter") == 0){
+            cprintf(cb, "<filter type=\"xpath\" select=\"");
+            if (xml_chardata_cbuf_append(cb, 1, cv_string_get(cv)) < 0)
+                goto done;
+            cprintf(cb, "\"/>");
+        }
     }
     cprintf(cb, "</create-subscription></rpc>]]>]]>");
     if (clicon_rpc_netconf(h, cbuf_get(cb), &xret, &s) < 0)
