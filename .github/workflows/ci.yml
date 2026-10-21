@@ -126,6 +126,38 @@ jobs:
         path: /tmp/clixon-test.tar.gz
         retention-days: 1
 
+  # Build-only (no test run): confirms the alpine image also builds cleanly with
+  # clang (see docker/test/Dockerfile.native, which defaults to gcc otherwise).
+  # Does not feed into the docker-alpine-test-N jobs below, which use
+  # docker-alpine-build.
+  docker-alpine-build-clang:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./docker/test
+    steps:
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+    - name: in-line clone
+      run: git clone file://$(realpath ../..)
+    - name: openconfig
+      run: mkdir -p openconfig; cd openconfig ; git clone https://github.com/openconfig/public
+    - name: yangmodels1
+      run: mkdir -p yang/standard
+    - name: yangmodels2
+      run: (cd yang; git init;)
+    - name: yangmodels3
+      run: (cd yang; git remote add -f origin https://github.com/YangModels/yang)
+    - name: yangmodels4
+      run: (cd yang; git config core.sparseCheckout true)
+    - name: yangmodels5
+      run: (echo "standard/" >> yang/.git/info/sparse-checkout; echo "experimental/" >> yang/.git/info/sparse-checkout)
+    - name: yangmodels6
+      run: (cd yang; git pull origin main)
+    - name: make docker
+      run: sudo docker build --build-arg CC=clang --build-arg CXX=clang++ -f Dockerfile.native -t clixon/clixon-test-clang .
+
   docker-alpine-test-1:
     needs: docker-alpine-build
     runs-on: ubuntu-latest
