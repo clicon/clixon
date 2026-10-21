@@ -162,7 +162,8 @@ RUN apk add protobuf-c
 # For grpc/gnmi testing
 RUN apk update && apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing grpcurl
 
-RUN bash -c "$(curl -sL https://get-gnmic.openconfig.net)"
+# Pin a specific version to avoid eventual rate-limits
+RUN bash -c "$(curl -sL https://get-gnmic.openconfig.net)" bash --version 0.49.0
 
 # Dont need to expose restconf ports for internal tests
 #EXPOSE 80/tcp
