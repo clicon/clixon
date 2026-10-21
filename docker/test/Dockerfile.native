@@ -37,7 +37,13 @@ FROM alpine:latest
 LABEL maintainer="Olof Hagsand <olof@hagsand.se>"
 
 # For clixon and cligen
-RUN apk add --update git make build-base gcc flex bison curl-dev
+RUN apk add --update git make build-base gcc clang flex bison curl-dev
+# Default to gcc; the docker-alpine-build-clang CI job overrides with
+# --build-arg CC=clang to additionally confirm a clang build.
+ARG CC=gcc
+ARG CXX=g++
+ENV CC=${CC}
+ENV CXX=${CXX}
 
 # nghttp2 dependencies
 RUN apk add --update nghttp2
