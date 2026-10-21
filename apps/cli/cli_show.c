@@ -312,7 +312,7 @@ expand_dbvar(clixon_handle h,
      * Issue: with NACM, the rpc can fail but dont want to return error / -1, instead return empty list
      */
     if (clixon_rpc_config_path_info(h, api_path, 0, NULL, NULL,
-                                    leafref_refer, 0, NULL, NULL,
+                                    leafref_refer, dbstr, 0, NULL, NULL,
                                     NULL, &xpath, &nsc,
                                     NULL, NULL, NULL, NULL, NULL) < 0){
         /* Try local call to find xpath and nsc, but this may not work over mountpoints */
@@ -1089,7 +1089,7 @@ show_conf_xpath(clixon_handle h,
     }
     /* Get XPath and namespace context from api_path */
     if (clixon_rpc_config_path_info(h, NULL, 0, xpath0, nsc0,
-                                    0, 0, NULL, NULL,
+                                    0, dbname, 0, NULL, NULL,
                                     NULL, &xpath, &nsc,
                                     NULL, NULL, NULL, NULL, NULL) < 0)
         goto done;
@@ -2354,7 +2354,7 @@ cli_show_config_info(clixon_handle h,
     if (cli_apipath(h, cvv, mtdomain, mtspec, api_path_fmt, NULL, &api_path) < 0)
         goto done;
     if (clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL,
-                                    0, 0, NULL, NULL, NULL, &xpath, &nsc,
+                                    0, NULL, 0, NULL, NULL, NULL, &xpath, &nsc,
                                     &symbol, &prefix, &ns, &module, &filename) < 0)
         goto done;
     cligen_output(stdout, "Symbol:     %s\n", symbol);

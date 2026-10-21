@@ -2061,6 +2061,7 @@ clixon_rpc_clixon_cache(clixon_handle h,
  * @param[in]     xpath0        XPath
  * @param[in]     nsc0          Namespace-context of xpath
  * @param[in]     leafref_refer XPath is extended by appending the path of the leafref to the original XPath.
+ * @param[in]     db            Datastore to resolve a relative leafref's current(). Ignored otherwise.
  * @param[in]     body          If innermost XML is leaf, add body
  * @param[in]     mark_keys     If true, server annotates list key leaves with cl:key="true"
  * @param[out]    xtop          XML data
@@ -2083,6 +2084,7 @@ clixon_rpc_config_path_info(clixon_handle h,
                             const char   *xpath0,
                             cvec         *nsc0,
                             int           leafref_refer,
+                            const char   *db,
                             int           mark_keys,
                             const char   *body,
                             cxobj        *xtop,
@@ -2157,6 +2159,8 @@ clixon_rpc_config_path_info(clixon_handle h,
         }
     }
     cprintf(cb, "<leafref-refer>%s</leafref-refer>", leafref_refer?"true":"false");
+    if (db)
+        cprintf(cb, "<db>%s</db>", db);
     cprintf(cb, "<mark-keys>%s</mark-keys>", mark_keys?"true":"false");
     if (body){
         cprintf(cb, "<body>");
@@ -2274,7 +2278,7 @@ clixon_rpc_api_path2xml(clixon_handle h,
                         char        **xpath,
                         cvec        **nsc)
 {
-    return clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL, 0, mark_keys, body, xtop, NULL, xpath, nsc,
+    return clixon_rpc_config_path_info(h, api_path, 1, NULL, NULL, 0, NULL, mark_keys, body, xtop, NULL, xpath, nsc,
                                        NULL, NULL, NULL, NULL, NULL);
 }
 

@@ -35,9 +35,15 @@ Expected: January 2027
 * Updated to `ietf-list-pagination@2026-10-09` / `ietf-list-pagination-nc@2026-10-09` draft revisions
   * `sort-by` (renamed from `sort`), `where`, and `offset` are now `if-feature`-gated by the draft
 
+### API changes on existing protocol/config features
+
+* New `clixon-lib@2026-06-01.yang` revision
+   * Extended `config-path-info` rpc with `db` paramater
+
 ### Corrected Bugs
 
 * Fixed: "xpath: bound recursion depth to prevent stack-overflow DoS", author: Pexa Rubinstein <pexaxep@gmail.com>
+* Fixed: [CLI expand issue with leafrefs using predicates](https://github.com/clicon/clixon/issues/706)
 * Fixed: [Mandatory leaf deletion is incorrectly accepted when a sibling list entry exists](https://github.com/clicon/clixon/issues/704)
 * Fixed: [CLI: Leafref tab-completion fails when entry key value contains literal '/'. (ie name='e/0')](https://github.com/clicon/clixon/issues/699)
 

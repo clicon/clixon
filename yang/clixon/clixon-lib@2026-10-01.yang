@@ -73,6 +73,11 @@ module clixon-lib {
        - link # For split multiple XML files
       ";
 
+    revision 2026-10-01 {
+        description
+            "Extended config-path-info rpc with db paramater
+             Released in Clixon 8.0";
+    }
     revision 2026-06-01 {
         description
             "Extended config-path-info rpc with mark-keys paramater
@@ -820,6 +825,12 @@ module clixon-lib {
                      If false, the XPath is not extended";
                 type boolean;
                 default false;
+            }
+            leaf db {
+                description
+                    "Datastore used to resolve a relative leafref's current() reference,
+                     when leafref-refer is true. Ignored otherwise";
+                type string;
             }
             leaf mark-keys {
                 description

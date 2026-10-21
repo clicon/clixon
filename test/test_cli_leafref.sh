@@ -143,6 +143,73 @@ module example-leafref{
            }
         }
     }
+    /* Leafref path whose target is filtered by a predicate containing an embedded relative path */
+    container items {
+        list item {
+            key "group name";
+            leaf group {
+                type string;
+            }
+            leaf name {
+                type string;
+            }
+        }
+    }
+    container refs {
+        list ref {
+            key name;
+            leaf name {
+                type string;
+            }
+            leaf group {
+                type string;
+            }
+            leaf item {
+                type leafref {
+                    path "../../../items/item[group=current()/../group]/name";
+                    require-instance false;
+                }
+            }
+        }
+    }
+    /* Leafref path with (1) more than one correlated-key predicate
+     * on the same step, and (2) a multi-step current()/../tail */
+    container items2 {
+        list item2 {
+            key "group kind name";
+            leaf group {
+                type string;
+            }
+            leaf kind {
+                type string;
+            }
+            leaf name {
+                type string;
+            }
+        }
+    }
+    container refs2 {
+        list ref2 {
+            key name;
+            leaf name {
+                type string;
+            }
+            container info {
+                leaf group {
+                    type string;
+                }
+                leaf kind {
+                    type string;
+                }
+            }
+            leaf item {
+                type leafref {
+                    path "../../../items2/item2[group=current()/../info/group][kind=current()/../info/kind]/name";
+                    require-instance false;
+                }
+            }
+        }
+    }
 }
 EOF
 
@@ -203,6 +270,7 @@ cat <<EOF > $dir/startup_db
    <table xmlns="urn:example:clixon">
       <parameter>
          <name>91</name>
+         <value>apple</value>
       </parameter>
       <parameter>
          <name>92</name>
@@ -319,6 +387,52 @@ expectpart "$(echo "set leafrefother leafref ?" | $clixon_cli -f $cfg 2> /dev/nu
 
 new "cli commit"
 expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
+
+# ---------------------------------------------------------------------------
+# Leafref path with a predicate containing an embedded relative path
+# ---------------------------------------------------------------------------
+new "Add item g1/apple"
+expectpart "$($clixon_cli -1 -f $cfg set items item g1 apple)" 0 "^$"
+
+new "Add item g1/banana"
+expectpart "$($clixon_cli -1 -f $cfg set items item g1 banana)" 0 "^$"
+
+new "Add item g2/cherry"
+expectpart "$($clixon_cli -1 -f $cfg set items item g2 cherry)" 0 "^$"
+
+new "Add ref r1 in group g1 (no item set yet)"
+expectpart "$($clixon_cli -1 -f $cfg set refs ref r1 group g1)" 0 "^$"
+
+new "cli commit"
+expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
+
+new "expand ref item: predicate-filtered leafref completion"
+expectpart "$(echo "set refs ref r1 item ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "apple" "banana" --not-- "cherry"
+
+# ---------------------------------------------------------------------------
+# Leafref path with multiple correlated-key predicates on one
+# step, and a multi-step current()/../tail
+# ---------------------------------------------------------------------------
+new "Add item2 g1/k1/widgetA"
+expectpart "$($clixon_cli -1 -f $cfg set items2 item2 g1 k1 widgetA)" 0 "^$"
+
+new "Add item2 g1/k2/widgetB"
+expectpart "$($clixon_cli -1 -f $cfg set items2 item2 g1 k2 widgetB)" 0 "^$"
+
+new "Add item2 g2/k1/widgetC"
+expectpart "$($clixon_cli -1 -f $cfg set items2 item2 g2 k1 widgetC)" 0 "^$"
+
+new "Add ref2 r1 info group g1"
+expectpart "$($clixon_cli -1 -f $cfg set refs2 ref2 r1 info group g1)" 0 "^$"
+
+new "Add ref2 r1 info kind k1"
+expectpart "$($clixon_cli -1 -f $cfg set refs2 ref2 r1 info kind k1)" 0 "^$"
+
+new "cli commit"
+expectpart "$($clixon_cli -1 -f $cfg -l o commit)" 0 "^$"
+
+new "expand ref2 item: multi-predicate, multi-step current() tail"
+expectpart "$(echo "set refs2 ref2 r1 item ?" | $clixon_cli -f $cfg 2> /dev/null)" 0 "widgetA" --not-- "widgetB" "widgetC"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

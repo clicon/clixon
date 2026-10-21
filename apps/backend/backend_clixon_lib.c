@@ -383,31 +383,246 @@ from_client_restart_plugin(clixon_handle h,
     return retval;
 }
 
+/*! Split xpath on top-level '/' only, not on one inside a [...] predicate
+ *
+ * Unlike clixon_strsep1(), which splits on every delimiter occurrence, this tracks
+ * bracket depth so eg "a[b=c/../d]/e" splits into "a[b=c/../d]" and "e", not into
+ * four bogus steps.
+ * @param[in]  xpath1  Input xpath string (not modified)
+ * @param[out] nvecp   Number of elements in returned vector
+ * @retval     vec     Vector of strings (one malloced block). Free with free()
+ * @retval     NULL    Error
+ * @see clixon_strsep1  Generic (bracket-unaware) sibling
+ */
+static char **
+xpath_strsep_toplevel(const char *xpath1,
+                      int        *nvecp)
+{
+    char      **vec = NULL;
+    char       *buf;
+    char       *p;
+    int         nvec;
+    int         depth;
+    size_t      len = strlen(xpath1);
+    size_t      siz;
+    const char *s;
+    int         i;
+
+    nvec = 1;
+    depth = 0;
+    for (s = xpath1; *s; s++){
+        if (*s == '[')
+            depth++;
+        else if (*s == ']')
+            depth--;
+        else if (*s == '/' && depth == 0)
+            nvec++;
+    }
+    siz = (nvec+1)*sizeof(char*) + len + 1;
+    if ((vec = (char**)malloc(siz)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        return NULL;
+    }
+    memset(vec, 0, siz);
+    buf = (char*)vec + (nvec+1)*sizeof(char*);
+    memcpy(buf, xpath1, len+1);
+    i = 0;
+    vec[i++] = buf;
+    depth = 0;
+    for (p = buf; *p; p++){
+        if (*p == '[')
+            depth++;
+        else if (*p == ']')
+            depth--;
+        else if (*p == '/' && depth == 0){
+            *p = '\0';
+            vec[i++] = p+1;
+        }
+    }
+    *nvecp = nvec;
+    return vec;
+}
+
+/*! Truncate a cbuf-held xpath by one top-level '/'-delimited step, bracket-depth aware
+ *
+ * Truncate up to (not including) the last top-level '/', so "/a/b[c/../d]" becomes
+ * "/a", not splitting on the '/' inside the "[...]" predicate.
+ * @param[in,out] cb   XPath as cbuf, truncated in place. No-op if there is no top-level '/'.
+ * @retval        0    OK
+ * @see xpath_append  '..' branch
+ * @see xpath_resolve_current  anchor truncation
+ */
+static int
+xpath_trunc_toplevel_step(cbuf *cb)
+{
+    char *s = cbuf_get(cb);
+    int   depth = 0;
+    int   j;
+
+    for (j = cbuf_len(cb); j >= 0; j--){
+        if (s[j] == ']')
+            depth++;
+        else if (s[j] == '[')
+            depth--;
+        else if (s[j] == '/' && depth == 0){
+            cbuf_trunc(cb, j);
+            break;
+        }
+    }
+    return 0;
+}
+
+/*! Resolve current()[/..]*[/tail] sub-expressions in an xpath against a real datastore
+ *
+ * A leafref path appended by xpath_append()/leafref_append_path() can contain "current()" which must
+ * be evaluated in the "anchor" xpath datastore context.
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  anchor  Absolute xpath to the node current() refers to
+ * @param[in]  nsc     Namespace context
+ * @param[in]  db      Datastore to resolve current() against, eg "candidate"
+ * @param[in]  xpath0  XPath text to scan for current() occurrences, not modified
+ * @retval     xpath1  Malloced, possibly rewritten xpath text. Free with free()
+ * @retval     NULL    Error
+ */
+static char *
+xpath_resolve_current(clixon_handle h,
+                      const char   *anchor,
+                      cvec         *nsc,
+                      const char   *db,
+                      const char   *xpath0)
+{
+    char       *result = NULL;
+    cbuf       *out = NULL;
+    cbuf       *acb = NULL;
+    const char *p;
+    const char *span_start;
+    const char *q;
+    const char *tailstart;
+    const char *tailend;
+    char       *tail = NULL;
+    cxobj      *xret = NULL;
+    cxobj      *xanchor;
+    cxobj      *xval;
+    char       *body;
+    char       *value;
+    int         ups;
+
+    if ((out = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    p = xpath0;
+    while (*p){
+        if (strncmp(p, "current()", 9) != 0){
+            cprintf(out, "%c", *p);
+            p++;
+            continue;
+        }
+        span_start = p;
+        q = p + 9;
+        ups = 0;
+        while (strncmp(q, "/..", 3) == 0){
+            ups++;
+            q += 3;
+        }
+        if (*q == '/'){
+            tailstart = q + 1;
+            tailend = tailstart;
+            while (*tailend && strchr("]=<>!&|()\t ", *tailend) == NULL)
+                tailend++;
+        }
+        else
+            tailstart = tailend = q;
+        if ((tail = (char*)malloc(tailend - tailstart + 1)) == NULL){
+            clixon_err(OE_UNIX, errno, "malloc");
+            goto done;
+        }
+        memcpy(tail, tailstart, tailend - tailstart);
+        tail[tailend - tailstart] = '\0';
+        /* Truncate anchor by 'ups' levels to find the real ancestor node's xpath */
+        if ((acb = cbuf_new()) == NULL){
+            clixon_err(OE_UNIX, errno, "cbuf_new");
+            goto done;
+        }
+        cprintf(acb, "%s", anchor);
+        while (ups-- > 0)
+            xpath_trunc_toplevel_step(acb);
+        value = NULL;
+        /* Use native xpath evaluation */
+        if (xmldb_get(h, db, nsc, cbuf_get(acb), &xret) < 0)
+            goto done;
+        if (xret != NULL &&
+            (xanchor = xpath_first(xret, nsc, "%s", cbuf_get(acb))) != NULL){
+            if (strlen(tail) == 0)
+                xval = xanchor;
+            else
+                xval = xpath_first(xanchor, nsc, "%s", tail);
+            if (xval != NULL && (body = xml_body(xval)) != NULL){
+                if ((value = strdup(body)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
+        }
+        if (xret){
+            xml_free(xret);
+            xret = NULL;
+        }
+        cbuf_free(acb);
+        acb = NULL;
+        if (value != NULL){
+            /* Quote the literal; fall back to double quotes if the value itself has a ' */
+            if (strchr(value, '\'') == NULL)
+                cprintf(out, "'%s'", value);
+            else
+                cprintf(out, "\"%s\"", value);
+            free(value);
+        }
+        else{
+            /* Could not resolve: leave this occurrence's text untouched */
+            clixon_debug(CLIXON_DBG_BACKEND, "Could not resolve current() in xpath, leaving as-is: %.*s",
+                        (int)(tailend - span_start), span_start);
+            cprintf(out, "%.*s", (int)(tailend - span_start), span_start);
+        }
+        free(tail);
+        tail = NULL;
+        p = tailend;
+    }
+    if ((result = strdup(cbuf_get(out))) == NULL){
+        clixon_err(OE_UNIX, errno, "strdup");
+        goto done;
+    }
+ done:
+    if (out)
+        cbuf_free(out);
+    if (acb)
+        cbuf_free(acb);
+    if (xret)
+        xml_free(xret);
+    if (tail)
+        free(tail);
+    return result;
+}
+
 /*! Given an xpath encoded in a cbuf, append a second xpath into the first (unless absolute path)
  *
  * The method reuses prefixes from xpath1 if they exist, otherwise the module prefix
  * from y is used. Unless the element is .., .
+ * A [...] predicate on a step is passed through verbatim. If such a predicate contains current(),
+ ' it is left unresolved here. The caller is expected to resolve it against the real datastore afterwards.
  * @param[in,out] cb0     Result XPath as cbuf
  * @param[in]     xpath1  Input XPath
  * @param[in]     y       Yang of xpath1
  * @param[in,out] nsc     Namespace
  * @retval        0       OK
  * @retval       -1       Error
- *
- * XXX: Predicates not handled
- * The algorithm is not fool-proof, there are many cases it may not work
- * To make it more complete, maybe parse the xpath to a tree and put it
- * back to an xpath after modifcations, something like:
-   if (xpath_parse(yang_argument_get(ypath), &xpt) < 0)
-     goto done;
-   if (xpath_tree2cbuf(xpt, xcb) < 0)
-     goto done;
  */
 static int
-xpath_append(cbuf      *cb0,
-             char      *xpath1,
-             yang_stmt *y,
-             cvec      *nsc)
+xpath_append(cbuf       *cb0,
+             const char *xpath1,
+             yang_stmt  *y,
+             cvec       *nsc)
 {
     int    retval = -1;
     char **vec = NULL;
@@ -415,13 +630,12 @@ xpath_append(cbuf      *cb0,
     int    nvec;
     int    i;
     char  *myprefix;
+    char  *myns;
     char  *id = NULL;
     char  *prefix = NULL;
     int    initialups = 1; /* If starts with ../../.. */
-    char  *xpath0;
     char  *ns;
-    int    j;
-    int    depth;
+    char  *bracket;
     int    ret;
 
     if (cb0 == NULL){
@@ -432,35 +646,32 @@ xpath_append(cbuf      *cb0,
         goto ok;
     if ((myprefix = yang_find_myprefix(y)) == NULL)
         goto done;
-    if ((vec = clixon_strsep1(xpath1, "/", &nvec)) == NULL)
+    if ((myns = yang_find_mynamespace(y)) == NULL)
+        goto done;
+    /* See function doc: ensures bare names inside a passed-through predicate resolve */
+    if (xml_nsctx_add(nsc, NULL, myns) < 0)
+        goto done;
+    if ((vec = xpath_strsep_toplevel(xpath1, &nvec)) == NULL)
         goto done;
     if (xpath1[0] == '/')
         cbuf_reset(cb0);
-    xpath0 = cbuf_get(cb0);
     for (i=0; i<nvec; i++){
         v = vec[i];
         if (strlen(v) == 0)
             continue;
+        /* Split off a [...] predicate (if any) before splitting off the module prefix of
+         * this step itself, so a colon inside the predicate is not mistaken for it. */
+        if ((bracket = strchr(v, '[')) != NULL)
+            *bracket = '\0';
         if (nodeid_split(v, &prefix, &id) < 0)
             goto done;
+        if (bracket != NULL)
+            *bracket = '[';
         if (strcmp(id, ".") == 0)
             initialups = 0;
         else if (strcmp(id, "..") == 0){
-            if (initialups){
-                /* Subtract from xpath0 up to the last top-level '/', ie not one
-                 * inside a [...] predicate. */
-                depth = 0;
-                for (j=cbuf_len(cb0); j >= 0; j--){
-                    if (xpath0[j] == ']')
-                        depth++;
-                    else if (xpath0[j] == '[')
-                        depth--;
-                    else if (xpath0[j] == '/' && depth == 0){
-                        cbuf_trunc(cb0, j);
-                        break;
-                    }
-                }
-            }
+            if (initialups)
+                xpath_trunc_toplevel_step(cb0);
             else{
                 initialups = 0;
                 cprintf(cb0, "/%s", id);
@@ -480,7 +691,7 @@ xpath_append(cbuf      *cb0,
                 if (xml_nsctx_add(nsc, prefix, ns) < 0)
                     goto done;
             }
-            cprintf(cb0, "/%s:%s", prefix?prefix:myprefix, id);
+            cprintf(cb0, "/%s:%s%s", prefix?prefix:myprefix, id, bracket?bracket:"");
         }
         if (prefix){
             free(prefix);
@@ -507,9 +718,11 @@ xpath_append(cbuf      *cb0,
  * Extend xpath with leafref path: Append yang_argument_get(ypath) to xpath
  * For union types containing leafrefs, generate an XPath union of all leafref paths.
  * Resolves through typedefs to handle indirect types.
+ * Any current() in the leafref's path is left unresolved on exit -- the caller is expected to
+ * resolve it against the real datastore afterwards, see xpath_resolve_current().
  * @param[in]     yn      Yang node
  * @param[in]     nsc     Namespace context
- * @param[in,out] cbxpath XPath optionally extended with leafref path
+ * @param[in,out] cbxpath Prefix XPath on entry, optionally extended with leafref path of yn on exit
  * @retval        0       OK
  * @retval       -1       Error
  */
@@ -601,17 +814,6 @@ leafref_append_path(yang_stmt *yn,
     return retval;
 }
 
-/*! Get detailed information of configuration path: XPath or RFC 8040 api-path
- *
- * @param[in]  h       Clixon handle
- * @param[in]  xe      Request: <rpc><xn></rpc>
- * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
- * @param[in]  arg     client-entry
- * @param[in]  regarg  User argument given at rpc_callback_register()
- * @retval     0       OK
- * @retval    -1       Error
- */
-
 /*! Mark key leaves of all list nodes in a tree with cl:key="true" attribute
  *
  * Allows clients to identify key leaves without YANG access.
@@ -665,6 +867,16 @@ xml_mark_list_keys_cb(cxobj *x,
     return retval;
 }
 
+/*! Get detailed information of configuration path: XPath or RFC 8040 api-path
+ *
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register()
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
 static int
 from_client_config_path_info(clixon_handle h,
                              cxobj        *xe,
@@ -683,6 +895,7 @@ from_client_config_path_info(clixon_handle h,
     char      *str;
     char      *body;
     int        leafref_refer = 0;
+    char      *db = NULL;
     int        mark_keys = 0;
     yang_stmt *ybot = NULL; /* yang spec of xpath */
     cxobj     *xerr = NULL;
@@ -700,6 +913,7 @@ from_client_config_path_info(clixon_handle h,
     char      *ns = NULL;
     int        create = 0;
     cxobj     *xapply;
+    char      *resolved;
     int        ret;
 
     if ((yspec0 = clicon_dbspec_yang(h)) == NULL){
@@ -708,6 +922,8 @@ from_client_config_path_info(clixon_handle h,
     }
     if ((str = xml_find_body(xe, "leafref-refer")) != NULL)
         leafref_refer = strcmp(str, "true") == 0;
+    if ((str = xml_find_body(xe, "db")) != NULL)
+        db = str;
     if ((str = xml_find_body(xe, "mark-keys")) != NULL)
         mark_keys = strcmp(str, "true") == 0;
     body = xml_find_body(xe, "body");
@@ -814,6 +1030,19 @@ from_client_config_path_info(clixon_handle h,
     if (ybot && cbuf_len(cbxpath) && leafref_refer){
         if (leafref_append_path(ybot, nsc1, cbxpath) < 0)
             goto done;
+        /* A relative leafref path may have introduced current(); resolve it against the
+         * real datastore */
+        if (strstr(cbuf_get(cbxpath), "current(") != NULL){
+            if (db == NULL){
+                clixon_err(OE_NETCONF, 0, "Leafref path is relative (uses current()), but no db given");
+                goto done;
+            }
+            if ((resolved = xpath_resolve_current(h, xpath1, nsc1, db, cbuf_get(cbxpath))) == NULL)
+                goto done;
+            cbuf_reset(cbxpath);
+            cprintf(cbxpath, "%s", resolved);
+            free(resolved);
+        }
     }
     /* Fix namespaces in xpath */
     if ((xpt = xml_new_body("xpath", NULL, cbuf_get(cbxpath))) == NULL){
