@@ -271,8 +271,13 @@ module ietf-list-pagination {
         if-feature "sort-by";
         type union {
           type string {
-            // An RFC 7950 'descendant-schema-nodeid'.
-            pattern '([A-Za-z_][A-Za-z0-9_.-]*:)?'
+            // An RFC 7950 'descendant-schema-nodeid', or a bare '.' (self).
+            // The '.' alternative is a clixon-local fix for a known draft bug
+            // (netconf-wg/list-pagination issue #84): Appendix A.3.5.1.1
+            // requires '.' to sort a leaf-list by its own value, but the
+            // pattern here never allowed it.
+            pattern '\.'
+                  + '|([A-Za-z_][A-Za-z0-9_.-]*:)?'
                   + '[A-Za-z_][A-Za-z0-9_.-]*'
                   + '(/[A-Za-z_]([A-Za-z0-9_.-]*:)?'
                   + '[A-Za-z_]([A-Za-z0-9_.-]*))*';
