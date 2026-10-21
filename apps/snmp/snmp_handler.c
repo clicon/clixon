@@ -473,7 +473,7 @@ snmp_cache_row_op(clixon_handle h,
                   int           rpc)
 {
     int    retval = -1;
-    char  *xpath;
+    char  *xpath = NULL;
     cxobj *xrow = NULL;
     cvec  *nsc = NULL;
     cbuf  *cb = NULL;
@@ -977,7 +977,7 @@ snmp_table_set(clixon_handle               h,
     int        asn1_type;
     netsnmp_variable_list  *requestvb;
     int        rowstatus = 0;
-    char      *origtype;
+    char      *origtype = NULL;
     int        inext;
     int        ret;
 
