@@ -693,7 +693,7 @@ type_snmp2xml(yang_stmt                  *ys,
     case ASN_TIMETICKS:   // 67
     case ASN_INTEGER:   // 2
         if (cvtype == CGV_STRING){      /* special case for enum */
-            char *xmlstr;
+            char *xmlstr = NULL;
             cbuf *cb = NULL;
 
             if (strcmp(restype, "enumeration") == 0){
