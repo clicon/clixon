@@ -181,7 +181,10 @@ validate_leafref_err(char      *xpath,
     cbuf *cbm = NULL;
     int   exist = 0;
     char *msg = NULL;
+    char *body;
 
+    if ((body = xml_body(xt)) == NULL)
+        body = "";
     if ((cbi = cbuf_new()) == NULL){
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
@@ -195,12 +198,12 @@ validate_leafref_err(char      *xpath,
             goto done;
         }
         cprintf(cbm, "%s", msg);
-        cprintf(cbi, "%s", xml_body(xt));
+        cprintf(cbi, "%s", body);
     }
     else{
         if (validate_errmsg(&cbm, xt, yt) < 0)
             goto done;
-        cprintf(cbi, "<%s>%s</%s>", xml_name(xt), xml_body(xt), xml_name(xt));
+        cprintf(cbi, "<%s>%s</%s>", xml_name(xt), body, xml_name(xt));
     }
     if (xret && netconf_missing_yang_xml(xret, xpath, "instance-required",   cbuf_get(cbi), cbuf_get(cbm)) < 0)
         goto done;
@@ -631,8 +634,10 @@ validate_leafref(cxobj     *xt,
         clixon_err(OE_YANG, 0, "No argument for Y_PATH");
         goto done;
     }
+    /* Empty value is a value: it must also refer to an existing (empty) instance,
+     * see https://github.com/clicon/clixon/issues/647 */
     if ((leafrefbody = xml_body(xt)) == NULL)
-        goto ok;
+        leafrefbody = "";
     if (xml_nsctx_yang(yt, &nsc) < 0)
         goto done;
 #ifdef LEAFREF_OPTIMIZE
@@ -667,7 +672,8 @@ validate_leafref(cxobj     *xt,
                                       &leafref_opt.lc_bin_x0) < 0)
             goto done;
     }
-    if (leafref_opt.lc_bin_search){
+    /* Binary search requires a non-empty key, use linear search for empty value */
+    if (leafref_opt.lc_bin_search && *leafrefbody != '\0'){
         if ((ret = leafref_opt_search(xpath, xt, leafref_opt.lc_bin_x0, ytype, xret)) < 0)
             goto done;
         if (ret == 0)
@@ -679,7 +685,7 @@ validate_leafref(cxobj     *xt,
             for (i = 0; i < xlen; i++) {
                 x = xvec[i];
                 if ((leafbody = xml_body(x)) == NULL)
-                    continue;
+                    leafbody = "";
                 if (strcmp(leafbody, leafrefbody) == 0)
                     break;
             }
