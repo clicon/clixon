@@ -1,5 +1,3 @@
-
-
 # Clixon XPath libfuzzer target
 
 Fuzz target for the clixon XPath 1.0 parse pipeline:

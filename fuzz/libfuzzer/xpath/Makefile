@@ -17,7 +17,7 @@ run: artifacts_xpath fuzz_xpath
 	    -dict=../xpath.dict \
 	    -fork=4 \
 	    -ignore_timeouts=1 -ignore_ooms=1 \
-	    -max_len=4096 \
+	    -max_len=65536 \
 	    -rss_limit_mb=2048 \
 	    -timeout=10 \
 	    -artifact_prefix=artifacts_xpath/

@@ -113,6 +113,11 @@ typedef void *yyscan_t;
 
 #define _YYERROR(msg) {clixon_err(OE_XML, 0, "YYERROR %s '%s' %d", (msg), clixon_xpath_parseget_text(yyscanner), _XPY->xpy_linenum); YYERROR;}
 
+/* Guards against pathologically deep xpaths, eg "1+1+1+...+1": tree depth */
+#ifndef XPATH_PARSE_MAX_DEPTH
+#define XPATH_PARSE_MAX_DEPTH 1000
+#endif
+
 /* add _yy to error parameters */
 #define YY_(msgid) msgid
 
@@ -213,12 +218,24 @@ xp_new(enum xp_type  type,
        xpath_tree   *c1)
 {
     xpath_tree *xs = NULL;
+    int         d0;
+    int         d1;
+    int         depth;
 
+    d0 = c0 ? c0->xs_depth : 0;
+    d1 = c1 ? c1->xs_depth : 0;
+    depth = 1 + (d0 > d1 ? d0 : d1);
+    if (depth > XPATH_PARSE_MAX_DEPTH){
+        clixon_err(OE_XML, 0, "XPath expression too deeply nested (>%d levels): "
+                   "rejected to avoid stack overflow", XPATH_PARSE_MAX_DEPTH);
+        return NULL;
+    }
     if ((xs = malloc(sizeof(xpath_tree))) == NULL){
         clixon_err(OE_XML, errno, "malloc");
         goto done;
     }
     memset(xs, 0, sizeof(*xs));
+    xs->xs_depth = depth;
     xs->xs_type = type;
     xs->xs_int  = i0;
     if (numstr){
@@ -437,65 +454,65 @@ start       : expr X_EOF         { _XPY->xpy_top=$1;_PARSE_DEBUG("start->expr");
             | locationpath X_EOF { _XPY->xpy_top=$1;_PARSE_DEBUG("start->locationpath"); YYACCEPT; }
             ;
 
-expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$; _PARSE_DEBUG("expr->expr or andexpr");  }
-            | andexpr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("expr-> andexpr"); }
+expr        : expr LOGOP andexpr { $$=xp_new(XP_EXP,$2,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$; _PARSE_DEBUG("expr->expr or andexpr");  }
+            | andexpr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("expr-> andexpr"); }
             ;
 
-andexpr     : andexpr LOGOP relexpr { $$=xp_new(XP_AND,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("andexpr-> andexpr and relexpr"); }
-            | relexpr { $$=xp_new(XP_AND,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("andexpr-> relexpr"); }
+andexpr     : andexpr LOGOP relexpr { $$=xp_new(XP_AND,$2,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("andexpr-> andexpr and relexpr"); }
+            | relexpr { $$=xp_new(XP_AND,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("andexpr-> relexpr"); }
             ;
 
-relexpr     : relexpr RELOP addexpr { $$=xp_new(XP_RELEX,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("relexpr-> relexpr relop addexpr"); }
-            | addexpr { $$=xp_new(XP_RELEX,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("relexpr-> addexpr"); }
+relexpr     : relexpr RELOP addexpr { $$=xp_new(XP_RELEX,$2,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("relexpr-> relexpr relop addexpr"); }
+            | addexpr { $$=xp_new(XP_RELEX,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("relexpr-> addexpr"); }
             ;
 
-addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("addexpr-> addexpr ADDOP unionexpr"); }
-            | unionexpr { $$=xp_new(XP_ADD,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("addexpr-> unionexpr"); }
+addexpr     : addexpr ADDOP unionexpr { $$=xp_new(XP_ADD,$2,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("addexpr-> addexpr ADDOP unionexpr"); }
+            | unionexpr { $$=xp_new(XP_ADD,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("addexpr-> unionexpr"); }
             ;
 
 /* node-set */
-unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("unionexpr-> unionexpr | pathexpr"); }
-            | pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("unionexpr-> pathexpr"); }
+unionexpr   : unionexpr '|' pathexpr { $$=xp_new(XP_UNION,XO_UNION,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("unionexpr-> unionexpr | pathexpr"); }
+            | pathexpr { $$=xp_new(XP_UNION,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("unionexpr-> pathexpr"); }
             ;
 
-pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> locationpath"); }
-            | filterexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr"); }
-            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("/"),NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr / rellocpath"); }
-            | filterexpr DOUBLESLASH rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("//"),NULL,$1, $3);_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr // rellocpath"); }
+pathexpr    : locationpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> locationpath"); }
+            | filterexpr { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr"); }
+            | filterexpr '/' rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("/"),NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr / rellocpath"); }
+            | filterexpr DOUBLESLASH rellocpath { $$=xp_new(XP_PATHEXPR,A_NAN,NULL,strdup("//"),NULL,$1, $3); if ($$==NULL) YYERROR;_XPY->xpy_top=$$;_PARSE_DEBUG("pathexpr-> filterexpr // rellocpath"); }
             ;
 
 /* */
-filterexpr  : primaryexpr { $$=xp_new(XP_FILTEREXPR,A_NAN,NULL,NULL,NULL,$1, NULL);_PARSE_DEBUG("filterexpr-> primaryexpr"); }
+filterexpr  : primaryexpr { $$=xp_new(XP_FILTEREXPR,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;_PARSE_DEBUG("filterexpr-> primaryexpr"); }
             /* Filterexpr predicate */
             ;
 
 /* location path returns a node-set  */
-locationpath : rellocpath { $$=xp_new(XP_LOCPATH,A_NAN,NULL,NULL,NULL,$1, NULL); _PARSE_DEBUG("locationpath-> rellocpath"); }
-            | abslocpath  { $$=xp_new(XP_LOCPATH,A_NAN,NULL,NULL,NULL,$1, NULL); _PARSE_DEBUG("locationpath-> abslocpath"); }
+locationpath : rellocpath { $$=xp_new(XP_LOCPATH,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR; _PARSE_DEBUG("locationpath-> rellocpath"); }
+            | abslocpath  { $$=xp_new(XP_LOCPATH,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR; _PARSE_DEBUG("locationpath-> abslocpath"); }
             ;
 
-abslocpath  : '/'            { $$=xp_new(XP_ABSPATH,A_ROOT,NULL,NULL,NULL,NULL, NULL);_PARSE_DEBUG("abslocpath-> /"); }
-            | '/' rellocpath { $$=xp_new(XP_ABSPATH,A_ROOT,NULL,NULL,NULL,$2, NULL);_PARSE_DEBUG("abslocpath->/ rellocpath");}
+abslocpath  : '/'            { $$=xp_new(XP_ABSPATH,A_ROOT,NULL,NULL,NULL,NULL, NULL); if ($$==NULL) YYERROR;_PARSE_DEBUG("abslocpath-> /"); }
+            | '/' rellocpath { $$=xp_new(XP_ABSPATH,A_ROOT,NULL,NULL,NULL,$2, NULL); if ($$==NULL) YYERROR;_PARSE_DEBUG("abslocpath->/ rellocpath");}
             /* // is short for /descendant-or-self::node()/ */
-            | DOUBLESLASH rellocpath  {$$=xp_new(XP_ABSPATH,A_DESCENDANT_OR_SELF,NULL,NULL,NULL,$2, NULL); _PARSE_DEBUG("abslocpath-> // rellocpath"); }
+            | DOUBLESLASH rellocpath  {$$=xp_new(XP_ABSPATH,A_DESCENDANT_OR_SELF,NULL,NULL,NULL,$2, NULL); if ($$==NULL) YYERROR; _PARSE_DEBUG("abslocpath-> // rellocpath"); }
             ;
 
-rellocpath  : step                 { $$=xp_new(XP_RELLOCPATH,A_NAN,NULL,NULL,NULL,$1, NULL); _PARSE_DEBUG("rellocpath-> step"); }
-            | rellocpath '/' step  { $$=xp_new(XP_RELLOCPATH,A_NAN,NULL,NULL,NULL,$1, $3);_PARSE_DEBUG("rellocpath-> rellocpath / step"); }
-            | rellocpath DOUBLESLASH step { $$=xp_new(XP_RELLOCPATH,A_DESCENDANT_OR_SELF,NULL,NULL,NULL,$1, $3); _PARSE_DEBUG("rellocpath-> rellocpath // step"); }
+rellocpath  : step                 { $$=xp_new(XP_RELLOCPATH,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR; _PARSE_DEBUG("rellocpath-> step"); }
+            | rellocpath '/' step  { $$=xp_new(XP_RELLOCPATH,A_NAN,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;_PARSE_DEBUG("rellocpath-> rellocpath / step"); }
+            | rellocpath DOUBLESLASH step { $$=xp_new(XP_RELLOCPATH,A_DESCENDANT_OR_SELF,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR; _PARSE_DEBUG("rellocpath-> rellocpath // step"); }
             ;
 
 step        : nodetest predicates
-                 { $$=xp_new(XP_STEP, A_CHILD, NULL, NULL, NULL, $1, $2);
+                 { $$=xp_new(XP_STEP, A_CHILD, NULL, NULL, NULL, $1, $2); if ($$==NULL) YYERROR;
                    _PARSE_DEBUG("step->nodetest predicates"); }
             | axisspec nodetest predicates
-                 {$$=xp_new(XP_STEP, $1, NULL, NULL, NULL, $2, $3);
+                 {$$=xp_new(XP_STEP, $1, NULL, NULL, NULL, $2, $3); if ($$==NULL) YYERROR;
                   _PARSE_DEBUG1("step->axisspec(%d) nodetest", $1); }
             | abbreviatedstep { $$ = $1; }
             ;
 
-abbreviatedstep : '.' predicates     { $$=xp_new(XP_STEP,A_SELF, NULL,NULL, NULL, NULL, $2); _PARSE_DEBUG("step-> ."); }
-                | DOUBLEDOT predicates   { $$=xp_new(XP_STEP, A_PARENT, NULL,NULL, NULL, NULL, $2); _PARSE_DEBUG("step-> .."); }
+abbreviatedstep : '.' predicates     { $$=xp_new(XP_STEP,A_SELF, NULL,NULL, NULL, NULL, $2); if ($$==NULL) YYERROR; _PARSE_DEBUG("step-> ."); }
+                | DOUBLEDOT predicates   { $$=xp_new(XP_STEP, A_PARENT, NULL,NULL, NULL, NULL, $2); if ($$==NULL) YYERROR; _PARSE_DEBUG("step-> .."); }
                 ;
 
 /* [5] AxisSpecifier::=  AxisName '::'  
@@ -529,46 +546,46 @@ nodetest    : nametest { $$ = $1;
 nametest    : ADDOP
                  { char *str;
                    str = strdup(clicon_int2str(xpopmap,$1));
-                   $$=xp_new(XP_NODE,A_NAN,NULL, NULL, str, NULL, NULL);
+                   $$=xp_new(XP_NODE,A_NAN,NULL, NULL, str, NULL, NULL); if ($$==NULL) YYERROR;
                    _PARSE_DEBUG("nametest-> *"); }
             | NCNAME
-                  { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, $1, NULL, NULL);
+                  { $$=xp_new(XP_NODE,A_NAN,NULL, NULL, $1, NULL, NULL); if ($$==NULL) YYERROR;
                    _PARSE_DEBUG1("nametest-> name[%s]",$1); }
             | NCNAME ':' NCNAME
-                  { $$=xp_new(XP_NODE,A_NAN,NULL, $1, $3, NULL, NULL);
+                  { $$=xp_new(XP_NODE,A_NAN,NULL, $1, $3, NULL, NULL); if ($$==NULL) YYERROR;
                     _PARSE_DEBUG2("nametest-> name[%s] : name[%s]", $1, $3); }
             | NCNAME ':' '*'
-                  { $$=xp_new(XP_NODE,A_NAN,NULL, $1, NULL, NULL, NULL);
+                  { $$=xp_new(XP_NODE,A_NAN,NULL, $1, NULL, NULL, NULL); if ($$==NULL) YYERROR;
                     _PARSE_DEBUG1("nametest-> name[%s] : *", $1); }
             ;
 
 /* evaluates to boolean */
-predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, $1, $3); _PARSE_DEBUG("predicates-> [ expr ]"); }
-            |                         { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, NULL, NULL); _PARSE_DEBUG("predicates->"); }
+predicates  : predicates '[' expr ']' { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, $1, $3); if ($$==NULL) YYERROR; _PARSE_DEBUG("predicates-> [ expr ]"); }
+            |                         { $$=xp_new(XP_PRED,A_NAN,NULL, NULL, NULL, NULL, NULL); if ($$==NULL) YYERROR; _PARSE_DEBUG("predicates->"); }
             ;
-primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,NULL, NULL, NULL, $2, NULL); _PARSE_DEBUG("primaryexpr-> ( expr )"); }
+primaryexpr : '(' expr ')'         { $$=xp_new(XP_PRI0,A_NAN,NULL, NULL, NULL, $2, NULL); if ($$==NULL) YYERROR; _PARSE_DEBUG("primaryexpr-> ( expr )"); }
             | literal              { $$ = $1; }
-            | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL);_PARSE_DEBUG1("primaryexpr-> NUMBER(%s)", $1); /*XXX*/}
+            | NUMBER               { $$=xp_new(XP_PRIME_NR,A_NAN, $1, NULL, NULL, NULL, NULL); if ($$==NULL) YYERROR;_PARSE_DEBUG1("primaryexpr-> NUMBER(%s)", $1); /*XXX*/}
             | functioncall         { $$ = $1; }
             ;
 
-args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, $3);
+args        : args ',' expr { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, $3); if ($$==NULL) YYERROR;
                               _PARSE_DEBUG("args -> args expr");}
-            | expr          { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, NULL);
+            | expr          { $$=xp_new(XP_EXP,A_NAN,NULL,NULL,NULL,$1, NULL); if ($$==NULL) YYERROR;
                               _PARSE_DEBUG("args -> expr "); }
             ;
 
 literal     : QUOTE string QUOTE
-                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);
+                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL); if ($$==NULL) YYERROR;
                      _PARSE_DEBUG("literal-> \" string \""); }
             | QUOTE QUOTE
-                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL,  strdup(""), NULL, NULL, NULL);
+                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL,  strdup(""), NULL, NULL, NULL); if ($$==NULL) YYERROR;
                      _PARSE_DEBUG("primaryexpr-> \" \""); }
             | APOST string APOST
-                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL);
+                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, $2, NULL, NULL, NULL); if ($$==NULL) YYERROR;
                      _PARSE_DEBUG("primaryexpr-> ' string '"); }
             | APOST APOST
-                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, strdup(""), NULL, NULL, NULL);
+                   { $$=xp_new(XP_PRIME_STR,A_NAN,NULL, strdup(""), NULL, NULL, NULL); if ($$==NULL) YYERROR;
                      _PARSE_DEBUG("primaryexpr-> ' '"); }
             ;
 

@@ -36,6 +36,7 @@ Expected: January 2027
 
 ### Corrected Bugs
 
+* Fixed: "xpath: bound recursion depth to prevent stack-overflow DoS", author: Pexa Rubinstein <pexaxep@gmail.com>
 * Fixed: [Mandatory leaf deletion is incorrectly accepted when a sibling list entry exists](https://github.com/clicon/clixon/issues/704)
 * Fixed: [CLI: Leafref tab-completion fails when entry key value contains literal '/'. (ie name='e/0')](https://github.com/clicon/clixon/issues/699)
 
