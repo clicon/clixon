@@ -228,7 +228,7 @@ xp_new(enum xp_type  type,
     if (depth > XPATH_PARSE_MAX_DEPTH){
         clixon_err(OE_XML, 0, "XPath expression too deeply nested (>%d levels): "
                    "rejected to avoid stack overflow", XPATH_PARSE_MAX_DEPTH);
-        return NULL;
+        goto done;
     }
     if ((xs = malloc(sizeof(xpath_tree))) == NULL){
         clixon_err(OE_XML, errno, "malloc");
@@ -239,19 +239,34 @@ xp_new(enum xp_type  type,
     xs->xs_type = type;
     xs->xs_int  = i0;
     if (numstr){
-        xs->xs_strnr = numstr;
         if (sscanf(numstr, "%lf", &xs->xs_double) == EOF){
             clixon_err(OE_XML, errno, "sscanf");
             goto done;
         }
+        xs->xs_strnr = numstr;
+        numstr = NULL;
     }
     else
         xs->xs_double = 0.0;
     xs->xs_s0  = s0;
+    s0 = NULL;
     xs->xs_s1  = s1;
+    s1 = NULL;
     xs->xs_c0  = c0;
+    c0 = NULL;
     xs->xs_c1  = c1;
+    c1 = NULL;
  done:
+    if (c0)
+        xpath_tree_free(c0);
+    if (c1)
+        xpath_tree_free(c1);
+    if (numstr)
+        free(numstr);
+    if (s0)
+        free(s0);
+    if (s1)
+        free(s1);
     return xs;
 }
 
