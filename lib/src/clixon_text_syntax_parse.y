@@ -48,6 +48,22 @@
 %type <stack>  values
 %type <string> substr
 
+/* Free allocated strings and xml nodes/vectors when bison discards them during error recovery
+ */
+%destructor { free($$); } <string>
+%destructor { if ($$) xml_free($$); } id
+%destructor { if ($$) cvec_free($$); } values
+%destructor {
+    if ($$){
+        int    _i;
+        cxobj *_x;
+        for (_i=0; _i<clixon_xvec_len($$); _i++)
+            if ((_x = clixon_xvec_i($$, _i)) != NULL)
+                xml_free(_x);
+        clixon_xvec_free($$);
+    }
+} stmt stmts
+
 %start top
 
 %lex-param     {yyscan_t yyscanner}    /* passed to yylex() */
@@ -189,7 +205,7 @@ strjoin(char *str0,
 
 %%
 
-top        : stmt MY_EOF       { _PARSE_DEBUG("top->stmt");
+top        : stmts MY_EOF      { _PARSE_DEBUG("top->stmts");
                                  if (clixon_child_xvec_append(_TS->ts_xtop, $1) < 0) YYERROR;
                                  clixon_xvec_free($1);
                                  YYACCEPT; }
@@ -219,15 +235,16 @@ stmt       : id values ';'     { _PARSE_DEBUG("stmt-> id value ;");
                                  cvec_free(cv);
                                }
            | id values '{' stmts '}'  { _PARSE_DEBUG("stmt-> id values { stmts }");
-                                 cvec   *cv = (cvec*)$2;
-                                 cg_var *cvi = NULL;
+                                 cvec   *cvv = (cvec*)$2;
+                                 cg_var *cv = NULL;
                                  cxobj  *xb;
-                                 while ((cvi = cvec_each(cv, cvi)) != NULL){
+                                 while ((cv = cvec_each(cvv, cv)) != NULL){
                                      if ((xb = xml_new("body", $1, CX_BODY)) == NULL) YYERROR;
-                                     if (xml_value_set(xb, cv_string_get(cvi)) < 0) YYERROR;
+                                     if (cv_string_get(cv) != NULL &&
+                                         xml_value_set(xb, cv_string_get(cv)) < 0) YYERROR;
                                      xml_flag_set(xb, XML_FLAG_BODYKEY);
                                  }
-                                 cvec_free(cv);
+                                 cvec_free(cvv);
                                  if (clixon_child_xvec_append($1, $4) < 0) YYERROR;
                                  clixon_xvec_free($4);
                                  if (($$ = clixon_xvec_new()) == NULL) YYERROR;

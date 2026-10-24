@@ -99,3 +99,11 @@
    ...
    fun:user2groups
 }
+{
+   supp-strerror-glibc-buffer
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:strerror_l
+}

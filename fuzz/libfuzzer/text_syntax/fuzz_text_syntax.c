@@ -33,9 +33,7 @@
 
  * LLVM libfuzzer for the text/curly-brace syntax parse path.
  *
- * Feeds arbitrary byte sequences through clixon_text_syntax_parse_string()
- * with no YANG binding (YB_NONE) — exercises the text_syntax lexer and
- * grammar only.
+ * Feeds arbitrary byte sequences through clixon_text_syntax_parse_string().
  *
  * Build: see build.sh
  */
@@ -82,7 +80,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data,
     memcpy(str, data, size);
     str[size] = '\0';
 
-    clixon_text_syntax_parse_string(str, YB_NONE, NULL, &xt, &xerr);
+    clixon_text_syntax_parse_string(str, YB_MODULE_NEXT, NULL, &xt, &xerr);
 
  done:
     if (xt)

@@ -24,6 +24,7 @@ Expected: January 2027
 
 ### Features
 
+* Fixed text/curly LLVM libFuzzer and fixed leaks
 * Added RESTCONF `filter` query parameter for event streams
 * Added anthropic/OSS-scanner support
 * New autocli YANG extension `expand`

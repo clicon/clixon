@@ -9,10 +9,10 @@ all: fuzz_text_syntax
 fuzz_text_syntax:
 	./build.sh
 
-artifacts_test_syntax:
+artifacts_text_syntax:
 	mkdir $@
 
-run: artifacts_test_syntax fuzz_text_syntax
+run: artifacts_text_syntax fuzz_text_syntax
 	./fuzz_text_syntax corpus_text_syntax \
 	    -dict=../text_syntax.dict \
 	    -fork=4 \

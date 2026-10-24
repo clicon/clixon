@@ -1701,11 +1701,13 @@ clixon_json_parse_file(FILE      *fp,
     int       len = 0;
     size_t    sz;
     int       ret;
+    int       xtempty; /* empty on entry */
 
     if (xt==NULL){
         clixon_err(OE_JSON, EINVAL, "xt is NULL");
         return -1;
     }
+    xtempty = (*xt == NULL);
     if ((jsonbuf = malloc(jsonbuflen)) == NULL){
         clixon_err(OE_JSON, errno, "malloc");
         goto done;
@@ -1746,8 +1748,8 @@ clixon_json_parse_file(FILE      *fp,
     }
     retval = 1;
  done:
-    if (retval < 0 && *xt){
-        free(*xt);
+    if (retval < 0 && *xt && xtempty){
+        xml_free(*xt);
         *xt = NULL;
     }
     if (jsonbuf)

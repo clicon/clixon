@@ -1324,7 +1324,7 @@ clixon_xml_parse_file(FILE      *fp,
     retval = (failed==0) ? 1 : 0;
  done:
     if (retval < 0 && *xt && xtempty){
-        free(*xt);
+        xml_free(*xt);
         *xt = NULL;
     }
     if (xmlbuf)

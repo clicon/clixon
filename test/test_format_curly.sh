@@ -80,6 +80,7 @@ show("Show a particular state of the system"){
             text("Show configuration as TEXT"), cli_show_auto_mode("candidate", "text", true, false);
     }
 }
+load("Load configuration from XML file") <filename:string>("Filename (local filename)"),load_config_file("filename", "merge", "text");
 EOF
 
 new "test params: -f $cfg"
