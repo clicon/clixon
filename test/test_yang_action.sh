@@ -82,7 +82,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-r
 rpc2="<rpc message-id=\"43\"><action><x/></action></rpc>"
 
 new "netconf action no namespace"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc2" "" "<rpc-error>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc2" "<rpc-error>" ""
 
 if [ $BE -ne 0 ]; then     # Bring your own backend
     new "Kill backend"
