@@ -4,7 +4,7 @@ on:
   push:
     branches:
        - master
-       - test-actions
+       - expand-extension
   pull_request:
     branches: [ master ]
 
