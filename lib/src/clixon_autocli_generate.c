@@ -222,50 +222,38 @@ gen_mtpoint_add(cbuf      *cb,
     return retval;
 }
 
-/*! Create cligen variable expand entry with api-pathfmt format string as argument
+/*! Create one cligen variable/expand-call alternative with api-pathfmt format string as arg
  *
  * Add api-fmt as first argument to callback, eg:
  *   /ex:table
  * Then if mountpoint add special entry:
  *   /ctrl:dev/ctrl:config
- * @param[in]  h      Clixon handle
- * @param[in]  ys     yang_stmt of the node at hand
- * @param[in]  cvtype Type of the cligen variable
- * @param[in]  options
- * @param[in]  fraction_digits
- * @param[out] cb     The string where the result format string is inserted.
- * @retval     1      OK
- * @retval     0      Hide, dont show helptext etc
- * @retval    -1      Error
- * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to
- *                             expand_dbvar() to signal that leafrefs should be followed.
- * @see expand_dbvar  This is where the expand string is used
- * @see CLIXON_AUTOCLI_NS "expand" extension  Overrides expand_dbvar() with a custom callback
- * @note XXX only fraction_digits handled,should also have mincv, maxcv, pattern
+ * @param[in]  ys             yang_stmt of the node at hand
+ * @param[in]  cvtypestr      Type of the cligen variable
+ * @param[in]  options        Flag field of optional values, see YANG_OPTIONS_*
+ * @param[in]  fraction_digits For decimal64, how many digits after period
+ * @param[in]  pre            If set, prefix the alternative with "|" (eg it is not the first
+ *                            alternative in the enclosing choice)
+ * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to the expand
+ *                            callback to signal that leafrefs should be followed.
+ * @param[in]  expandfn       Expand callback name to use, or NULL for GENERATE_EXPAND_XMLDB
+ * @param[out] cb             The string where the result format string is inserted.
+ * @retval     0              OK
+ * @retval    -1              Error
  */
 static int
-cli_expand_var_generate(clixon_handle h,
-                        yang_stmt    *ys,
-                        const char   *cvtypestr,
-                        int           options,
-                        uint8_t       fraction_digits,
-                        int           pre,
-                        int           leafref_refer,
-                        cbuf         *cb)
+cli_expand_var_generate1(yang_stmt  *ys,
+                         const char *cvtypestr,
+                         int         options,
+                         uint8_t     fraction_digits,
+                         int         pre,
+                         int         leafref_refer,
+                         const char *expandfn,
+                         cbuf       *cb)
 {
     int   retval = -1;
     char *api_path_fmt = NULL;
-    int   extvalue = 0;
-    char *expandfn = NULL;
 
-    if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
-        goto done;
-    if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL)
-        goto hide;
-    /* Allow an override of the default GENERATE_EXPAND_XMLDB/expand_dbvar() callback with
-     * a custom one */
-    if (yang_extension_value(ys, "expand", CLIXON_AUTOCLI_NS, NULL, &expandfn) < 0)
-        goto done;
     if (yang2api_path_fmt(ys, 1, &api_path_fmt) < 0)
         goto done;
     if (pre)
@@ -281,10 +269,77 @@ cli_expand_var_generate(clixon_handle h,
     if (gen_mtpoint_add(cb, ys) < 0)
         goto done;
     cprintf(cb, ")>");
-    retval = 1;
+    retval = 0;
  done:
     if (api_path_fmt)
         free(api_path_fmt);
+    return retval;
+}
+
+/*! Create cligen variable expand entry/entries with api-pathfmt format string as argument
+ *
+ * Generates an "<id:type expand_dbvar(...)>" for each CLIXON_AUTOCLI_NS "expand" extension statement, eg:
+ *   <id:type fn1("candidate","...")>|<id:type fn2("candidate","...")>
+ * so that CLIgen's TAB-completion naturally unions the candidates from all the callbacks,
+ * the same way a hand-written CLI spec can partition a variable's expansion across several
+ * "<id:type fn()>" alternatives.
+ * @param[in]  h      Clixon handle
+ * @param[in]  ys     yang_stmt of the node at hand
+ * @param[in]  cvtype Type of the cligen variable
+ * @param[in]  options  Flags field of optional values, see YANG_OPTIONS_*
+ * @param[in]  fraction_digits  For decimal64, how many digits after period
+ * @param[out] cb     The string where the result format string is inserted.
+ * @retval     1      OK
+ * @retval     0      Hide, dont show helptext etc
+ * @retval    -1      Error
+ * @param[in]  leafref_refer  If set, add "leafref-refer" as a 3rd argument to
+ *                             expand_dbvar() to signal that leafrefs should be followed.
+ * @see expand_dbvar  This is where the expand string is used
+ * @see CLIXON_AUTOCLI_NS "expand" extension  Overrides expand_dbvar() with custom callback(s)
+ * @note XXX only fraction_digits handled, should also have mincv, maxcv, pattern
+ */
+static int
+cli_expand_var_generate(clixon_handle h,
+                        yang_stmt    *ys,
+                        const char   *cvtypestr,
+                        int           options,
+                        uint8_t       fraction_digits,
+                        int           pre,
+                        int           leafref_refer,
+                        cbuf         *cb)
+{
+    int     retval = -1;
+    int     extvalue = 0;
+    cvec   *expandfns = NULL;
+    cg_var *cv;
+    int     i;
+
+    if (yang_extension_value(ys, "hide", CLIXON_AUTOCLI_NS, &extvalue, NULL) < 0)
+        goto done;
+    if (extvalue || yang_find(ys, Y_STATUS, "deprecated") != NULL)
+        goto hide;
+    /* Allow an override of the default GENERATE_EXPAND_XMLDB/expand_dbvar() callback with
+     * one or more custom ones */
+    if ((expandfns = yang_extension_values(ys, "expand", CLIXON_AUTOCLI_NS)) == NULL)
+        goto done;
+    if (cvec_len(expandfns) == 0){
+        if (cli_expand_var_generate1(ys, cvtypestr, options, fraction_digits, pre,
+                                     leafref_refer, NULL, cb) < 0)
+            goto done;
+    }
+    else {
+        for (i = 0; i < cvec_len(expandfns); i++){
+            cv = cvec_i(expandfns, i);
+            if (cli_expand_var_generate1(ys, cvtypestr, options, fraction_digits,
+                                         pre || i > 0, leafref_refer,
+                                         cv_string_get(cv), cb) < 0)
+                goto done;
+        }
+    }
+    retval = 1;
+ done:
+    if (expandfns)
+        cvec_free(expandfns);
     return retval;
  hide:
     retval = 0;
@@ -738,7 +793,7 @@ static int yang2cli_var_union(clixon_handle h, yang_stmt *ys, char *origtype,
  * @param[in]  options  Flags field of optional values, see YANG_OPTIONS_*
  * @param[in]  cvv      Cvec with array of range_min/range_max cv:s
  * @param[in]  patterns Cvec of regexp patterns
- * @param[in]  fraction for decimal64, how many digits after period
+ * @param[in]  fraction_digits  For decimal64, how many digits after period
  * @param[out] patpref  Keep track of pattern preferences
  * @param[out] cb       Buffer where cligen code is written
  * @retval     0        OK

@@ -29,7 +29,7 @@ Expected: January 2027
 * Added anthropic/OSS-scanner support
 * New autocli YANG extension `expand`
   * Override the default `expand_dbvar()` CLI tab-completion callback with a custom callback
-  * For cases where valid values cannot be derived from existing XML instances in the candidate db alone
+  * One or several customized expand callback functions called insted of the default
 * New `clixon-autocli@2026-10-01.yang` revision
   * Added extension: `expand`
 * Updated to `ietf-list-pagination@2026-10-09` / `ietf-list-pagination-nc@2026-10-09` draft revisions
