@@ -4743,6 +4743,53 @@ yang_anydata_add(yang_stmt  *yp,
     return ys;
 }
 
+/*! Find the next unknown statement under ys matching extension name:ns, from cursor *inext
+ *
+ * Common matching logic shared between yang_extension_value() and yang_extension_values().
+ * @param[in]     ys     Yang statement where unknown statement may occur referencing extension
+ * @param[in]     name   Name of the extension
+ * @param[in]     ns     The namespace of the module where the extension is defined
+ * @param[in,out] inext  Iterator cursor, see yn_iter(). Set to 0 by the caller before the
+ *                       first call, then left untouched to resume from after each match.
+ * @param[in]     cb     Scratch cbuf for building "prefix:name", reset and reused by this call
+ * @param[out]    yextp  Matching extension statement, or NULL if no (more) match
+ * @retval        0      OK: look in *yextp for result
+ * @retval       -1      Error
+ */
+static int
+yang_extension_next(yang_stmt  *ys,
+                    const char *name,
+                    const char *ns,
+                    int        *inext,
+                    cbuf       *cb,
+                    yang_stmt **yextp)
+{
+    yang_stmt *yext;
+    yang_stmt *ymod;
+    char      *prefix = NULL;
+    int        ret;
+
+    *yextp = NULL;
+    /* This loop gets complicated in the case the extension is augmented */
+    while ((yext = yn_iter(ys, inext)) != NULL) {
+        if (yang_keyword_get(yext) != Y_UNKNOWN)
+            continue;
+        if ((ymod = ys_module(yext)) == NULL)
+            continue;
+        if ((ret = yang_find_prefix_by_namespace(ymod, ns, &prefix)) < 0)
+            return -1;
+        if (ret == 0) /* not found (this may happen in augment and maybe should be treated otherwise) */
+            continue;
+        cbuf_reset(cb);
+        cprintf(cb, "%s:%s", prefix, name);
+        if (strcmp(yang_argument_get(yext), cbuf_get(cb)) != 0)
+            continue;
+        *yextp = yext;
+        break;
+    }
+    return 0;
+}
+
 /*! Find extension argument and return if extension exists and its argument value
  *
  * @param[in]  ys     Yang statement where unknown statement may occur referencing to extension
@@ -4772,13 +4819,10 @@ yang_extension_value(yang_stmt  *ys,
                      char      **value)
 {
     int        retval = -1;
-    yang_stmt *yext;
-    yang_stmt *ymod;
+    yang_stmt *yext = NULL;
     cg_var    *cv;
-    char      *prefix = NULL;
     cbuf      *cb = NULL;
     int        inext;
-    int        ret;
 
     if (ys == NULL){
         clixon_err(OE_YANG, EINVAL, "ys is NULL");
@@ -4790,22 +4834,9 @@ yang_extension_value(yang_stmt  *ys,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    inext = 0; /* This loop gets complicated in the case the extension is augmented */
-    while ((yext = yn_iter(ys, &inext)) != NULL) {
-        if (yang_keyword_get(yext) != Y_UNKNOWN)
-            continue;
-        if ((ymod = ys_module(yext)) == NULL)
-            continue;
-        if ((ret = yang_find_prefix_by_namespace(ymod, ns, &prefix)) < 0)
-            goto done;
-        if (ret == 0) /* not found (this may happen in augment and maybe should be treated otherwise) */
-            continue;
-        cbuf_reset(cb);
-        cprintf(cb, "%s:%s", prefix, name);
-        if (strcmp(yang_argument_get(yext), cbuf_get(cb)) != 0)
-            continue;
-        break;
-    }
+    inext = 0;
+    if (yang_extension_next(ys, name, ns, &inext, cb, &yext) < 0)
+        goto done;
     if (yext != NULL){ /* Found */
         if (exist)
             *exist = 1;
@@ -4818,6 +4849,70 @@ yang_extension_value(yang_stmt  *ys,
     if (cb)
         cbuf_free(cb);
     return retval;
+}
+
+/*! Find all extension statements of a given name and return their argument values
+ *
+ * Collect every matching extension statement under ys, in document order. Used when an extension may
+ * legitimately be specified more than once on the same node, eg clixon-autocli's "expand".
+ * @param[in]  ys     Yang statement where unknown statement may occur referencing to extension
+ * @param[in]  name   Name of the extension
+ * @param[in]  ns     The namespace of the module where the extension is defined
+ * @retval     cvv    Vector of CGV_STRING values, one per occurrence (empty if none found)
+ * @retval     NULL   Error
+ * @see yang_extension_value  Single-value variant
+ */
+cvec *
+yang_extension_values(yang_stmt  *ys,
+                      const char *name,
+                      const char *ns)
+{
+    cvec      *cvv = NULL;
+    yang_stmt *yext;
+    cg_var    *cv0;
+    cg_var    *cv1;
+    cbuf      *cb = NULL;
+    int        inext;
+
+    if (ys == NULL){
+        clixon_err(OE_YANG, EINVAL, "ys is NULL");
+        goto done;
+    }
+    if ((cvv = cvec_new(0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto err;
+    }
+    inext = 0;
+    for (;;){
+        if (yang_extension_next(ys, name, ns, &inext, cb, &yext) < 0)
+            goto err;
+        if (yext == NULL)
+            break;
+        if ((cv0 = yang_cv_get(yext)) == NULL)
+            continue;
+        if ((cv1 = cvec_add(cvv, CGV_STRING)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_add");
+            goto err;
+        }
+        if (cv_string_set(cv1, cv_string_get(cv0)) == NULL){
+            clixon_err(OE_UNIX, errno, "cv_string_set");
+            goto err;
+        }
+    }
+ done:
+    if (cb)
+        cbuf_free(cb);
+    return cvv;
+ err:
+    if (cvv){
+        cvec_free(cvv);
+        cvv = NULL;
+    }
+    goto done;
 }
 
 #if 0 /* NOTE this may need to reinserted with new implementation */

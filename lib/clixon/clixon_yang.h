@@ -365,6 +365,7 @@ int        yang_type_cache_set2(yang_stmt *ys, yang_stmt *resolved, int options,
                                 cvec *patterns, uint8_t fraction, int rxmode, cvec *regexps);
 yang_stmt *yang_anydata_add(yang_stmt *yp, const char *name);
 int        yang_extension_value(yang_stmt *ys, const char *name, const char *ns, int *exist, char **value);
+cvec      *yang_extension_values(yang_stmt *ys, const char *name, const char *ns);
 int        yang_sort_subelements(yang_stmt *ys);
 int        yang_single_child_type(yang_stmt *ys, enum rfc_6020 subkeyw);
 void      *yang_action_cb_get(yang_stmt *ys);
