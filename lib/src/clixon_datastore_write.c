@@ -967,9 +967,13 @@ text_modify(clixon_handle       h,
                 if (x0){
                     xml_purge(x0);
                 }
-                if ((x0 = xml_new(x1name, x0p, CX_ELMNT)) == NULL)
+                /* Add new xml node without parent - insert sorted when copied */
+                if ((x0 = xml_new(x1name, NULL, CX_ELMNT)) == NULL)
                     goto done;
+                changed++;
                 if (xml_copy(x1, x0) < 0)
+                    goto done;
+                if (xml_insert(x0p, x0, INS_LAST, NULL, NULL) < 0)
                     goto done;
                 break;
             } /* anyxml, anydata */
