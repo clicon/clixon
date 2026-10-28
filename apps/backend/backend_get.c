@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <inttypes.h>
+#include <ctype.h>
 #include <errno.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -337,6 +338,52 @@ get_pagination_state_partial(clixon_handle h,
     goto done;
 }
 
+/*! Check if a locale name has a recognized POSIX locale format
+ *
+ * Per Section 3.1.3 Allowed Values: "A server MUST accept a known encoding
+ * with or without trailing '.UTF-8'", eg both "sv_SE" and "sv_SE.UTF-8" must
+ * be accepted.
+ * This is a portable syntax check, ie "language[_TERRITORY][.encoding]"
+ * (or the special names "C"/"POSIX"), instead of a check against installed locale database.
+ * @param[in]  loc  Locale name, eg "sv_SE" or "sv_SE.UTF-8"
+ * @retval     1    Locale name is recognized
+ * @retval     0    Locale name is not recognized
+ */
+static int
+locale_is_available(const char *loc)
+{
+    const char *p = loc;
+
+    if (strcmp(loc, "C") == 0 || strcmp(loc, "POSIX") == 0)
+        return 1;
+    if (!islower((unsigned char)*p))
+        return 0;
+    p++;
+    if (islower((unsigned char)*p))
+        p++;
+    if (islower((unsigned char)*p))
+        p++;
+    if (*p == '_'){
+        p++;
+        if (!isupper((unsigned char)*p++))
+            return 0;
+        if (!isupper((unsigned char)*p++))
+            return 0;
+    }
+    if (*p == '.'){
+        p++;
+        if (!*p)
+            return 0;
+        while (*p){
+            if (!isalnum((unsigned char)*p) && *p != '-')
+                return 0;
+            p++;
+        }
+        return 1;
+    }
+    return *p == '\0';
+}
+
 /*! Specialized get for list-pagination
  *
  * It is specialized enough to have its own function. Specifically, extra attributes as well
@@ -357,7 +404,6 @@ get_pagination_state_partial(clixon_handle h,
  * @retval    -1       Error
  * @note pagination uses appending xpath with predicate, eg [position()<limit], this may not work
  *       if there is an existing predicate
- * XXX Reuse code with get_common
  * From draft-ietf-netconf-list-pagination-04.txt 3.1:
    The order is as follows: a server first processes the "where"
    parameter (see Section 3.1.1), then the "sort-by" parameter (see
@@ -399,6 +445,18 @@ get_list_pagination(clixon_handle     h,
     char      *sort_by = NULL;
     char      *direction = NULL;
     char      *where = NULL;
+    char      *locale = NULL;
+    char      *cursor = NULL;
+    char      *curval = NULL;
+    char      *kval;
+    cvec      *cvk;
+    cg_var    *cvi;
+    char      *keyname;
+    int        found;
+    char      *prev_val = NULL;
+    char      *next_val = NULL;
+    cxobj     *xfirst = NULL;
+    int        has_offset_elem = 0;
     int        i;
     int        j;
     dispatcher_entry_t *htable = NULL;
@@ -461,9 +519,7 @@ get_list_pagination(clixon_handle     h,
     /* first processes the "where" parameter (see Section 3.1.1) */
     if ((x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL &&
         (where = xml_body(x)) != NULL){
-        if (strcmp(where, "unfiltered") == 0)
-            where = NULL;
-        else if (xml_nsctx_node(x, &wherens) < 0)
+        if (xml_nsctx_node(x, &wherens) < 0)
             goto done;
     }
     /* then the "sort-by" parameter (see Section 3.1.2) */
@@ -471,6 +527,27 @@ get_list_pagination(clixon_handle     h,
         sort_by = xml_body(x);
         if (strcmp(sort_by, "none") == 0)
             sort_by = NULL;
+    }
+    /* the "locale" parameter (see Section 3.1.3). "locale" MUST only be
+     * specified together with "sort-by"
+     */
+    if ((x = xml_find_type(xe, NULL, "locale", CX_ELMNT)) != NULL &&
+        (locale = xml_body(x)) != NULL){
+        if (yang_is_ordered_by_user(ylist)){
+            if (netconf_invalid_value(cbret, "application",
+                                      "The \"locale\" parameter is not relevant for an "
+                                      "\"ordered-by user\" list or leaf-list") < 0)
+                goto done;
+            goto ok;
+        }
+        if (!locale_is_available(locale)){
+            if (netconf_invalid_value_apptag(cbret, "application", "locale-unavailable",
+                                             "The \"locale\" parameter value is not a valid or "
+                                             "available locale") < 0)
+                goto done;
+            goto ok;
+        }
+        /* NYI: locale is validated but not yet used to collate sort-by results */
     }
     /* then the "direction" parameter (see Section 3.1.4) */
     if ((x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL &&
@@ -484,8 +561,14 @@ get_list_pagination(clixon_handle     h,
         if (strcmp(direction, "forwards") == 0)
             direction = NULL;
     }
-    /* the "offset" parameter (see Section 3.1.5) or
-       NYI: the "cursor" parameter (see Section 3.1.6)
+    /* or the "cursor" parameter (see Section 3.1.6), which represents the
+     * "where", "sort-by", "direction", and "offset" parameters
+     */
+    if ((x = xml_find_type(xe, NULL, "cursor", CX_ELMNT)) != NULL)
+        cursor = xml_body(x);
+    has_offset_elem = (x = xml_find_type(xe, NULL, "offset", CX_ELMNT)) != NULL &&
+                      xml_flag(x, XML_FLAG_DEFAULT) == 0;
+    /* the "offset" parameter (see Section 3.1.5)
        lastly "the "limit" parameter (see Section 3.1.7) */
     if ((ret = list_pagination_hdr(h, xe, &offset, &limit, cbret)) < 0)
         goto done;
@@ -594,11 +677,88 @@ get_list_pagination(clixon_handle     h,
            lastly "the "limit" parameter (see Section 3.1.7) */
         if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
             goto done;
+        if (cursor != NULL){
+            /* Section 3.1.6: locate the entry addressed by the cursor and treat it as the offset to start from */
+            /* NYI: cursor is not supported on leaf-lists, only on keyed lists, although
+             * Sec 3.1.6 Conformance requires it MUST be supported on "config true" leaf-lists too */
+            if (yang_keyword_get(ylist) != Y_LIST ||
+                (cvk = yang_cvec_get(ylist)) == NULL || cvec_len(cvk) == 0){
+                if (netconf_invalid_value(cbret, "application",
+                                          "The \"cursor\" parameter is not supported on this target") < 0)
+                    goto done;
+                goto ok;
+            }
+            /* NYI: only the first key of a multi-key list is used */
+            cvi = cvec_i(cvk, 0);
+            keyname = cv_string_get(cvi);
+            if (clixon_base64_decode(cursor, &curval) < 0){
+                if (netconf_invalid_value_apptag(cbret, "application", "cursor-not-found",
+                                                 "The \"cursor\" parameter value is not valid base64") < 0)
+                    goto done;
+                goto ok;
+            }
+            found = 0;
+            for (i=0; i<xlen; i++){
+                if ((x = xvec[i]) == NULL)
+                    continue;
+                if ((kval = xml_find_body(x, keyname)) != NULL && strcmp(kval, curval) == 0){
+                    offset = i;
+                    found = 1;
+                    break;
+                }
+            }
+            free(curval);
+            curval = NULL;
+            if (!found){
+                if (netconf_invalid_value_apptag(cbret, "application", "cursor-not-found",
+                                                 "The \"cursor\" parameter value does not match any entry "
+                                                 "in the target list") < 0)
+                    goto done;
+                goto ok;
+            }
+        }
+        else if (offset > xlen){
+            /* 3.1.5: If the offset value exceeds the number of entries in the result, the error also includes the
+             * error-app-tag value 'offset-out-of-range'." */
+            if (netconf_invalid_value_apptag(cbret, "application", "offset-out-of-range",
+                                             "The \"offset\" parameter value is greater than the number "
+                                             "of instances in the target list or leaf-list resource") < 0)
+                goto done;
+            goto ok;
+        }
         if (limit == 0)
             upper = xlen;
         else{
             if ((upper = offset+limit) > xlen)
                 upper = xlen;
+        }
+        /* NYI: only the first key of a multi-key list is used */
+        if (limit != 0 &&
+            where == NULL && sort_by == NULL && direction == NULL && !has_offset_elem &&
+            yang_keyword_get(ylist) == Y_LIST &&
+            (cvk = yang_cvec_get(ylist)) != NULL && cvec_len(cvk) > 0){
+            cvi = cvec_i(cvk, 0);
+            keyname = cv_string_get(cvi);
+            if (offset > 0 && (x = xvec[offset-1]) != NULL &&
+                (kval = xml_find_body(x, keyname)) != NULL){
+                if (clixon_base64_encode(kval, strlen(kval), &prev_val) < 0)
+                    goto done;
+            }
+            else if ((prev_val = strdup("")) == NULL){
+                clixon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+            if (upper < xlen && (x = xvec[upper]) != NULL &&
+                (kval = xml_find_body(x, keyname)) != NULL){
+                if (clixon_base64_encode(kval, strlen(kval), &next_val) < 0)
+                    goto done;
+            }
+            else if ((next_val = strdup("")) == NULL){
+                clixon_err(OE_UNIX, errno, "strdup");
+                goto done;
+            }
+            if (offset < upper)
+                xfirst = xvec[offset]; /* attribute target: first entry actually returned */
         }
         for (i=offset; i<upper; i++){
             if ((x = xvec[i]) == NULL)
@@ -652,6 +812,15 @@ get_list_pagination(clixon_handle     h,
             cbuf_free(cba);
     }
 #endif /* LIST_PAGINATION_REMAINING */
+    /* Add "previous"/"next" attributes on the first entry actually returned */
+    if (xfirst != NULL){
+        if (prev_val != NULL &&
+            xml_add_attr(xfirst, "previous", prev_val, "lpg", "urn:ietf:params:xml:ns:yang:ietf-list-pagination") == NULL)
+            goto done;
+        if (next_val != NULL &&
+            xml_add_attr(xfirst, "next", next_val, "lpg", "urn:ietf:params:xml:ns:yang:ietf-list-pagination") == NULL)
+            goto done;
+    }
     if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, wdef, cbret) < 0)
         goto done;
  ok:
@@ -667,6 +836,12 @@ get_list_pagination(clixon_handle     h,
         xml_free(xerr);
     if (xret)
         xml_free(xret);
+    if (curval)
+        free(curval);
+    if (prev_val)
+        free(prev_val);
+    if (next_val)
+        free(next_val);
     return retval;
 }
 

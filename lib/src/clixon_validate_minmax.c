@@ -269,7 +269,7 @@ check_unique_list_direct(cxobj     *x,
      * Other cases (unique constraint or user-ordered) are quadratic in the unoptimized path.
      */
     sorted = (yang_keyword_get(yu) == Y_LIST &&
-              yang_find(y, Y_ORDERED_BY, "user") == NULL);
+              !yang_is_ordered_by_user(y));
     cvk = yang_cvec_get(yu);
     if ((clen = cvec_len(cvk)) == 0)
         goto ok;
@@ -1114,7 +1114,7 @@ vec_order_analyze(yang_stmt        *y,
     switch (yang_keyword_get(y)){
     case Y_LIST:
     case Y_LEAF_LIST:
-        if (yang_find(y, Y_ORDERED_BY, "user") != NULL)
+        if (yang_is_ordered_by_user(y))
             qsort(vec, vlen, sizeof(*vec), cmp_list_qsort);
         if ((ret = remove_duplicates_list(y, vec, vlen, rm, &nr, xret)) < 0)
             goto done;

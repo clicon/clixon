@@ -412,7 +412,7 @@ xml_diff1(cxobj     *x0,
         /* Both x0c and x1c exists, check if they are yang-equal. */
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         /* override ordered-by user with special look-ahead checks */
-        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+        if (eq && y0c && y1c && y0c == y1c && yang_is_ordered_by_user(y0c)){
             if (xml_diff_ordered_by_user(x0, x1, x0c, x1c, ix0c, ix1c, y0c) < 0)
                 goto done;
             /* Add all in x0 marked as DELETE in x0vec
@@ -1773,7 +1773,7 @@ xml_diff2patch(cxobj   *x1,
         b0 = xml_body(x1c);
         b1 = xml_body(x2c);
         if ((flags & DIFF_FLAG_ORDER_IGNORE) != 0 &&
-            eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+            eq && y0c && y1c && y0c == y1c && yang_is_ordered_by_user(y0c)){
             if (xml_diff2patch_ordered_by_user(x1, x2, flags, x1c, x2c, ix1c, ix2c, y0c, xpatch, nr) < 0)
                 goto done;
             /* Show all marked as DELETE as - entries

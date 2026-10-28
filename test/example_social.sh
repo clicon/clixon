@@ -47,7 +47,6 @@ cat <<EOF > $fexample
          key "member-id";
          description
            "List of members.";
-         ordered-by user;
          leaf member-id {
            type string {
              length "1..80";

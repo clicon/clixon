@@ -294,7 +294,7 @@ xml_cmp(cxobj      *x1,
 #ifndef STATE_ORDERED_BY_SYSTEM
          yang_config(y1)==0 ||
 #endif
-         yang_find(y1, Y_ORDERED_BY, "user") != NULL)){
+         yang_is_ordered_by_user(y1))){
             equal = nr1-nr2;
             goto done; /* Ordered by user or state data : maintain existing order */
         }
@@ -919,7 +919,7 @@ xml_search_yang(cxobj       *xp,
     else
 #endif
         if (yang_keyword_get(yc) == Y_LIST || yang_keyword_get(yc) == Y_LEAF_LIST)
-            sorted = (yang_find(yc, Y_ORDERED_BY, "user") == NULL);
+            sorted = !yang_is_ordered_by_user(yc);
     if ((yangi = yang_order(yc)) < -1)
         goto done;
     if (xml_search_binary(xp, x1, sorted, yangi, low, upper, skip1, indexvar, xvec) < 0)
@@ -1166,7 +1166,7 @@ xml_insert(cxobj           *xp,
     else
 #endif
         if (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)
-            userorder = (yang_find(y, Y_ORDERED_BY, "user") != NULL);
+            userorder = yang_is_ordered_by_user(y);
     if ((yi = yang_order(y)) < -1)
         goto done;
     if ((i = xml_insert2(xp, xi, y, yi,

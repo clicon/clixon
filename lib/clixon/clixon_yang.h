@@ -355,6 +355,7 @@ int        yang_datanode(yang_stmt *ys);
 int        yang_abs_schema_nodeid(yang_stmt *ys, const char *schema_nodeid, yang_stmt **yres);
 int        yang_desc_schema_nodeid(yang_stmt *yn, const char *schema_nodeid, yang_stmt **yres);
 int        yang_config(yang_stmt *ys);
+int        yang_is_ordered_by_user(yang_stmt *y);
 int        yang_config_ancestor(yang_stmt *ys);
 int        yang_features(clixon_handle h, yang_stmt *yt);
 cvec      *yang_arg2cvec(yang_stmt *ys, const char *delimi);

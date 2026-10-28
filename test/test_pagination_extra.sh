@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # List pagination tests according to draft-ietf-netconf-list-pagination-04
 # sort-by and where in Appendix A.3.5
+# Also feature
 # Only NETCONF, see more extensive testng in _draft test
 
 # Magic line must be first in script (see README.md)
@@ -22,6 +23,8 @@ cat <<EOF > $cfg
 <clixon-config xmlns="http://clicon.org/config">
   <CLICON_CONFIGFILE>$cfg</CLICON_CONFIGFILE>
   <CLICON_FEATURE>ietf-netconf:startup</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-list-pagination:sort-by</CLICON_FEATURE>
+  <CLICON_FEATURE>ietf-list-pagination:direction</CLICON_FEATURE>
   <CLICON_YANG_DIR>${YANG_INSTALLDIR}</CLICON_YANG_DIR>
   <CLICON_YANG_DIR>$IETFRFC</CLICON_YANG_DIR>
   <CLICON_YANG_MAIN_DIR>$dir</CLICON_YANG_MAIN_DIR>
@@ -218,6 +221,27 @@ fi
 new "wait backend"
 wait_backend
 
+new "netconf yang-library: ietf-list-pagination module, RFC 8525"
+rpc=$(chunked_framing "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"l:yang-library/l:module-set[l:name='top']/l:module[l:name='ietf-list-pagination']\" xmlns:l=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\"/></get></rpc>")
+ret=$($clixon_netconf -qf $cfg<<EOF
+$DEFAULTHELLO$rpc
+EOF
+   )
+
+new "Check: sort-by, where and offset all announced as enabled features"
+expect1="<module><name>ietf-list-pagination</name><revision>"
+expect2="</revision><namespace>urn:ietf:params:xml:ns:yang:ietf-list-pagination</namespace><feature>direction</feature><feature>offset</feature><feature>sort-by</feature><feature>where</feature></module>"
+match=`echo "$ret" | grep --null -Go "$expect1"`
+if [ -z "$match" ]; then
+      err "$expect1" "$ret"
+fi
+match=`echo "$ret" | grep --null -Go "$expect2"`
+if [ -z "$match" ]; then
+      err "$expect2" "$ret"
+fi
+
+
+
 new "A.3.4.1.  direction=forwards"
 # 17, 13, 11, 7, 5, 3]
 # Confusing: forwards means dont change order
@@ -240,15 +264,14 @@ new "A.3.5.1.3.  sort-by type is a list and sort-by node is an indirect descende
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><sort-by>stats/joined</sort-by></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id>.*<member-id>lin</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>"
 
 new "A.3.6.2.  where, match on descendent string containing a substring"
-# bob, eric, alice, lin, joe
-# Confusing: all match
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">.[contains (es:email-address,'@example.com')]</where></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>alice</member-id>.*<member-id>lin</member-id>.*<member-id>joe</member-id>"
+# alice, bob, eric, joe, lin (member is ordered-by system: canonicalized by key.
+# DEVIATION: the draft's own dataset order is bob, eric, alice, lin, joe
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">.[contains (es:email-address,'@example.com')]</where></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>.*<member-id>lin</member-id>"
 
 new "A.3.6.3.  where, match on decendent timestamp starting with a substring"
-# bob, eric, alice, joe,
-# starts-with NYI, replaced with contains
+# alice, bob, eric, joe (member is ordered-by system: canonicalized by key;
 # posts//post[starts-with(timestamp,'2020')]
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">es:posts/es:post[contains(es:timestamp,'2020')]</where></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>alice</member-id>.*<member-id>joe</member-id>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">es:posts/es:post[contains(es:timestamp,'2020')]</where></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>"
 
 new "A.3.9.1.  All six parameters at once"
 # eric, bob

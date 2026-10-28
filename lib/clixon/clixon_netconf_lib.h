@@ -186,6 +186,8 @@ int privcand_res_str2key(const char *str);
 int netconf_in_use(cbuf *cb, const char *type, const char *message);
 int netconf_invalid_value(cbuf *cb, const char *type, const char *message);
 int netconf_invalid_value_xml(cxobj **xret, const char *type, const char *message);
+int netconf_invalid_value_apptag(cbuf *cb, const char *type, const char *apptag, const char *message);
+int netconf_invalid_value_apptag_xml(cxobj **xret, const char *type, const char *apptag, const char *message);
 int netconf_too_big(cbuf *cb, const char *type, const char *message);
 int netconf_missing_attribute(cbuf *cb, const char *type, const char *info, const char *message);
 int netconf_missing_attribute_xml(cxobj **xret, const char *type, const char *info, const char *message);

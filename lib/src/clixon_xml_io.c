@@ -1773,7 +1773,7 @@ xml_diff2cbuf(cbuf  *cb,
         eq = xml_cmp(x0c, x1c, 0, 0, NULL);
         b0 = xml_body(x0c);
         b1 = xml_body(x1c);
-        if (eq && y0c && y1c && y0c == y1c && yang_find(y0c, Y_ORDERED_BY, "user")){
+        if (eq && y0c && y1c && y0c == y1c && yang_is_ordered_by_user(y0c)){
             if (xml_diff2cbuf_ordered_by_user(cb, x0, x1, x0c, x1c, ix0c, ix1c, y0c, level) < 0)
                 goto done;
             /* Show all marked as DELETE as - entries

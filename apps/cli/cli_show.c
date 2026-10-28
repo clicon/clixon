@@ -119,7 +119,7 @@ expand_dbvar_insert(clixon_handle h,
             if ((y = xml_spec(xvec[i])) != NULL &&
                 (yp = yang_parent_get(y)) != NULL &&
                 yang_keyword_get(yp) == Y_LIST &&
-                yang_find(yp, Y_ORDERED_BY, "user") != NULL){
+                yang_is_ordered_by_user(yp)){
                 user_ordered_list = 1;
             }
         }

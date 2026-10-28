@@ -77,6 +77,8 @@ int    xml_chardata_encode(char **escp, int quote, const char *fmt, ... ) __attr
 int    xml_chardata_cbuf_append(cbuf *cb, int quote, const char *str);
 int    xml_chardata_decode(char **escp, const char *fmt,...);
 int    uri_percent_decode(const char *enc, char **str);
+int    clixon_base64_encode(const char *in, size_t inlen, char **outp);
+int    clixon_base64_decode(const char *in, char **outp);
 int    nodeid_split(const char *nodeid, char **prefix, char **id);
 char  *clixon_trim(char *str);
 char  *clixon_trim2(char *str, const char *trims);

@@ -687,7 +687,7 @@ text_modify(clixon_handle       h,
          * See RFC 7950 Sec 7.7.9
          */
         if (yang_keyword_get(y0) == Y_LEAF_LIST &&
-            yang_find(y0, Y_ORDERED_BY, "user") != NULL){
+            yang_is_ordered_by_user(y0)){
             if ((ret = attr_ns_value(x1,
                                      "insert", YANG_XML_NAMESPACE, 0,
                                      cbret, &instr)) < 0)
@@ -889,7 +889,7 @@ text_modify(clixon_handle       h,
          * See RFC 7950 Sec 7.8.6
          */
         if (yang_keyword_get(y0) == Y_LIST &&
-            yang_find(y0, Y_ORDERED_BY, "user") != NULL){
+            yang_is_ordered_by_user(y0)){
             if ((ret = attr_ns_value(x1,
                                      "insert", YANG_XML_NAMESPACE, 0,
                                      cbret, &instr)) < 0)

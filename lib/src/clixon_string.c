@@ -523,6 +523,121 @@ uri_percent_decode(const char *enc,
     return retval;
 }
 
+/*! Base64 encode a buffer into a newly malloc'd NUL-terminated string
+ *
+ * @param[in]  in     Input buffer (may contain arbitrary bytes)
+ * @param[in]  inlen  Length of in
+ * @param[out] outp   Encoded, NUL-terminated string, malloc'd by this function, free with free()
+ * @retval     0      OK
+ * @retval    -1      Error
+ * @see RFC 4648 The Base16, Base32, and Base64 Data Encodings
+ * @see clixon_base64_decode
+ */
+int
+clixon_base64_encode(const char *in,
+                     size_t      inlen,
+                     char      **outp)
+{
+    static const char alphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int      retval = -1;
+    char    *out = NULL;
+    size_t   outlen;
+    size_t   i;
+    size_t   j;
+    uint32_t buf;
+    int      bits;
+
+    if (in == NULL || outp == NULL){
+        clixon_err(OE_UNIX, EINVAL, "in or outp is NULL");
+        goto done;
+    }
+    outlen = ((inlen + 2) / 3) * 4;
+    if ((out = malloc(outlen + 1)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    j = 0;
+    buf = 0;
+    bits = 0;
+    for (i=0; i<inlen; i++){
+        buf = (buf << 8) | (unsigned char)in[i];
+        bits += 8;
+        while (bits >= 6){
+            bits -= 6;
+            out[j++] = alphabet[(buf >> bits) & 0x3f];
+        }
+    }
+    if (bits > 0)
+        out[j++] = alphabet[(buf << (6 - bits)) & 0x3f];
+    while (j % 4 != 0)
+        out[j++] = '=';
+    out[j] = '\0';
+    *outp = out;
+    retval = 0;
+ done:
+    if (retval < 0 && out)
+        free(out);
+    return retval;
+}
+
+/*! Base64 decode a NUL-terminated string into a newly malloc'd buffer
+ *
+ * @param[in]  in    Base64-encoded input string, '=' padded
+ * @param[out] outp  Decoded data, NUL-terminated, malloc'd by this function, free with free()
+ * @retval     0     OK
+ * @retval    -1     Malformed base64 input
+ * @see RFC 4648 The Base16, Base32, and Base64 Data Encodings
+ * @see clixon_base64_encode
+ */
+int
+clixon_base64_decode(const char *in,
+                     char      **outp)
+{
+    static const char alphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int         retval = -1;
+    char       *out = NULL;
+    size_t      i;
+    size_t      j;
+    size_t      len;
+    const char *p;
+    uint32_t    buf;
+    int         bits;
+
+    if (in == NULL || outp == NULL){
+        clixon_err(OE_UNIX, EINVAL, "in or outp is NULL");
+        goto done;
+    }
+    len = strlen(in);
+    if ((out = malloc((len/4+1)*3 + 1)) == NULL){
+        clixon_err(OE_UNIX, errno, "malloc");
+        goto done;
+    }
+    j = 0;
+    buf = 0;
+    bits = 0;
+    for (i=0; i<len; i++){
+        if (in[i] == '=')
+            break; /* padding: end of data */
+        if ((p = strchr(alphabet, in[i])) == NULL)
+            goto done; /* malformed base64 */
+        buf = (buf << 6) | (uint32_t)(p - alphabet);
+        bits += 6;
+        if (bits >= 8){
+            bits -= 8;
+            out[j++] = (char)((buf >> bits) & 0xff);
+        }
+    }
+    out[j] = '\0';
+    *outp = out;
+    retval = 0;
+ done:
+    if (retval < 0 && out)
+        free(out);
+    return retval;
+}
+
 /*! Encode escape characters according to XML definition
  *
  * @param[out]  encp   Encoded malloced output string

@@ -34,6 +34,9 @@ Expected: January 2027
   * Added extension: `expand`
 * Updated to `ietf-list-pagination@2026-10-09` / `ietf-list-pagination-nc@2026-10-09` draft revisions
   * `sort-by` (renamed from `sort`), `where`, and `offset` are now `if-feature`-gated by the draft
+  * `cursor` for single-key list is now supported, (multi-key and leaf-list NYI)
+  * `locale` validated but entries are not sorted accordingly
+  * app-tags are implemented when applicable
 
 ### API changes on existing protocol/config features
 

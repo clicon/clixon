@@ -4446,6 +4446,20 @@ yang_config(yang_stmt *ys)
     return 1;
 }
 
+/*! Check if a list or leaf-list's YANG "ordered-by" is "user"
+ *
+ * Per RFC 7950 Sections 7.7.7 and 7.8.5: the implicit default (no
+ * "ordered-by" statement) is "system".
+ * @param[in] y  Yang statement of a list or leaf-list
+ * @retval    1  ordered-by is "user"
+ * @retval    0  ordered-by is "system" (explicit or default)
+ */
+int
+yang_is_ordered_by_user(yang_stmt *y)
+{
+    return yang_find(y, Y_ORDERED_BY, "user") != NULL;
+}
+
 /*! Return config state of this node taking parents/ancestors into account
  *
  * config statement is default true.
