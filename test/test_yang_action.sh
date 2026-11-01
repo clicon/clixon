@@ -77,6 +77,13 @@ rpc="<rpc $DEFAULTNS><action xmlns=\"urn:ietf:params:xml:ns:yang:1\"><server xml
 new "netconf action"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc" "" "<rpc-reply $DEFAULTNS><reset-finished-at xmlns=\"urn:example:server-farm\">2014-07-29T13:42:00Z</reset-finished-at></rpc-reply>"
 
+# No xmlns anywhere, so xml2ns() cannot resolve a namespace for <action> and
+# returns NULL - xml_rpc_isaction() used to strcmp() that NULL unconditionally
+rpc2="<rpc message-id=\"43\"><action><x/></action></rpc>"
+
+new "netconf action no namespace"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$rpc2" "<rpc-error>" ""
+
 if [ $BE -ne 0 ]; then     # Bring your own backend
     new "Kill backend"
     # Check if premature kill

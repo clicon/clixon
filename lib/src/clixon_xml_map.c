@@ -1637,7 +1637,7 @@ xml_rpc_isaction(cxobj *xn)
         goto fail;
     if (xml2ns(xn, xml_prefix(xn), &ns) < 0)
         goto done;
-    if (strcmp(YANG_XML_NAMESPACE, ns) != 0)
+    if (ns == NULL || strcmp(YANG_XML_NAMESPACE, ns) != 0)
         goto fail;
     retval = 1; // is action
  done:
