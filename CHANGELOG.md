@@ -42,6 +42,7 @@ Expected: January 2027
 
 ### Corrected Bugs
 
+* Fixed: [edit-config of an anydata node breaks sibling order, causing duplicate list entries](https://github.com/clicon/clixon/pull/708)
 * Fixed: "xpath: bound recursion depth to prevent stack-overflow DoS", author: Pexa Rubinstein <pexaxep@gmail.com>
 * Fixed: [CLI expand issue with leafrefs using predicates](https://github.com/clicon/clixon/issues/706)
 * Fixed: [Mandatory leaf deletion is incorrectly accepted when a sibling list entry exists](https://github.com/clicon/clixon/issues/704)
