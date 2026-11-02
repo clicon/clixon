@@ -4,6 +4,13 @@ The clixon project welcomes contributions from the community.
 
 Contributions are best done posting issues and pull requests. Discussions are welcome on the Matrix clixon forum https://matrix.to/#/#clixonforum:matrix.org.
 
+* [Licensing](#licensing)
+* [C style](#c-style)
+* [Pull requests](#pull-requests)
+* [Testing](#testing)
+* [Optimization](#optimization)
+* [How to document the code](#how-to-document-the-code)
+
 ## Licensing
 
 A contribution must follow the [CLIXON licensing](https://github.com/clicon/clixon/blob/master/LICENSE.md)
@@ -144,22 +151,30 @@ single C-file, ie do not declare it extern and do not use it in other files.
 
 Also, always prepend a global variable with `_`, underscore.
 
+## Pull requests
+
+Things to think about (some may not be applicable)
+
+* If there is an associated issue, link to it
+* Add a line in CHANGELOG.md
+* Extend or add a regression test.
+
 ## Testing
 
-For a new feature, it is important to write (or extend) [a clixon test](https://github.com/clicon/clixon/blob/master/test/README.md), including some functionality tests and preferably some negative tests. Tests are then run automatically as regression on commit [by github actions](https://github.com/clicon/clixon/actions/).
+For a new feature, write (or extend) [a clixon test](https://github.com/clicon/clixon/blob/master/test/README.md), including functionality and negative tests. Tests are then run automatically as regression on commit [by github actions](https://github.com/clicon/clixon/actions/).
+
+The tests use shell scripts, with some "expect" sh macros. Use a "new" command for each sub-test, since they delimit tests for usage in valgrind/mem tests.
 
 These tests are also the basis for more extensive CI tests run by the project which
 include:
 - [Memory tests](https://github.com/clicon/clixon/tree/master/test#memory-leak-test), using Valgrind. Running the .mem.sh for cli, backend,netconf and restconf is mandatory.
 - [Vagrant tests on other operating systems](https://github.com/clicon/clixon/tree/master/test/vagrant). Other OS:s include ubuntu, centos and freebsd
-- [CI on other platforms](https://github.com/clicon/clixon/tree/master/test/cicd). Other platforms include x86-64, 32-bit i686, and armv71
 - [Coverage tests](https://app.codecov.io/gh/clicon/clixon)
-- [Fuzzing](https://github.com/clicon/clixon/tree/master/test/fuzz) Fuzzing are run occasionally using AFL
+- [Fuzzing](https://github.com/clicon/clixon/tree/master/fuzz) Fuzzing are run occasionally using AFL
 
 ## Optimization
 
-Optimizating Clixon code should be based on an observable improvement
-of measurements of cycles or memory usage.
+Optimizating Clixon code is based on observable improvement of measurements of cycles or memory usage.
 
 Usually, new clixon code starts out with functional compliance
 with appropriate regression tests.

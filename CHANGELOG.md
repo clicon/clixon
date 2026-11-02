@@ -43,6 +43,13 @@ Expected: January 2027
 * New `clixon-lib@2026-06-01.yang` revision
    * Extended `config-path-info` rpc with `db` paramater
 
+### C/CLI-API changes on existing features
+
+Developers may need to change their code
+
+* Added `db` parameter to `clixon_rpc_config_path_info()`
+  * Change call: clixon_rpc_config_path_info(,,,,,, ...)` --> clixon_rpc_config_path_info(,,,,,,NULL, ...)`
+
 ### Corrected Bugs
 
 * Fixed: [edit-config of an anydata node breaks sibling order, causing duplicate list entries](https://github.com/clicon/clixon/pull/708)
