@@ -78,6 +78,8 @@ int clixon_rpc_clixon_cache(clixon_handle h, const char *op, const char *type, c
                             const char *module, const char *revision, const char *keyword, const char *argument,
                             cbuf *data);
 int clixon_rpc_nacm_autocli_filter(clixon_handle h, nacm_autocli_filter_t **nafp);
+/*! For backward compatibility to 7.9, if this is _not_ set use old function signature without "db" */
+#define CLIXON_RPC_CONFIG_PATH_INFO_DB
 int clixon_rpc_config_path_info(clixon_handle h, const char *api_path, int strict, const char *xpath, cvec *nsc0,
                                 int leafref_refer, const char *db, int mark_keys, const char *body, cxobj *xtop,
                                 char **api_path1, char **xpath1, cvec **nsc1,

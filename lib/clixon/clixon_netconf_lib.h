@@ -44,7 +44,6 @@
  * Constants
  */
 /* Default NETCONF namespace (see rfc6241 3.1)
- * See USE_NETCONF_NS_AS_DEFAULT for use of this namespace as default
  * Also, bind it to prefix:nc as used by, for example, the operation attribute
  * (also in RFC4741 Sec 3.1)
  * BTW this may not be the best way to keep them.
