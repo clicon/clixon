@@ -99,7 +99,18 @@ module example{
         leaf template{
             type leafref{
                 path "/sender/name";
-                require-instance true;  
+                require-instance true;
+            }
+        }
+        leaf enabled{
+            type boolean;
+        }
+        /* leafref filtered by predicate: binary search must not match
+         * entries excluded by the predicate */
+        leaf active-template{
+            type leafref{
+                path "/sender[enabled='true']/name";
+                require-instance true;
             }
         }
     }
@@ -277,6 +288,24 @@ new "issue 669: validate with invalid leafref to list key (expect failure)"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-error>" ""
 
 new "issue 669: discard-changes"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+# Leafref path with predicate on the list: xvec is a subset of the list entries.
+# LEAFREF_OPTIMIZE binary search must not be used, it searches all entries and
+# would accept a reference to an entry excluded by the predicate.
+new "leafref predicate: add senders s1,s3 enabled, s2 disabled, s4 refers to disabled s2"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><sender xmlns=\"urn:example:clixon\"><name>s1</name><enabled>true</enabled></sender><sender xmlns=\"urn:example:clixon\"><name>s2</name><enabled>false</enabled></sender><sender xmlns=\"urn:example:clixon\"><name>s3</name><enabled>true</enabled></sender><sender xmlns=\"urn:example:clixon\"><name>s4</name><active-template>s2</active-template></sender></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref predicate: validate expect failure (s2 is disabled)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "<rpc-error>" ""
+
+new "leafref predicate: set s4 to refer to enabled s3"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><edit-config><target><candidate/></target><config><sender xmlns=\"urn:example:clixon\"><name>s4</name><active-template>s3</active-template></sender></config></edit-config></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref predicate: validate expect OK (s3 is enabled)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><validate><source><candidate/></source></validate></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
+
+new "leafref predicate: discard-changes"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><discard-changes/></rpc>" "" "<rpc-reply $DEFAULTNS><ok/></rpc-reply>"
 
 # Leafref to non-key leaf in a list: LEAFREF_OPTIMIZE binary search must not
