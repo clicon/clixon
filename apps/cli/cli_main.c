@@ -72,7 +72,7 @@
 #include "banned.h"
 
 /* Command line options to be passed to getopt(3) */
-#define CLI_OPTS "+hVD:f:E:l:C:F:1sa:u:d:m:qp:GLy:c:U:g:o:"
+#define CLI_OPTS "+hVD:f:E:l:C:F:1esa:u:d:m:qp:GLy:c:U:g:o:"
 
 static char *_restarg = NULL; /* what remains after options XXX just to avoid mem-leakage, try to fix wo global var */
 
@@ -236,18 +236,21 @@ cli_signal_init (clixon_handle h)
 
 /*! Interactive CLI command loop
  *
- * @param[in]  h    Clixon handle
+ * @param[in]  h        Clixon handle
+ * @param[in]  errexit  If set, exit with error on first failed command
  * @retval     0
  * @retval    -1
  * @see cligen_loop
  */
 static int
-cli_interactive(clixon_handle h)
+cli_interactive(clixon_handle h,
+                int           errexit)
 {
     int           retval = -1;
     char         *cmd;
     char         *new_mode;
     cligen_result result;
+    int           evalres;
     pt_head      *ph;
     int           ret;
 
@@ -262,16 +265,21 @@ cli_interactive(clixon_handle h)
         /* Read a CLI string, including expand handling */
         if ((ret = clicon_cliread(h, ph, &cmd)) < 0)
             goto done;
-        if (ret == 0)
+        if (ret == 0){
+            if (errexit)
+                goto done;
             continue;
+        }
         if (cmd == NULL) { /* EOF */
             cligen_exiting_set(cli_cligen(h), 1);
             continue;
         }
         /* Here errors are handled */
-        if (clicon_parse(h, cmd, &new_mode, &result, NULL) < 0)
+        evalres = 0;
+        if (clicon_parse(h, cmd, &new_mode, &result, &evalres) < 0)
             goto done;
-        /* Why not check result? */
+        if (errexit && (result != CG_MATCH || evalres < 0))
+            goto done;
     }
     retval = 0;
  done:
@@ -383,6 +391,7 @@ usage(clixon_handle h,
             "\t-C <format>\tDump configuration options on stdout after loading. Format is xml|json|text\n"
             "\t-F <file> \tRead commands from file (default stdin)\n"
             "\t-1\t\tOneshot: connect to backend and exit, do not enter interactive mode\n"
+            "\t-e\t\tExit with error on first failed command read from stdin or file (see -F)\n"
             "\t-s\t\tDisable output scrolling\n"
             "\t-a UNIX|IPv4|IPv6\tInternal backend socket family\n"
             "\t-u <path|addr>\tInternal socket domain path or IP addr (see -a)\n"
@@ -416,6 +425,7 @@ main(int    argc,
     int            retval = -1;
     int            c;
     int            once;
+    int            errexit;
     char          *tmp;
     char          *argv0 = argv[0];
     clixon_handle  h;
@@ -440,6 +450,7 @@ main(int    argc,
 
     /* Defaults */
     once = 0;
+    errexit = 0;
     config_dump = 0;
 
     /* Initiate Clixon handle. CLIgen is also initialized */
@@ -561,6 +572,9 @@ main(int    argc,
             break;
         case '1' : /* Quit after reading database once - dont wait for events */
             once = 1;
+            break;
+        case 'e' : /* Exit with error on first failed command */
+            errexit = 1;
             break;
         case 's' : /* Disable scrolling */
             if (clicon_option_add(h, "CLICON_CLI_LINES_DEFAULT", "0") < 0)
@@ -881,7 +895,7 @@ main(int    argc,
     if (once)
         retval = 0;
     else 
-        retval = cli_interactive(h);
+        retval = cli_interactive(h, errexit);
   done:
     if (h){
         /* Dont log terminate on stderr or stdout */
