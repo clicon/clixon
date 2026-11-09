@@ -283,6 +283,25 @@ leafref_opt_cache_new(yang_stmt *ys,
     return 0;
 }
 
+/*! Count children of xp with yang spec ys
+ *
+ * @param[in]  xp  XML parent
+ * @param[in]  ys  Yang spec of children to count
+ * @retval     n   Number of children
+ */
+static size_t
+leafref_opt_count(cxobj     *xp,
+                  yang_stmt *ys)
+{
+    cxobj  *x = NULL;
+    size_t  n = 0;
+
+    while ((x = xml_child_each(xp, x, CX_ELMNT)) != NULL)
+        if (xml_spec(x) == ys)
+            n++;
+    return n;
+}
+
 /*! Detect if binary search can be used
  *
  * If xlen is very large, this takes time
@@ -294,6 +313,7 @@ leafref_opt_cache_new(yang_stmt *ys,
  * IF yang of all elements is same YANG
  * AND that yang is LEAF-LIST AND is ordered-by system
  * OR that yang's parent is LIST AND is ordered-by system
+ * AND xvec contains all such siblings, ie not filtered by xpath predicates
  * THEN use binary search
  * @param[in]  xvec   Vector of matching XML values
  * @param[in]  xlen   Length of xvec
@@ -369,6 +389,15 @@ leafref_opt_search_detect(cxobj **xvec,
         }
     }
     if (i == xlen && x0 != NULL && xml_parent(x0) && xml_spec(x0)){
+        /* Binary search covers all siblings, but xvec may be a subset filtered by
+         * xpath predicates, eg ../iface[enabled='true']/name
+         */
+        if (is_list){
+            if (xpp == NULL || leafref_opt_count(xpp, y0p) != xlen)
+                return 0;
+        }
+        else if (leafref_opt_count(x0p, y0) != xlen)
+            return 0;
         *search = 1;
         *x0pp = x0;
     }
