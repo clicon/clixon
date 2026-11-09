@@ -76,6 +76,7 @@ module clixon-lib {
     revision 2026-10-01 {
         description
             "Extended config-path-info rpc with db paramater
+             Debug flags: timing and trunc
              Released in Clixon 8.0";
     }
     revision 2026-06-01 {
@@ -314,6 +315,7 @@ module clixon-lib {
                 description "Validate config wrt YANG";
                 position 18;
             }
+            /* position 19 NYI */
             bit app {
                 description "External applications";
                 position 20;
@@ -332,12 +334,16 @@ module clixon-lib {
                 position 24;
             }
             bit detail2 {
-                description "Extra details";
+                description "Extra detail";
                 position 25;
             }
-            bit detail3 {
-                description "Probably more detail than you want";
+            bit timing {
+                description "Timing";
                 position 26;
+            }
+            bit trunc {
+                description "Explicit truncate debug message";
+                position 28;
             }
         }
     }

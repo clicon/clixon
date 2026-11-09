@@ -55,8 +55,8 @@
 #define CLIXON_DBG_ALWAYS	0x00000000	/* Unconditionally logged */
 #define CLIXON_DBG_DETAIL	0x01000000	/* Details: traces, parse trees, etc */
 #define CLIXON_DBG_DETAIL2	0x02000000	/* Extra details */
-#define CLIXON_DBG_DETAIL3	0x04000000	/* Probably more detail than you want */
-#define CLIXON_DBG_DMASK	0x07000000	/* Detail mask */
+#define CLIXON_DBG_DETAIL3	0x03000000	/* Probably more detail than you want */
+#define CLIXON_DBG_DMASK	0x03000000	/* Detail mask */
 #define CLIXON_DBG_DSHIFT	24
 
 /* Subject area */
@@ -85,6 +85,9 @@
 #define CLIXON_DBG_APP2		0x00200000	/* External application 2 */
 #define CLIXON_DBG_APP3		0x00400000	/* External application 3 */
 #define CLIXON_DBG_SMASK	0x00ffffff	/* Subject mask */
+
+/* Timing */
+#define CLIXON_DBG_TIMING	0x04000000      /* Timing: Combine with a subject-area */
 
 /* Misc */
 #define CLIXON_DBG_TRUNC	0x10000000	/* Explicit truncate debug message to CLIXON_DBG_TRUNC_DEFAULT
@@ -158,9 +161,12 @@ static inline int clixon_debug_isset(unsigned n)
     unsigned detaillevel = (level & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
     unsigned detail = (n & CLIXON_DBG_DMASK) >> CLIXON_DBG_DSHIFT;
     unsigned subject = (n & CLIXON_DBG_SMASK);
+    unsigned timing = (n & CLIXON_DBG_TIMING);
 
     /* not this subject */
     if ((level & subject) == 0)
+        return 0;
+    if (timing && (level & CLIXON_DBG_TIMING) == 0)
         return 0;
     return detaillevel >= detail;
 }

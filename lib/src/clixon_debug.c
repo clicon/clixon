@@ -131,6 +131,8 @@ static const map_str2int dbgmap[] = {
     {"detail",    CLIXON_DBG_DETAIL},
     {"detail2",   CLIXON_DBG_DETAIL2},
     {"detail3",   CLIXON_DBG_DETAIL3},
+    {"timing",    CLIXON_DBG_TIMING},
+    {"trunc",     CLIXON_DBG_TRUNC},
     {NULL,        -1}
 };
 
