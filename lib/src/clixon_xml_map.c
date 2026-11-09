@@ -87,14 +87,14 @@
 int
 isxmlns(cxobj *x)
 {
-    char *prefix = NULL;
+    char *prefix;
 
     if (xml_type(x) != CX_ATTR)
         return 0;
     if (strcmp(xml_name(x), "xmlns")==0)
         return 1;
     if ((prefix = xml_prefix(x)) != NULL
-        && strcmp(xml_prefix(x), "xmlns")==0)
+        && strcmp(prefix, "xmlns")==0)
         return 1;
     return 0;
 }
@@ -814,71 +814,6 @@ assign_namespace_element(cxobj *x0, /* source */
     return retval;
 }
 
-/*! Copy namespace declarations from source to target
- *
- * If origin body has namespace definitions, copy them. The reason is that
- * some bodies rely on namespace prefixes, such as NACM path, but there is 
- * no way we can know this here.
- * However, this may lead to namespace collisions if these prefixes are not
- * canonical, and may collide with the assign_namespace_element() above (but that 
- * is for element symbols)
- *
- * @param[in]  x0     Source XML
- * @param[in]  x1     Destination XML
- * @retval     0      OK
- * @retval    -1      Error
- * @note "standard" namespaces, including clixon internal namespaces are removed
- */
-int
-assign_namespace_body(cxobj *x0, /* source */
-                      cxobj *x1) /* target */
-{
-    int    retval = -1;
-    char  *namespace = NULL;
-    char  *namespace1;
-    char  *name;
-    char  *prefix0;
-    char  *prefix1 = NULL;
-    cxobj *xa;
-    int    ix;
-
-    ix = 0;
-    while ((xa = xml_child_iter_attr(x0, &ix)) != NULL) {
-    //    while ((xa = xml_child_iter(x0, &ixa, CX_ATTR)) != NULL) {
-        prefix0 = xml_prefix(xa);
-        name = xml_name(xa);
-        namespace = xml_value(xa);
-        if ((strcmp(name, "xmlns")==0 && prefix0==NULL) ||
-            (prefix0 != NULL && strcmp(prefix0, "xmlns")==0)){
-            if (prefix0 == NULL)
-                prefix1 = NULL;
-            else
-                prefix1 = name;
-            /* prefix1 contains actual prefix or NULL, prefix0 can be xmlns */
-            if (strcmp(namespace, NETCONF_BASE_NAMESPACE) == 0 ||
-                strcmp(namespace, YANG_XML_NAMESPACE) == 0 ||
-                strcmp(namespace, CLIXON_CONF_NS) == 0 ||
-                strcmp(namespace, CLIXON_LIB_NS) == 0
-                )
-                continue;
-            continue; // XXX
-            /* Detect if prefix:namespace is declared already? */
-            if (xml2ns(x1, prefix1, &namespace1) == 1)
-                continue;
-            /* Does prefix already point at right namespace? */
-            if (namespace1 && strcmp(namespace, namespace1)==0)
-                continue;
-            /* No, add entry */
-            if (xml_add_namespace(x1, x1, prefix1, namespace) < 0)
-                goto done;
-        }
-    }
-    /* 6. Ensure x1 cache is updated (I think it is done w xmlns_set above) */
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Given a YANG (enum) type node and a value, return the string containing corresponding int str
  *
  * @param[in]  ytype   YANG type noden
@@ -1024,6 +959,7 @@ yang_bits_pos(yang_stmt *ytype,
     yang_stmt *ypos = NULL;
     int        inext;
 
+    *bitpos = 0; /* Default position of first bit, see RFC 7950 9.7.4.2 */
     inext = 0;
     while ((yprev = yn_iter(ytype, &inext)) != NULL){
         /* Check for the given bit name (flag) */
@@ -1036,7 +972,8 @@ yang_bits_pos(yang_stmt *ytype,
                 }
                 if (ret == 0)
                     goto fail;
-            } else {
+            }
+            else {
                 /* Position not defined. Use last known position + 1 (skip first node to start with 0) */
                 if (is_first == 0) (*bitpos)++;
             }
@@ -1081,7 +1018,7 @@ yang_bitsstr2val(clixon_handle   h,
     int      byte = 0;
     char   **vec = NULL;
     char    *v;
-    char    *buffer = NULL;
+    unsigned  char    *buffer = NULL;
     int      nvec;
     int      ret = 0;
     uint32_t bitpos;
@@ -1103,15 +1040,15 @@ yang_bitsstr2val(clixon_handle   h,
                 goto done;
             if (ret == 0)
                 goto fail;
+            if (bitpos >= CLIXON_BITS_POS_MAX) {
+                clixon_err(OE_UNIX, EINVAL, "bit position %u out of range. (max. allowed %d)",
+                        bitpos, CLIXON_BITS_POS_MAX);
+                goto done;
+            }
             /* Set bit at correct byte and bit position */
             byte = bitpos / 8;
             buffer[byte] = buffer[byte] | (1 << (7 - (bitpos % 8)));
             *outlen = byte + 1;
-            if (*outlen >= CLIXON_BITS_POS_MAX) {
-                clixon_err(OE_UNIX, EINVAL, "bit position %zu out of range. (max. allowed %d)",
-                        *outlen, CLIXON_BITS_POS_MAX);
-                goto done;
-            }
         }
     }
     if ((*outval = malloc(*outlen)) == NULL){
@@ -1234,7 +1171,8 @@ yang_val2bitsstr(clixon_handle  h,
                 }
                 if (ret == 0)
                     goto fail;
-            } else {
+            }
+            else {
                 /* Position not defined. Use last known position + 1 (skip first node to start with 0) */
                 if (is_first == 0) bitpos++;
             }
@@ -1323,7 +1261,6 @@ yang_enum_int_value(cxobj   *node,
                     int32_t *val)
 {
     int        retval = -1;
-    yang_stmt *yspec;
     yang_stmt *ys;
     yang_stmt *ytype;
     yang_stmt *yrestype;  /* resolved type */
@@ -1332,7 +1269,7 @@ yang_enum_int_value(cxobj   *node,
         goto done;
     if ((ys = (yang_stmt *) xml_spec(node)) == NULL)
         goto done;
-    if ((yspec = ys_spec(ys)) == NULL)
+    if (ys_spec(ys) == NULL)
         goto done;
     if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL)
         goto done;
@@ -1569,8 +1506,8 @@ yang_xml_mandatory(cxobj     *xt,
     enum rfc_6020 keyw;
     cxobj        *xs = NULL;
     yang_stmt    *yc;
-    int           hit;
-    int           nr;
+    int           hit = 0;
+    int           nr = 0;
     int           inext;
     int           ret;
 
@@ -1581,8 +1518,7 @@ yang_xml_mandatory(cxobj     *xt,
     if (yang_check_when_xpath(xs, xt, ys, &hit, &nr, NULL) < 0)
         goto done;
     if (hit && !nr){
-        retval = 0;
-        goto done;
+        goto ok;
     }
     keyw = yang_keyword_get(ys);
     if (keyw == Y_LEAF || keyw == Y_CHOICE || keyw == Y_ANYDATA || keyw == Y_ANYXML){
@@ -1610,6 +1546,7 @@ yang_xml_mandatory(cxobj     *xt,
                 goto mandatory;
         }
     }
+ ok:
     retval = 0; /* Does not contain mandatory node */
  done:
     if (xs != NULL)
@@ -1778,7 +1715,8 @@ xml_template_apply(cxobj *x,
         }
         if (clixon_str_subst(b, cvv, cb) < 0)
             goto done;
-        xml_value_set(xb, cbuf_get(cb));
+        if (xml_value_set(xb, cbuf_get(cb)) < 0)
+            goto done;
     }
     retval = 0;
  done:

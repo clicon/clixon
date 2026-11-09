@@ -358,6 +358,7 @@ xml_default(yang_stmt *yt,
     case Y_MODULE:
     case Y_SUBMODULE:
         top++;
+        /* fallthrough */
     case Y_CONTAINER: /* XXX maybe check for non-presence here as well */
     case Y_LIST:
     case Y_INPUT:
@@ -589,7 +590,6 @@ xml_global_defaults(clixon_handle h,
     int        i;
     cxobj     *x0;
     char      *key;
-    int        ret;
 
     /* Use different keys for config and state */
     key = state ? "global-defaults-state" : "global-defaults-config";
@@ -628,8 +628,8 @@ xml_global_defaults(clixon_handle h,
         goto done;
     if (xml_apply(xpart, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_MARK|XML_FLAG_CHANGE)) < 0)
         goto done;
-    /* Merge global pruned tree with xt */
-    if ((ret = xml_merge1(xt, xpart, yspec, 0, NULL)) < 1) /* XXX reason */
+    /* Merge global pruned tree with xt (note does not distinguish between 0/1 return )*/
+    if (xml_merge1(xt, xpart, yspec, 0, NULL) < 1) /* XXX reason */
         goto done;
     retval = 0;
  done:
@@ -706,7 +706,7 @@ xml_default_nopresence(cxobj *xn,
                 if ((y = xml_spec(x)) != NULL &&
                     !yang_config(y))
                     break;
-                /* fall thru */
+                /* fallthrough */
             case 2: /* purge all nodes */
             case 3:
                 if (xml_purge(x) < 0)

@@ -782,7 +782,7 @@ api_path2xpath_cvv(cvec      *api_path,
     yang_stmt *y = NULL;
     yang_stmt *y1;
     yang_stmt *ymod = NULL;
-    char      *val;
+    char      *val = NULL;
     cg_var    *cvi;
     char     **valvec = NULL;
     int        vi;
@@ -791,7 +791,7 @@ api_path2xpath_cvv(cvec      *api_path,
     char      *namespace = NULL;
     cvec      *nsc = NULL;
     char      *val1;
-    char      *decval;
+    char      *decval = NULL;
     int        root;
     int        ymtpoint; /* y is potential mount-point */
     int        ret;
@@ -852,8 +852,6 @@ api_path2xpath_cvv(cvec      *api_path,
         /* If x/y is mountpoint, change y to new yspec */
         if ((ret = yang_schema_mount_point(y)) < 0)
             goto done;
-        if (ret == 1)
-            y1 = NULL;
         /* Get XML/xpath prefix given namespace.
          * note different from api-path prefix
          */
@@ -944,8 +942,10 @@ api_path2xpath_cvv(cvec      *api_path,
             default:
                 break;
             }
-            if (val)
+            if (val){
                 free(val);
+                val = NULL;
+            }
         }
         if (prefix){
             free(prefix);
@@ -969,6 +969,10 @@ api_path2xpath_cvv(cvec      *api_path,
         free(valvec);
     if (prefix)
         free(prefix);
+    if (val)
+        free(val);
+    if (decval)
+        free(decval);
     if (nsc)
         cvec_free(nsc);
     if (name)
@@ -1111,6 +1115,7 @@ api_path2xml_vec(char            **vec,
     char      *xpath = NULL;
     cvec      *nsc = NULL;
     int        ymtpoint; /* y is mountpoint */
+    char      *nameenc = NULL;
     int        ret;
 
     if ((nodeid = vec[0]) == NULL || strlen(nodeid)==0){
@@ -1166,14 +1171,11 @@ api_path2xml_vec(char            **vec,
         yang_find_schemanode(y0, name):
         yang_find_datanode(y0, name); // <--
     if (y == NULL){
-        char *nameenc = NULL;
         if (xml_chardata_encode(&nameenc, 0, "%s", name) < 0)
             goto done;
         if (xerr &&
             netconf_unknown_element_xml(xerr, "application", nameenc, "Unknown element") < 0)
             goto done;
-        if (nameenc)
-            free(nameenc);
         goto fail;
     }
     if (prefix && namespace == NULL){
@@ -1335,6 +1337,8 @@ api_path2xml_vec(char            **vec,
         free(valvec);
     if (val)
         free(val);
+    if (nameenc)
+        free(nameenc);
     return retval;
  fail:
     retval = 0; /* invalid api-path or XML */
@@ -1494,10 +1498,8 @@ xml2api_path1(cxobj *x,
     yang_stmt    *y = NULL;
     cvec         *cvk = NULL; /* vector of index keys */
     cg_var       *cvi;
-    enum rfc_6020 keyword;
     int           i;
     char         *keyname;
-    cxobj        *xkey;
     cxobj        *xb;
     char         *b;
     char         *enc;
@@ -1512,7 +1514,7 @@ xml2api_path1(cxobj *x,
     if (root)
         cprintf(cb, "%s:", yang_argument_get(ymod));
     cprintf(cb, "%s", xml_name(x));
-    switch (keyword = yang_keyword_get(y)){
+    switch (yang_keyword_get(y)){
     case Y_LEAF_LIST:
         b = xml_body(x);
         enc = NULL;
@@ -1531,7 +1533,7 @@ xml2api_path1(cxobj *x,
         i = 0;
         while ((cvi = cvec_each(cvk, cvi)) != NULL) {
             keyname = cv_string_get(cvi);
-            if ((xkey = xml_find(x, keyname)) == NULL)
+            if (xml_find(x, keyname) == NULL)
                 goto done; /* No key in xml */
             if ((xb = xml_find(x, keyname)) == NULL)
                 goto done;

@@ -677,7 +677,6 @@ xp_function_local_name(xp_ctx            *xc,
     int     retval = -1;
     xp_ctx *xr = NULL;
     xp_ctx *xr0 = NULL;
-    char   *s0 = NULL;
     int     i;
     cxobj  *x;
     char   *name;
@@ -715,8 +714,6 @@ xp_function_local_name(xp_ctx            *xc,
  done:
     if (xr0)
         ctx_free(xr0);
-    if (s0)
-        free(s0);
     if (xr)
         ctx_free(xr);
     return retval;
@@ -746,7 +743,6 @@ xp_function_name(xp_ctx            *xc,
     int     retval = -1;
     xp_ctx *xr = NULL;
     xp_ctx *xr0 = NULL;
-    char   *s0 = NULL;
     char   *name;
     int     i;
     cxobj  *x;
@@ -780,8 +776,6 @@ xp_function_name(xp_ctx            *xc,
  done:
     if (xr0)
         ctx_free(xr0);
-    if (s0)
-        free(s0);
     if (xr)
         ctx_free(xr);
     return retval;
@@ -885,11 +879,9 @@ concat_args(xp_ctx            *xc,
         if (xp_eval(xc, xs->xs_c0, nsc, localonly, &xr) < 0)
             goto done;
     }
-    if (xr != NULL){
-        if (ctx2string(xr, &s) < 0)
-            goto done;
-        cprintf(cb, "%s", s);
-    }
+    if (ctx2string(xr, &s) < 0)
+        goto done;
+    cprintf(cb, "%s", s);
     retval = 0;
  done:
     if (xr)
@@ -953,8 +945,6 @@ xp_function_concat(xp_ctx            *xc,
         cbuf_free(cb);
     if (xr)
         ctx_free(xr);
-    if (sc)
-        free(sc);
     return retval;
 }
 
@@ -1097,6 +1087,8 @@ xp_function_substring_str(xp_ctx            *xc,
     xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     if (xr0)
         ctx_free(xr0);
     if (xr1)
@@ -1209,6 +1201,8 @@ xp_function_substring(xp_ctx            *xc,
         ctx_free(xr1);
     if (xr2)
         ctx_free(xr2);
+    if (xr)
+        ctx_free(xr);
     if (s0)
         free(s0);
     return retval;
@@ -1258,7 +1252,6 @@ xp_function_string_length(xp_ctx            *xc,
     memset(xr, 0, sizeof(*xr));
     xr->xc_type = XT_NUMBER;
     xr->xc_number = strlen(s0);
-    s0 = NULL;
     *xrp = xr;
     xr = NULL;
     retval = 0;
@@ -1372,6 +1365,8 @@ xp_function_translate(xp_ctx            *xc,
     xr = NULL;
     retval = 0;
  done:
+    if (xr)
+        ctx_free(xr);
     if (xr0)
         ctx_free(xr0);
     if (xr1)

@@ -310,7 +310,8 @@ cancel_rollback_event(clixon_handle h)
     confirmed_commit_fn_arg_get(h, &fn, &arg);
     if ((retval = clixon_event_unreg_timeout(fn, arg)) == 0) {
         clixon_log(h, LOG_INFO, "a scheduled rollback event has been cancelled");
-    } else {
+    }
+    else {
         clixon_log(h, LOG_WARNING, "the specified scheduled rollback event was not found");
     }
 
@@ -439,7 +440,8 @@ check_valid_confirming_commit(clixon_handle h,
                                "confirming-commit with an incorrect persist-id");
                     goto invalid;
                 }
-            } else {
+            }
+            else {
                 clixon_log(h, LOG_INFO,
                            "a persistent confirmed-commit is in progress but the client issued a confirming-commit"
                            "without a persist-id");
@@ -587,7 +589,8 @@ handle_confirmed_commit(clixon_handle h,
         if (db_exists == -1) {
             clixon_err(OE_DAEMON, 0, "there was an error while checking existence of the rollback database");
             goto done;
-        } else if (db_exists == 0) {
+        }
+        else if (db_exists == 0) {
             // db does not yet exists
             if (xmldb_copy(h, "running", "rollback") < 0) {
                 clixon_err(OE_DAEMON, 0, "there was an error while copying the running configuration to rollback database.");

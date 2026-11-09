@@ -98,7 +98,6 @@ backend_terminate(clixon_handle h)
     int         sockfamily = clicon_sock_family(h);
     char       *sockpath = clicon_sock_str(h);
     cxobj      *x;
-    struct stat st;
     int         ss;
     cvec       *nsctx;
 
@@ -133,7 +132,7 @@ backend_terminate(clixon_handle h)
     clixon_pagination_free(h);
     if (pidfile)
         unlink(pidfile);
-    if (sockfamily==AF_UNIX && lstat(sockpath, &st) == 0)
+    if (sockfamily==AF_UNIX)
         unlink(sockpath);
     clixon_event_exit();
     clixon_debug(CLIXON_DBG_BACKEND, "done");
@@ -440,7 +439,6 @@ main(int    argc,
     char         *extraxml_file;
     char         *backend_group = NULL;
     char         *argv0 = argv[0];
-    struct stat   st;
     clixon_handle h;
     int           help = 0;
     int           pid;
@@ -654,8 +652,10 @@ main(int    argc,
             break;
         case 'o':{ /* Configuration option */
             char          *val;
-            if ((val = index(optarg, '=')) == NULL)
+            if ((val = index(optarg, '=')) == NULL){
                 usage(h, argv0);
+                break;
+            }
             *val++ = '\0';
             if (clicon_option_add(h, optarg, val) < 0)
                 goto done;
@@ -708,9 +708,8 @@ main(int    argc,
     if (zap){
         if (pid && pidfile_zapold(pid) < 0)
             return -1;
-        if (lstat(pidfile, &st) == 0)
-            unlink(pidfile);
-        if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
+        unlink(pidfile);
+        if (sockfamily==AF_UNIX)
             unlink(sock);
         backend_terminate(h);
         exit(0); /* OK */
@@ -725,9 +724,8 @@ main(int    argc,
     /* After this point we can goto done on error 
      * Here there is either no old process or we have killed it,.. 
      */
-    if (lstat(pidfile, &st) == 0)
-        unlink(pidfile);
-    if (sockfamily==AF_UNIX && lstat(sock, &st) == 0)
+    unlink(pidfile);
+    if (sockfamily==AF_UNIX)
         unlink(sock);
 
     /* Sanity check: backend group exists */
@@ -808,8 +806,6 @@ main(int    argc,
         }
         if (dbg != dbg0)
             clixon_debug_init(h, dbg);
-        argc -= optind;
-        argv += optind;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */
@@ -927,7 +923,7 @@ main(int    argc,
             goto done;
 	/* FALLTHRU */
     case SM_NONE: /* Load plugins and call plugin_init() */
-        if ((ret = startup_extraxml(h, NULL, cbret)) < 0)
+        if (startup_extraxml(h, NULL, cbret) < 0)
             goto done;
         status = STARTUP_OK;
         break;

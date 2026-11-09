@@ -369,8 +369,8 @@ yang_mount_set(yang_stmt *y)
  */
 static int
 yang_mount_xpath_unbind(clixon_handle h,
-                       const char   *xpath,
-                       yang_stmt    *keep)
+                        const char   *xpath,
+                        yang_stmt    *keep)
 {
     int        retval = -1;
     yang_stmt *ymounts;
@@ -1159,7 +1159,7 @@ yang_schema_mount_yspec(clixon_handle h,
             goto anydata;
         }
         /* Try again */
-        if ((ret = xml_yang_mount_get(h, xt, NULL, NULL, &yspec1)) < 0)
+        if (xml_yang_mount_get(h, xt, NULL, NULL, &yspec1) < 0)
             goto done;
         if (yspec1 == NULL){
             clixon_err(OE_YANG, 0, "No yspec1 found");

@@ -106,7 +106,8 @@ nacm_validate(clixon_handle    h,
                 _validate_fail_toggle = 1; /* toggle if triggered */
                 clixon_err(OE_XML, 0, "User error");
                 return -1; /* induce fail */
-            } else if (_validate_fail_toggle==2) {
+            }
+            else if (_validate_fail_toggle==2) {
                 _validate_fail_toggle = 0; /* toggle if triggered */
                 clixon_plugin_rpc_err(h, NULL,
                                       "application", "test_error_tag",

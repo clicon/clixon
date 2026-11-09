@@ -340,6 +340,22 @@ stream_timer_setup(int   fd,
     return retval;
 }
 
+/*! Free a stream subscription and its sub-fields
+ *
+ * @param[in]  ss  Stream subscription, may be NULL
+ */
+static void
+stream_ss_free(struct stream_subscription *ss)
+{
+    if (ss == NULL)
+        return;
+    if (ss->ss_stream)
+        free(ss->ss_stream);
+    if (ss->ss_xpath)
+        free(ss->ss_xpath);
+    free(ss);
+}
+
 /*! Add an event notification callback to a stream given a callback function
  *
  * @param[in]  h        Clixon handle
@@ -349,8 +365,8 @@ stream_timer_setup(int   fd,
  * @param[in]  stoptime If set, dont continue past this time
  * @param[in]  fn       Callback when event occurs
  * @param[in]  arg      Argument to use with callback. Also handle when deleting
- * @retval     0        OK
- * @retval    -1        Error, ie no such stream 
+ * @retval     ss       OK, new subscription
+ * @retval     NULL     Error, ie no such stream
  */
 struct stream_subscription *
 stream_ss_add(clixon_handle     h,
@@ -391,8 +407,7 @@ stream_ss_add(clixon_handle     h,
     ADDQ(ss, es->es_subscription);
     return ss;
   done:
-    if (ss)
-        free(ss);
+    stream_ss_free(ss);
     return NULL;
 }
 
@@ -415,13 +430,8 @@ stream_ss_rm(clixon_handle               h,
     DELQ(ss, es->es_subscription, struct stream_subscription *);
     /* Remove from upper layers - close socket etc. */
     (*ss->ss_fn)(h, 1, NULL, ss->ss_arg);
-    if (force){
-        if (ss->ss_stream)
-            free(ss->ss_stream);
-        if (ss->ss_xpath)
-            free(ss->ss_xpath);
-        free(ss);
-    }
+    if (force)
+        stream_ss_free(ss);
     clixon_debug(CLIXON_DBG_STREAM, "retval: 0");
     return 0;
 }
@@ -448,7 +458,8 @@ stream_ss_rm_all(clixon_handle h,
      * element
      */
     while (es->es_subscription) {
-        stream_ss_rm(h, es, es->es_subscription, 1 /* force */);
+        if (stream_ss_rm(h, es, es->es_subscription, 1 /* force */) < 0)
+            goto done;
     }
     retval = 0;
   done:
@@ -632,7 +643,7 @@ stream_notify(clixon_handle h,
     }
     memset(str, 0, len);
     va_start(args, event);
-    len = vsnprintf(str, len, event, args) + 1;
+    vsnprintf(str, len, event, args);
     va_end(args);
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
         clixon_err(OE_YANG, 0, "No yang spec");
@@ -691,7 +702,6 @@ stream_notify_xml(clixon_handle h,
     cxobj     *xev = NULL;
     cxobj     *xml2; /* copy */
     yang_stmt *yspec = NULL;
-    char      *str = NULL; /* XXX: never set */
     cbuf      *cb = NULL;
     char       timestr[28];
     struct timeval tv;
@@ -715,7 +725,7 @@ stream_notify_xml(clixon_handle h,
     }
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>NULL</notification>",
             NETCONF_NOTIFICATION_NAMESPACE,
-            timestr); /* XXX str is always NULL */
+            timestr);
     if (clixon_xml_parse_string(cbuf_get(cb), YB_NONE, yspec, &xev, NULL) < 0)
         goto done;
     if (xml_rootchild(xev, 0, &xev) < 0)
@@ -738,8 +748,6 @@ stream_notify_xml(clixon_handle h,
         cbuf_free(cb);
     if (xev)
         xml_free(xev);
-    if (str)
-        free(str);
     return retval;
 }
 

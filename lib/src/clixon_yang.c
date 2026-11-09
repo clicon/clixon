@@ -595,7 +595,6 @@ yang_when_xpath_get(yang_stmt *ys,
 {
     int        retval = -1;
     yang_stmt *ywhen;
-    cvec      *nsc0 = NULL;
 
     if ((ywhen = yang_when_get(NULL, ys)) != NULL) {
         if (xml_nsctx_yang(ywhen, nsc) < 0)
@@ -605,8 +604,6 @@ yang_when_xpath_get(yang_stmt *ys,
     }
     retval = 0;
  done:
-    if (nsc0)
-        cvec_free(nsc0);
     return retval;
 }
 
@@ -914,7 +911,7 @@ yspec_new1(clixon_handle h,
 {
     yang_stmt *ymounts;
     yang_stmt *ydomain;
-    yang_stmt *yspec;
+    yang_stmt *yspec = NULL;
 
     if ((ymounts = clixon_yang_mounts_get(h)) == NULL){
         clixon_err(OE_YANG, 0, "Yang-mounts not created");
@@ -932,6 +929,8 @@ yspec_new1(clixon_handle h,
         goto done;
     return yspec;
  done:
+    if (yspec)
+        ys_free(yspec);
     return NULL;
 }
 
@@ -947,7 +946,7 @@ ydomain_new(clixon_handle h,
             const char   *domain)
 {
     yang_stmt *ymounts;
-    yang_stmt *ydomain;
+    yang_stmt *ydomain = NULL;
 
     if (domain == NULL){
         clixon_err(OE_YANG, EINVAL, "domain is NULL");
@@ -965,6 +964,8 @@ ydomain_new(clixon_handle h,
         goto done;
     return ydomain;
  done:
+    if (ydomain)
+        ys_free(ydomain);
     return NULL;
 }
 
@@ -1952,7 +1953,10 @@ yang_find_prefix_by_namespace(yang_stmt  *ys,
     while ((yimport = yn_iter(my_ymod, &inext)) != NULL) {
         if (yang_keyword_get(yimport) == Y_IMPORT &&
             strcmp(modname, yang_argument_get(yimport)) == 0){ /* match */
-            yprefix = yang_find(yimport, Y_PREFIX, NULL);
+            if ((yprefix = yang_find(yimport, Y_PREFIX, NULL)) == NULL){
+                clixon_err(OE_YANG, 0, "Mandatory prefix is NULL");
+                goto done;
+            }
             *prefix = yang_argument_get(yprefix);
             goto found;
         }
@@ -2032,10 +2036,11 @@ yang_myroot(yang_stmt *ys)
     yang_stmt    *yp;
     enum rfc_6020 kw;
 
-    kw = yang_keyword_get(ys);
-    if (ys==NULL || kw==Y_SPEC || kw == Y_MODULE || kw == Y_SUBMODULE)
+    if (ys == NULL)
         return NULL;
-    yp = yang_parent_get(ys);
+    kw = yang_keyword_get(ys);
+    if (kw==Y_SPEC || kw == Y_MODULE || kw == Y_SUBMODULE)
+        return NULL;
     while((yp = yang_parent_get(ys)) != NULL) {
         kw = yang_keyword_get(yp);
         if (kw == Y_MODULE || kw == Y_SUBMODULE)
@@ -2572,7 +2577,7 @@ yang_mounts_print(FILE      *f,
         while ((yspec = yn_iter(ydomain, &inext2)) != NULL) {
             fprintf(f, "  spec:%s\n", yang_argument_get(yspec));
             if ((cv = yang_cv_get(yspec)) != NULL){
-                cv_print(f, yang_cv_get(yspec));
+                cv_print(f, cv);
                 fprintf(f, "\n");
             }
             if ((cvv = yang_cvec_get(yspec)) != NULL){
@@ -2730,7 +2735,7 @@ yang_deviation(yang_stmt *ys,
     yang_stmt    *ytarget = NULL;
     yang_stmt    *yd;
     yang_stmt    *yc;
-    yang_stmt    *yc1;
+    yang_stmt    *yc1 = NULL;
     yang_stmt    *ytc;
     char         *devop;
     clixon_handle h = (clixon_handle)arg;
@@ -2804,17 +2809,23 @@ yang_deviation(yang_stmt *ys,
                 if ((yc1 = ys_dup(yc, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
                     goto done;
                 /* Special case: resolve types in temporary old deviation context */
-                if (yn_insert(yd, yc1) < 0)
+                if (yn_insert(yd, yc1) < 0){
+                    ys_free(yc1);
                     goto done;
+                }
                 if (yang_apply(yc1, Y_TYPE, ys_resolve_type, -1, h) < 0)
                     goto done;
                 if (ys_prune_self(yc1) < 0)
                     goto done;
                 /* Mark all as refined */
-                if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0)
+                if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0){
+                    ys_free(yc1);
                     goto done;
-                if (yn_insert(ytarget, yc1) < 0)
+                }
+                if (yn_insert(ytarget, yc1) < 0){
+                    ys_free(yc1);
                     goto done;
+                }
             }
         }
         else if (strcmp(devop, "replace") == 0){
@@ -2858,17 +2869,23 @@ yang_deviation(yang_stmt *ys,
                 if ((yc1 = ys_dup(yc, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 1)) == NULL)
                     goto done;
                 /* Special case: resolve types in temporary old deviation context */
-                if (yn_insert(yd, yc1) < 0)
+                if (yn_insert(yd, yc1) < 0){
+                    ys_free(yc1);
                     goto done;
+                }
                 if (yang_apply(yc1, Y_TYPE, ys_resolve_type, -1, h) < 0)
                     goto done;
                 if (ys_prune_self(yc1) < 0)
                     goto done;
                 /* Mark all as refined */
-                if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0)
+                if (yang_apply(yc1, -1, (yang_applyfn_t*)yang_flag_set, -1, (void*)YANG_FLAG_REFINE) < 0){
+                    ys_free(yc1);
                     goto done;
-                if (yn_insert(ytarget, yc1) < 0)
+                }
+                if (yn_insert(ytarget, yc1) < 0){
+                    ys_free(yc1);
                     goto done;
+                }
             }
         }
         else if (strcmp(devop, "delete") == 0){
@@ -2940,6 +2957,7 @@ ys_populate_leaf1(clixon_handle h,
             goto done;
         if (id != NULL &&
             prefix == NULL &&
+            restype != NULL &&
             strcmp(restype, "identityref") == 0 &&
             (prefix1 = yang_find_myprefix(ys)) != NULL){
             sz = strlen(prefix1) + strlen(id) + 2;
@@ -2999,7 +3017,6 @@ ys_populate_leaf2(clixon_handle h,
     yang_stmt      *ytypedef; /* where type is define */
     uint32_t        minval;
     int             inext2;
-    int             ret;
 
     yparent = ys->ys_parent;     /* Find parent: list/container */
     /* 1. Find type specification and set cv type accordingly */
@@ -3108,7 +3125,7 @@ ys_populate_leaf2(clixon_handle h,
     }
     /* 4. Check if leaf is part of list, if key exists mark leaf as key/unique */
     if (yparent && yparent->ys_keyword == Y_LIST){
-        if ((ret = yang_key_match(yparent, yang_argument_get(ys), NULL)) < 0)
+        if (yang_key_match(yparent, yang_argument_get(ys), NULL) < 0)
             goto done;
     }
     yang_cv_set(ys, cv);
@@ -3268,7 +3285,7 @@ ys_populate_range(clixon_handle h,
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
-    restype = yrestype?yang_argument_get(yrestype):NULL;
+    restype = yang_argument_get(yrestype);
     if (nodeid_split(yang_argument_get(yparent), NULL, &origtype) < 0)
          goto done;
     /* This handles non-resolved also */
@@ -3728,7 +3745,8 @@ ys_populate_module_submodule(clixon_handle h,
     while ((yi = yn_iter(ym, &inext)) != NULL) {
         if (yang_keyword_get(yi) != Y_IMPORT)
             continue;
-        yp = yang_find(yi, Y_PREFIX, NULL);
+        if ((yp = yang_find(yi, Y_PREFIX, NULL)) == NULL)
+            continue;
         pi = yang_argument_get(yp);
         if (p0 && strcmp(p0, pi) == 0){         /* Check top-level */
             clixon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
@@ -3740,7 +3758,8 @@ ys_populate_module_submodule(clixon_handle h,
         while ((yi2 = yn_iter(ym, &inext2)) != NULL) {
             if (yang_keyword_get(yi2) != Y_IMPORT)
                 continue;
-            yp = yang_find(yi2, Y_PREFIX, NULL);
+            if ((yp = yang_find(yi2, Y_PREFIX, NULL)) == NULL)
+                continue;
             pi2 = yang_argument_get(yp);
             if (strcmp(pi2, pi) == 0){
                 clixon_err(OE_YANG, EFAULT, "Prefix %s in module %s is not unique but should be (see RFC 7950 7.1.4)",
@@ -3853,12 +3872,9 @@ ys_populate_xpath_depth(yang_stmt *ys)
     }
     cv_int32_set(cv, stored);
     yang_cv_set(ys, cv);
-    cv = NULL;
   ok:
     retval = 0;
   done:
-    if (cv)
-        cv_free(cv);
     if (xptree)
         xpath_tree_free(xptree);
     return retval;
@@ -4196,7 +4212,6 @@ schema_nodeid_iterate(yang_stmt    *yn,
                       yang_stmt   **yres)
 {
     int              retval = -1;
-    yang_stmt       *ymod;
     char            *prefix; /* node-identifier     = [prefix ":"] identifier */
     char            *id;
     yang_stmt       *ys;
@@ -4220,7 +4235,7 @@ schema_nodeid_iterate(yang_stmt    *yn,
             goto done;
         }
         /* Get yang module */
-        if ((ymod = yang_find_module_by_namespace(yspec, ns)) == NULL){
+        if (yang_find_module_by_namespace(yspec, ns) == NULL){
             clixon_err(OE_YANG, EFAULT, "No module for namespace: %s", ns);
             goto done;
         }
@@ -4237,8 +4252,10 @@ schema_nodeid_iterate(yang_stmt    *yn,
             /* Add ys as id to yp */
             if ((ys = ys_new(kw)) == NULL)
                 goto done;
-            if (yn_insert(yp, ys) < 0) /* Insert into hierarchy */
+            if (yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
+                ys_free(ys);
                 goto done;
+            }
         }
         if (ys == NULL){
             clixon_debug(CLIXON_DBG_YANG, "%s not found, last id found:%s",
@@ -4246,7 +4263,6 @@ schema_nodeid_iterate(yang_stmt    *yn,
             goto ok;
         }
         yp = ys; /* ys is matched */
-        ys = NULL;
     } /* while cv */
     assert(yp && yang_schemanode((yang_stmt*)yp));
     *yres = (yang_stmt*)yp;
@@ -4715,7 +4731,7 @@ yang_type_cache_free(yang_type_cache *ycache)
             case REGEXP_LIBXML2:
                 cligen_regex_libxml2_free(cv_void_get(cv));
                 /* Note, already freed in libxml2 case */
-                if ((p = cv_void_get(cv)) != NULL){
+                if (cv_void_get(cv) != NULL){
                     cv_void_set(cv, NULL);
                 }
                 break;
@@ -4747,9 +4763,13 @@ yang_anydata_add(yang_stmt  *yp,
 
     if ((ys = ys_new(Y_ANYDATA)) == NULL)
         goto done;
-    if (yang_argument_dup(ys, name) < 0)
+    if (yang_argument_dup(ys, name) < 0){
+        ys_free(ys);
+        ys = NULL;
         goto done;
+    }
     if (yp && yn_insert(yp, ys) < 0){ /* Insert into hierarchy */
+        ys_free(ys);
         ys = NULL;
         goto done;
     }

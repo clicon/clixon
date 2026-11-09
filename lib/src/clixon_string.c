@@ -89,19 +89,18 @@ clixon_strsep1(const char *string,
                const char *delim,
                int        *nvec0)
 {
-    char **vec = NULL;
-    char  *ptr;
-    char  *p;
-    int    nvec = 1;
-    int    i;
-    size_t siz;
+    char      **vec = NULL;
+    char       *ptr;
+    char       *p;
+    int         nvec = 1;
+    int         i;
+    size_t      siz;
     const char *s;
-    const char *d;
 
     if ((s = string)==NULL)
         goto done;
     while (*s){
-        if ((d = strchr(delim, *s)) != NULL)
+        if (strchr(delim, *s) != NULL)
             nvec++;
         s++;
     }
@@ -180,12 +179,9 @@ clixon_strsep2(char       *str,
         s1 = s2 + strlen(delim2);
     }
     *vcp = vec;
-    ptr = NULL;
     *nvec = i;
     retval = 0;
  done:
-    if (ptr)
-        free(ptr);
     return retval;
 }
 
@@ -206,21 +202,20 @@ clixon_strsep3(const char *string,
                const char *delim,
                int        *nvec0)
 {
-    char **vec = NULL;
-    char  *ptr;
-    char  *p;
-    int    nvec = 1;
-    int    i;
-    size_t siz;
+    char      **vec = NULL;
+    char       *ptr;
+    char       *p;
+    int         nvec = 1;
+    int         i;
+    size_t      siz;
     const char *s;
-    const char *d;
-    int    prev;
+    int         prev;
 
     if ((s = string)==NULL)
         goto done;
     prev = 0;
     while (*s){
-        if ((d = strchr(delim, *s)) != NULL){
+        if ( strchr(delim, *s) != NULL){
             if (!prev)
                 nvec++;
             prev = 1;
@@ -277,7 +272,7 @@ clicon_strjoin(int         argc,
         return NULL;
     memset(str, '\0', len);
     for (i = 0; i < argc; i++) {
-        if (i != 0)
+        if (i != 0 && delim)
             strncat(str, delim, len - strlen(str));
         strncat(str, argv[i], len - strlen(str));
     }
@@ -436,7 +431,7 @@ uri_percent_encode(char **encp,
     }
     memset(str, 0, fmtlen);
     va_start(args, fmt); /* real */
-    fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
+    vsnprintf(str, fmtlen, fmt, args);
     va_end(args);
     /* Now str is the combined fmt + ...
      * Step (2) encode and expand str --> enc
@@ -518,8 +513,6 @@ uri_percent_decode(const char *enc,
     *strp = str;
     retval = 0;
  done:
-    if (retval < 0 && str)
-        free(str);
     return retval;
 }
 
@@ -576,8 +569,6 @@ clixon_base64_encode(const char *in,
     *outp = out;
     retval = 0;
  done:
-    if (retval < 0 && out)
-        free(out);
     return retval;
 }
 
@@ -691,9 +682,9 @@ xml_chardata_encode(char      **escp,
     }
     memset(str, 0, fmtlen);
     va_start(args, fmt); /* real */
-    fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
+    vsnprintf(str, fmtlen, fmt, args);
     va_end(args);
-    /* Now str is the combined fmt + ... 
+    /* Now str is the combined fmt + ...
      * Step (2) encode and expand str --> enc
      * First compute length (do nothing) */
     len = 0; cdata = 0;
@@ -996,7 +987,7 @@ xml_chardata_decode(char      **decp,
     }
     memset(str, 0, fmtlen);
     va_start(args, fmt); /* real */
-    fmtlen = vsnprintf(str, fmtlen, fmt, args) + 1;
+    vsnprintf(str, fmtlen, fmt, args);
     va_end(args);
     /* Now str is the combined fmt + ... */
 
@@ -1185,7 +1176,7 @@ clixon_trim(char *str)
 
     while (strlen(s) && isblank(s[0])) /* trim from front */
         s++;
-    for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
+    for (i=(int)strlen(s)-1; i>=0; i--){ /* trim from rear */
         if (isblank(s[i]))
             s[i] = '\0';
         else
@@ -1211,7 +1202,7 @@ clixon_trim2(char       *str,
 
     while (strlen(s) && strchr(trims, s[0])) /* trim from front */
         s++;
-    for (i=strlen(s)-1; i>=0; i--){ /* trim from rear */
+    for (i=(int)strlen(s)-1; i>=0; i--){ /* trim from rear */
         if (strchr(trims, s[i]))
             s[i] = '\0';
         else

@@ -306,6 +306,10 @@ xp_yang_eval(xp_yang_ctx  *xy,
     xp_yang_ctx *xy1 = NULL;
     xp_yang_ctx *xy2 = NULL;
 
+    if (xy == NULL){
+        clixon_err(OE_YANG, EINVAL, "xpath yang context is NULL");
+        goto done;
+    }
     /* If empty npodeset, quit, cannot continue */
     if (xy->xy_type == XT_NODESET && xy->xy_node == NULL)
         goto ok;

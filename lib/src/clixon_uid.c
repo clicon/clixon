@@ -84,7 +84,7 @@ group_name2gid(const char *name,
     int           retval = -1;
     char          buf[1024];
     struct group  g0;
-    struct group *gr = &g0;
+    struct group *gr;
     struct group *gtmp;
 
     gr = &g0;

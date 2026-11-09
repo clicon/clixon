@@ -538,7 +538,6 @@ clixon_stats_yang_get(clixon_handle h,
     int       retval = -1;
     uint64_t  nr = 0;
     size_t    sz = 0;
-    cxobj    *xn = NULL;
 
     if (ys == NULL)
         return 0;
@@ -547,8 +546,6 @@ clixon_stats_yang_get(clixon_handle h,
     cprintf(cb, "<nr>%" PRIu64 "</nr><size>%zu</size>", nr, sz);
     retval = 0;
  done:
-    if (xn)
-        xml_free(xn);
     return retval;
 }
 
@@ -577,7 +574,6 @@ clixon_backend_stats(clixon_handle  h,
     yang_stmt *yspec;
     yang_stmt *ymodule;
     yang_stmt *ydomain;
-    cxobj     *xt = NULL;
     char     **keys = NULL;
     size_t     klen;
     int        i;
@@ -630,7 +626,5 @@ clixon_backend_stats(clixon_handle  h,
  done:
     if (keys)
         free(keys);
-    if (xt)
-	xml_free(xt);
     return retval;
 }

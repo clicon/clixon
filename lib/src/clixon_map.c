@@ -421,7 +421,7 @@ clixon_ptr2ptr_add(map_ptr2ptr **mptabp,
     struct map_ptr2ptr *mp;
     struct map_ptr2ptr *mptail;
     struct map_ptr2ptr *mptab0;
-    struct map_ptr2ptr *mptab1;
+    struct map_ptr2ptr *mptab1 = NULL;
     size_t              len;
     size_t              sz;
 
@@ -453,8 +453,11 @@ clixon_ptr2ptr_add(map_ptr2ptr **mptabp,
     mp->mp_p1 = ptr1;
     *lenp = len+1;
     *mptabp = mptab1;
+    mptab1 = NULL; /* avoid free below */
     retval = 0;
  done:
+    if (mptab1)
+        free(mptab1);
     return retval;
 }
 

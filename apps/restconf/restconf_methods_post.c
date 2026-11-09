@@ -181,8 +181,6 @@ api_data_post(clixon_handle  h,
     yang_stmt     *ydata;
     cxobj         *xa;
     cxobj         *xret = NULL;
-    cxobj         *xretcom = NULL; /* return from commit */
-    cxobj         *xretdis = NULL; /* return from discard-changes */
     cxobj         *xerr = NULL; /* malloced must be freed */
     cxobj         *xe;            /* dont free */
     cxobj         *x;
@@ -274,7 +272,6 @@ api_data_post(clixon_handle  h,
     default:
         restconf_unsupported_media(h, req, pretty, media_out);
         goto ok;
-        break;
     } /* switch media_in */
 
     /* RFC 8040 4.4.1: The message-body MUST contain exactly one instance of the
@@ -379,10 +376,6 @@ api_data_post(clixon_handle  h,
         xml_free(xret);
     if (xerr)
         xml_free(xerr);
-    if (xretcom)
-        xml_free(xretcom);
-    if (xretdis)
-        xml_free(xretdis);
     if (xtop)
         xml_free(xtop);
      if (cbx)
@@ -422,7 +415,6 @@ json_rpc_transform(clixon_handle  h,
     yang_stmt *ymod = NULL;
     const char *ptr;
     cxobj     *xerr = NULL; /* malloced must be freed */
-    int        ret;
 
     if (ys_real_module(yrpc, &ymod) < 0)
         goto done;
@@ -435,7 +427,7 @@ json_rpc_transform(clixon_handle  h,
         }
         cprintf(cb, "{\"%s:%s", yang_argument_get(ymod), yang_argument_get(yrpc));
         cprintf(cb, "%s", ptr);
-        if ((ret = clixon_json_parse_string(h, cbuf_get(cb), 1, YB_RPC, yspec, xdata, &xerr)) < 0){
+        if (clixon_json_parse_string(h, cbuf_get(cb), 1, YB_RPC, yspec, xdata, &xerr) < 0){
             if (netconf_malformed_message_xml(&xerr, clixon_err_reason()) < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -536,16 +528,10 @@ api_operations_post_input(clixon_handle  h,
         if (ret == 0)
             goto fail;
         input = yang_argument_get(yrpc);
-        if (ret == 0){
-            if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-                goto done;
-            goto fail;
-        }
         break;
     default:
         restconf_unsupported_media(h, req, pretty, media_out);
         goto fail;
-        break;
     } /* switch media_in */
     xml_name_set(xdata, NETCONF_OUTPUT_DATA);
     /* Here xdata is:

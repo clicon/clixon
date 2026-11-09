@@ -102,7 +102,10 @@ config_socket_init_ipv4(clixon_handle h,
         clixon_err(OE_UNIX, errno, "socket");
         return -1;
     }
-    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one)) < 0){
+        clixon_err(OE_UNIX, errno, "setsockopt");
+        goto err;
+    }
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -143,9 +146,8 @@ config_socket_init_unix(clixon_handle h,
     mode_t             old_mask;
     char              *config_group;
     gid_t              gid;
-    struct stat        st;
 
-    if (lstat(sock, &st) == 0 && unlink(sock) < 0){
+    if (unlink(sock) < 0 && errno != ENOENT){
         clixon_err(OE_UNIX, errno, "unlink(%s)", sock);
         return -1;
     }

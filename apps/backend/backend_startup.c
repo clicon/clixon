@@ -168,7 +168,7 @@ startup_mode_startup(clixon_handle h,
                 case -1:
                 case 0:
                     /* validation failed, cbret set */
-                    if ((ret = startup_commit(h, "failsafe", cbret)) < 0)
+                    if (startup_commit(h, "failsafe", cbret) < 0)
                         goto fail;
 
                     /* Rename the errored rollback database so that it is not tried on a subsequent startup */

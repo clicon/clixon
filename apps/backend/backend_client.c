@@ -250,25 +250,21 @@ backend_client_rm(clixon_handle h,
 {
     client_entry  *c;
     client_entry  *c0;
-    client_entry **ce_prev;
     uint32_t       myid = ce->ce_id;
-    yang_stmt     *yspec;
 
     /* If the confirmed-commit feature is enabled, rollback any ephemeral commit originated by this client */
-    if ((yspec = clicon_dbspec_yang(h)) != NULL) {
-        if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
-            if (confirmed_commit_state_get(h) == EPHEMERAL) {
-                /* See if this client is the origin */
-                clixon_debug(CLIXON_DBG_BACKEND, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
-                if (myid == confirmed_commit_session_id_get(h)) {
-                    clixon_debug(CLIXON_DBG_BACKEND, "ok, rolling back");
-                    clixon_log(h, LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
-                    /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
-                     * ignored here.
-                     */
-                    cancel_rollback_event(h);
-                    do_rollback(h, NULL);
-                }
+    if (if_feature(h, "ietf-netconf", "confirmed-commit")) {
+        if (confirmed_commit_state_get(h) == EPHEMERAL) {
+            /* See if this client is the origin */
+            clixon_debug(CLIXON_DBG_BACKEND, "session_id: %u, confirmed_commit.session_id: %u", ce->ce_id, confirmed_commit_session_id_get(h));
+            if (myid == confirmed_commit_session_id_get(h)) {
+                clixon_debug(CLIXON_DBG_BACKEND, "ok, rolling back");
+                clixon_log(h, LOG_NOTICE, "a client with an active ephemeral confirmed-commit has disconnected; rolling back");
+                /* do_rollback errors are logged internally and there is no client to report errors to, so errors are
+                 * ignored here.
+                 */
+                cancel_rollback_event(h);
+                do_rollback(h, NULL);
             }
         }
     }
@@ -277,8 +273,7 @@ backend_client_rm(clixon_handle h,
     /* Close socket before stream cleanup to prevent ce_event_cb(op=1) from
      * recursively calling backend_client_rm on the same ce */
     c0 = backend_client_list(h);
-    ce_prev = &c0; /* this points to stack and is not real backpointer */
-    for (c = *ce_prev; c; c = c->ce_next){
+    for (c = c0; c; c = c->ce_next){
         if (c == ce){
             if (ce->ce_s){
                 clixon_event_unreg_fd(ce->ce_s, from_client);
@@ -287,7 +282,6 @@ backend_client_rm(clixon_handle h,
             }
             break;
         }
-        ce_prev = &c->ce_next;
     }
     /* With ce_s == 0, ce_event_cb(op=1) will not recurse into backend_client_rm */
     stream_ss_delete_all(h, ce_event_cb, (void*)ce);
@@ -313,13 +307,8 @@ do_lock(clixon_handle h,
     int        retval = -1;
     uint32_t   otherid;
     cbuf      *cbx = NULL; /* Assist cbuf */
-    yang_stmt *yspec;
     char      *db;
 
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_YANG, ENOENT, "No yang spec");
-        goto done;
-    }
     db = xmldb_name_get(de);
     if ((cbx = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
@@ -407,7 +396,6 @@ from_client_edit_config(clixon_handle h,
     cxobj               *xc;
     cxobj               *x;
     enum operation_type  operation = OP_MERGE;
-    int                  non_config = 0;
     yang_stmt           *yspec;
     cbuf                *cbx = NULL; /* Assist cbuf */
     char                *username;
@@ -504,11 +492,6 @@ from_client_edit_config(clixon_handle h,
         goto done;
     if (ret == 0){
         if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
-            goto done;
-        goto ok;
-    }
-    if (non_config){
-        if (netconf_invalid_value(cbret, "protocol", "State data not allowed")< 0)
             goto done;
         goto ok;
     }
@@ -635,7 +618,7 @@ from_client_edit_config(clixon_handle h,
     cprintf(cbret, "/></rpc-reply>");
  ok:
     /* Unwind auto-lock if no changes made, ie put deny */
-    if (de &&
+    if (de && target &&
         xmldb_modified_get(de) == 0 &&
         clicon_option_bool(h, "CLICON_AUTOLOCK") &&
         xmldb_islocked(h, target) == myid){
@@ -1048,7 +1031,6 @@ from_client_kill_session(clixon_handle h,
     uint32_t      id; /* session id */
     char         *str = NULL;
     cxobj        *x;
-    char         *reason = NULL;
     int           ret;
 
     if ((x = xml_find(xe, "session-id")) == NULL ||
@@ -1077,8 +1059,6 @@ from_client_kill_session(clixon_handle h,
  ok:
     retval = 0;
  done:
-    if (reason)
-        free(reason);
     return retval;
 }
 
@@ -1167,7 +1147,7 @@ from_client_create_subscription(clixon_handle h,
     /* Add subscriber to stream - to make notifications for this client */
     if (stream_ss_add(h, stream, selector,
                       starttime?&start:NULL, stoptime?&stop:NULL,
-                      ce_event_cb, (void*)ce) < 0)
+                      ce_event_cb, (void*)ce) == NULL)
         goto done;
     /* Replay of this stream to specific subscription according to start and
      * stop (if present). 
@@ -1593,6 +1573,7 @@ from_client_compare(clixon_handle h,
     if (id1 == NULL){
         if (netconf_invalid_value(cbret, "protocol", "missing source identifier") < 0)
             goto done;
+        goto ok;
     }
     /* Do not create a private candidate when comparing */
     if (strcmp(id1, "candidate") == 0 && clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {
@@ -1614,6 +1595,7 @@ from_client_compare(clixon_handle h,
     if (id2 == NULL){
         if (netconf_invalid_value(cbret, "protocol", "missing target identifier") < 0)
             goto done;
+        goto ok;
     }
     /* Do not create a private candidate when comparing */
     if (strcmp(id2, "candidate") == 0 && clicon_option_bool(h, "CLICON_XMLDB_PRIVATE_CANDIDATE")) {

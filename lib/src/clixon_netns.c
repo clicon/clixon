@@ -96,18 +96,20 @@ get_sock(int  usock,
     struct msghdr   msg={0};
     struct cmsghdr *cmsg;
     char            buf[128];
+    unsigned char  *data;
 
-    msg.msg_iov=0;
-    msg.msg_iovlen=0;
-    msg.msg_control=buf;
-    msg.msg_controllen=sizeof(buf);
+    msg.msg_iov = 0;
+    msg.msg_iovlen = 0;
+    msg.msg_control = buf;
+    msg.msg_controllen = sizeof(buf);
     /* Block here */
     if (recvmsg(usock, &msg, 0) < 0){
         clixon_err(OE_UNIX, errno, "recvmsg");
         goto done;
     }
-    cmsg=CMSG_FIRSTHDR(&msg);
-    memcpy(fd, CMSG_DATA(cmsg), sizeof(*fd));
+    cmsg = CMSG_FIRSTHDR(&msg);
+    if ((data = CMSG_DATA(cmsg)) != NULL)
+        memcpy(fd, data, sizeof(*fd));
     retval = 0;
  done:
     return retval;
@@ -225,7 +227,6 @@ fork_netns_socket(const char      *netns,
     pid_t       child;
     int         wstatus = 0;
     char        nspath[MAXPATHLEN]; /* Path to namespace file */
-    struct stat st;
 
 #ifdef __APPLE__
     int         sock_flags = SOCK_DGRAM;
@@ -251,12 +252,7 @@ fork_netns_socket(const char      *netns,
     }
 #endif
 
-    /* Check namespace exists */
     snprintf(nspath, MAXPATHLEN-1, "/var/run/netns/%s", netns);
-    if (stat(nspath, &st) < 0){
-        clixon_err(OE_UNIX, errno, ": stat(%s)", nspath);
-        goto done;
-    }
     if ((child = fork()) < 0) {
         clixon_err(OE_UNIX, errno, "fork");
         goto done;

@@ -404,7 +404,7 @@ yang_modules_state_get(clixon_handle    h,
     }
     if (x){ /* x is here a copy (This code is ugly and I think wrong) */
         /* Wrap x (again) with new top-level node "top" which xpath wants */
-        if ((x = xml_wrap(x, "top")) < 0)
+        if ((x = xml_wrap(x, "top")) == NULL)
             goto done;
         /* extract xpath part of module-state tree */
         if (xpath_vec(x, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
@@ -704,7 +704,8 @@ yang_find_module_by_prefix(yang_stmt  *ys,
             yimport = NULL;
             goto done; /* unresolved */
         }
-    } else {
+    }
+    else {
         ctx.target = prefix;
         ctx.yspec = yspec;
         ctx.found = NULL;

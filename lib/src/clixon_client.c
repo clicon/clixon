@@ -373,16 +373,15 @@ clixon_client_disconnect(clixon_client_handle ch)
     switch(cch->cch_type){
     case CLIXON_CLIENT_IPC:
         close(cch->cch_socket);
+        retval = 0;
         break;
     case CLIXON_CLIENT_SSH:
     case CLIXON_CLIENT_NETCONF:
-        if (clixon_proc_socket_close(cch->cch_pid,
-                                     cch->cch_socket) < 0)
-            goto done;
+        retval = clixon_proc_socket_close(cch->cch_pid,
+                                          cch->cch_socket);
         break;
     }
     free(cch);
-    retval = 0;
  done:
     return retval;
 }
@@ -415,7 +414,6 @@ clixon_xml_bottom(cxobj  *xtop,
             break;
         xp = xc;
     }
-    retval = 0;
     *xbotp = xp;
     retval = 0;
     // done:

@@ -457,7 +457,6 @@ api_root_restconf(clixon_handle h,
     char          *media_list = NULL;
     restconf_media media_out = YANG_DATA_JSON;
     char          *indata = NULL;
-    char          *username = NULL;
     cxobj         *xerr = NULL;
     ietf_ds_t      ds;
     char          *ds_name = NULL;        /* RFC8527: "ietf-datastores:<datastore>" */
@@ -621,8 +620,6 @@ api_root_restconf(clixon_handle h,
 #endif
     if (xerr)
         xml_free(xerr);
-    if (username)
-        free(username);
     if (pcvec)
         cvec_free(pcvec);
     if (pvec)

@@ -233,6 +233,8 @@ path_new(char *prefix,
     }
     return cp;
  done:
+    if (cp)
+        clixon_path_free(cp);
     return NULL;
 }
 

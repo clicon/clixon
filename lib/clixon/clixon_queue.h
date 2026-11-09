@@ -83,7 +83,8 @@ typedef struct _qelem_t {
             Xe->q_prev = Xp->q_prev;                    \
             Xp->q_prev->q_next = Xe;                    \
             Xp->q_prev = Xe;                            \
-        } else {                                        \
+        }                                               \
+        else {                                          \
             Xe->q_next = Xe->q_prev = Xe;               \
             pred = elem;                                \
         }                                               \
@@ -107,7 +108,8 @@ typedef struct _qelem_t {
                     Xe->q_prev = Xp->q_prev;               \
                     Xp->q_prev->q_next = Xe;               \
                     Xp->q_prev = Xe;                       \
-                } else {                                   \
+                }                                          \
+                else {                                     \
                     Xe->q_next = Xe->q_prev = Xe;          \
                 }                                          \
                 pred = elem;                               \

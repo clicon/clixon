@@ -183,6 +183,7 @@ Things to think about (some may not be applicable)
 * If there is an associated issue, link to it
 * Add a line in CHANGELOG.md
 * Extend or add a regression test.
+* Modify the clixon-docs (separate PR/repo)
 
 ## Testing
 
@@ -196,6 +197,23 @@ include:
 - [Vagrant tests on other operating systems](https://github.com/clicon/clixon/tree/master/test/vagrant). Other OS:s include ubuntu, centos and freebsd
 - [Coverage tests](https://app.codecov.io/gh/clicon/clixon)
 - [Fuzzing](https://github.com/clicon/clixon/tree/master/fuzz) Fuzzing are run occasionally using AFL
+- [Static analysis] See below
+
+## Static analysis
+
+You can run Clang's static analyzer locally with
+[`scan-build`](https://clang-analyzer.llvm.org/scan-build.html). It
+intercepts the normal build, so it still produces a working build in
+addition to an analysis report:
+
+```
+scan-build ./configure --enable-debug CC=clang
+scan-build make -C lib    # or any other subdirectory, or the whole tree
+```
+
+This prints any findings directly, and also writes an HTML report.
+
+Coverity is run regularly on the repo as well.
 
 ## Optimization
 

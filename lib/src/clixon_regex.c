@@ -80,11 +80,14 @@ parse_hex4(const unsigned char *const input, unsigned int *h)
         /* parse digit */
         if ((input[i] >= '0') && (input[i] <= '9')) {
             *h += (unsigned int) input[i] - '0';
-        } else if ((input[i] >= 'A') && (input[i] <= 'F')) {
+        }
+        else if ((input[i] >= 'A') && (input[i] <= 'F')) {
             *h += (unsigned int) 10 + input[i] - 'A';
-        } else if ((input[i] >= 'a') && (input[i] <= 'f')) {
+        }
+        else if ((input[i] >= 'a') && (input[i] <= 'f')) {
             *h += (unsigned int) 10 + input[i] - 'a';
-        } else { /* invalid */
+        }
+        else { /* invalid */
             return -1;
         }
 
@@ -157,7 +160,8 @@ utf16_literal_to_utf8(const unsigned char *const input, int len,
 
         /* calculate the unicode codepoint from the surrogate pair */
         codepoint = 0x10000 + (((first_code & 0x3FF) << 10) | (second_code & 0x3FF));
-    } else {
+    }
+    else {
         sequence_length = 6; /* \uXXXX */
         codepoint = first_code;
     }
@@ -168,19 +172,23 @@ utf16_literal_to_utf8(const unsigned char *const input, int len,
     if (codepoint < 0x80) {
         /* normal ascii, encoding 0xxxxxxx */
         utf8_length = 1;
-    } else if (codepoint < 0x800) {
+    }
+    else if (codepoint < 0x800) {
         /* two bytes, encoding 110xxxxx 10xxxxxx */
         utf8_length = 2;
         first_byte_mark = 0xC0; /* 11000000 */
-    } else if (codepoint < 0x10000) {
+    }
+    else if (codepoint < 0x10000) {
         /* three bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx */
         utf8_length = 3;
         first_byte_mark = 0xE0; /* 11100000 */
-    } else if (codepoint <= 0x10FFFF) {
+    }
+    else if (codepoint <= 0x10FFFF) {
         /* four bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx 10xxxxxx */
         utf8_length = 4;
         first_byte_mark = 0xF0; /* 11110000 */
-    } else {
+    }
+    else {
         /* invalid unicode codepoint */
         goto fail;
     }
@@ -194,7 +202,8 @@ utf16_literal_to_utf8(const unsigned char *const input, int len,
     /* encode first byte */
     if (utf8_length > 1) {
         (*output)[0] = (unsigned char)((codepoint | first_byte_mark) & 0xFF);
-    } else {
+    }
+    else {
         (*output)[0] = (unsigned char)(codepoint & 0x7F);
     }
 
@@ -354,7 +363,8 @@ regexp_xsd2posix(const char *xsd,
                 if (n == 0) {
                     goto done;
                 }
-                cbuf_append_buf(cb, utf8, ptr - utf8);
+                if (cbuf_append_buf(cb, utf8, ptr - utf8) < 0)
+                    goto done;
                 i += n - 2;
             }
             break;

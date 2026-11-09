@@ -936,7 +936,6 @@ xml_yang_validate_rpc_reply(clixon_handle h,
                             cxobj       **xret)
 {
     int        retval = -1;
-    yang_stmt *yn=NULL;  /* rpc name */
     cxobj     *xn;       /* rpc name */
     char      *rpcprefix;
     char      *namespace = NULL;
@@ -965,7 +964,7 @@ xml_yang_validate_rpc_reply(clixon_handle h,
         if (strcmp(xml_name(xn), "ok") == 0 || strcmp(xml_name(xn), "rpc-error") == 0){
             continue;
         }
-        if ((yn = xml_spec(xn)) == NULL){
+        if (xml_spec(xn) == NULL){
             if (xret && netconf_unknown_element_xml(xret, "application", xml_name(xn), NULL) < 0)
                 goto done;
             goto fail;
@@ -1546,7 +1545,7 @@ xml_yang_validate_add(clixon_handle h,
         /* Check leaf values */
         switch (yang_keyword_get(yt)){
         case Y_LEAF:
-            /* fall thru */
+            /* fallthrough */
         case Y_LEAF_LIST:
             /* validate value against ranges, etc */
             if ((cv0 = yang_cv_get(yt)) == NULL)
@@ -1774,11 +1773,11 @@ xml_yang_validate_leaf_union(clixon_handle h,
                               NULL, NULL, NULL, NULL) < 0)
             goto done;
         restype = ytype?yang_argument_get(ytype):NULL;
-        if (strcmp(restype, "leafref") == 0){
+        if (restype && strcmp(restype, "leafref") == 0){
             if ((ret = validate_leafref(xt, yt, ytype, &xret1)) < 0) // XXX
                 goto done;
         }
-        else if (strcmp(restype, "identityref") == 0){
+        else if (restype && strcmp(restype, "identityref") == 0){
             if ((ret = validate_identityref(xt, yt, ytype, &xret1)) < 0)
                 goto done;
         }
@@ -2672,7 +2671,7 @@ rpc_reply_check(clixon_handle h,
         goto done;
     }
     /* Validate outgoing RPC */
-    if ((ret = clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &x, NULL)) < 0)
+    if (clixon_xml_parse_string(cbuf_get(cbret), YB_NONE, NULL, &x, NULL) < 0)
         goto done;
     if (xml_child_nr(x) == 0){
         cbuf_reset(cbret);

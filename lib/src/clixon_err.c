@@ -208,10 +208,12 @@ clixon_strerror1(int           err,
 {
     struct errvec *ev = NULL;
 
+    if (vec == NULL)
+        return "Clixon unknown error";
     for (ev=vec; ev->ev_err != -1; ev++)
         if (ev->ev_err == err)
             break;
-    return ev?(ev->ev_str?ev->ev_str:"unknown"):"Clixon unknown error";
+    return ev->ev_str?ev->ev_str:"unknown";
 }
 
 /*! Translate from numeric error to string representation
@@ -463,8 +465,10 @@ clixon_err_fn(clixon_handle h,
     va_start(ap, format);
     /* This checks for customizable errors */
     if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_ERR,
-                                 &category, &suberr, xerr, format, ap, &cb) < 0)
+                                 &category, &suberr, xerr, format, ap, &cb) < 0){
+        va_end(ap);
         goto done;
+    }
     va_end(ap);
     if (cb != NULL){ /* Customized: expand clixon_err_args */
         if (_err_reason == NULL &&

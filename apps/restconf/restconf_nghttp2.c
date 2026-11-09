@@ -201,7 +201,6 @@ session_send_callback(nghttp2_session *session,
                     clixon_debug(CLIXON_DBG_RESTCONF, "write SSL_ERROR_WANT_WRITE");
                     usleep(1000);
                     continue;
-                    break;
                 case SSL_ERROR_SYSCALL:              /* 5 */
                     if (er == ECONNRESET || /* Connection reset by peer */
                         er == EPIPE) {      /* Reading end of socket is closed */
@@ -220,13 +219,10 @@ session_send_callback(nghttp2_session *session,
                         clixon_err(OE_RESTCONF, er, "SSL_write %d", sslerr);
                         goto done;
                     }
-                    break;
                 default:
                     clixon_err(OE_SSL, 0, "SSL_write");
                     goto done;
-                    break;
                 }
-                goto done;
             }
         }
         else{
@@ -678,7 +674,8 @@ on_data_chunk_recv_callback(nghttp2_session *session,
     if ((sd = restconf_stream_find(rc, stream_id)) != NULL){
         if (cbuf_len(sd->sd_indata) + len > RESTCONF_REQUEST_BODY_MAX)
             return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE; /* reset stream */
-        cbuf_append_buf(sd->sd_indata, (void*)data, len);
+        if (cbuf_append_buf(sd->sd_indata, (void*)data, len) < 0)
+            return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
     return 0;
 }
@@ -1011,7 +1008,7 @@ http2_recv(restconf_conn       *rc,
      * @see session_send_callback()
      */
     clixon_err_reset();
-    if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0){
+    if (nghttp2_session_send(rc->rc_ngsession) != 0){
         if (clixon_err_category())
             goto done;
         else

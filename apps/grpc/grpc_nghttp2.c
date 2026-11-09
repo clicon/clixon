@@ -498,8 +498,6 @@ grpc_send_response(grpc_conn_t    *gc,
  done:
     if (frame)
         free(frame);
-    if (src)
-        free(src);
     return retval;
 }
 
@@ -942,8 +940,16 @@ grpc_accept_cb(int   ss,
     clixon_log(h, LOG_DEBUG, "grpc_accept_cb: accepted fd=%d", cs);
     /* Non-blocking so nghttp2_session_recv returns WOULDBLOCK when no more data */
     {
-        fl = fcntl(cs, F_GETFL);
-        fcntl(cs, F_SETFL, fl | O_NONBLOCK);
+        if ((fl = fcntl(cs, F_GETFL)) < 0){
+            clixon_err(OE_UNIX, errno, "fcntl(F_GETFL)");
+            close(cs);
+            return -1;
+        }
+        if (fcntl(cs, F_SETFL, fl | O_NONBLOCK) < 0){
+            clixon_err(OE_UNIX, errno, "fcntl(F_SETFL)");
+            close(cs);
+            return -1;
+        }
     }
     if ((gc = calloc(1, sizeof *gc)) == NULL){
         clixon_err(OE_UNIX, errno, "calloc");
@@ -1031,7 +1037,10 @@ grpc_listen_init(clixon_handle h,
         clixon_err(OE_UNIX, errno, "socket");
         goto done;
     }
-    setsockopt(ss, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
+    if (setsockopt(ss, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on) < 0){
+        clixon_err(OE_UNIX, errno, "setsockopt");
+        goto done;
+    }
     memset(&sin, 0, sizeof sin);
     sin.sin_family      = AF_INET;
     /* Bind to loopback only: the gNMI listener currently has NO TLS and NO

@@ -198,7 +198,6 @@ populate_self_parent(clixon_handle h,
             if (nsy != NULL && ns != NULL && strcmp(ns, nsy) == 0)
                 goto set;
             y = NULL;
-            nsy = NULL;
         }
     }
     if ((xp = xml_parent(xt)) == NULL){

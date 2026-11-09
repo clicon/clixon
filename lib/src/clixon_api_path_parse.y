@@ -217,6 +217,8 @@ path_new(char *module_name,
     }
     return cp;
  done:
+    if (cp)
+        clixon_path_free(cp);
     return NULL;
 }
 

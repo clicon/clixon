@@ -775,7 +775,6 @@ cv_validate1(clixon_handle h,
     case CGV_VOID:
         break; /* empty type OK */
     case CGV_ERR:
-        retval = 0;
         if (reason)
             *reason = cligen_reason("Invalid cv");
         goto fail;
@@ -915,7 +914,7 @@ ys_cv_validate_union_one(clixon_handle h,
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
-    restype = yrestype?yang_argument_get(yrestype):NULL;
+    restype = yang_argument_get(yrestype);
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
         if ((retval = ys_cv_validate_union(h, ys, reason, yrestype, type, val, &ysubt)) < 0)
             goto done;
@@ -1053,7 +1052,6 @@ ys_cv_validate(clixon_handle h,
     uint8_t         fraction = 0;
     int             retval2;
     char           *val;
-    cg_var         *cvt = NULL;
 
     if (reason)
         *reason=NULL;
@@ -1140,8 +1138,6 @@ ys_cv_validate(clixon_handle h,
         cvec_free(regexps);
     if (patterns)
         cvec_free(patterns);
-    if (cvt)
-        cv_free(cvt);
     return retval;
 }
 
@@ -1449,7 +1445,7 @@ yang_type_resolve(yang_stmt   *yorig,
     yang_flag_reset(ytype, YANG_FLAG_RESOLVING); /* always clear regardless of path */
 #if 1
     if (retval == 0 && yrestype != NULL && *yrestype == NULL){
-        clixon_err(OE_YANG, 0, "No such type: \"%s\"", type);
+        clixon_err(OE_YANG, 0, "No such type: \"%s\"", yang_argument_get(ytype));
         retval = -1;
     }
 #endif
@@ -1529,7 +1525,7 @@ yang_type_get(yang_stmt    *ys,
     }
     if ((yorig = yang_orig_get(ys)) != NULL && yang_flag_get(ytype, YANG_FLAG_REFINE) == 0){
         ys = yorig;
-        if ((ytype = yang_find(ys, Y_TYPE, NULL)) == NULL){
+        if (yang_find(ys, Y_TYPE, NULL) == NULL){
             clixon_err(OE_DB, ENOENT, "mandatory type object is not found");
             goto done;
         }

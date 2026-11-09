@@ -702,7 +702,8 @@ netconf_common_rpc_err_xml(cxobj     **xret,
                                 type, tag, infotag, info, infotag,
                                 severity) < 0)
             goto done;
-    } else if (info) {
+    }
+    else if (info) {
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                                 "<error-type>%s</error-type>"
                                 "<error-tag>%s</error-tag>"
@@ -710,7 +711,8 @@ netconf_common_rpc_err_xml(cxobj     **xret,
                                 "<error-severity>%s</error-severity>",
                                 type, tag, info, severity) < 0)
             goto done;
-    } else {
+    }
+    else {
         if (clixon_xml_parse_va(YB_NONE, NULL, &xerr, NULL,
                                 "<error-type>%s</error-type>"
                                 "<error-tag>%s</error-tag>"

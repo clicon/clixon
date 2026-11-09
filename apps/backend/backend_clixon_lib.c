@@ -194,6 +194,11 @@ from_client_process_control(clixon_handle h,
 
     if ((x = xml_find_type(xe, NULL, "name", CX_ELMNT)) != NULL)
         name = xml_body(x);
+    if (name == NULL){
+        if (netconf_missing_element(cbret, "application", "name", NULL) < 0)
+            goto done;
+        goto ok;
+    }
     if ((x = xml_find_type(xe, NULL, "operation", CX_ELMNT)) != NULL){
         opstr = xml_body(x);
         op = clixon_process_op_str2int(opstr);
@@ -209,6 +214,7 @@ from_client_process_control(clixon_handle h,
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok xmlns=\"%s\"/></rpc-reply>",
                 NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS);
     }
+ ok:
     retval = 0;
  done:
     return retval;
@@ -904,7 +910,6 @@ from_client_config_path_info(clixon_handle h,
     cvec      *nsc0 = NULL;
     cvec      *nsc1 = NULL;
     cbuf      *cbxpath = NULL;
-    cbuf      *cbapipath = NULL;
     yang_stmt *yspec0;
     yang_stmt *yspec;
     yang_stmt *ymod = NULL;
@@ -992,7 +997,7 @@ from_client_config_path_info(clixon_handle h,
                 goto done;
             goto ok;
         }
-        if ((ret = xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, NULL)) < 0)
+        if (xpath2canonical(xpath0, nsc0, yspec0, &xpath1, &nsc1, NULL) < 0)
             goto done;
     }
     else {
@@ -1100,8 +1105,6 @@ from_client_config_path_info(clixon_handle h,
  done:
     if (cbxpath)
         cbuf_free(cbxpath);
-    if (cbapipath)
-        cbuf_free(cbapipath);
     if (api_path1)
         free(api_path1);
     if (nsc0)
@@ -1294,10 +1297,10 @@ from_client_translate_format(clixon_handle h,
  */
 static int
 from_client_nacm_autocli_filter(clixon_handle h,
-                                 cxobj        *xe,
-                                 cbuf         *cbret,
-                                 void         *arg,
-                                 void         *regarg)
+                                cxobj        *xe,
+                                cbuf         *cbret,
+                                void         *arg,
+                                void         *regarg)
 {
     int                    retval = -1;
     nacm_autocli_filter_t *naf = NULL;
@@ -1312,7 +1315,7 @@ from_client_nacm_autocli_filter(clixon_handle h,
     }
     cprintf(cbret, "<rpc-reply xmlns=\"%s\">", NETCONF_BASE_NAMESPACE);
     cprintf(cbret, "<nacm-autocli-filter xmlns=\"%s\">", CLIXON_LIB_NS);
-    if (nacm_autocli_filter_active(naf)){
+    if (naf && nacm_autocli_filter_active(naf)){
         cprintf(cbret, "<deny-default>%d</deny-default>", naf->naf_deny_default);
         cv = NULL;
         while ((cv = cvec_each(naf->naf_paths, cv)) != NULL)

@@ -898,7 +898,7 @@ xml_search_yang(cxobj       *xp,
     int    retval = -1;
     cxobj *xa;
     int    low = 0;
-    int    upper = xml_child_nr(xp);
+    int    upper;
     int    sorted = 1;
     int    yangi;
 
@@ -1077,7 +1077,7 @@ xml_insert2(cxobj           *xp,
         /* These are eg attributes, like a NETCONF message */
         cmp = 1;
     }
-    if (yc == yn){ /* Same yang */
+    else if (yc == yn){ /* Same yang */
         if (userorder){ /* append: increment linearly until no longer equal */
             retval = xml_insert_userorder(xp, xn, yn, mid, ins, key_val, nsc_key);
             goto done;

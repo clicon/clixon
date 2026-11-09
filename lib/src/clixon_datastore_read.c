@@ -417,7 +417,7 @@ text_read_modstate(clixon_handle    h,
             if ((name = xml_find_body(xs, "name")) == NULL)
                 continue;
             /* 4a) If there is no such module in the file -> add to list mark as ADD */
-            if ((xf = xpath_first(xmodfile, NULL, "module[name=\"%s\"]", name)) == NULL){
+            if (xpath_first(xmodfile, NULL, "module[name=\"%s\"]", name) == NULL){
                 if ((xs2 = xml_dup(xs)) == NULL)          /* Make a copy of this modstate */
                     goto done;
                 if (xml_addsub(msdiff->md_diff, xs2) < 0)   /* Add it to modstatediff */
@@ -457,14 +457,13 @@ disable_nacm_on_empty(cxobj     *xt,
                       yang_stmt *yspec)
 {
     int        retval = -1;
-    yang_stmt *ymod;
     cxobj    **vec = NULL;
     int        len = 0;
     cxobj     *xnacm = NULL;
     cxobj     *x;
     int        ix;
 
-    if ((ymod = yang_find(yspec, Y_MODULE, "ietf-netconf-acm")) == NULL)
+    if (yang_find(yspec, Y_MODULE, "ietf-netconf-acm") == NULL)
         goto ok;
     if ((xnacm = xpath_first(xt, NULL, "nacm")) == NULL)
         goto ok;
@@ -607,7 +606,6 @@ xmldb_readfile(clixon_handle     h,
     modstate_diff_t *msdiff = NULL;
     cxobj           *xmodfile = NULL;
     cxobj           *x;
-    yang_stmt       *yspec1 = NULL;
     struct xmldb_multi_read_arg mr = {0, };
     int              ret;
 
@@ -710,7 +708,7 @@ xmldb_readfile(clixon_handle     h,
     if (yb == YB_MODULE){
         /* xml looks like: <top><config><x>... actually YB_MODULE_NEXT
          */
-        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec1?yspec1:yspec, 0, xerr)) < 0)
+        if ((ret = xml_bind_yang(h, x0, YB_MODULE, yspec, 0, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;
@@ -832,7 +830,7 @@ xmldb_msdiff(clixon_handle    h,
         if ((rev = xml_find_body(xmsd, "revision")) == NULL)
             continue;
         /* Add old/deleted yangs not present in the loaded/running yangspec. */
-        if ((ymod = yang_find_module_by_namespace_revision(yspec, ns, rev)) == NULL){
+        if (yang_find_module_by_namespace_revision(yspec, ns, rev) == NULL){
             /* YANG Module not found, look for it and append if found */
             if (yang_spec_parse_module(h, name, rev, yspec) < 0){
                 /* Special case: file-not-found errors */
@@ -949,7 +947,7 @@ xmldb_get_cache_from_file(clixon_handle h,
             goto done;
         if (ret == 0)
             goto fail;
-        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec1?yspec1:yspec0, 0, xerr)) < 0)
+        if ((ret = xml_bind_yang(h, xt, YB_MODULE, yspec0, 0, xerr)) < 0)
             goto done;
         if (ret == 0)
             goto fail;

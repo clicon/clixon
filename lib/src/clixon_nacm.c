@@ -194,7 +194,6 @@ nacm_external_groups_add(clixon_handle            h,
     }
     *gvecp = gvec2;
     *glenp = glen2;
-    gvec2 = NULL;
  ok:
     retval = 0;
  done:
@@ -232,7 +231,7 @@ nacm_proxyuser_add(clixon_handle h,
         if (clicon_ptr_set(h, "nacm-proxyuser", (void*)cvv) < 0)
             goto done;
     }
-    if ((cv = cvec_add(cvv, CGV_EMPTY)) < 0){
+    if ((cv = cvec_add(cvv, CGV_EMPTY)) == NULL){
         clixon_err(OE_UNIX, errno, "cvec_add");
         goto done;
     }
@@ -701,8 +700,11 @@ nacm_datanode_prepare(clixon_handle    h,
 #endif
                 if ((ret = clixon_xml_find_instance_id(xt, yspec, &xvec, &xlen, "%s", path)) < 0)
                     goto done;
-                if (ret == 0)
+                if (ret == 0){
+                    free(path);
+                    path = NULL;
                     continue;
+                }
                 /* Here a new xrule is found, add it */
                 if ((pv = prepvec_add(pv_listp, xrule)) == NULL)
                     goto done;
@@ -783,7 +785,10 @@ nacm_data_write_xrule_xml(cxobj       *xn,
         if (ymod && strcmp(yang_argument_get(ymod), module_pattern) != 0)
             goto nomatch;
     }
-    action = xml_find_body(xrule, "action"); /* mandatory */
+    if ((action = xml_find_body(xrule, "action")) == NULL){ /* mandatory */
+        clixon_err(OE_YANG, 0, "Mandatory action is NULL");
+        goto done;
+    }
     /*  6b) Either (1) the rule does not have a "rule-type" defined or
         (2) the "rule-type" is "data-node" and the "path" matches the
         Requested data node, action node, or notification node. */
@@ -929,7 +934,6 @@ nacm_datanode_write(clixon_handle    h,
     size_t   glen;
     cxobj  **rlistvec = NULL; /* rule-list */
     size_t   rlistlen;
-    cxobj  **rvec = NULL; /* rules */
     char    *write_default = NULL;
     cvec    *nsc = NULL;
     prepvec *pv_list = NULL;
@@ -1015,8 +1019,6 @@ nacm_datanode_write(clixon_handle    h,
         free(gvec);
     if (rlistvec)
         free(rlistvec);
-    if (rvec)
-        free(rvec);
     return retval;
  deny: /* Here, cbret must contain a netconf error msg */
     if (xpath)
@@ -1242,7 +1244,8 @@ nacm_datanode_read1(clixon_handle h,
     int      ix;
     prepvec *pv_list = NULL;
 
-    xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_DENY|XML_FLAG_ADD));
+    if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)(XML_FLAG_DENY|XML_FLAG_ADD)) < 0)
+        goto done;
     /* Create namespace context for with nacm namespace as default */
     if ((nsc = xml_nsctx_init(NULL, NACM_NS)) == NULL)
         goto done;
@@ -1312,8 +1315,10 @@ nacm_datanode_read1(clixon_handle h,
  ok:
     retval = 0;
  done:
-    if (xt)
-        xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_ADD);
+    if (xt){
+        if (xml_apply(xt, CX_ELMNT, (xml_applyfn_t*)xml_flag_reset, (void*)XML_FLAG_ADD) < 0)
+            retval = -1;
+    }
     if (pv_list)
         prepvec_free(pv_list);
     if (nsc)
@@ -1646,17 +1651,17 @@ nacm_load_external(clixon_handle h)
         clixon_err(OE_UNIX, errno, "CLICON_NACM_FILE not set in NACM external mode");
         goto done;
     }
-    if (stat(filename, &st) < 0){
+    if ((f = fopen(filename, "r")) == NULL) {
+        clixon_err(OE_UNIX, errno, "configure file: %s", filename);
+        goto done;
+    }
+    if (fstat(fileno(f), &st) < 0){
         clixon_err(OE_UNIX, errno, "%s", filename);
         goto done;
     }
     if (!S_ISREG(st.st_mode)){
         clixon_err(OE_UNIX, 0, "%s is not a regular file", filename);
         goto done;
-    }
-    if ((f = fopen(filename, "r")) == NULL) {
-        clixon_err(OE_UNIX, errno, "configure file: %s", filename);
-        return -1;
     }
     if ((yspec = yspec_new1(h, YANG_DOMAIN_TOP, YANG_NACM_TOP)) == NULL)
         goto done;
@@ -1993,8 +1998,13 @@ nacm_autocli_filter_build(clixon_handle           h,
                 if ((pathc = nacm_path_compress_apply(h, path, yspec)) == NULL)
                     goto done;
             }
-            else
-                pathc = path; /* no yspec: use normalized path as-is */
+            else {
+                /* no yspec: use normalized path as-is */
+                if ((pathc = strdup(path)) == NULL){
+                    clixon_err(OE_UNIX, errno, "strdup");
+                    goto done;
+                }
+            }
             /* Add to the appropriate set:
              * deny_default=0: collect deny paths
              * deny_default=1: collect permit paths */
@@ -2019,7 +2029,7 @@ nacm_autocli_filter_build(clixon_handle           h,
  done:
     if (path)
         free(path);
-    if (pathc && pathc != path)
+    if (pathc)
         free(pathc);
     if (gvec)
         free(gvec);

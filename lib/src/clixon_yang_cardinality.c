@@ -526,14 +526,22 @@ yang_cardinality(clixon_handle h,
             goto done;
         }
         if (order > yc->yc_order){
-            clixon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order (should not be after \"%s\"(%s))",
-                       modname,
-                       yang_key2str(ck),
-                       yang_argument_get(ys),
-                       yang_key2str(pk),
-                       yang_argument_get(yt),
-                       yang_key2str(yang_keyword_get(yprev)),
-                       yang_argument_get(yprev));
+            if (yprev)
+                clixon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order (should not be after \"%s\"(%s))",
+                           modname,
+                           yang_key2str(ck),
+                           yang_argument_get(ys),
+                           yang_key2str(pk),
+                           yang_argument_get(yt),
+                           yang_key2str(yang_keyword_get(yprev)),
+                           yang_argument_get(yprev));
+            else
+                clixon_err(OE_YANG, 0, "%s: yang node \"%s\"(%s) which is child of \"%s\"(%s) is not in correct order",
+                           modname,
+                           yang_key2str(ck),
+                           yang_argument_get(ys),
+                           yang_key2str(pk),
+                           yang_argument_get(yt));
             goto done;
         }
         if (order < yc->yc_order)

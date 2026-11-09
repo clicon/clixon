@@ -323,8 +323,10 @@ clixon_debug_fn(clixon_handle h,
         h = _debug_clixon_h;
     va_start(ap, format);
     if (clixon_plugin_errmsg_all(h, fn, line, LOG_TYPE_DEBUG,
-                                 NULL, NULL, x, format, ap, &cb) < 0)
+                                 NULL, NULL, x, format, ap, &cb) < 0){
+        va_end(ap);
         goto done;
+    }
     va_end(ap);
     if (cb != NULL){ /* Customized: expand clixon_err_args */
         clixon_log_str(LOG_DEBUG, cbuf_get(cb));

@@ -263,7 +263,7 @@ cache_autocli_read_gen_write(clixon_handle h,
     char       *str = NULL;
     char       *filename;
     FILE       *f = NULL;
-    struct stat fstat = {0,};
+    struct stat st = {0,};
     size_t      len0;
     size_t      len;
     int         ret;
@@ -289,7 +289,7 @@ cache_autocli_read_gen_write(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (stat(filename, &fstat) < 0){ /* File does not exist: generate and save */
+    if ((f = fopen(filename, "r")) == NULL){ /* File does not exist: generate and save */
         if ((ret = cache_autocli_generate(h, dir, domain, spec, module, revision, keyword, argument, cbdata, cbret)) < 0)
             goto done;
         if (ret == 0)
@@ -305,11 +305,11 @@ cache_autocli_read_gen_write(clixon_handle h,
         cprintf(cbret, "</data></rpc-reply>");
     }
     else{ /* File exists: read from cache */
-        if ((f = fopen(filename, "r")) == NULL){
-            clixon_err(OE_UNIX, errno, "fopen(%s)", filename);
+        if (fstat(fileno(f), &st) < 0){
+            clixon_err(OE_UNIX, errno, "fstat(%s)", filename);
             goto done;
         }
-        len0 = fstat.st_size;
+        len0 = st.st_size;
         if ((str = calloc(len0+1, 1)) == NULL){
             clixon_err(OE_UNIX, errno, "calloc");
             goto done;
@@ -319,6 +319,7 @@ cache_autocli_read_gen_write(clixon_handle h,
             clixon_err(OE_UNIX, errno, "fread %lu != %lu", len, len0);
             goto done;
         }
+        str[len0] = '\0';
         cprintf(cbret, "<rpc-reply xmlns=\"%s\"><data xmlns=\"%s\">",
                 NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS);
         if (xml_chardata_cbuf_append(cbret, 0, str) < 0){
@@ -443,7 +444,6 @@ clixon_cache_yang_domain(clixon_handle h,
     cxobj         *x;
     char          *domain = NULL;
     cbuf          *cberr = NULL;
-    cbuf          *cb = NULL;
 
     if ((x = xml_find_type(xe, NULL, "domain", CX_ELMNT)) != NULL)
         domain = xml_body(x);
@@ -474,8 +474,6 @@ clixon_cache_yang_domain(clixon_handle h,
     cprintf(cbret, "<rpc-reply xmlns=\"%s\"><ok/></rpc-reply>", NETCONF_BASE_NAMESPACE);
     retval = 1;
  done:
-    if (cb)
-        cbuf_free(cb);
     if (cberr)
         cbuf_free(cberr);
     return retval;
@@ -504,8 +502,7 @@ clixon_cache_xmldb(clixon_handle h,
 
     if (netconf_operation_failed(cbret, "application", "xmldb cache operation NYI")< 0)
         goto done;
-    goto fail;
-    retval = 1;
+    goto fail; /* NYI */
  done:
     return retval;
  fail:

@@ -402,9 +402,12 @@ pipe_save_file(clixon_handle h,
         close(1);
         if (dup2(fd, STDOUT_FILENO) < 0){
             clixon_err(OE_UNIX, errno, "dup2(STDOUT)");
-            return -1;
+            close(fd);
+            goto done;
         }
-        return pipe_arg_fn(h, CAT_BIN, NULL, NULL);
+        close(fd);
+        retval = pipe_arg_fn(h, CAT_BIN, NULL, NULL);
+        goto done;
     }
  done:
     return retval;

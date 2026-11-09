@@ -404,7 +404,7 @@ api_data_get2(clixon_handle  h,
     }
 
     clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", xpath);
-    if ((ret = restconf_get_ds(h, ds, xpath, nsc, content, depth, defaults, &xret)) < 0){
+    if (restconf_get_ds(h, ds, xpath, nsc, content, depth, defaults, &xret) < 0){
         if (netconf_operation_failed_xml(&xerr, "protocol", clixon_err_reason()) < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -940,7 +940,6 @@ api_operations_get(clixon_handle h,
     yang_stmt *yc;
     char      *namespace;
     cbuf      *cbx = NULL;
-    cxobj     *xt = NULL;
     int        inext;
     int        inext2;
     int        i;
@@ -1016,7 +1015,5 @@ api_operations_get(clixon_handle h,
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
     if (cbx)
         cbuf_free(cbx);
-    if (xt)
-        xml_free(xt);
     return retval;
 }

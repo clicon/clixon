@@ -490,17 +490,24 @@ clixon_pagination_cb_register(clixon_handle    h,
                               char            *xpath,
                               void            *arg)
 {
-    int                       retval = -1;
-    dispatcher_definition     x = {xpath, fn, arg};
-    dispatcher_entry_t       *htable = NULL;
+    int                   retval = -1;
+    dispatcher_definition x = {xpath, fn, arg};
+    dispatcher_entry_t   *htable = NULL;
+    int                   was_empty;
 
     clicon_ptr_get(h, "pagination-entries", (void**)&htable);
+    was_empty = (htable == NULL);
     if (dispatcher_register_handler(&htable, &x) < 0){
         clixon_err(OE_PLUGIN, errno, "dispatcher");
+        if (was_empty && htable)
+            dispatcher_free(htable);
         goto done;
     }
-    if (clicon_ptr_set(h, "pagination-entries", htable) < 0)
+    if (clicon_ptr_set(h, "pagination-entries", htable) < 0){
+        if (was_empty)
+            dispatcher_free(htable);
         goto done;
+    }
     retval = 0;
  done:
     return retval;
@@ -513,7 +520,7 @@ clixon_pagination_cb_register(clixon_handle    h,
 int
 clixon_pagination_free(clixon_handle h)
 {
-    dispatcher_entry_t       *htable = NULL;
+    dispatcher_entry_t *htable = NULL;
 
     clicon_ptr_get(h, "pagination-entries", (void**)&htable);
     if (htable)

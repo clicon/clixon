@@ -686,7 +686,8 @@ yang_patch_do_edit(clixon_handle  h,
         cbuf_append_str(simple_patch_request_uri, target_val);
         if (operation == YANG_PATCH_OP_DELETE) {
             // TODO - send error
-        } else {
+        }
+        else {
             // TODO - do not send error
         }
         api_data_delete(h, req, cbuf_get(simple_patch_request_uri), pi, pretty, YANG_DATA_JSON, ds);

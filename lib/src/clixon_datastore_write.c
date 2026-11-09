@@ -151,11 +151,8 @@ attr_ns_value(cxobj *x,
         }
     }
     *valp = val;
-    val = NULL;
     retval = 1;
  done:
-    if (val)
-        free(val);
     return retval;
  fail:
     retval = 0;
@@ -228,13 +225,8 @@ check_body_namespace(cxobj     *x0,
         if (nscache_set(x, prefix, ns0) < 0)
             goto done;
         /* Create xmlns attribute to x0 XXX same code ^*/
-        if (prefix){
-            if (xml_add_attr(x, prefix, ns0, "xmlns", NULL) == NULL)
-                goto done;
-        }
-        else
-            if (xml_add_attr(x, "xmlns", ns0, NULL, NULL) == NULL)
-                goto done;
+        if (xml_add_attr(x, prefix, ns0, "xmlns", NULL) == NULL)
+            goto done;
         xml_sort(x); /* Ensure attr is first / XXX xml_insert? */
     }
 #if 0
@@ -544,12 +536,10 @@ choice_other_match(cxobj              *x0,
                     goto done;
                 ix--;
                 continue;
-                break;
             case OP_DELETE:
                 if (netconf_data_missing(cbret, "Data does not exist; cannot delete resource") < 0)
                     goto done;
                 goto fail;
-                break;
             case OP_REMOVE:
             case OP_NONE:
                 break;
@@ -697,9 +687,8 @@ text_modify(clixon_handle       h,
             if (instr != NULL &&
                 xml_attr_insert2val(instr, &insert) < 0)
                 goto done;
-            if ((ret = attr_ns_value(x1,
-                                     "value", YANG_XML_NAMESPACE, 0,
-                                     cbret, &valstr)) < 0)
+            if (attr_ns_value(x1, "value", YANG_XML_NAMESPACE, 0,
+                              cbret, &valstr) < 0)
                 goto done;
             /* if insert/before, value attribute must be there */
             if ((insert == INS_AFTER || insert == INS_BEFORE) &&
@@ -717,7 +706,7 @@ text_modify(clixon_handle       h,
                     goto done;
                 goto fail;
             }
-        case OP_REPLACE: /* fall thru */
+        case OP_REPLACE: /* fallthrough */
         case OP_MERGE:
             if (!(op == OP_MERGE && (instr==NULL))) {
                 /* Remove existing, also applies to merge in the special case
@@ -743,7 +732,7 @@ text_modify(clixon_handle       h,
             /* If default flag, clear it, since replaced */
             if (x0 && xml_flag(x0, XML_FLAG_DEFAULT))
                 xml_flag_reset(x0, XML_FLAG_DEFAULT);
-        case OP_NONE: /* fall thru */
+        case OP_NONE: /* fallthrough */
             if (x0==NULL){
                 if ((op != OP_NONE) && !permit && xnacm){
                     if ((ret = nacm_datanode_write(h, x1, x1t, NACM_CREATE, username, xnacm, cbret)) < 0)
@@ -799,18 +788,6 @@ text_modify(clixon_handle       h,
                     if (strcmp(restype, "enumeration") == 0 ||
                         strcmp(restype, "bits") == 0)
                         x1bstr = clixon_trim2(x1bstr, " \t\n");
-#if 0 /* Passes regression test without, keep for some time until other test requires it */
-                    /* If origin body has namespace definitions, copy them. The reason
-                     * is that some bodies rely on namespace prefixes, such as NACM
-                     * path, but there is no way we can know this here.
-                     * However, this may lead to namespace collisions if these prefixes
-                     * are not canonical, and may collide with
-                     * assign_namespace_element() above (but that is for element
-                     * symbols).   Oh well.
-                     */
-                    if (assign_namespace_body(x1, x0) < 0)
-                        goto done;
-#endif
                 }
                 /* XXX here x1bstr is checked for null, while adding an empty string above */
                 if ((x0b = xml_body_get(x0)) == NULL && x1bstr && strlen(x1bstr)){
@@ -849,7 +826,7 @@ text_modify(clixon_handle       h,
                     goto done;
                 goto fail;
             }
-        case OP_REMOVE: /* fall thru */
+        case OP_REMOVE: /* fallthrough */
             if (x0 && strcmp(xml_name(x0), x1name) == 0){
                 if ((op != OP_NONE) && !permit && xnacm){
                     if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
@@ -899,9 +876,8 @@ text_modify(clixon_handle       h,
             if (instr != NULL &&
                 xml_attr_insert2val(instr, &insert) < 0)
                 goto done;
-            if ((ret = attr_ns_value(x1,
-                                     "key", YANG_XML_NAMESPACE, 0,
-                                     cbret, &keystr)) < 0)
+            if (attr_ns_value(x1, "key", YANG_XML_NAMESPACE, 0,
+                              cbret, &keystr) < 0)
                 goto done;
 
             /* if insert/before, key attribute must be there */
@@ -924,7 +900,7 @@ text_modify(clixon_handle       h,
                     goto fail;
                 }
             }
-        case OP_REPLACE: /* fall thru */
+        case OP_REPLACE: /* fallthrough */
         case OP_MERGE:
             if (!(op == OP_MERGE && instr==NULL)){
                 /* Remove existing, also applies to merge in the special case
@@ -945,7 +921,7 @@ text_modify(clixon_handle       h,
                     x0 = NULL;
                 }
             } /* OP_MERGE & insert */
-        case OP_NONE: /* fall thru */
+        case OP_NONE: /* fallthrough */
             /* Special case: anyxml, just replace tree,
                See rfc6020 7.10.3
                An anyxml node is treated as an opaque chunk of data.  This data
@@ -962,7 +938,6 @@ text_modify(clixon_handle       h,
                         goto done;
                     if (ret == 0)
                         goto fail;
-                    permit = 1;
                 }
                 if (x0){
                     xml_purge(x0);
@@ -1130,7 +1105,7 @@ text_modify(clixon_handle       h,
                     goto done;
                 goto fail;
             }
-        case OP_REMOVE: /* fall thru */
+        case OP_REMOVE: /* fallthrough */
             if (x0){
                 if (!permit && xnacm){
                     if ((ret = nacm_datanode_write(h, x0, x0t, NACM_DELETE, username, xnacm, cbret)) < 0)
@@ -1427,7 +1402,6 @@ xmldb_put(clixon_handle       h,
     db_elmnt   *de = NULL;
     cxobj      *xnacm = NULL;
     int         permit = 0; /* nacm permit all */
-    cvec       *nsc = NULL; /* nacm namespace context */
     cxobj      *xerr = NULL;
     int         ret;
 
@@ -1471,7 +1445,7 @@ xmldb_put(clixon_handle       h,
                 goto fail;
         }
         /* Add default global values (see also xmldb_populate) */
-        if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
+        if (xml_global_defaults(h, x0, NULL, "/", yspec, 0) < 0)
             goto done;
         /* Add default recursive values */
         if (xml_default_recurse(x0, 0, 0) < 0)
@@ -1520,7 +1494,7 @@ xmldb_put(clixon_handle       h,
         goto done;
     /* Complete defaults
      */
-    if (xml_global_defaults(h, x0, nsc, "/", yspec, 0) < 0)
+    if (xml_global_defaults(h, x0, NULL, "/", yspec, 0) < 0)
         goto done;
     /* Add default recursive values */
     if (xml_default_recurse(x0, 0, XML_FLAG_ADD|XML_FLAG_DEL) < 0)
@@ -1562,8 +1536,6 @@ xmldb_put(clixon_handle       h,
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
     if (xerr)
         xml_free(xerr);
-    if (nsc)
-        xml_nsctx_free(nsc);
     return retval;
  fail:
     retval = 0;

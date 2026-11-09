@@ -410,6 +410,10 @@ native_buf_write(clixon_handle    h,
     ssize_t totlen = 0;
     int     er;
     SSL    *ssl;
+    char   *dbgstr = NULL;
+    size_t  sz;
+    size_t  remaining;
+    int     wlen;
 
     if (rc == NULL){
         clixon_err(OE_RESTCONF, EINVAL, "rc is NULL");
@@ -421,8 +425,6 @@ native_buf_write(clixon_handle    h,
      * 2. they are often very long
      */
     if ((clixon_debug_get() & CLIXON_DBG_RESTCONF) != 0) {
-        char *dbgstr = NULL;
-        size_t sz;
         sz = buflen>256?256:buflen; /* Truncate to 256 */
         if ((dbgstr = malloc(sz+1)) == NULL){
             clixon_err(OE_UNIX, errno, "malloc");
@@ -431,11 +433,12 @@ native_buf_write(clixon_handle    h,
         memcpy(dbgstr, buf, sz);
         dbgstr[sz] = '\0';
         clixon_debug(CLIXON_DBG_RESTCONF, "%s buflen:%zu buf:\n%s", callfn, buflen, dbgstr);
-        free(dbgstr);
     }
     while (totlen < buflen){
         if (ssl){
-            if ((len = SSL_write(ssl, buf+totlen, buflen-totlen)) <= 0){
+            remaining = buflen - totlen;
+            wlen = remaining > INT_MAX ? INT_MAX : (int)remaining;
+            if ((len = SSL_write(ssl, buf+totlen, wlen)) <= 0){
                 er = errno;
                 switch (SSL_get_error(ssl, len)){
                 case SSL_ERROR_SYSCALL:              /* 5 */
@@ -452,13 +455,10 @@ native_buf_write(clixon_handle    h,
                         clixon_err(OE_RESTCONF, er, "SSL_write %d", er);
                         goto done;
                     }
-                    break;
                 default:
                     clixon_err(OE_SSL, 0, "SSL_write");
                     goto done;
-                    break;
                 }
-                goto done;
             }
         }
         else{
@@ -481,11 +481,17 @@ native_buf_write(clixon_handle    h,
                 }
             }
         }
+        if ((size_t)len > buflen - totlen){
+            clixon_err(OE_UNIX, 0, "write returned more bytes than requested");
+            goto done;
+        }
         totlen += len;
     } /* while */
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
+    if (dbgstr)
+        free(dbgstr);
     return retval;
  closed:
     retval = 0;
@@ -734,7 +740,7 @@ restconf_http1_process(restconf_conn *rc,
      * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
      * 2: Content-Length found and matches body length. No more bytes to read
      */
-    if ((ret = http1_check_content_length(h, sd, &status)) < 0)
+    if (http1_check_content_length(h, sd, &status) < 0)
         goto done;
     if (status == 1){   /* Next read: keep header state and only append inbody */
         if (cbuf_append_buf(sd->sd_indata, buf, n) < 0){
@@ -809,7 +815,7 @@ restconf_http1_process(restconf_conn *rc,
                 goto done;
             }
             cprintf(cberr, "<errors xmlns=\"urn:ietf:params:xml:ns:yang:ietf-restconf\"><error><error-type>protocol</error-type><error-tag>malformed-message</error-tag><error-message>%s</error-message></error></errors>", clixon_err_reason());
-            if ((ret = native_send_badrequest(h, "application/yang-data+xml", cbuf_get(cberr), rc)) < 0)
+            if (native_send_badrequest(h, "application/yang-data+xml", cbuf_get(cberr), rc) < 0)
                 goto done;
             if (http1_native_clear_input(h, sd) < 0)
                 goto done;
@@ -845,7 +851,7 @@ restconf_http1_process(restconf_conn *rc,
      * 1: Content-Length found but body has fewer bytes, ie remaining bytes to read
      * 2: Content-Length found and matches body length. No more bytes to read
      */
-    if ((ret = http1_check_content_length(h, sd, &status)) < 0)
+    if (http1_check_content_length(h, sd, &status) < 0)
         goto done;
     if (status == 1){
         (*readmore)++;
@@ -987,7 +993,6 @@ restconf_http2_process(restconf_conn *rc,
             goto done;
         }
         /* Check if read more data frames */
-        ret = 0;
         if (rc->rc_ssl)
             ret = SSL_pending(rc->rc_ssl);
         else if ((ret = clixon_event_poll(rc->rc_s)) < 0)
@@ -1218,11 +1223,13 @@ restconf_connection_close1(restconf_conn *rc)
     }
     rsock = rc->rc_socket;
     clixon_debug(CLIXON_DBG_RESTCONF, "%s", rsock->rs_description?rsock->rs_description:"");
-    if (close(rc->rc_s) < 0){
-        clixon_err(OE_UNIX, errno, "close");
-        goto done;
+    if (rc->rc_s != -1){
+        if (close(rc->rc_s) < 0){
+            clixon_err(OE_UNIX, errno, "close");
+            goto done;
+        }
+        clixon_event_unreg_fd(rc->rc_s, restconf_connection);
     }
-    clixon_event_unreg_fd(rc->rc_s, restconf_connection);
     if (rc->rc_headers_pending > 0){
         rc->rc_headers_pending = 0;
         if (clixon_event_unreg_timeout(restconf_header_timeout_cb, rc) < 0)
@@ -1403,7 +1410,6 @@ restconf_ssl_accept_client(clixon_handle    h,
     int                     retval = -1;
     restconf_native_handle *rn = NULL;
     restconf_conn          *rc = NULL;
-    char                   *name = NULL;
     int                     e;
     int                     er;
     int                     readmore;
@@ -1544,23 +1550,13 @@ restconf_ssl_accept_client(clixon_handle    h,
         /* Get the actual peer, XXX this maybe could be done in ca-auth client-cert code ? 
          * Note this _only_ works if SSL_set1_host() was set previously,...
          */
-        if ((ret = SSL_get_verify_result(rc->rc_ssl)) == X509_V_OK) { /* for peer cert */
+        if (SSL_get_verify_result(rc->rc_ssl) == X509_V_OK) { /* for peer cert */
             const char *peername = SSL_get0_peername(rc->rc_ssl);
             if (peername != NULL) {
                 /* Name checks were in scope and matched the peername */
                 clixon_debug(CLIXON_DBG_RESTCONF, "peername:%s", peername);
             }
         }
-#if 0
-        else{
-            clixon_log(h, LOG_NOTICE, "Cert error: %s", X509_verify_cert_error_string(ret));
-            /* Maybe should return already  here, but to get proper return message need to
-             * continue to http/1 or http/2 handling
-             * @see restconf_connection_sanity
-             */
-
-        }
-#endif
 #if 0 /* debug */
         if (clixon_debug_get())
             restconf_listcerts(rc->rc_ssl);
@@ -1602,8 +1598,6 @@ restconf_ssl_accept_client(clixon_handle    h,
     retval = 1; /* OK, up */
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
-    if (name)
-        free(name);
     return retval;
  closed:
     retval = 0; /* OK, closed */

@@ -179,24 +179,34 @@ xml_tree_equal(cxobj *x0,
             if (yang_extension_value(y0c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
             if (extflag){ /* skip */
+#if 0 /* XXX: Unsure of this simplification */
+                x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
+                continue;
+#else
                 if (x1c) {
                     x0c = xml_child_iter(x0, &ix0c, CX_ELMNT);
                     continue;
                 }
                 else
                     goto ok;
+#endif
             }
         }
         if (x1c && (y1c = xml_spec(x1c)) != NULL){
             if (yang_extension_value(y1c, "ignore-compare", CLIXON_LIB_NS, &extflag, NULL) < 0)
                 goto done;
             if (extflag){ /* skip */
-                if (x1c) {
+#if 0 /* XXX: Unsure of this simplification */
+                x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
+                continue;
+#else
+                if (x0c) {
                     x1c = xml_child_iter(x1, &ix1c, CX_ELMNT);
                     continue;
                 }
                 else
                     goto ok;
+#endif
             }
         }
         if (x0c == NULL)
@@ -204,7 +214,7 @@ xml_tree_equal(cxobj *x0,
         else if (x1c == NULL)
             goto done;
         /* Both x0c and x1c exists, check if they are yang-equal. */
-        if ((eq = xml_cmp(x0c, x1c, 0, 0, NULL)) != 0){
+        if (xml_cmp(x0c, x1c, 0, 0, NULL) != 0){
             goto done;
         }
         else{ /* equal */
@@ -985,7 +995,8 @@ diff_rebase_exec(diff_rebase_t *dr)
     }
     for (i=0; i<dr->dr_changelen; i++){
         val = xml_value(dr->dr_changefrom[i]);
-        xml_value_set(dr->dr_changeto[i], val);
+        if (xml_value_set(dr->dr_changeto[i], val) < 0)
+            goto done;
     }
     retval = 0;
  done:

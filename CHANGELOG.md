@@ -24,11 +24,12 @@ Expected: January 2027
 
 ### Features
 
-* Improve RESTCONF NMDS datastore support according to RFC8527
+* Improve RESTCONF NMDA datastore support according to RFC8527
   * Handle all datastores as specified by {+restconf}/ds/<datastore> correctly
   * Implemented operational datastore resource
   * Added schema and datastore lists to yang-library (RFC 8525)
 * Debug: Added `timing` debug flag to combine with a subject-area to get instrumentation data (when implemented)
+* Static analysis fixes via clang analyze and Coverity scan
 * Fixed text/curly LLVM libFuzzer and fixed leaks
 * Added RESTCONF `filter` query parameter for event streams
 * Added anthropic/OSS-scanner support

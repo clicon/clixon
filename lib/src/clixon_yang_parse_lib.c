@@ -493,7 +493,6 @@ ys_do_refine(clixon_handle h,
     /* Second, add the node(s) */
     inext = 0;
     while ((yrc = yn_iter(yr, &inext)) != NULL) {
-        keyw = yang_keyword_get(yrc);
         /* Make copy */
         if ((yrc1 = ys_dup(yrc, clicon_option_bool(h, "CLICON_YANG_USE_ORIGINAL"), 0)) == NULL)
             goto done;
@@ -1180,13 +1179,8 @@ yang_parse_filename(clixon_handle h,
 {
     yang_stmt    *ymod = NULL;
     FILE         *fp = NULL;
-    struct stat   st;
 
     clixon_debug(CLIXON_DBG_YANG, "%s", filename);
-    if (stat(filename, &st) < 0){
-        clixon_err(OE_YANG, errno, "%s not found", filename);
-        goto done;
-    }
     if ((fp = fopen(filename, "r")) == NULL){
         clixon_err(OE_YANG, errno, "fopen(%s)", filename);
         goto done;
@@ -1694,7 +1688,6 @@ yang_spec_parse_module(clixon_handle h,
 {
     int   retval = -1;
     int   modmin;       /* Existing number of modules */
-    char *base = NULL;;
 
     if (yspec == NULL){
         clixon_err(OE_YANG, EINVAL, "yang spec is NULL");
@@ -1717,8 +1710,6 @@ yang_spec_parse_module(clixon_handle h,
  ok:
     retval = 0;
  done:
-    if (base)
-        free(base);
     return retval;
 }
 
@@ -1802,16 +1793,13 @@ yang_spec_load_dir(clixon_handle h,
     int            ndp;
     struct dirent *dp = NULL;
     int            i;
-    int            j;
     char           filename[MAXPATHLEN];
     char          *base = NULL; /* filename without dir */
     int            modmin;
     yang_stmt     *ym;   /* yang module */
-    yang_stmt     *ym0;  /* (existing) yang module */
     yang_stmt     *yrev; /* yang revision */
     uint32_t       revf = 0; /* revision in filename */
     uint32_t       revm = 0; /* revision in parsed new module (should be same as revf) */
-    uint32_t       rev0; /* revision in existing module */
     char          *oldbase = NULL;
     int            taken = 0;
 
@@ -1860,12 +1848,9 @@ yang_spec_load_dir(clixon_handle h,
             taken = 1; /* last in line and not taken */
         }
         /* Here only a single file is reached(taken)
-         * Check if module already exists -> ym0/rev0 */
-        rev0 = 0;
-        if ((ym0 = yang_find(yspec, Y_MODULE, base)) != NULL ||
-            (ym0 = yang_find(yspec, Y_SUBMODULE, base)) != NULL){
-            yrev = yang_find(ym0, Y_REVISION, NULL);
-            rev0 = cv_uint32_get(yang_cv_get(yrev));
+         * Check if module already exists -> ym0 */
+        if (yang_find(yspec, Y_MODULE, base) != NULL ||
+            yang_find(yspec, Y_SUBMODULE, base) != NULL){
             continue; /* skip if already added by specific file or module */
         }
         /* Create full filename */
@@ -1883,18 +1868,6 @@ yang_spec_load_dir(clixon_handle h,
             clixon_err(OE_YANG, EINVAL, "Yang module file revision and in yang does not match: %s(%u) vs %u", filename, revf, revm);
             goto done;
 #endif
-        }
-        /* If ym0 and ym exists, delete the yang with oldest revision
-         * This is a failsafe in case anything else fails
-         */
-        if (revm && rev0){
-            if (revm > rev0) /* Loaded module is older or eq -> remove ym */
-                ym = ym0;
-            for (j=0; j<yang_len_get(yspec); j++)
-                if (yspec->ys_stmt[j] == ym)
-                    break;
-            ys_prune(yspec, j);
-            ys_free(ym);
         }
     }
     if (yang_parse_post(h, yspec, modmin) < 0)

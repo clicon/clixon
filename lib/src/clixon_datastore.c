@@ -499,8 +499,6 @@ xmldb_db2subdir(clixon_handle h,
     subdir = NULL;
     retval = 0;
  done:
-    if (subdir)
-        free(subdir);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -1015,8 +1013,6 @@ xmldb_delete(clixon_handle h,
 {
     int            retval = -1;
     char          *filename = NULL;
-    struct stat    st = {0,};
-    cbuf          *cb = NULL;
     char          *subdir = NULL;
     db_elmnt      *de;
     int            del = 0;
@@ -1027,14 +1023,12 @@ xmldb_delete(clixon_handle h,
     if (clicon_option_bool(h, "CLICON_XMLDB_MULTI")){
         if (xmldb_db2subdir(h, db, &subdir) < 0)
             goto done;
-        if (stat(subdir, &st) == 0){
-            if (clixon_dir_remove_files(subdir, NULL, NULL) < 0)
-                goto done;
-            clixon_debug(CLIXON_DBG_DATASTORE, "rmdir %s", subdir);
-            if (rmdir(subdir) < 0){
-                clixon_err(OE_DB, errno, "rmdir %s", subdir);
-                goto done;
-            }
+        if (clixon_dir_remove_files(subdir, NULL, NULL) < 0)
+            goto done;
+        clixon_debug(CLIXON_DBG_DATASTORE, "rmdir %s", subdir);
+        if (rmdir(subdir) < 0 && errno != ENOENT){
+            clixon_err(OE_DB, errno, "rmdir %s", subdir);
+            goto done;
         }
     }
     else {
@@ -1044,28 +1038,24 @@ xmldb_delete(clixon_handle h,
         }
         if (xmldb_db2file(h, db, &filename) < 0)
             goto done;
-        if (lstat(filename, &st) == 0) {
-            if (del) {
-                clixon_debug(CLIXON_DBG_DATASTORE, "unlink %s", filename);
-                if (unlink(filename) < 0) {
-                    clixon_err(OE_DB, errno, "unlink %s", filename);
-                    goto done;
-                }
+        if (del) {
+            clixon_debug(CLIXON_DBG_DATASTORE, "unlink %s", filename);
+            if (unlink(filename) < 0 && errno != ENOENT) {
+                clixon_err(OE_DB, errno, "unlink %s", filename);
+                goto done;
             }
-            else {
-                clixon_debug(CLIXON_DBG_DATASTORE, "truncate %s", filename);
-                if (truncate(filename, 0) < 0){
-                    clixon_err(OE_DB, errno, "truncate %s", filename);
-                    goto done;
-                }
+        }
+        else {
+            clixon_debug(CLIXON_DBG_DATASTORE, "truncate %s", filename);
+            if (truncate(filename, 0) < 0 && errno != ENOENT){
+                clixon_err(OE_DB, errno, "truncate %s", filename);
+                goto done;
             }
         }
     }
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_DATASTORE | CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (cb)
-        cbuf_free(cb);
     if (subdir)
         free(subdir);
     if (filename)
@@ -1246,7 +1236,7 @@ xmldb_rename(clixon_handle h,
              const char    *suffix)
 {
     int    retval = -1;
-    char  *old;
+    char  *old = NULL;
     char  *fname = NULL;
     cbuf  *cb = NULL;
 

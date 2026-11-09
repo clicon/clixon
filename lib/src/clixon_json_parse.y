@@ -257,7 +257,8 @@ json_current_clone(clixon_json_yacc *jy)
         if (prefix) {
             char* name_parts[] = {prefix, name};
             maybe_prefixed_name = clicon_strjoin(2, name_parts, ":");
-        } else {
+        }
+        else {
             maybe_prefixed_name = strdup(name);
         }
         json_current_new(jy, maybe_prefixed_name);

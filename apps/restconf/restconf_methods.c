@@ -283,8 +283,6 @@ api_data_write(clixon_handle  h,
     cxobj         *xa;
     char          *api_path;
     cxobj         *xret = NULL;
-    cxobj         *xretcom = NULL; /* return from commit */
-    cxobj         *xretdis = NULL; /* return from discard-changes */
     cxobj         *xerr = NULL;    /* malloced must be freed */
     cxobj         *xe;             /* direct pointer into tree, dont free */
     char          *username;
@@ -626,10 +624,6 @@ api_data_write(clixon_handle  h,
         xml_free(xret);
     if (xerr)
         xml_free(xerr);
-    if (xretcom)
-        xml_free(xretcom);
-    if (xretdis)
-        xml_free(xretdis);
     if (xtop)
         xml_free(xtop);
     if (xdata00)
@@ -787,8 +781,6 @@ api_data_delete(clixon_handle  h,
     yang_stmt *yspec;
     enum operation_type op = OP_DELETE;
     cxobj     *xret = NULL;
-    cxobj     *xretcom = NULL; /* return from commmit */
-    cxobj     *xretdis = NULL; /* return from discard */
     cxobj     *xerr = NULL;
     char      *username;
     cxobj     *xe; /* xml error, no free */
@@ -859,10 +851,6 @@ api_data_delete(clixon_handle  h,
         cbuf_free(cbx);
     if (xret)
         xml_free(xret);
-    if (xretcom)
-        xml_free(xretcom);
-    if (xretdis)
-        xml_free(xretdis);
     if (xtop)
         xml_free(xtop);
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);

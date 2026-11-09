@@ -618,7 +618,6 @@ example_statefile(clixon_handle h,
     int        i;
     cxobj     *x1;
 #endif
-    int        ret;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
@@ -630,7 +629,7 @@ example_statefile(clixon_handle h,
         if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
             goto done;
         if ((fp = fopen(_state_file, "r")) != NULL){
-            if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+            if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
                 goto done;
         }
         if (_state_file_cached)
@@ -687,7 +686,7 @@ example_statefile(clixon_handle h,
  * @retval    -1   Error
  *
  * System-only config data is not written to datastore.
- * Instead, in this ocmmit action, it is written to file _state_file
+ * Instead, in this commit action, it is written to file _state_file
  * @see main_system_only_commit  callback for reading data
  * @note  Only single system-only config data supported
  */
@@ -748,7 +747,6 @@ main_system_only_commit(clixon_handle    h,
                        &vec1, &veclen1, xpath) < 0)
         goto done;
     for (i=0; i<veclen1; i++){
-        x = vec1[i];
         if (fp == NULL &&
             (fp = fopen(file, "w")) == NULL){
             clixon_err(OE_UNIX, errno, "open(%s)", file);
@@ -833,7 +831,6 @@ example_pagination(void           *h0,
     uint32_t      lower;
     uint32_t      upper;
     cvec         *nsc = NULL;
-    int           ret;
 
     /* If -S is set, then read state data from file */
     if (!_state || !_state_file)
@@ -856,7 +853,7 @@ example_pagination(void           *h0,
         }
         if ((xt = xml_new("config", NULL, CX_ELMNT)) == NULL)
             goto done;
-        if ((ret = clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL)) < 0)
+        if (clixon_xml_parse_file(fp, YB_MODULE, yspec, &xt, NULL) < 0)
             goto done;
         if (_state_file_cached)
             _state_xml_cache = xt;
@@ -1216,7 +1213,6 @@ upgrade_2014_to_2016(clixon_handle h,
 {
     int        retval = -1;
     yang_stmt *yspec;
-    yang_stmt *ym;
     cxobj    **vec = NULL;
     cxobj     *xc;
     cxobj     *xi;  /* xml /interfaces-states/interface node */
@@ -1232,7 +1228,7 @@ upgrade_2014_to_2016(clixon_handle h,
         goto ok;
     /* Get Yang module for this namespace. Note it may not exist (if obsolete) */
     yspec = clicon_dbspec_yang(h);
-    if ((ym = yang_find_module_by_namespace(yspec, ns)) == NULL)
+    if (yang_find_module_by_namespace(yspec, ns) == NULL)
         goto ok; /* shouldnt happen */
     /* Get all XML nodes with that namespace */
     if (xml_namespace_vec(h, xt, ns, &vec, &vlen) < 0)

@@ -140,7 +140,7 @@ cli_auto_edit(clixon_handle h,
         clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
-    api_path_fmt = cv_string_get(cvec_i(argv, argc++));
+    argc++; /* skip api_path_fmt arg: unused here, re-derived via co2apipath() below */
     cv = cvec_i(argv, argc++);
     if (mtpoint_decode(cv_string_get(cv), ":", &mtdomain, &mtspec) < 0)
         goto done;
@@ -327,7 +327,7 @@ cli_auto_up(clixon_handle h,
         cv = cvec_i(cvv0, i);
         cvec_append_var(cvv1, cv);
     }
-    clicon_data_get(h, "cli-edit-mtpoint", &mtpoint);
+    (void)clicon_data_get(h, "cli-edit-mtpoint", &mtpoint);
     if (mtpoint_decode(mtpoint, ":", &mtdomain, &mtspec) < 0)
         goto done;
     if (mtdomain){

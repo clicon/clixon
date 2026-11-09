@@ -205,11 +205,12 @@ http_data_check_file_path(clixon_handle h,
                           off_t        *fsz)
 {
     int         retval = -1;
-    struct stat fstat;
+    struct stat st;
     char       *p;
     int         i;
     int         code = 0;
     FILE       *f;
+    int         fd;
     char        resolved[PATH_MAX];
     char        resolved_prefix[PATH_MAX];
 
@@ -233,12 +234,12 @@ http_data_check_file_path(clixon_handle h,
         if (p[i] == '/'){ /* Check valid dir */
             p[i] = '\0';
             /* Ensure not soft link */
-            if (lstat(p, &fstat) < 0){
+            if (lstat(p, &st) < 0){
                 clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s):%s", p, strerror(errno));
                 code = 404;
                 goto invalid;
             }
-            if (!S_ISDIR(fstat.st_mode)){
+            if (!S_ISDIR(st.st_mode)){
                 clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s): Not dir", p);
                 code = 403;
                 goto invalid;
@@ -264,15 +265,24 @@ http_data_check_file_path(clixon_handle h,
         code = 403;
         goto invalid;
     }
-    /* Resulting file (ensure not soft link) */
-    if (lstat(resolved, &fstat) < 0){
-        clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s):%s", resolved, strerror(errno));
+    /* Resulting file: open first (O_NOFOLLOW refuses to follow a symlink
+     * at the kernel level), then fstat the open fd -- closes the TOCTOU
+     * window between checking and using "resolved" */
+    if ((fd = open(resolved, O_RDONLY | O_NOFOLLOW)) < 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error open(%s):%s", resolved, strerror(errno));
+        code = (errno == ELOOP || errno == EACCES) ? 403 : 404;
+        goto invalid;
+    }
+    if (fstat(fd, &st) < 0){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error fstat(%s):%s", resolved, strerror(errno));
+        close(fd);
         code = 404;
         goto invalid;
     }
 #ifdef HTTP_DATA_INTERNAL_REDIRECT
     /* If dir try redirect, not cbpath is extended */
-    if (S_ISDIR(fstat.st_mode)){
+    if (S_ISDIR(st.st_mode)){
+        close(fd);
         cprintf(cbpath, "/%s", HTTP_DATA_INTERNAL_REDIRECT);
         p = cbuf_get(cbpath);
         clixon_debug(CLIXON_DBG_RESTCONF, "internal redirect: %s", p);
@@ -286,21 +296,29 @@ http_data_check_file_path(clixon_handle h,
             code = 403;
             goto invalid;
         }
-        if (lstat(resolved, &fstat) < 0){
-            clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s):%s", resolved, strerror(errno));
+        if ((fd = open(resolved, O_RDONLY | O_NOFOLLOW)) < 0){
+            clixon_debug(CLIXON_DBG_RESTCONF, "Error open(%s):%s", resolved, strerror(errno));
+            code = (errno == ELOOP || errno == EACCES) ? 403 : 404;
+            goto invalid;
+        }
+        if (fstat(fd, &st) < 0){
+            clixon_debug(CLIXON_DBG_RESTCONF, "Error fstat(%s):%s", resolved, strerror(errno));
+            close(fd);
             code = 404;
             goto invalid;
         }
     }
 #endif
-    if (!S_ISREG(fstat.st_mode)){
-        clixon_debug(CLIXON_DBG_RESTCONF, "Error lstat(%s): Not regular file", resolved);
+    if (!S_ISREG(st.st_mode)){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error fstat(%s): Not regular file", resolved);
+        close(fd);
         code = 403;
         goto invalid;
     }
-    *fsz = fstat.st_size;
-    if ((f = fopen(resolved, "rb")) == NULL){
-        clixon_debug(CLIXON_DBG_RESTCONF, "Error fopen(%s) %s", resolved, strerror(errno));
+    *fsz = st.st_size;
+    if ((f = fdopen(fd, "rb")) == NULL){
+        clixon_debug(CLIXON_DBG_RESTCONF, "Error fdopen(%s) %s", resolved, strerror(errno));
+        close(fd);
         code = 403;
         goto invalid;
     }
@@ -398,7 +416,10 @@ api_http_data_file(clixon_handle h,
      * There is still one without flock
      */
     fseek(f, 0, SEEK_END);
-    fsize = ftell(f);
+    if ((fsize = ftell(f)) < 0){
+        clixon_err(OE_UNIX, errno, "ftell");
+        goto done;
+    }
     /* Extra sanity check, had some problems with wrong file types */
     if (fsz != fsize){
         clixon_debug(CLIXON_DBG_RESTCONF, "Error file %s size mismatch sz:%zu vs %li",

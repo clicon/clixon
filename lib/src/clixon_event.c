@@ -606,6 +606,13 @@ event_unprio_rotate(struct event_data *e)
     return retval;
 }
 
+/*! Handle file descriptor events by invoking callbacks.
+ *
+ * @param[in] ee   Event list to handle
+ * @param[in] prio Priority: 0=unprio, 1=prio
+ * @retval    0   OK
+ * @retval   -1   Error
+ */
 static int
 event_handle_fds(struct event_data *ee,
                  int                prio)
@@ -680,6 +687,7 @@ clixon_event_loop(clixon_handle h)
     struct timeval     t;
     int64_t            tdiff;
     int                timeout;
+    int                er;
     int                n;
     int                ret;
 
@@ -689,16 +697,27 @@ clixon_event_loop(clixon_handle h)
     while (clixon_exit_get() != 1) {
         nfds = _ee_prio_nr + _ee_nr;
         if (nfds > nfds_max){
+            struct pollfd *fds1;
+
             nfds_max = nfds;
-            if ((fds = realloc(fds, nfds_max*sizeof(struct pollfd))) == NULL){
+            if ((fds1 = realloc(fds, nfds_max*sizeof(struct pollfd))) == NULL){
                 clixon_err(OE_UNIX, errno, "realloc");
                 goto done;
             }
+            fds = fds1;
+        }
+        if (nfds > 0 && fds == NULL){
+            clixon_err(OE_EVENTS, 0, "Internal error: fds is NULL");
+            goto done;
         }
         nfds = 0;
         clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "register prio");
         for (e = _ee_prio; e; e = e->e_next) {
             if (e->e_type == EVENT_FD) {
+                if (fds == NULL){
+                    clixon_err(OE_EVENTS, 0, "Internal error: fds is NULL");
+                    goto done;
+                }
                 pfd = &fds[nfds];
                 pfd->fd = e->e_fd;
                 pfd->events = POLLIN; /* requested event */
@@ -711,6 +730,10 @@ clixon_event_loop(clixon_handle h)
         clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "register unprio");
         for (e = _ee; e; e = e->e_next) {
             if (e->e_type == EVENT_FD) {
+                if (fds == NULL){
+                    clixon_err(OE_EVENTS, 0, "Internal error: fds is NULL");
+                    goto done;
+                }
                 pfd = &fds[nfds];
                 pfd->fd = e->e_fd;
                 pfd->events = POLLIN; /* requested event */
@@ -738,9 +761,9 @@ clixon_event_loop(clixon_handle h)
         clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "poll timeout: %d", timeout);
         n = poll(fds, nfds, timeout);
         if (n == -1) {
-            int e = errno;
-            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error: %d", e);
-            if (e == EINTR){
+            er = errno;
+            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=-1 Error: %d", er);
+            if (er == EINTR){
                 if (clixon_exit_get() == 1){
                     clixon_err(OE_EVENTS, errno, "poll");
                     goto ok;
@@ -759,20 +782,22 @@ clixon_event_loop(clixon_handle h)
         }
         if (n == 0) { /* timeout */
             clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "n=0 Timeout");
-            e = _ee_timers;
-            _ee_timers = _ee_timers->e_next;
-            clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "timeout: %s", e->e_descr);
-            if ((*e->e_fn)(0, e->e_arg) < 0) {
+            if (_ee_timers != NULL){
+                e = _ee_timers;
+                _ee_timers = _ee_timers->e_next;
+                clixon_debug(CLIXON_DBG_EVENT | CLIXON_DBG_DETAIL, "timeout: %s", e->e_descr);
+                if ((*e->e_fn)(0, e->e_arg) < 0) {
+                    free(e);
+                    goto done;
+                }
                 free(e);
-                goto done;
             }
-            free(e);
         }
         /* Prio files */
-        if ((ret = event_handle_fds(_ee_prio, 1)) < 0)
+        if (event_handle_fds(_ee_prio, 1) < 0)
             goto done;
         /* Unprio files */
-        if ((ret = event_handle_fds(_ee, 0)) < 0)
+        if (event_handle_fds(_ee, 0) < 0)
             goto done;
         clixon_exit_decr(); /* If exit is set and > 1, decrement it (and exit when 1) */
   }

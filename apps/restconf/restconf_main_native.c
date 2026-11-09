@@ -289,7 +289,6 @@ restconf_verify_certs(int             preverify_ok,
     }
     /* Catch a too long certificate chain. should be +1 in SSL_CTX_set_verify_depth() */
     if (depth > VERIFY_DEPTH + 1) {
-        preverify_ok = 0;
         err = X509_V_ERR_CERT_CHAIN_TOO_LONG;
         X509_STORE_CTX_set_error(store, err);
     }
@@ -538,7 +537,6 @@ restconf_accept_client(int   fd,
     int              s = -1;
     struct sockaddr  from = {0,};
     socklen_t        len;
-    char             *name = NULL;
     void             *addr;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "%d", fd);
@@ -590,12 +588,34 @@ restconf_accept_client(int   fd,
     retval = 0;
  done:
     clixon_debug(CLIXON_DBG_RESTCONF, "retval:%d", retval);
-    if (name)
-        free(name);
     if (s != -1)
         close(s);
     return retval;
 } /* restconf_accept_client */
+
+/*! Free a restconf_socket and all resources owned by it
+ *
+ * The caller is responsible for unlinking rsock from rn->rn_sockets (DELQ)
+ * first, if it has been linked in.
+ * @param[in]  rsock  Restconf socket struct, may be NULL
+ * @retval     0      OK
+ */
+static int
+restconf_socket_free(restconf_socket *rsock)
+{
+    if (rsock == NULL)
+        return 0;
+    if (rsock->rs_description)
+        free(rsock->rs_description);
+    if (rsock->rs_addrstr)
+        free(rsock->rs_addrstr);
+    if (rsock->rs_addrtype)
+        free(rsock->rs_addrtype);
+    if (rsock->rs_from_addr)
+        free(rsock->rs_from_addr);
+    free(rsock);
+    return 0;
+}
 
 /*!
  */
@@ -625,15 +645,7 @@ restconf_native_terminate(clixon_handle h)
                 close(rsock->rs_ss);
             }
             DELQ(rsock, rn->rn_sockets, restconf_socket *);
-            if (rsock->rs_description)
-                free(rsock->rs_description);
-            if (rsock->rs_addrstr)
-                free(rsock->rs_addrstr);
-            if (rsock->rs_addrtype)
-                free(rsock->rs_addrtype);
-            if (rsock->rs_from_addr)
-                free(rsock->rs_from_addr);
-            free(rsock);
+            restconf_socket_free(rsock);
         }
         if (rn->rn_ctx)
             SSL_CTX_free(rn->rn_ctx);
@@ -692,8 +704,7 @@ restconf_clixon_backend(clixon_handle h,
     if (clicon_rpc_get_config(h, pw->pw_name, "running", "/restconf", nsc, NULL, &xconfig) < 0)
         goto done;
     if ((xerr = xpath_first(xconfig, NULL, "/rpc-error")) != NULL){
-        if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get backend restconf config") < 0)
-            goto done;
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get backend restconf config");
         goto done;
     }
     /* Extract restconf configuration */
@@ -796,22 +807,25 @@ openssl_init_socket(clixon_handle h,
 
     if (rsock->rs_callhome){
         rsock->rs_ss = -1; /* Not applicable from callhome */
-        if (restconf_callhome_timer(rsock, 0) < 0)
+        if (restconf_callhome_timer(rsock, 0) < 0){
+            DELQ(rsock, rn->rn_sockets, restconf_socket *);
             goto done;
+        }
         rsock = NULL;
     }
     else {
         /* ss is a server socket that the clients connect to. The callback
            therefore accepts clients on ss */
         rsock->rs_ss = ss;
-        if (clixon_event_reg_fd(rsock->rs_ss, restconf_accept_client, rsock, "restconf socket") < 0)
+        if (clixon_event_reg_fd(rsock->rs_ss, restconf_accept_client, rsock, "restconf socket") < 0){
+            DELQ(rsock, rn->rn_sockets, restconf_socket *);
             goto done;
+        }
         rsock = NULL;
     }
     retval = 0;
  done:
-    if (rsock)
-        free(rsock);
+    restconf_socket_free(rsock);
     return retval;
 }
 
@@ -881,7 +895,8 @@ restconf_openssl_init(clixon_handle h,
         if (strcmp(xml_body(x), "true") == 0) {
             rlp.rlim_cur = RLIM_INFINITY;
             rlp.rlim_max = RLIM_INFINITY;
-        } else {
+        }
+        else {
             rlp.rlim_cur = 0;
             rlp.rlim_max = 0;
         }
@@ -959,19 +974,24 @@ restconf_clixon_init(clixon_handle h,
     cvec          *nsctx_global = NULL; /* Global namespace context */
     cxobj         *xrestconf = NULL;
     cxobj         *xerr = NULL;
-    size_t         sz;
     int            ret;
 
     /* Set default namespace according to CLICON_NAMESPACE_NETCONF_DEFAULT */
     xml_nsctx_namespace_netconf_default(h);
 
     /* Init cligen buffers */
-    cligen_buflen = clicon_option_int(h, "CLICON_CLI_BUF_START");
-    cligen_bufthreshold = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD");
+    if ((ret = clicon_option_int(h, "CLICON_CLI_BUF_START")) >= 0)
+        cligen_buflen = ret;
+    else
+        cligen_buflen = 0;
+    if ((ret = clicon_option_int(h, "CLICON_CLI_BUF_THRESHOLD")) >= 0)
+        cligen_bufthreshold = ret;
+    else
+        cligen_bufthreshold = 0;
     cbuf_alloc_set(cligen_buflen, cligen_bufthreshold);
 
-    if ((sz = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) != 0)
-        clixon_log_string_limit_set(sz);
+    if ((ret = clicon_option_int(h, "CLICON_LOG_STRING_LIMIT")) > 0)
+        clixon_log_string_limit_set(ret);
 
     /* Add (hardcoded) netconf features in case ietf-netconf loaded here
      * Otherwise it is loaded in netconf_module_load below

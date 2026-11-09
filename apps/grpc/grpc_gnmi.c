@@ -261,8 +261,6 @@ gnmi_capabilities(clixon_handle  h,
                 free(models[i]);
         free(models);
     }
-    if (buf)
-        free(buf);
     return retval;
 }
 
@@ -589,7 +587,8 @@ gnmi_get_one_path(clixon_handle h,
         if (clicon_rpc_get(h, cbuf_get(xpathcb), nsc,
                            content, -1, NULL, xretp) < 0)
             goto done;
-    } else {
+    }
+    else {
         if (clicon_rpc_get(h, "/", NULL, content, -1, NULL, xretp) < 0)
             goto done;
     }
@@ -800,8 +799,6 @@ gnmi_get(clixon_handle  h,
         cbuf_free(jsoncb);
     if (xret)
         xml_free(xret);
-    if (buf)
-        free(buf);
     return retval;
 }
 
@@ -950,7 +947,8 @@ gnmi_path_to_xml(clixon_handle       h,
             else
                 cprintf(cb, "<%s>", local);
             prev_ns = ens;
-        } else {
+        }
+        else {
             /* Emit xmlns only when namespace changes from parent */
             if (ens != NULL && (prev_ns == NULL || strcmp(ens, prev_ns) != 0)){
                 if (opstr != NULL && is_last)
@@ -959,7 +957,8 @@ gnmi_path_to_xml(clixon_handle       h,
                 else
                     cprintf(cb, "<%s xmlns=\"%s\">", local, ens);
                 prev_ns = ens;
-            } else {
+            }
+            else {
                 if (opstr != NULL && is_last)
                     cprintf(cb, "<%s xmlns:nc=\"%s\" nc:operation=\"%s\">",
                             local, NETCONF_BASE_NAMESPACE, opstr);
@@ -1225,8 +1224,6 @@ gnmi_set(clixon_handle  h,
         gnmi__set_request__free_unpacked(req, NULL);
     if (xmlcb)
         cbuf_free(xmlcb);
-    if (buf)
-        free(buf);
     return retval;
  discard:
     /* An edit-config or allocation failed after some edits were applied;

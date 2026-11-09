@@ -412,7 +412,7 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
     ptr = *root;
 
     if ((ptr = add_peer_node(ptr, split_path_list[0])) == NULL)
-        return -1;
+        goto done;
     if (*root == NULL) {
         *root = ptr;
     }
@@ -426,10 +426,10 @@ dispatcher_register_handler(dispatcher_entry_t   **root,
     ptr->de_handler = x->dd_handler;
     ptr->de_arg = x->dd_arg;
 
-    /* clean up */
-    split_path_free(split_path_list, split_path_len);
     retval = 0;
  done:
+    if (split_path_list)
+        split_path_free(split_path_list, split_path_len);
     return retval;
 }
 

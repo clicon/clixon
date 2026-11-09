@@ -255,7 +255,6 @@ mtpoint_paths(clixon_handle h,
     cxobj     *xbot0 = NULL;
     cxobj     *xtop0 = NULL;
     char      *xpath;
-    int        ret;
 
     if (api_path_fmt01 == NULL){
         clixon_err(OE_FATAL, EINVAL, "arg is NULL");
@@ -282,7 +281,7 @@ mtpoint_paths(clixon_handle h,
     xbot0 = xtop0;
     if (xml_nsctx_yangspec(yspec0, &nsc0) < 0)
         goto done;
-    if ((ret = xpath2xml(xpath, nsc0, xtop0, yspec0, 0, &xbot0, &ybot0, NULL)) < 0)
+    if (xpath2xml(xpath, nsc0, xtop0, yspec0, 0, &xbot0, &ybot0, NULL) < 0)
         goto done;
     if (xbot0 == NULL){
         clixon_err(OE_YANG, 0, "No xbot");
@@ -1055,7 +1054,7 @@ compare_db_names(clixon_handle    h,
             prefix = "+ ";
             break;
         case YANG_PATCH_OP_MOVE:
-            prefix = "~ ";
+            //            prefix = "~ ";
             clixon_err(OE_XML, EINVAL, "Move operation not supported");
             /* not currently supported */
             goto done;
@@ -1168,7 +1167,6 @@ load_config_file(clixon_handle h,
                  cvec         *argv)
 {
     int              retval = -1;
-    struct stat      st;
     char            *filename = NULL;
     int              replace;
     cg_var          *cv;
@@ -1218,10 +1216,6 @@ load_config_file(clixon_handle h,
         goto done;
     }
     filename = cv_string_get(cv);
-    if (stat(filename, &st) < 0){
-        clixon_err(OE_UNIX, errno, "load_config: stat(%s)", filename);
-        goto done;
-    }
     /* Open and parse local file into xml */
     if ((fp = fopen(filename, "r")) == NULL){
         clixon_err(OE_UNIX, errno, "fopen(%s)", filename);
@@ -1394,8 +1388,7 @@ save_config_file(clixon_handle h,
         goto done;
     }
     if ((xerr = xpath_first(xt, NULL, "/rpc-error")) != NULL){
-        if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
-            goto done;
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
     /* get-config returns a <data> tree. Save as <config> tree so it can be used
@@ -1439,7 +1432,7 @@ save_config_file(clixon_handle h,
         break;
     } /* switch */
     retval = 0;
-    /* Fall through */
+    /* Fallthrough */
   done:
     if (xt)
         xml_free(xt);
@@ -1555,6 +1548,7 @@ cli_notification_cb(int   s,
     case FORMAT_JSON:
         if (clixon_json2file(stdout, xt, 1, cligen_output, 1, 1, 0) < 0)
             goto done;
+        break;
     case FORMAT_TEXT:
         if (clixon_text2file(stdout, xt, 0, cligen_output, 1, 1) < 0)
             goto done;
@@ -1823,8 +1817,7 @@ cli_copy_config(clixon_handle h,
     if (clicon_rpc_get_config(h, NULL, db, cbuf_get(cb), nsc, NULL, &x1) < 0)
         goto done;
     if ((xerr = xpath_first(x1, NULL, "/rpc-error")) != NULL){
-        if (clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration") < 0)
-            goto done;
+        clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Get configuration");
         goto done;
     }
 
@@ -2240,7 +2233,6 @@ cli_alias_show(clixon_handle h,
 {
     int           retval = -1;
     pt_head      *ph;
-    char         *phname = NULL;
     cligen_handle ch = cli_cligen(h);
     int           i;
     cg_obj       *co;
@@ -2253,17 +2245,9 @@ cli_alias_show(clixon_handle h,
         clixon_err(OE_UNIX, errno, "cbuf_new");
         goto done;
     }
-    if (phname == NULL) {
-        if ((ph = cligen_ph_active_get(ch)) == NULL){
-            errno = ENOENT;
-            goto done;
-        }
-    }
-    else {
-        if ((ph = cligen_ph_find(ch, phname)) == NULL) {
-            errno = ENOENT;
-            goto done;
-        }
+    if ((ph = cligen_ph_active_get(ch)) == NULL){
+        errno = ENOENT;
+        goto done;
     }
     if ((pt = cligen_ph_parsetree_get(ph)) == NULL){
         errno = ENOENT;

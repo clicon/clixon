@@ -152,21 +152,17 @@ restconf_pseudo_set_inline(clixon_handle h,
     char **argv;
     int    argc;
     int    i;
-    cxobj *xrestconf;
-    cbuf  *cb = NULL;
 
     clixon_debug(CLIXON_DBG_BACKEND, "");
     if (clixon_process_argv_get(h, RESTCONF_PROCESS, &argv, &argc) < 0)
         goto done;
-    if ((xrestconf = xpath_first(xt, NULL, "restconf")) != NULL)
+    if (xpath_first(xt, NULL, "restconf") != NULL)
         for (i=0; i<argc; i++){
             if (argv[i] == NULL)
                 break;
         }
     retval = 0;
  done:
-    if (cb)
-        cbuf_free(cb);
     return retval;
 }
 

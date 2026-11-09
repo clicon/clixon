@@ -386,7 +386,6 @@ merge_control_xml(clixon_handle h,
 {
     int    retval = -1;
     char  *name;
-    char  *body;
     cxobj *xec;
     cxobj *xtc;
     cxobj *x;
@@ -400,7 +399,7 @@ merge_control_xml(clixon_handle h,
         if ((name = xml_name(xec)) == NULL)
             continue;
 
-        if ((body = xml_body(xec)) == NULL){
+        if (xml_body(xec) == NULL){
             /* Special case for cache-status which is a list, merge may replace existing */
             if (strcmp(name, "CLICON_XMLDB_CACHE_STATUS") == 0){
                 if ((key1 = xml_find_body(xec, "name")) != NULL){
@@ -504,7 +503,6 @@ parse_configfile(clixon_handle  h,
     clicon_hash_t *copt = clicon_options(h);
     cbuf          *cbret = NULL;
     cxobj         *xerr = NULL;
-    cvec          *nsc = NULL;
     int            i;
     int            ndp = 0;
     struct dirent *dp = NULL;
@@ -628,8 +626,6 @@ parse_configfile(clixon_handle  h,
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "Done w/ config file %s retval:%d", filename, retval);
     if (dp)
         free(dp);
-    if (nsc)
-        xml_nsctx_free(nsc);
     if (cbret)
         cbuf_free(cbret);
     if (xerr)
@@ -900,8 +896,10 @@ clixon_options_main_helper(clixon_handle h,
         clixon_debug_init(h, dbg);
         clixon_log_init(h, ident, dbg?LOG_DEBUG:LOG_INFO, logdst?logdst:CLIXON_LOG_STDERR);
     }
-    if ((dstr = clicon_option_str(h, "CLICON_LOG_FILE")) != NULL)
-        clixon_log_file(dstr);
+    if ((dstr = clicon_option_str(h, "CLICON_LOG_FILE")) != NULL){
+        if (clixon_log_file(dstr) < 0)
+            goto done;
+    }
     retval = 0;
  done:
     if (reason)

@@ -282,6 +282,8 @@ nodetest_eval(cxobj      *x,
 {
     int   retval = 0; /* NB: no match is default (not error) */
 
+    if (xs == NULL)
+        return 1; /* No node test means match any node */
     if (xs->xs_type == XP_NODE){
         if (localonly)
             retval = nodetest_eval_localonly(x, xs);
@@ -628,22 +630,26 @@ xp_eval_predicate(xp_ctx     *xc,
                 goto done;
             ctx_free(xcc);
             xcc = NULL;
-            if (xrc->xc_type == XT_NUMBER){
-                /* If the result is a number, the result will be converted to true
-                   if the number is equal to the context position */
-                if ((int)xrc->xc_number == i)
-                    if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
-                        goto done;
+            if (xrc != NULL){
+                if (xrc->xc_type == XT_NUMBER){
+                    /* If the result is a number, the result will be converted to true
+                       if the number is equal to the context position */
+                    if ((int)xrc->xc_number == i)
+                        if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
+                            goto done;
+                }
+                else {
+                    /* if PredicateExpr evaluates to true for that node, the node is
+                       included in the new node-set */
+                    if (ctx2boolean(xrc))
+                        if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
+                            goto done;
+                }
             }
-            else {
-                /* if PredicateExpr evaluates to true for that node, the node is
-                   included in the new node-set */
-                if (ctx2boolean(xrc))
-                    if (cxvec_append(x, &xr1->xc_nodeset, &xr1->xc_size) < 0)
-                        goto done;
-            }
-            if (xrc)
+            if (xrc){
                 ctx_free(xrc);
+                xrc = NULL;
+            }
         }
     }
     if (xr0 == NULL && xr1 == NULL){
@@ -662,6 +668,8 @@ xp_eval_predicate(xp_ctx     *xc,
  done:
     if (xcc)
         ctx_free(xcc);
+    if (xrc)
+        ctx_free(xrc);
     if (xr0)
         ctx_free(xr0);
     if (xr1)
@@ -690,6 +698,10 @@ xp_logop(xp_ctx    *xc1,
     int     b1;
     int     b2;
 
+    if (xc1 == NULL || xc2 == NULL){
+        clixon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
+        goto done;
+    }
     if ((xr = malloc(sizeof(*xr))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -744,6 +756,10 @@ xp_numop(xp_ctx    *xc1,
     double  n1;
     double  n2;
 
+    if (xc1 == NULL || xc2 == NULL){
+        clixon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
+        goto done;
+    }
     if ((xr = malloc(sizeof(*xr))) == NULL){
         clixon_err(OE_UNIX, errno, "malloc");
         goto done;
@@ -1216,6 +1232,10 @@ xp_union(xp_ctx    *xc1,
     xp_ctx *xr = NULL;
     int     i;
 
+    if (xc1 == NULL || xc2 == NULL){
+        clixon_err(OE_UNIX, EINVAL, "xc1 or xc2 NULL");
+        goto done;
+    }
     if (op != XO_UNION){
         clixon_err(OE_UNIX, errno, "%s:Invalid operator %s in this context",
                    __func__, clicon_int2str(xpopmap,op));
@@ -1559,7 +1579,7 @@ xp_eval(xp_ctx     *xc,
             break;
         }
     }
-    if (use_xr0)
+    if (use_xr0 && xr0)
         xr0->xc_descendant = 0;
     else
         xc->xc_descendant = 0;

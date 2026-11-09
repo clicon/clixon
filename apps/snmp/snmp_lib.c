@@ -689,7 +689,7 @@ type_snmp2xml(yang_stmt                  *ys,
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
         *asn1type = ASN_INTEGER;
-        /* fall through */
+        /* fallthrough */
     case ASN_TIMETICKS:   // 67
     case ASN_INTEGER:   // 2
         if (cvtype == CGV_STRING){      /* special case for enum */
@@ -924,7 +924,7 @@ type_xml2snmp(char       *snmpstr,
     switch (*asn1type){
     case CLIXON_ASN_ROWSTATUS:
         *asn1type = ASN_INTEGER;
-        /* fall through */
+        /* fallthrough */
     case ASN_INTEGER:   // 2
         *snmplen = 4;
         if ((*snmpval = malloc(*snmplen)) == NULL){

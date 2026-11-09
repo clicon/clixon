@@ -961,7 +961,7 @@ yang2cli_var_union_one(clixon_handle h,
         clixon_err(OE_YANG, 0, "result-type should not be NULL");
         goto done;
     }
-    restype = ytype?yang_argument_get(ytype):NULL;
+    restype = yang_argument_get(ytype);
 
     if (restype && strcmp(restype, "union") == 0){      /* recursive union */
         if (yang2cli_var_union(h, ys, origtype, ytype, helptext, patpref, cb) < 0)
@@ -1197,9 +1197,9 @@ yang2cli_leaf_var(clixon_handle h,
     if (yang_type_get(yreferred, &origtype, &yrestype,
                       &options, &cvv, patterns, NULL, &fraction_digits) < 0)
         goto done;
-    restype = yang_argument_get(yrestype);
-    type = yrestype?yang_argument_get(yrestype):NULL;
-    if (strcmp(restype, "empty") == 0){
+    restype = yrestype?yang_argument_get(yrestype):NULL;
+    type = restype;
+    if (restype && strcmp(restype, "empty") == 0){
         if (callback){
             if (gen_callback(h, ys, key_leaf, cb) < 0)
                 goto done;
@@ -1220,13 +1220,13 @@ yang2cli_leaf_var(clixon_handle h,
         goto done;
     regular_value = !flag;
     /* Note restype can be NULL here for example with unresolved hardcoded uuid */
-    if (strcmp(restype, "union") == 0){
+    if (restype && strcmp(restype, "union") == 0){
         /* Union: loop over resolved type's sub-types (can also be recursive unions) */
         cprintf(cb, "(");
         if (yang2cli_var_union(h, ys, origtype, yrestype, helptext, &patpref, cb) < 0)
             goto done;
     }
-    else if (strcmp(restype, "leafref") == 0){
+    else if (restype && strcmp(restype, "leafref") == 0){
         if ((ret = yang2cli_leafref_var(h, ys, yreferred, helptext,
                                         options, cvv, patterns, fraction_digits,
                                         cvtype,
@@ -1255,14 +1255,14 @@ yang2cli_leaf_var(clixon_handle h,
         /* Use a single token while retaining the old rest variable's preference.
          * An enum and a leafref completion may offer the same value; the enum
          * must win to avoid an ambiguous command. See test_cli_union_leafref.sh. */
-        if (strcmp(restype, "union") == 0)
+        if (restype && strcmp(restype, "union") == 0)
             cvtypestr = "string";
         if ((ret = cli_expand_var_generate(h, ys, cvtypestr,
                                            options, fraction_digits, regular_value,
                                            leafref_refer ||
-                                           strcmp(restype, "union") == 0 ||
-                                           strcmp(restype, "leafref") == 0,
-                                           strcmp(restype, "union") == 0 ? COV_PREF_REST : 0,
+                                           (restype && strcmp(restype, "union") == 0) ||
+                                           (restype && strcmp(restype, "leafref") == 0),
+                                           (restype && strcmp(restype, "union") == 0) ? COV_PREF_REST : 0,
                                            cb)) < 0)
             goto done;
         if (ret == 1)
@@ -1617,7 +1617,6 @@ yang2cli_uses(clixon_handle h,
     int        retval = -1;
     char      *argument = NULL;
     char      *prefix = NULL;
-    char      *ns;
     yang_stmt *ygrouping;
     yang_stmt *ymod;
     yang_stmt *yrev;
@@ -1646,7 +1645,7 @@ yang2cli_uses(clixon_handle h,
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }    /* prefix is not globally unique, need namespace */
-    if ((ns = yang_find_mynamespace(ygrouping)) == NULL)
+    if (yang_find_mynamespace(ygrouping) == NULL)
         goto done;
     ymod = ys_module(ygrouping);
     yrev = yang_find(ymod, Y_REVISION, NULL);

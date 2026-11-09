@@ -288,7 +288,7 @@ json_str_escape_cdata(cbuf *cb,
         case '\t':
             cprintf(cb, "\\t");
             break;
-        default: /* fall thru */
+        default: /* fallthrough */
             cprintf(cb, "%c", str[i]);
             break;
         }
@@ -557,17 +557,13 @@ xml2json_encode_leafs(cxobj     *xb,
         case CGV_REST:
             if (body==NULL)
                 ; /* empty: "" */
-            else if (ytype){
-                if (strcmp(restype, "identityref")==0){
-                    if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
-                        goto done;
-                }
-                else{
-                    cprintf(cb, "%s", body);
-                }
+            else if (strcmp(restype, "identityref")==0){
+                if (xml2json_encode_identityref(xb, body, yp, cb) < 0)
+                    goto done;
             }
-            else
+            else{
                 cprintf(cb, "%s", body);
+            }
             break;
         case CGV_INT64:
         case CGV_UINT64:

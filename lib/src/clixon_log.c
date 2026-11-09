@@ -428,8 +428,10 @@ clixon_log_fn(clixon_handle h,
     if (user){
         va_start(ap, format);
         if (clixon_plugin_errmsg_all(h, NULL, 0, LOG_TYPE_LOG,
-                                     NULL, NULL, x, format, ap, &cb) < 0)
+                                     NULL, NULL, x, format, ap, &cb) < 0){
+            va_end(ap);
             goto done;
+        }
         va_end(ap);
         if (cb != NULL){ /* Customized: expand clixon_err_args */
             clixon_log_fn(h, 0, LOG_ERR, NULL, "%s", cbuf_get(cb));

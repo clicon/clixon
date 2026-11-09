@@ -312,7 +312,8 @@ clicon_file_dirent(const char     *dir,
        memcpy(&new[nent], dent, direntStructSize);
        nent++;
    } /* while */
-   qsort((void *)new, nent, sizeof(*new), clicon_file_dirent_sort);
+   if (nent > 0)
+       qsort((void *)new, nent, sizeof(*new), clicon_file_dirent_sort);
    *ent = new;
    new = NULL;
    retval = nent;
@@ -339,18 +340,20 @@ clicon_file_copy(const char *src,
                  const char *target)
 {
     int         retval = -1;
-    int         inF = 0, ouF = 0;
+    int         inF = -1;
+    int         ouF = -1;
     int         err = 0;
     char        line[512];
     int         bytes;
     struct stat st;
 
-    if (stat(src, &st) != 0){
-        clixon_err(OE_UNIX, errno, "stat");
-        return -1;
-    }
     if((inF = open(src, O_RDONLY)) == -1) {
         clixon_err(OE_UNIX, errno, "open(%s) for read", src);
+        return -1;
+    }
+    if (fstat(inF, &st) != 0){
+        clixon_err(OE_UNIX, errno, "fstat");
+        close(inF);
         return -1;
     }
     if((ouF = open(target, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode)) == -1) {
@@ -366,8 +369,9 @@ clicon_file_copy(const char *src,
         }
     retval = 0;
   error:
-    close(inF);
-    if (ouF)
+    if (inF >= 0)
+        close(inF);
+    if (ouF >= 0)
         close(ouF);
     if (retval < 0)
         errno = err;
@@ -433,12 +437,7 @@ clicon_file_cbuf(const char *filename,
     int         err = 0;
     char        line[512];
     int         bytes;
-    struct stat st;
 
-    if (stat(filename, &st) != 0){
-        clixon_err(OE_UNIX, errno, "stat");
-        return -1;
-    }
     if ((fd = open(filename, O_RDONLY)) == -1) {
         clixon_err(OE_UNIX, errno, "open(%s) for read", filename);
         return -1;

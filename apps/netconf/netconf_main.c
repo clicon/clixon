@@ -750,7 +750,6 @@ main(int    argc,
             clicon_option_str_set(h, "CLICON_CONFIGDIR", optarg);
             break;
         case 'l': /* Log destination: s|e|o */
-            d = 0;
             if ((d = clixon_logdst_str2key(optarg)) < 0){
                 if (optarg[0] == 'f'){ /* Check for special -lf<file> syntax */
                     d = CLIXON_LOG_FILE;
@@ -932,8 +931,6 @@ main(int    argc,
         }
         if (dbg != dbg0)
             clixon_debug_init(h, dbg);
-        argc -= optind;
-        argv += optind;
     }
     /* Load Yang modules
      * 1. Load a yang module as a specific absolute filename */

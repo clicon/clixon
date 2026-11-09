@@ -164,7 +164,6 @@ xml_filter_recursive(cxobj *xfilter,
         if ((f = xml_find(xfilter, xml_name(s))) == NULL){
             xml_purge(s);
             ix--;
-            s = sprev;
             continue;
         }
         if (leafstring(f)){

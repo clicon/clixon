@@ -417,7 +417,6 @@ autocli_completion(clixon_handle h,
     uint8_t val;
     char   *reason = NULL;
     cxobj  *xautocli;
-    int     ret;
 
     if (completion == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -431,7 +430,7 @@ autocli_completion(clixon_handle h,
         clixon_err(OE_XML, EINVAL, "No completion-default rule");
         goto done;
     }
-    if ((ret = parse_bool(str, &val, &reason)) < 0){
+    if (parse_bool(str, &val, &reason) < 0){
         clixon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
@@ -460,7 +459,6 @@ autocli_grouping_treeref(clixon_handle h,
     uint8_t val;
     char   *reason = NULL;
     cxobj  *xautocli;
-    int     ret;
 
     if (treeref == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -474,7 +472,7 @@ autocli_grouping_treeref(clixon_handle h,
         clixon_err(OE_XML, EINVAL, "No grouping-treeref rule");
         goto done;
     }
-    if ((ret = parse_bool(str, &val, &reason)) < 0){
+    if (parse_bool(str, &val, &reason) < 0){
         clixon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }
@@ -536,7 +534,6 @@ autocli_treeref_state(clixon_handle h,
     uint8_t val;
     char   *reason = NULL;
     cxobj  *xautocli;
-    int     ret;
 
     if (treeref_state == NULL){
         clixon_err(OE_YANG, EINVAL, "Argument is NULL");
@@ -550,7 +547,7 @@ autocli_treeref_state(clixon_handle h,
         clixon_err(OE_XML, EINVAL, "No treeref-state-default rule");
         goto done;
     }
-    if ((ret = parse_bool(str, &val, &reason)) < 0){
+    if (parse_bool(str, &val, &reason) < 0){
         clixon_err(OE_CFG, errno, "parse_bool");
         goto done;
     }

@@ -334,6 +334,9 @@ clixon_rpc_connect(clixon_handle h,
         if (clixon_rpc_connect_inet(h, sockstr, port, sockp) < 0)
             goto done;
         break;
+    default:
+        clixon_err(OE_FATAL, 0, "Unexpected socket family: %d", clicon_sock_family(h));
+        goto done;
     }
     retval = 0;
  done:
@@ -424,6 +427,8 @@ atomicio(ssize_t (*fn) (int, void *, size_t),
     while (n > pos) {
         if ((res = clixon_rw_retry(fn, fd, s + pos, n - pos, 0)) <= 0)
             return res;
+        if ((size_t)res > n - pos)
+            return -1; /* fn must never return more than requested */
         pos += res;
     }
     return pos;

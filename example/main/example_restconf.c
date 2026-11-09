@@ -188,7 +188,8 @@ b64_decode(const char *src,
             if (target && target[tarindex] != 0)
                 return (-1);
         }
-    } else {
+    }
+    else {
         /*
          * We ended by seeing the end of the string.  Make sure we
          * have no partial bytes lying around.
@@ -226,7 +227,6 @@ example_basic_auth(clixon_handle      h,
     char   *passwd;
     char   *passwd2 = "";
     size_t  authlen;
-    int     ret;
 
     clixon_debug(CLIXON_DBG_DEFAULT, "");
     if (authp == NULL){
@@ -247,7 +247,7 @@ example_basic_auth(clixon_handle      h,
         goto done;
     }
     memset(user, 0, authlen);
-    if ((ret = b64_decode(auth, user, authlen)) < 0)
+    if (b64_decode(auth, user, authlen) < 0)
         goto done;
     /* auth string is on the format user:passwd */
     if ((passwd = index(user,':')) == NULL)
@@ -269,7 +269,7 @@ example_basic_auth(clixon_handle      h,
     user=NULL; /* to avoid free below */
     retval = 1;
  done: /* error */
-    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d authp:%s", retval, authp?"":*authp);
+    clixon_debug(CLIXON_DBG_DEFAULT, "retval:%d", retval);
     if (user)
        free(user);
     if (cb)

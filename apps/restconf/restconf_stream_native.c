@@ -142,9 +142,6 @@ stream_native_backend_cb(int   s,
     int                   pretty = 0;
     restconf_conn        *rc = sd->sd_conn;
     clixon_handle         h = rc->rc_h;
-#ifdef HAVE_LIBNGHTTP2
-    nghttp2_error         ngerr;
-#endif
     int                   ret;
 
     clixon_debug(CLIXON_DBG_STREAM|CLIXON_DBG_DETAIL, "");
@@ -190,7 +187,7 @@ stream_native_backend_cb(int   s,
         cb = NULL;
         if (restconf_http2_send_notification(h, sd, rc) < 0)
             goto done;
-        if ((ngerr = nghttp2_session_send(rc->rc_ngsession)) != 0)
+        if (nghttp2_session_send(rc->rc_ngsession) != 0)
             goto done;
         if (sd->sd_body){
             cbuf_free(sd->sd_body);
@@ -199,8 +196,8 @@ stream_native_backend_cb(int   s,
     }
     else
 #endif // HAVE_LIBNGHTTP2
-        if ((ret = native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, "native stream")) < 0)
-        goto done;
+        if (native_buf_write(h, cbuf_get(cb), cbuf_len(cb), rc, "native stream") < 0)
+            goto done;
  ok:
     retval = 0;
  done:
@@ -307,7 +304,8 @@ stream_sockets_setup(clixon_handle h,
         struct timeval   t;
         gettimeofday(&t, NULL);
         t.tv_sec += timeout;
-        clixon_event_reg_timeout(t, stream_timeout_end, rc, "Stream timeout");
+        if (clixon_event_reg_timeout(t, stream_timeout_end, rc, "Stream timeout") < 0)
+            goto done;
     }
     retval = 0;
  done:

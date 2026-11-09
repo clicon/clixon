@@ -159,6 +159,8 @@ clixon_xvec_dup(clixon_xvec *xv0)
 {
     clixon_xvec *xv1 = NULL; /* retval */
 
+    if (xv0 == NULL)
+        goto done;
     if ((xv1 = clixon_xvec_new()) == NULL)
         goto done;
     *xv1 = *xv0;
@@ -170,7 +172,8 @@ clixon_xvec_dup(clixon_xvec *xv0)
         xv1 = NULL;
         goto done;
     }
-    memcpy(xv1->xv_vec, xv0->xv_vec, xv0->xv_len*sizeof(cxobj*));
+    if (xv0->xv_len && xv1->xv_vec)
+        memcpy(xv1->xv_vec, xv0->xv_vec, xv0->xv_len*sizeof(cxobj*));
  done:
     return xv1;
 }
@@ -180,10 +183,11 @@ clixon_xvec_dup(clixon_xvec *xv0)
 int
 clixon_xvec_free(clixon_xvec *xv)
 {
+    if (xv == NULL)
+        return 0;
     if (xv->xv_vec)
         free(xv->xv_vec);
-    if (xv)
-        free(xv);
+    free(xv);
     return 0;
 }
 

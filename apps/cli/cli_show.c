@@ -706,12 +706,12 @@ cli_show_common(clixon_handle    h,
         goto done;
     }
     if (state == 0){     /* Get configuration-only from a database */
-        if ((ret = clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt)) < 0){
+        if (clixon_rpc_get_config1(h, NULL, db, xpath, nsc, withdefault, YB_NONE, &xt) < 0){
             goto done;
         }
     }
     /* Get configuration and state from running */
-    else  if ((ret = clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt)) < 0){
+    else if (clixon_rpc_get1(h, xpath, nsc, CONTENT_ALL, -1, withdefault, YB_NONE, &xt) < 0){
         goto done;
     }
     if ((xe = xpath_first(xt, NULL, "/rpc-error")) != NULL){
@@ -1060,15 +1060,10 @@ show_conf_xpath(clixon_handle h,
     cg_var          *cv;
     cvec            *nsc0 = NULL;
     cvec            *nsc = NULL;
-    yang_stmt       *yspec;
     int              fromroot = 0;
 
     if (cvec_len(argv) != 1){
         clixon_err(OE_PLUGIN, EINVAL, "Requires one element to be <dbname>");
-        goto done;
-    }
-    if ((yspec = clicon_dbspec_yang(h)) == NULL){
-        clixon_err(OE_FATAL, 0, "No DB_SPEC");
         goto done;
     }
     dbname = cv_string_get(cvec_i(argv, 0));
@@ -1476,7 +1471,6 @@ cli_pagination(clixon_handle h,
                cvec         *argv)
 {
     int              retval = -1;
-    cbuf            *cb = NULL;
     char            *xpath = NULL;
     char            *prefix = NULL;
     char            *namespace = NULL;
@@ -1591,8 +1585,6 @@ cli_pagination(clixon_handle h,
         xml_free(xret);
     if (nsc)
         cvec_free(nsc);
-    if (cb)
-        cbuf_free(cb);
     return retval;
 }
 
@@ -1959,7 +1951,6 @@ cli_show_statistics(clixon_handle h,
                           "Total", valbuf, cbuf_get(cb2));
             cbuf_free(cb2);
             cb2 = NULL;
-            tsz0 = tsz;
             tsz = 0;
             if (verbose) {
                 /* --- XML nr (count) table --- */
@@ -2072,8 +2063,6 @@ cli_show_statistics(clixon_handle h,
         xml_free(xret);
     if (xret_all)
         xml_free(xret_all);
-    if (cb2)
-        cbuf_free(cb2);
     if (cb)
         cbuf_free(cb);
     return retval;
@@ -2094,17 +2083,16 @@ cli_format_set(clixon_handle h,
                cvec         *cvv,
                cvec         *argv)
 {
-    int              retval = -1;
-    cg_var          *cv;
-    char            *str;
-    enum format_enum fmt = FORMAT_XML;
+    int     retval = -1;
+    cg_var *cv;
+    char   *str;
 
     if ((cv = cvec_find(cvv, "fmt")) == NULL){
         clixon_err(OE_PLUGIN, EINVAL, "Requires one variable to be <format>");
         goto done;
     }
     str = cv_string_get(cv);
-    if ((fmt = format_str2int(str)) < 0){
+    if (format_str2int(str) < 0){
         clixon_err(OE_PLUGIN, EINVAL, "Invalid format: %s", str);
         goto done;
     }
@@ -2228,7 +2216,7 @@ cli_show_sessions(clixon_handle h,
             cligen_output(stdout, "%-16s",  b?b:"");
             b = xml_find_body(xsess, "priority");
             cligen_output(stdout, "%-7s",  b?b:"");
-            if (locked_by && strcmp(sid, locked_by) == 0)
+            if (locked_by && sid && strcmp(sid, locked_by) == 0)
                 cligen_output(stdout, "%-11s", "candidate");
             else
                 cligen_output(stdout, "%-11s", "");

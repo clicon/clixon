@@ -1197,7 +1197,6 @@ _text_syntax_parse(const char *str,
     int                     retval = -1;
     clixon_text_syntax_yacc ts = {0,};
     cxobj                  *x;
-    cbuf                   *cberr = NULL;
     int                     failed = 0; /* yang assignment */
     cxobj                  *xc;
     int                     ix;
@@ -1264,8 +1263,6 @@ _text_syntax_parse(const char *str,
     retval = 1;
  done:
     clixon_debug(CLIXON_DBG_PARSE|CLIXON_DBG_DETAIL, "retval:%d", retval);
-    if (cberr)
-        cbuf_free(cberr);
     clixon_text_syntax_parsel_exit(&ts);
     return retval;
  fail: /* invalid */

@@ -466,7 +466,8 @@ xml_nsctx_yangspec(yang_stmt *yspec,
         goto done;
     if (xml_nsctx_add(nc,  NETCONF_BASE_PREFIX, NETCONF_BASE_NAMESPACE) < 0)
         goto done;
-    *ncp = nc;
+    if (ncp)
+        *ncp = nc;
     retval = 0;
  done:
     return retval;

@@ -99,7 +99,6 @@ generic_validate(clixon_handle       h,
                  cxobj             **xret)
 {
     int                retval = -1;
-    cbuf              *cb = NULL;
     int                ret;
 #ifdef VALIDATE_INCREMENTAL
     /* All entries — use td-aware variant to skip checks on unchanged nodes */
@@ -114,8 +113,6 @@ generic_validate(clixon_handle       h,
     // ok:
     retval = 1;
  done:
-    if (cb)
-        cbuf_free(cb);
     return retval;
  fail:
     retval = 0;

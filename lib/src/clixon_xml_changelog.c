@@ -105,7 +105,6 @@ changelog_rename(clixon_handle h,
     }
     if (xml_name_set(xw, str) < 0)
         goto done;
-    // ok:
     retval = 1;
  done:
     if (xctx)
@@ -113,9 +112,6 @@ changelog_rename(clixon_handle h,
     if (str)
         free(str);
     return retval;
-    // fail:
-    retval = 0;
-    goto done;
 }
 
 /*! Replace target XML
@@ -172,13 +168,9 @@ changelog_insert(clixon_handle h,
     while ((x = xml_child_i(xnew, 0)) != NULL)
         if (xml_addsub(xw, x) < 0)
             goto done;
-    // ok:
     retval = 1;
  done:
     return retval;
-    // fail:
-    retval = 0;
-    goto done;
 }
 
 /* delete target */
@@ -207,6 +199,10 @@ changelog_move(clixon_handle h,
     int    retval = -1;
     cxobj *xp;       /* destination parent node */
 
+    if (dst == NULL){
+        clixon_err(OE_XML, 0, "dst required");
+        goto done;
+    }
     if ((xp = xpath_first(xt, nsc, "%s", dst)) == NULL){
         clixon_err(OE_XML, 0, "path required");
         goto done;
@@ -270,7 +266,9 @@ changelog_op(clixon_handle h,
        if (whenxpath){
            if (xpath_vec_ctx(xw, nsc, whenxpath, 0, &xctx) < 0)
                goto done;
-           if ((ret = ctx2boolean(xctx)) < 0)
+           if (xctx == NULL)
+               ret = 0;
+           else if ((ret = ctx2boolean(xctx)) < 0)
                goto done;
            if (xctx){
                ctx_free(xctx);

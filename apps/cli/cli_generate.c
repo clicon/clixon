@@ -167,18 +167,18 @@ yang2cli_post(clixon_handle h,
               int           i0,
               int          *configp)
 {
-    int           retval = -1;
-    cg_obj       *co;
-    int           i;
-    int           config;
-    int           state = 0;
+    int     retval = -1;
+    cg_obj *co;
+    int     i;
+    int     config;
+    int     state = 0;
 
     for (i = i0; i<pt_len_get(pt); i++){
         if ((co = pt_vec_i_get(pt, i)) == NULL){
             clixon_err(OE_YANG, 0, "Empty object in parsetreelist"); /* shouldnt happen */
             goto done;
         }
-        if (co->co_type == CO_EMPTY){
+        if (co->co_type == CO_EMPTY && cop != NULL){
             char   *name;
             cg_var *cv = NULL;
             int     j=0;
@@ -353,7 +353,6 @@ yang2cli_yspec(clixon_handle h,
     parse_tree     *pt0 = NULL;
     parse_tree     *pt = NULL;
     yang_stmt      *ymod;
-    yang_stmt      *ydomain;
     int             enable;
     cbuf           *cb = NULL;
     int             inext;
@@ -373,10 +372,6 @@ yang2cli_yspec(clixon_handle h,
         goto done;
     if (cache != AUTOCLI_CACHE_DISABLED){
         clixon_err(OE_CFG, 0, "Cache mode not DISABLED");
-        goto done;
-    }
-    if ((ydomain = yang_parent_get(yspec)) == NULL){
-        clixon_err(OE_YANG, 0, "No domain");
         goto done;
     }
     /* Traverse YANG, loop through all modules and generate CLI */
@@ -578,7 +573,10 @@ yang2cli_grouping_wrap_local(clixon_handle h,
     yang_stmt *ymod;
     yang_stmt *ys;
 
-    ymnt = clixon_yang_mounts_get(h);
+    if ((ymnt = clixon_yang_mounts_get(h)) == NULL){
+        clixon_err(OE_YANG, 0, "Yang-mounts not created");
+        goto done;
+    }
     if ((ydomain = yang_find(ymnt, Y_DOMAIN, domain)) == NULL){
         clixon_err(OE_YANG, 0, "yang2cli cmd label no ydomain %s", domain);
         goto done;

@@ -70,7 +70,6 @@ int xml_namespace_change(cxobj *x, const char *ns, const char *prefix);
 int xml_sanity(cxobj *x, void  *arg);
 int xml_non_config_data(cxobj *xt, cxobj **xerr);
 int assign_namespace_element(cxobj *x0, cxobj *x1, cxobj *x1p);
-int assign_namespace_body(cxobj *x0, cxobj *x1);
 int yang_valstr2enum(yang_stmt *ytype, const char *valstr, char **enumstr);
 int yang_bitsstr2val(clixon_handle h, yang_stmt *ytype, const char *bitsstr, unsigned char **outval, size_t *outlen);
 int yang_bitsstr2flags(yang_stmt *ytype, const char *bitsstr, uint32_t *flags);

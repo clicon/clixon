@@ -211,7 +211,8 @@ add_snmp_var_bindings(netsnmp_variable_list **var_list,
                 free(snmpval);
                 snmpval = NULL;
             }
-        } else {
+        }
+        else {
             clixon_debug(CLIXON_DBG_SNMP, "no yang def found for %s", node_name);
         }
     }

@@ -739,8 +739,6 @@ xpath_tree_prefix_check(xpath_tree *xptree,
                         cvec       *nsc,
                         char      **prefix)
 {
-    int ret;
-
     if (prefix)
         *prefix = NULL;
     if (xptree == NULL)
@@ -752,7 +750,7 @@ xpath_tree_prefix_check(xpath_tree *xptree,
             *prefix = xptree->xs_s0;
         return 0;
     }
-    if ((ret = xpath_tree_prefix_check(xptree->xs_c0, nsc, prefix)) == 0)
+    if (xpath_tree_prefix_check(xptree->xs_c0, nsc, prefix) == 0)
         return 0;
     return xpath_tree_prefix_check(xptree->xs_c1, nsc, prefix);
 }
@@ -1211,7 +1209,7 @@ xpath_traverse_canonical(xpath_tree *xs,
         if (xml_nsctx_get(nsc1, prefix1) == NULL)
             if (xml_nsctx_add(nsc1, prefix1, namespace) < 0)
                 goto done;
-        if (prefix0==NULL || strcmp(prefix0, prefix1) != 0){
+        if (prefix0==NULL || (prefix1 != prefix0 && strcmp(prefix0, prefix1) != 0)){
             if (xs->xs_s0){
                 free(xs->xs_s0);
                 xs->xs_s0 = NULL;
@@ -1497,7 +1495,6 @@ xml2xpath1(cxobj *x,
     cvec         *cvk = NULL; /* vector of index keys */
     cg_var       *cvi;
     char         *keyname;
-    cxobj        *xkey;
     cxobj        *xb;
     char         *b;
     enum rfc_6020 keyword;
@@ -1550,7 +1547,7 @@ xml2xpath1(cxobj *x,
             cvi = NULL;
             while ((cvi = cvec_each(cvk, cvi)) != NULL) {
                 keyname = cv_string_get(cvi);
-                if ((xkey = xml_find(x, keyname)) == NULL){
+                if (xml_find(x, keyname) == NULL){
                     clixon_err(OE_XML, 0, "No key %s in list %s", keyname, xml_name(x));
                     goto done;
                 }

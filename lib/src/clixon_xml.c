@@ -1174,13 +1174,12 @@ int
 xml_child_nr_type(cxobj          *xn,
                   enum cxobj_type type)
 {
-    cxobj *x;
-    int    len = 0;
-    int    ix = 0;
+    int len = 0;
+    int ix = 0;
 
     if (!is_element(xn))
         return 0;
-    while ((x = xml_child_iter(xn, &ix, type)) != NULL)
+    while (xml_child_iter(xn, &ix, type) != NULL)
         len++;
     return len;
 }
@@ -1629,6 +1628,7 @@ xml_new(const char     *name,
 {
     struct xml *x = NULL;
     size_t      sz;
+    int         nc;
 
     switch (type){
     case CX_ATTR:
@@ -1653,13 +1653,18 @@ xml_new(const char     *name,
     }
     memset(x, 0, sz);
     xml_type_set(x, type);
-    if (type != CX_BODY && name && (xml_name_set(x, name)) < 0)
+    if (type != CX_BODY && name && (xml_name_set(x, name)) < 0){
+        xml_free(x);
         return NULL;
+    }
     if (xp){
         xml_parent_set(x, xp);
-        if (xml_child_append(xp, x) < 0)
+        if (xml_child_append(xp, x) < 0){
+            xml_free(x);
             return NULL;
-        x->_x_i = xml_child_nr(xp)-1;
+        }
+        nc = xml_child_nr(xp);
+        x->_x_i = (nc > 0) ? (uint32_t)(nc - 1) : 0;
     }
     _stats_xml_nr++;
     return x;
@@ -1855,8 +1860,10 @@ xml_addsub(cxobj *xp,
             if (xml_child_i(oldp, i) == xc)
                 break;
         /* Remove xc from old parent */
-        if (i < xml_child_nr(oldp))
-            xml_child_rm(oldp, i);
+        if (i < xml_child_nr(oldp)){
+            if (xml_child_rm(oldp, i) < 0)
+                goto done;
+        }
     }
     /* Add xc to new parent */
     if (xp){
@@ -2820,8 +2827,10 @@ xml_dup(cxobj *x0)
 
     if ((x1 = xml_new("new", NULL, xml_type(x0))) == NULL)
         return NULL;
-    if (xml_copy(x0, x1) < 0)
+    if (xml_copy(x0, x1) < 0){
+        xml_free(x1);
         return NULL;
+    }
     return x1;
 }
 

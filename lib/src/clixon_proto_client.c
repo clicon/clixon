@@ -151,7 +151,6 @@ parse_hello(clixon_handle h,
     cxobj *xerr;
     cxobj *x;
     char  *b;
-    int    ret;
 
     if ((xerr = xpath_first(xret, NULL, "//rpc-error")) != NULL){
         clixon_err_netconf(h, OE_NETCONF, 0, xerr, "Hello");
@@ -162,7 +161,7 @@ parse_hello(clixon_handle h,
         goto done;
     }
     b = xml_body(x);
-    if (id && (ret = parse_uint32(b, id, NULL)) <= 0){
+    if (id && parse_uint32(b, id, NULL) <= 0){
         clixon_err(OE_XML, errno, "parse_uint32");
         goto done;
     }
@@ -665,7 +664,7 @@ clixon_rpc_get_config1(clixon_handle h,
                     goto done;
                 xd = xerr;
                 xerr = NULL;
-                if ((xd = xpath_first(xerr, NULL, "rpc-error")) == NULL){
+                if (xpath_first(xerr, NULL, "rpc-error") == NULL){
                     clixon_err(OE_XML, ENOENT, "Expected rpc-error tag but none found(internal)");
                     goto done;
                 }
@@ -1581,7 +1580,8 @@ clicon_rpc_commit(clixon_handle h,
         if (persist_enc)
             cprintf(cb, "<persist>%s</persist>", persist_enc);
         cprintf(cb, "</commit>");
-    } else {
+    }
+    else {
         if (persist_enc)
             cprintf(cb, "<commit><persist>%s</persist></commit>", persist_enc);
         else
@@ -2500,7 +2500,6 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
 {
     int                    retval = -1;
     cbuf                  *cb = NULL;
-    cxobj                 *xrpc = NULL;
     cxobj                 *xret = NULL;
     cxobj                 *xerr;
     cxobj                 *xreply;
@@ -2574,8 +2573,6 @@ clixon_rpc_nacm_autocli_filter(clixon_handle          h,
         nacm_autocli_filter_free(naf);
     if (cb)
         cbuf_free(cb);
-    if (xrpc)
-        xml_free(xrpc);
     if (xret)
         xml_free(xret);
     return retval;

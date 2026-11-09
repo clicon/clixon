@@ -603,6 +603,10 @@ clixon_xml2file_pre(FILE       *f,
         if (x == xtop)
             break;
     }
+    if (i != -1){
+        clixon_err(OE_XML, EINVAL, "Internal error: ancestor path not fully filled");
+        goto done;
+    }
     /* Print opening tags top-down, with key leaves for list nodes */
     for (i = 0; i < pathlen; i++){
         x = path[i];
@@ -676,6 +680,10 @@ clixon_xml2file_post(FILE       *f,
         path[i--] = x;
         if (x == xtop)
             break;
+    }
+    if (i != -1){
+        clixon_err(OE_XML, EINVAL, "Internal error: ancestor path not fully filled");
+        goto done;
     }
     /* Print closing tags bottom-up */
     for (i = pathlen - 1; i >= 0; i--){
@@ -1427,7 +1435,7 @@ clixon_xml_parse_va(yang_bind   yb,
     }
     memset(str, 0, len);
     va_start(args, format);
-    len = vsnprintf(str, len, format, args) + 1;
+    vsnprintf(str, len, format, args);
     va_end(args);
     retval = clixon_xml_parse_string(str, yb, yspec, xtop, xerr);
  done:

@@ -509,7 +509,7 @@ get_list_pagination(clixon_handle     h,
         }
         clicon_ptr_get(h, "pagination-entries", (void**)&htable);
         if (htable) {
-            if ((ret = dispatcher_match_exact(htable, xpath)) < 0)
+            if ((ret = dispatcher_match_exact(htable, xpath?xpath:"/")) < 0)
                 goto done;
             if (ret > 0)
                 partial_pagination_cb = 1;
@@ -709,8 +709,8 @@ get_list_pagination(clixon_handle     h,
                     if (xml_type(xj) == CX_ELMNT){
                         xvec2[j] = x;
                         xvec2[i] = xj;
+                        break;
                     }
-                    break;
                 }
             }
         }

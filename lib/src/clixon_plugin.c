@@ -455,7 +455,6 @@ clixon_plugins_load(clixon_handle h,
     int                   i;
     char                  filename[MAXPATHLEN];
     int                   dlflags;
-    int                   ret;
 
     clixon_debug(CLIXON_DBG_INIT | CLIXON_DBG_DETAIL, "");
 
@@ -471,7 +470,7 @@ clixon_plugins_load(clixon_handle h,
             dlflags |= RTLD_GLOBAL;
         else
             dlflags |= RTLD_LOCAL;
-        if ((ret = plugin_load_one(h, filename, function, dlflags)) < 0)
+        if (plugin_load_one(h, filename, function, dlflags) < 0)
             goto done;
     }
     retval = 0;
@@ -1442,13 +1441,6 @@ rpc_callback_register(clixon_handle  h,
     ADDQ(rc, ms->ms_rpc_callbacks);
     return 0;
  done:
-    if (rc){
-        if (rc->rc_namespace)
-            free(rc->rc_namespace);
-        if (rc->rc_name)
-            free(rc->rc_name);
-        free(rc);
-    }
     return -1;
 }
 
@@ -1511,7 +1503,8 @@ rpc_callback_call(clixon_handle h,
     }
     name = xml_name(xe);
     prefix = xml_prefix(xe);
-    xml2ns(xe, prefix, &ns);
+    if (xml2ns(xe, prefix, &ns) < 0)
+        goto done;
     if ((rc = ms->ms_rpc_callbacks) != NULL)
         do {
             if (strcmp(rc->rc_name, name) == 0 &&
@@ -2006,11 +1999,11 @@ clixon_plugin_report_err(clixon_handle h,
     if (clixon_plugin_rpc_err_set(h)) {
         if ((ret = netconf_gen_rpc_err(h, cbret)) < 0)
             return ret;
-    } else if ((ret = netconf_operation_failed(cbret, "application", "%s",
-                                               clixon_err_reason())) < 0) {
+    }
+    else if ((ret = netconf_operation_failed(cbret, "application", "%s",
+                                             clixon_err_reason())) < 0) {
         return ret;
     }
-
     return 0;
 }
 
@@ -2033,13 +2026,15 @@ clixon_plugin_report_err_xml(clixon_handle h,
 
     if (clixon_plugin_rpc_err_set(h)) {
         ret = netconf_gen_rpc_err_xml(h, xret);
-    } else {
+    }
+    else {
         if ((cberr = cbuf_new()) == NULL) {
             clixon_err(OE_UNIX, errno, "cbuf_new");
             goto done;
         }
         va_start(ap, err);
         vcprintf(cberr, err, ap);
+        va_end(ap);
         ret = netconf_operation_failed_xml(xret, "application",
                                            cbuf_get(cberr));
         cbuf_free(cberr);
