@@ -157,6 +157,95 @@ restconf_fields_filter(cxobj *xdata,
     return retval;
 }
 
+/*! Remove element children below a depth, as the backend does for <get depth>
+ *
+ * Mirrors get_nacm_and_reply() in the backend, which prints <data> with
+ * depth+1 levels, ie depth levels below <data>.
+ * @param[in]  x      Node; its element children are level 1
+ * @param[in]  depth  Levels to keep; 0 removes all element children
+ */
+static int
+xml_depth_prune(cxobj *x,
+                int    depth)
+{
+    cxobj *xc;
+    cxobj *xn;
+
+    xc = xml_child_each(x, NULL, CX_ELMNT);
+    while (xc != NULL){
+        xn = xml_child_each(x, xc, CX_ELMNT);
+        if (depth <= 0){
+            if (xml_purge(xc) < 0)
+                return -1;
+        }
+        else if (xml_depth_prune(xc, depth - 1) < 0)
+            return -1;
+        xc = xn;
+    }
+    return 0;
+}
+
+/*! Read the datastore a RESTCONF GET addresses
+ *
+ * {+restconf}/data and {+restconf}/ds/ietf-datastores:operational are
+ * combined config and state, read with <get>. The conventional datastores
+ * running, candidate and startup each refer to that datastore
+ * (RFC 8527 Sec 3.1) and hold configuration only (RFC 8342 Sec 5.1), so they
+ * are read with <get-config> on that datastore: "content=nonconfig" yields
+ * no data, and "depth" is applied here since <get-config> has no depth.
+ * @param[in]  h        Clixon handle
+ * @param[in]  ds       Datastore resource, IETF_DS_NONE for {+restconf}/data
+ * @param[in]  xpath    XPath filter
+ * @param[in]  nsc      Namespace context of xpath
+ * @param[in]  content  RFC 8040 "content" query parameter
+ * @param[in]  depth    RFC 8040 "depth" query parameter, -1 is unbounded
+ * @param[in]  defaults RFC 8040 "with-defaults" query parameter, or NULL
+ * @param[out] xret     <rpc-reply> tree, free with xml_free
+ * @retval     0        OK, xret may contain an rpc-error
+ * @retval    -1        Error
+ */
+static int
+restconf_get_ds(clixon_handle   h,
+                ietf_ds_t       ds,
+                char           *xpath,
+                cvec           *nsc,
+                netconf_content content,
+                int32_t         depth,
+                char           *defaults,
+                cxobj         **xret)
+{
+    const char *db;
+    cxobj      *xd;
+
+    switch (ds){
+    case IETF_DS_RUNNING:
+        db = "running";
+        break;
+    case IETF_DS_CANDIDATE:
+        db = "candidate";
+        break;
+    case IETF_DS_STARTUP:
+        db = "startup";
+        break;
+    default:
+        return clicon_rpc_get(h, xpath, nsc, content, depth, defaults, xret);
+    }
+    if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, defaults, xret) < 0)
+        return -1;
+    /* Like clicon_rpc_get, the result is <data> or an <rpc-reply><rpc-error> */
+    if ((xd = *xret) == NULL || strcmp(xml_name(xd), "data") != 0)
+        return 0;
+    if (content == CONTENT_NONCONFIG){ /* conventional datastores have no state */
+        if (xml_depth_prune(xd, 0) < 0)
+            return -1;
+    }
+    else if (depth >= 0){
+        if (xml_depth_prune(xd, depth) < 0)
+            return -1;
+    }
+    return 0;
+}
+
 /*! Generic GET (both HEAD and GET)
  *
  * According to restconf
@@ -196,7 +285,8 @@ api_data_get2(clixon_handle  h,
               cvec          *qvec,
               int            pretty,
               restconf_media media_out,
-              int            head)
+              int            head,
+              ietf_ds_t      ds)
 {
     int        retval = -1;
     char      *xpath = NULL;
@@ -308,7 +398,7 @@ api_data_get2(clixon_handle  h,
     }
 
     clixon_debug(CLIXON_DBG_RESTCONF, "path:%s", xpath);
-    if ((ret = clicon_rpc_get(h, xpath, nsc, content, depth, defaults, &xret)) < 0){
+    if ((ret = restconf_get_ds(h, ds, xpath, nsc, content, depth, defaults, &xret)) < 0){
         if (netconf_operation_failed_xml(&xerr, "protocol", clixon_err_reason()) < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -742,7 +832,7 @@ api_data_head(clixon_handle h,
               restconf_media media_out,
               ietf_ds_t     ds)
 {
-    return api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 1);
+    return api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 1, ds);
 }
 
 /*! REST GET method
@@ -788,7 +878,7 @@ api_data_get(clixon_handle h,
     switch (media_out){
     case YANG_DATA_XML:
     case YANG_DATA_JSON: /* ad-hoc algorithm in get to determine if a paginated request */
-        if (api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 0) < 0)
+        if (api_data_get2(h, req, api_path, pi, qvec, pretty, media_out, 0, ds) < 0)
             goto done;
         break;
     case YANG_PAGINATION_XML:

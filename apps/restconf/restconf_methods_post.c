@@ -62,6 +62,7 @@
 #include "restconf_handle.h"
 #include "restconf_api.h"
 #include "restconf_err.h"
+#include "restconf_methods.h"
 #include "restconf_methods_post.h"
 #include "banned.h"
 
@@ -352,22 +353,8 @@ api_data_post(clixon_handle h,
                 NETCONF_BASE_NAMESPACE);
     }
     cprintf(cbx, " %s>", NETCONF_MESSAGE_ID_ATTR); /* bind nc to netconf namespace */
-    cprintf(cbx, "<edit-config");
-    /* RFC8040 Sec 1.4:
-     * If this is a "data" request and the NETCONF server supports :startup,
-     * the RESTCONF server MUST automatically update the non-volatile startup
-     * configuration datastore, after the "running" datastore has been altered
-     * as a consequence of a RESTCONF edit operation.
-     */
-    if ((IETF_DS_NONE == ds) &&
-        if_feature(h, "ietf-netconf", "startup") &&
-        !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-        cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
-    }
-    cprintf(cbx, " %s:autocommit=\"true\" xmlns:%s=\"%s\"",
-            CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    cprintf(cbx, "><target><candidate /></target>");
+    if (restconf_edit_config_open(h, cbx, ds) < 0)
+        goto done;
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;

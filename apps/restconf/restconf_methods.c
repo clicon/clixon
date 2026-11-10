@@ -181,6 +181,57 @@ match_list_keys(yang_stmt *y,
     return retval;
 }
 
+/*! Open an internal <edit-config> for a RESTCONF edit of datastore ds
+ *
+ * Prints "<edit-config ...><target>...</target>" and selects the target and
+ * the Clixon commit attributes from the resource that was addressed:
+ *
+ *  {+restconf}/data               candidate + autocommit (RFC 8040 Sec 1.4),
+ *                                 + copystartup if :startup (RFC 8040 Sec 1.4)
+ *  {+restconf}/ds/...:candidate   candidate + autocommit (RFC 8040 Sec 1.4,
+ *                                 which RFC 8527 Sec 3.2 does not change)
+ *  (running and startup are read-only resources, see api_data())
+ *
+ * @param[in]  h    Clixon handle
+ * @param[in]  cbx  Buffer to print to
+ * @param[in]  ds   Datastore resource of the request, IETF_DS_NONE for /data
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+int
+restconf_edit_config_open(clixon_handle h,
+                          cbuf         *cbx,
+                          ietf_ds_t     ds)
+{
+    const char *target = "candidate";
+    int         autocommit = 1;
+    int         copystartup = 0;
+
+    switch (ds){
+    case IETF_DS_NONE:
+        /* RFC8040 Sec 1.4:
+         * If this is a "data" request and the NETCONF server supports :startup,
+         * the RESTCONF server MUST automatically update the non-volatile startup
+         * configuration datastore, after the "running" datastore has been altered
+         * as a consequence of a RESTCONF edit operation.
+         */
+        copystartup = if_feature(h, "ietf-netconf", "startup") &&
+            !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE");
+        break;
+    default:
+        break;
+    }
+    cprintf(cbx, "<edit-config");
+    if (copystartup || autocommit)
+        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
+    if (copystartup)
+        cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
+    if (autocommit)
+        cprintf(cbx, " %s:autocommit=\"true\"", CLIXON_LIB_PREFIX);
+    cprintf(cbx, "><target><%s /></target>", target);
+    return 0;
+}
+
 /*! Common PUT plain PATCH method
  *
  * Code checks if object exists.
@@ -535,22 +586,8 @@ api_data_write(clixon_handle h,
             NETCONF_BASE_NAMESPACE);  /* bind nc to netconf namespace */
     cprintf(cbx, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cbx, ">");
-    cprintf(cbx, "<edit-config");
-    /* RFC8040 Sec 1.4:
-     * If this is a "data" request and the NETCONF server supports :startup,
-     * the RESTCONF server MUST automatically update the non-volatile startup
-     * configuration datastore, after the "running" datastore has been altered
-     * as a consequence of a RESTCONF edit operation.
-     */
-    if ((IETF_DS_NONE == ds) &&
-        if_feature(h, "ietf-netconf", "startup") &&
-        !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-        cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
-        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    }
-    cprintf(cbx, " %s:autocommit=\"true\" xmlns:%s=\"%s\"",
-            CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    cprintf(cbx, "><target><candidate /></target>");
+    if (restconf_edit_config_open(h, cbx, ds) < 0)
+        goto done;
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;
@@ -795,22 +832,8 @@ api_data_delete(clixon_handle h,
             NETCONF_BASE_NAMESPACE);
     cprintf(cbx, " %s", NETCONF_MESSAGE_ID_ATTR); /* XXX: use incrementing sequence */
     cprintf(cbx, ">");
-    cprintf(cbx, "<edit-config");
-    /* RFC8040 Sec 1.4:
-     * If this is a "data" request and the NETCONF server supports :startup,
-     * the RESTCONF server MUST automatically update the non-volatile startup
-     * configuration datastore, after the "running" datastore has been altered
-     * as a consequence of a RESTCONF edit operation.
-     */
-    if ((IETF_DS_NONE == ds) &&
-        if_feature(h, "ietf-netconf", "startup") &&
-        !clicon_option_bool(h, "CLICON_RESTCONF_STARTUP_DONTUPDATE")){
-        cprintf(cbx, " xmlns:%s=\"%s\"", CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-        cprintf(cbx, " %s:copystartup=\"true\"", CLIXON_LIB_PREFIX);
-    }
-    cprintf(cbx, " %s:autocommit=\"true\" xmlns:%s=\"%s\"",
-            CLIXON_LIB_PREFIX, CLIXON_LIB_PREFIX, CLIXON_LIB_NS);
-    cprintf(cbx, "><target><candidate /></target>");
+    if (restconf_edit_config_open(h, cbx, ds) < 0)
+        goto done;
     cprintf(cbx, "<default-operation>none</default-operation>");
     if (clixon_xml2cbuf1(cbx, xtop, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
         goto done;

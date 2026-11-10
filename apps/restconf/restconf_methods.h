@@ -42,6 +42,7 @@
  * Prototypes
  */
 int api_data_options(clixon_handle h, void *req);
+int restconf_edit_config_open(clixon_handle h, cbuf *cbx, ietf_ds_t ds);
 int api_data_write(clixon_handle h, void *req, char *api_path0,
                    int pi,
                    cvec *qvec, char *data,

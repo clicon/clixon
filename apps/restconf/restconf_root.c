@@ -355,8 +355,12 @@ api_data(clixon_handle h,
     /* We assume that dynamic datastores are read only at this time 20201105 */
     if (IETF_DS_DYNAMIC == ds)
         dynamic = 1;
+    /* startup: NETCONF has no <edit-config> of startup (RFC 6241 Sec 7.2
+     * target is candidate or running), so this server cannot modify it with
+     * a RESTCONF edit: RFC 8527 Sec 3.2 "405 Method Not Allowed" */
     if ((IETF_DS_INTENDED == ds) || (IETF_DS_RUNNING == ds)
-        || (IETF_DS_DYNAMIC == ds) || (IETF_DS_OPERATIONAL == ds)) {
+        || (IETF_DS_DYNAMIC == ds) || (IETF_DS_OPERATIONAL == ds)
+        || (IETF_DS_STARTUP == ds)) {
         read_only = 1;
     }
 
@@ -371,26 +375,25 @@ api_data(clixon_handle h,
     else if (strcmp(request_method, "GET")==0) {
         retval = api_data_get(h, req, api_path, pi, qvec, pretty, media_out, ds);
     }
+    else if (read_only &&
+             (strcmp(request_method, "POST") == 0 || strcmp(request_method, "PUT") == 0 ||
+              strcmp(request_method, "PATCH") == 0 || strcmp(request_method, "DELETE") == 0)) {
+        /* RFC 8527 Sec 3.2: any attempt to modify a read-only datastore fails.
+         * Previously PATCH fell through to api_data_patch() after sending the
+         * 405, and POST was not checked, so both edited running. */
+        retval = restconf_method_notallowed(h, req, "OPTIONS,HEAD,GET", pretty, media_out);
+    }
     else if (strcmp(request_method, "POST")==0) {
         retval = api_data_post(h, req, api_path, pi, qvec, data, pretty, restconf_content_type(h), media_out, ds);
     }
     else if (strcmp(request_method, "PUT")==0) {
-        if (read_only)
-            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
-        else
-            retval = api_data_put(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
+        retval = api_data_put(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "PATCH")==0) {
-        if (read_only) {
-            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
-        }
         retval = api_data_patch(h, req, api_path, pi, qvec, data, pretty, media_out, ds);
     }
     else if (strcmp(request_method, "DELETE")==0) {
-        if (read_only)
-            retval = restconf_method_notallowed(h, req, "GET,POST", pretty, media_out);
-        else
-            retval = api_data_delete(h, req, api_path, pi, pretty, media_out, ds);
+        retval = api_data_delete(h, req, api_path, pi, pretty, media_out, ds);
     }
     else{
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid HTTP data method") < 0)
@@ -587,7 +590,9 @@ api_root_restconf(clixon_handle        h,
             ds = IETF_DS_RUNNING;
         else if (0 == strcmp(pvec[3], "ietf-datastores:candidate"))
             ds = IETF_DS_CANDIDATE;
-        else if (0 == strcmp(pvec[3], "ietf-datastores:startup"))
+        else if (0 == strcmp(pvec[3], "ietf-datastores:startup") &&
+                 if_feature(h, "ietf-netconf", "startup"))
+            /* RFC 8527 Sec 3.1: only datastores the server implements */
             ds = IETF_DS_STARTUP;
         else if (0 == strcmp(pvec[3], "ietf-datastores:operational")) {
             /* See https://tools.ietf.org/html/rfc8527#section-3.1
