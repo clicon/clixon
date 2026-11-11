@@ -54,6 +54,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: a JSON member prefix longer than 255 bytes left the XML node nameless and crashed RESTCONF in `strcmp()`
 * Fixed: [CLI parsing and completion of union leafrefs](https://github.com/clicon/clixon/pull/696): preserve child commands and resolve prefixes in imported leafref typedefs
 * Fixed: [edit-config of an anydata node breaks sibling order, causing duplicate list entries](https://github.com/clicon/clixon/pull/708)
 * Fixed: "xpath: bound recursion depth to prevent stack-overflow DoS", author: Pexa Rubinstein <pexaxep@gmail.com>

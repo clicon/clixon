@@ -210,8 +210,11 @@ json_current_new(clixon_json_yacc *jy,
         goto done;
     if ((x = xml_new(id, jy->jy_current, CX_ELMNT)) == NULL)
         goto done;
-    if (xml_prefix_set(x, prefix) < 0)
+    if (xml_prefix_set(x, prefix) < 0){
+        /* xml_new() already linked x under the parent */
+        xml_purge(x);
         goto done;
+    }
 
     /* If topmost, add to top-list created list */
     if (jy->jy_current == jy->jy_xtop){
@@ -260,7 +263,11 @@ json_current_clone(clixon_json_yacc *jy)
         } else {
             maybe_prefixed_name = strdup(name);
         }
-        json_current_new(jy, maybe_prefixed_name);
+        if (json_current_new(jy, maybe_prefixed_name) < 0){
+            if (maybe_prefixed_name)
+                free(maybe_prefixed_name);
+            return -1;
+        }
         if (maybe_prefixed_name)
             free(maybe_prefixed_name);
     }
@@ -310,7 +317,13 @@ objlist       : pair             { _PARSE_DEBUG("objlist->pair");}
               | objlist ',' pair { _PARSE_DEBUG("objlist->objlist , pair");}
               ;
 
-pair          : string { json_current_new(_JY, cbuf_get($1));cbuf_free($1); _JY->jy_cbuf_str = NULL;} ':'
+pair          : string {
+                    int _ret = json_current_new(_JY, cbuf_get($1));
+                    cbuf_free($1);
+                    _JY->jy_cbuf_str = NULL;
+                    if (_ret < 0)
+                        _YYERROR("json_current_new");
+                } ':'
                 value  { json_current_pop(_JY);}{ _PARSE_DEBUG("pair->string : value");}
               ;
 
