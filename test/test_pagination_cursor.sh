@@ -63,8 +63,8 @@ CURSOR_LIN="bGlu"         # base64(lin)
 CURSOR_INVALID="bm9zdWNodXNlcg=="  # base64("nosuchuser"), does not match any member-id
 
 # For the "next"/"previous" metadata annotations.
-#   previous = base64(key at index first_shown-1), or "" if < 0
-#   next     = base64(key at index last_shown+1), or "" if out of range
+#   previous = base64(key at index first_shown-1), absent on the first page (Sec 3.4)
+#   next     = base64(key at index last_shown+1), absent on the last page (Sec 3.4)
 
 # Build the expected <members> reply for a list of member-ids
 # Args: member-id...
@@ -84,17 +84,27 @@ function membersreply()
     echo "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\">$xmllist</members></data></rpc-reply>"
 }
 
-# Same as membersreply(), but also expects the "previous"/"next" cursor metadata (Sec 3.1.6)
-# as attributes on the first returned member, in the exact order clixon emits them: the
-# "previous" attribute, then the "xmlns:lpg" binding (added as its side effect), then "next".
-# Args: previous-value next-value member-id...
+# Same as membersreply(), but also expects the "remaining"/"previous"/"next" metadata
+# (Sec 3.1.6, 3.1.7) as attributes on the first returned member, in the exact order clixon
+# emits them.
+# Args: remaining-value previous-value next-value member-id...
 function membersreply_cursor()
 {
-    local prev="$1"
-    local next="$2"
-    shift 2
+    local rem="$1"
+    local prev="$2"
+    local next="$3"
+    shift 3
     local xmllist=""
-    local attrs=" lpg:previous=\"$prev\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\" lpg:next=\"$next\""
+    local attrs=""
+    local a
+    for a in "remaining=$rem" "previous=$prev" "next=$next"; do
+        if [ -n "${a#*=}" ]; then
+            attrs="${attrs} lpg:${a%%=*}=\"${a#*=}\""
+            if [ "${attrs#* xmlns:lpg}" = "$attrs" ]; then # first attribute: add binding
+                attrs="${attrs} xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\""
+            fi
+        fi
+    done
     local first=1
     for m in "$@"; do
         case $m in
@@ -139,16 +149,19 @@ REQ_A332="<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"
 REQ_A333="<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><cursor>$CURSOR_LIN</cursor><limit>2</limit></list-pagination></get-config></rpc>"
 
 new "A.3.3.1 Cursor using the default value (limit=2) -> alice, bob"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A3311" "" "$(membersreply_cursor "" "$CURSOR_ERIC" alice bob)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A3311" "" "$(membersreply_cursor 3 "" "$CURSOR_ERIC" alice bob)"
 
-new "A.3.3.1 previous metadata is empty (first page)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A3311" 'lpg:previous=""'
+new "A.3.3.1 previous metadata is absent (first page)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A3311" "" "" --not-- "lpg:previous"
+
+new "A.3.3.1 remaining metadata is 3"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A3311" 'lpg:remaining="3"'
 
 new "A.3.3.1 next metadata points to eric"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A3311" "lpg:next=\"$CURSOR_ERIC\""
 
 new "A.3.3.2 Cursor using the 'next' value (cursor=eric, limit=2) -> eric, joe"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A332" "" "$(membersreply_cursor "$CURSOR_BOB" "$CURSOR_LIN" eric joe)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A332" "" "$(membersreply_cursor 1 "$CURSOR_BOB" "$CURSOR_LIN" eric joe)"
 
 new "A.3.3.2 previous metadata points to bob"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A332" "lpg:previous=\"$CURSOR_BOB\""
@@ -156,17 +169,20 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A332" "lpg:
 new "A.3.3.2 next metadata points to lin"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A332" "lpg:next=\"$CURSOR_LIN\""
 
+new "A.3.3.2 remaining metadata is 1"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A332" 'lpg:remaining="1"'
+
 new "A.3.3.3 Cursor using another 'next' value (cursor=lin, limit=2) -> lin (only one left)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A333" "" "$(membersreply_cursor "$CURSOR_JOE" "" lin)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A333" "" "$(membersreply_cursor "" "$CURSOR_JOE" "" lin)"
 
 new "A.3.3.3 previous metadata points to joe"
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A333" "lpg:previous=\"$CURSOR_JOE\""
 
-new "A.3.3.3 next metadata is empty (last page)"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A333" 'lpg:next=""'
+new "A.3.3.3 next and remaining metadata are absent (last page)"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$REQ_A333" "" "" --not-- "lpg:next" "lpg:remaining"
 
 new "A.3.3.4 Cursor using an invalid value -> error-app-tag cursor-not-found"
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><cursor>$CURSOR_INVALID</cursor></list-pagination></get-config></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>application</error-type><error-tag>invalid-value</error-tag><error-app-tag>cursor-not-found</error-app-tag><error-severity>error</error-severity>"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get-config><source><running/></source><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><cursor>$CURSOR_INVALID</cursor></list-pagination></get-config></rpc>" "<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag><error-app-tag>cursor-not-found</error-app-tag><error-severity>error</error-severity>"
 
 # Note: the draft's expects error-app-tag "cursor-with-exclude-error", but clixon rejects it earlier with YANG validation
 new "A.3.3.5 Cursor used together with offset -> rejected by the offset leaf's own when-constraint"

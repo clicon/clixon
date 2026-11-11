@@ -424,7 +424,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
  </get-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
-<interface><name>eth1</name></interface>\
+<interface lpg:remaining=\"1\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"><name>eth1</name></interface>\
 <interface><name>eth2</name><mtu>9000</mtu></interface>\
 </interfaces></data></rpc-reply>"
 
@@ -438,7 +438,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
  </get-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
-<interface><name>eth1</name><mtu>1500</mtu></interface>\
+<interface lpg:remaining=\"1\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"><name>eth1</name><mtu>1500</mtu></interface>\
 <interface><name>eth2</name><mtu>9000</mtu></interface>\
 </interfaces></data></rpc-reply>"
 
@@ -452,7 +452,7 @@ expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
  </get-config></rpc>" \
 "" \
 "<rpc-reply $DEFAULTNS><data><interfaces $EXAMPLENS>\
-<interface><name>eth1</name></interface>\
+<interface lpg:remaining=\"1\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"><name>eth1</name></interface>\
 <interface><name>eth2</name><mtu>9000</mtu></interface>\
 </interfaces></data></rpc-reply>"
 

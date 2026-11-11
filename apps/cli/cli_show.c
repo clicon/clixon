@@ -1532,6 +1532,7 @@ cli_pagination(clixon_handle h,
                                          limit*i,  /* offset */
                                          limit,    /* limit */
                                          NULL, NULL, NULL, /* nyi */
+                                         NULL,     /* where nsc */
                                          &xret) < 0){
             goto done;
         }

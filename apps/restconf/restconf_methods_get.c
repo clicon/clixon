@@ -68,38 +68,6 @@
 /* Forward */
 static int api_data_pagination(clixon_handle h, void *req, char *api_path, int pi, cvec *qvec, int pretty, restconf_media media_out);
 
-/*! Validate 'where' pagination parameter against safe key-predicate character set
- *
- * Per draft-ietf-netconf-list-pagination the 'where' value is a key-predicate
- * expression of the form: name='val' [and name='val' ...].
- * Reject any character outside that grammar to block XPath injection.
- * Characters permitted outside quoted strings: [A-Za-z0-9_:.-= \t]
- * Single- and double-quoted string contents are passed through unchanged.
- * @retval  0  Safe
- * @retval -1  Unsafe character detected
- */
-static int
-where_predicate_valid(const char *where)
-{
-    const char *p = where;
-    char        q = 0;
-
-    while (*p) {
-        if (q) {
-            if (*p == q)
-                q = 0;
-        } else if (*p == '\'' || *p == '"') {
-            q = *p;
-        } else if (!isalnum((unsigned char)*p) &&
-                   *p != '_' && *p != ':' && *p != '-' &&
-                   *p != '.' && *p != '=' && *p != ' ' && *p != '\t') {
-            return -1;
-        }
-        p++;
-    }
-    return q ? -1 : 0;   /* unterminated string literal is also invalid */
-}
-
 /*! Filter top-level data nodes based on "fields" query parameter (RFC 8040 Sec 4.8.3)
  *
  * Simple implementation: only top-level module:node selection at data root.
@@ -250,6 +218,7 @@ api_data_get2(clixon_handle  h,
     char      *defaults = NULL;
     char      *fields_str = NULL;
     cvec      *nscd = NULL;
+    int        paginate;
     int        ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -263,10 +232,16 @@ api_data_get2(clixon_handle  h,
     if (api_path){
         if ((xtop = xml_new("top", NULL, CX_ELMNT)) == NULL)
             goto done;
-        /* Translate api-path to xml, but to validate the api-path, note: strict=1
-         * xtop and xbot unnecessary for this function but needed by function
+        /* Ad-hoc method to determine pagination request: one of "limit/offset/.." is defined */
+        paginate = !head &&
+            (cvec_find(qvec, "where")     || cvec_find(qvec, "sort-by") ||
+             cvec_find(qvec, "direction") || cvec_find(qvec, "offset") ||
+             cvec_find(qvec, "limit")     || cvec_find(qvec, "sublist-limit"));
+        /* Translate api-path to xml, but to validate the api-path.
+         * strict=1 except for pagination, where list nodes without keys are valid targets
+         * (draft-ietf-netconf-list-pagination-rc Sec 2.1).
          */
-        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, 1,
+        if ((ret = api_path2xml_mnt(api_path, yspec, xtop, YC_DATANODE, !paginate,
                                     restconf_apipath_mount_cb, h, NULL, &y, &xerr)) < 0)
             goto done;
         if (ret == 0){ /* validation failed */
@@ -283,14 +258,9 @@ api_data_get2(clixon_handle  h,
             goto ok;
         }
 
-        /* Ad-hoc method to determine json pagination request:
-         * address list and one of "item/offset/.." is defined
-         */
-        if (!head && y &&
-            (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST) &&
-            (cvec_find(qvec, "where")     || cvec_find(qvec, "sort-by") ||
-             cvec_find(qvec, "direction") || cvec_find(qvec, "offset") ||
-             cvec_find(qvec, "limit")     || cvec_find(qvec, "sublist-limit"))){
+        /* Pagination request addressing a list or leaf-list */
+        if (paginate && y &&
+            (yang_keyword_get(y) == Y_LIST || yang_keyword_get(y) == Y_LEAF_LIST)){
             if (api_data_pagination(h, req, api_path, 0, qvec, pretty, media_out) < 0)
                 goto done;
             goto ok;
@@ -513,6 +483,11 @@ api_data_pagination(clixon_handle  h,
     char      *sort;
     char      *where;
     char      *ns;
+    cvec      *wherensc = NULL;
+    yang_stmt *ymod;
+    char      *modname;
+    char      *wns;
+    int        inext;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
     if ((yspec = clicon_dbspec_yang(h)) == NULL){
@@ -623,16 +598,26 @@ api_data_pagination(clixon_handle  h,
     direction = cvec_find_str(qvec, "direction");
     sort = cvec_find_str(qvec, "sort-by");
     where = cvec_find_str(qvec, "where");
-    if (where != NULL && where_predicate_valid(where) < 0) {
-        if (netconf_bad_attribute_xml(&xerr, "application", "where",
-                                      "Invalid characters in where predicate") < 0)
+    if (where != NULL){
+        /* The where expression is parsed and evaluated separately in the backend. */
+        if ((wherensc = xml_nsctx_init(NULL, NULL)) == NULL)
             goto done;
-        if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
-            goto done;
-        goto ok;
+        inext = 0;
+        while ((ymod = yn_iter(yspec, &inext)) != NULL){
+            if (yang_keyword_get(ymod) != Y_MODULE)
+                continue;
+            modname = yang_argument_get(ymod);
+            /* Only bind modules referenced in where, to keep the message small */
+            if (strstr(where, modname) == NULL)
+                continue;
+            if ((wns = yang_find_mynamespace(ymod)) != NULL &&
+                xml_nsctx_add(wherensc, modname, wns) < 0)
+                goto done;
+        }
     }
     if (clicon_rpc_get_pageable_list(h, "running", xpath, nsc, content,
                                      depth, NULL, offset, limit, direction, sort, where,
+                                     wherensc,
                                      &xret) < 0){
         if (netconf_operation_failed_xml(&xerr, "protocol", clixon_err_reason()) < 0)
             goto done;
@@ -713,6 +698,8 @@ api_data_pagination(clixon_handle  h,
         free(xpath);
     if (nsc)
         xml_nsctx_free(nsc);
+    if (wherensc)
+        xml_nsctx_free(wherensc);
     if (xpr)
         xml_free(xpr);
     if (xtop)

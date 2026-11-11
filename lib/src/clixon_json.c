@@ -680,15 +680,150 @@ nullchild(cbuf      *cb,
     return retval;
 }
 
-/*! Encode json metadata
+/*! Find a md:annotation statement by name in a YANG module
  *
- * This function could be more general, code based on two examples:
- * 1) ietf-list-pagination:remaining
+ * @param[in]  ymod  YANG module
+ * @param[in]  name  Annotation name, eg "remaining"
+ * @retval     yma   The md:annotation statement
+ * @retval     NULL  Not found
+ * @see yang_metadata_annotation_check
+ */
+static yang_stmt *
+json_metadata_annotation_find(yang_stmt  *ymod,
+                              const char *name)
+{
+    yang_stmt *yma;
+    cg_var    *cv;
+    char      *n;
+    int        inext = 0;
+
+    while ((yma = yn_iter(ymod, &inext)) != NULL){
+        /* Assume here md:annotation is written using canonical prefix */
+        if (yang_keyword_get(yma) != Y_UNKNOWN)
+            continue;
+        if (strcmp(yang_argument_get(yma), "md:annotation") != 0)
+            continue;
+        if ((cv = yang_cv_get(yma)) != NULL &&
+            (n = cv_string_get(cv)) != NULL &&
+            strcmp(n, name) == 0)
+            return yma;
+    }
+    return NULL;
+}
+
+/*! Check if a string is a (possibly negative) decimal integer
+ *
+ * @param[in]  val  String
+ * @retval     1    Integer
+ * @retval     0    Not integer
+ */
+static int
+json_metadata_is_integer(const char *val)
+{
+    const char *p = val;
+
+    if (*p == '-')
+        p++;
+    if (*p == '\0')
+        return 0;
+    for (; *p; p++)
+        if (!isdigit((unsigned char)*p))
+            return 0;
+    return 1;
+}
+
+/*! Check if a metadata value of a given YANG type is encoded as a JSON literal (not a string)
+ *
+ * Per RFC 7951 Sec 6: int8-int32 and uint8-uint32 are JSON numbers, boolean is a JSON
+ * literal, all other types (including int64, uint64, decimal64) are JSON strings.
+ * For a union, member types are tried in order. Typedefs are not resolved and are
+ * encoded as strings.
+ * @param[in]  ytype  YANG type statement
+ * @param[in]  val    Metadata value
+ * @retval     1      Encode as literal
+ * @retval     0      Encode as string
+ */
+static int
+json_metadata_type_literal(yang_stmt  *ytype,
+                           const char *val)
+{
+    char      *t;
+    yang_stmt *ys;
+    int        inext = 0;
+
+    t = yang_argument_get(ytype);
+    if (strcmp(t, "union") == 0){
+        while ((ys = yn_iter(ytype, &inext)) != NULL){
+            if (yang_keyword_get(ys) != Y_TYPE)
+                continue;
+            t = yang_argument_get(ys);
+            if (strcmp(t, "union") == 0){
+                if (json_metadata_type_literal(ys, val))
+                    return 1;
+                continue;
+            }
+            if (strcmp(t, "boolean") == 0 ||
+                strcmp(t, "int8") == 0 || strcmp(t, "int16") == 0 || strcmp(t, "int32") == 0 ||
+                strcmp(t, "uint8") == 0 || strcmp(t, "uint16") == 0 || strcmp(t, "uint32") == 0){
+                if (json_metadata_type_literal(ys, val))
+                    return 1;
+                continue; /* value not valid for this member, try next */
+            }
+            return 0; /* first non-literal member type: string */
+        }
+        return 0;
+    }
+    if (strcmp(t, "boolean") == 0)
+        return strcmp(val, "true") == 0 || strcmp(val, "false") == 0;
+    if (strcmp(t, "int8") == 0 || strcmp(t, "int16") == 0 || strcmp(t, "int32") == 0 ||
+        strcmp(t, "uint8") == 0 || strcmp(t, "uint16") == 0 || strcmp(t, "uint32") == 0)
+        return json_metadata_is_integer(val);
+    return 0;
+}
+
+/*! Encode a metadata value according to the type of its md:annotation
+ *
+ * @param[out] cb   Output buffer
+ * @param[in]  yma  md:annotation statement, or NULL (then encode as string)
+ * @param[in]  val  Metadata value
+ * @retval     0    OK
+ * @retval    -1    Error
+ */
+static int
+json_metadata_value(cbuf      *cb,
+                    yang_stmt *yma,
+                    char      *val)
+{
+    int        retval = -1;
+    yang_stmt *ytype;
+
+    if (val == NULL)
+        val = "";
+    if (yma != NULL &&
+        (ytype = yang_find(yma, Y_TYPE, NULL)) != NULL &&
+        json_metadata_type_literal(ytype, val))
+        cprintf(cb, "%s", val);
+    else{
+        cprintf(cb, "\"");
+        if (json_str_escape_cdata(cb, val) < 0)
+            goto done;
+        cprintf(cb, "\"");
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*! Encode json metadata of one node
+ *
+ * All metadata pairs of a node are encoded in a single object, eg:
+ * 1) ietf-list-pagination:remaining and next
  *  {
- *     "example-social:uint8-numbers": [17],
- *     "@example-social:uint8-numbers": [
+ *     "example-social:member": [...],
+ *     "@example-social:member": [
  *        {
- *           "ietf-list-pagination:remaining": 5
+ *           "ietf-list-pagination:remaining": 3,
+ *           "ietf-list-pagination:next": "ZXJpYw=="
  *        }
  *      ]
  *    }
@@ -696,17 +831,22 @@ nullchild(cbuf      *cb,
  *     "@mtu" : {
  *          "ietf-netconf-with-defaults:default" : true
  *      },
+ * @param[out] cb      Output buffer
+ * @param[in]  level   Indentation level
+ * @param[in]  pretty  Pretty-print output
+ * @param[in]  prefix  Module name prefix of node, or NULL
+ * @param[in]  name    Name of node
+ * @param[in]  pairs   Encoded metadata pairs, eg "mod:name":value,...
+ * @param[in]  list    Node is list or leaf-list entry
+ * @retval     0       OK
  */
 static int
 json_metadata_encoding(cbuf  *cb,
-                       cxobj *x,
                        int    level,
                        int    pretty,
                        char  *prefix,
                        char  *name,
-                       char  *modname2,
-                       char  *name2,
-                       char  *val,
+                       char  *pairs,
                        int    list)
 {
     cprintf(cb, ",\"@");
@@ -716,76 +856,61 @@ json_metadata_encoding(cbuf  *cb,
     if (list)
         cprintf(cb, "[");
     cprintf(cb, "%*s", pretty?((level+1)*PRETTYPRINT_INDENT):0, "{");
-    cprintf(cb, "\"%s:%s\":%s", modname2, name2, val);
+    cprintf(cb, "%s", pairs);
     cprintf(cb, "%*s", pretty?((level+1)*PRETTYPRINT_INDENT):0, "}");
     if (list)
         cprintf(cb, "%*s", pretty?(level*PRETTYPRINT_INDENT):0, "]");
     return 0;
 }
 
-/*! Encode XML attributes as JSON meta-data
+/*! Encode an XML attribute as a JSON metadata pair
  *
  * There are two methods for this:
  * 1) Registered meta-data according to RFC 7952 using md:annotate.
  *    This is derived from a YANG module
  *    Examples: ietf-origin:origin, ietf-list-pagination: remaining
+ *    The value is encoded according to the type of the annotation.
  * 2) Assigned, if someother mechanism, eg XSD is used
  *    Example: ietf-restconf: default
  * If neither matches, the attribute is skipped
- * @param[in]     xc       XML attribute
- * @param[in]     xp       XML node, parent of xa
- * @param[in]     yp       Yang spec of xp
- * @param[in]     level    Indentation level
- * @param[in]     pretty   Pretty-print output (2 means debug)
- * @param[in]     modname  Name of yang module
- * @param[in,out] metacb   Encode into cbuf
+ * The pair is appended to pairs, comma-separated, see json_metadata_encoding
+ * @param[in]     xa       XML attribute
+ * @param[in]     yp       Yang spec of parent of xa
+ * @param[in,out] pairs    Encode "module:name":value into cbuf
  * @retval        0        OK
  * @retval       -1        Error
  * @see RFC7952
  */
 static int
 xml2json_encode_attr(cxobj     *xa,
-                     cxobj     *xp,
                      yang_stmt *yp,
-                     int        level,
-                     int        pretty,
-                     char      *modname,
-                     cbuf      *metacb)
+                     cbuf      *pairs)
 {
-    int           retval = -1;
-    int           ismeta = 0;
-    char         *namespace = NULL;
-    yang_stmt    *ymod;
-    enum rfc_6020 ykeyw;
+    int        retval = -1;
+    char      *namespace = NULL;
+    yang_stmt *ymod;
+    yang_stmt *yma;
 
     if (xml2ns(xa, xml_prefix(xa), &namespace) < 0)
         goto done;
     /* Check for (1) registered meta-data */
     if (namespace != NULL && yp){
-        ykeyw = yang_keyword_get(yp);
         if ((ymod = yang_find_module_by_namespace(ys_spec(yp), namespace)) != NULL){
-            if (yang_metadata_annotation_check(xa, ymod, &ismeta) < 0)
-                goto done;
-            if (ismeta)
-                if (json_metadata_encoding(metacb, xp, level, pretty,
-                                           modname, xml_name(xp),
-                                           yang_argument_get(ymod),
-                                           xml_name(xa),
-                                           xml_value(xa),
-                                           ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
+            if ((yma = json_metadata_annotation_find(ymod, xml_name(xa))) != NULL){
+                cprintf(pairs, "%s\"%s:%s\":",
+                        cbuf_len(pairs)?",":"",
+                        yang_argument_get(ymod), xml_name(xa));
+                if (json_metadata_value(pairs, yma, xml_value(xa)) < 0)
                     goto done;
+            }
         }
         /* Check for (2) assigned - hardcoded for now */
         else if (strcmp(namespace, "urn:ietf:params:xml:ns:netconf:default:1.0") == 0 &&
                  strcmp(xml_name(xa), "default") == 0){
-            /* RFC 7952 / RFC 8040 defaults attribute */
-            if (json_metadata_encoding(metacb, xp, level, pretty,
-                                       modname, xml_name(xp),
-                                       "ietf-netconf-with-defaults",
-                                       xml_name(xa),
-                                       xml_value(xa),
-                                       ykeyw == Y_LEAF_LIST || ykeyw == Y_LIST) < 0)
-                goto done;
+            /* RFC 7952 / RFC 8040 defaults attribute, boolean literal */
+            cprintf(pairs, "%s\"ietf-netconf-with-defaults:%s\":%s",
+                    cbuf_len(pairs)?",":"",
+                    xml_name(xa), xml_value(xa));
         }
     }
     retval = 0;
@@ -858,6 +983,7 @@ xml2json1_cbuf(cbuf                   *cb,
     int              commas;
     char            *modname = NULL;
     cbuf            *metacbc = NULL;
+    cbuf            *metapairs = NULL;
     int              exist;
 
     if ((ys = xml_spec(x)) != NULL){
@@ -961,12 +1087,16 @@ xml2json1_cbuf(cbuf                   *cb,
      * arraytype=* but child-type is BODY_CHILD
      * This is code for writing <a>42</a> as "a":42 and not "a":"42"
      */
+    if ((metapairs = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
     commas = xml_child_nr_notype(x, CX_ATTR) - 1;
     for (i=0; i<xml_child_nr(x); i++){
         xc = xml_child_i(x, i);
         if (xml_type(xc) == CX_ATTR){
             if (metacbp &&
-                xml2json_encode_attr(xc, x, ys, level, pretty, modname, metacbp) < 0)
+                xml2json_encode_attr(xc, ys, metapairs) < 0)
                 goto done;
             continue;
         }
@@ -1000,6 +1130,15 @@ xml2json1_cbuf(cbuf                   *cb,
             goto done;
     }
 #endif
+    /* All metadata of x in one object, into the metadata buffer of the parent */
+    if (metacbp && cbuf_len(metapairs)){
+        if (json_metadata_encoding(metacbp, level, pretty,
+                                   modname, xml_name(x),
+                                   cbuf_get(metapairs),
+                                   ys && (yang_keyword_get(ys) == Y_LEAF_LIST ||
+                                          yang_keyword_get(ys) == Y_LIST)) < 0)
+            goto done;
+    }
     if (cbuf_len(metacbc)){
         cprintf(cb, "%s", cbuf_get(metacbc));
     }
@@ -1064,6 +1203,8 @@ xml2json1_cbuf(cbuf                   *cb,
  done:
     if (metacbc)
         cbuf_free(metacbc);
+    if (metapairs)
+        cbuf_free(metapairs);
     return retval;
 }
 

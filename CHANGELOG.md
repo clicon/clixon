@@ -34,7 +34,8 @@ Expected: January 2027
 * New `clixon_cli -e` option: exit with error on first failed command read from stdin or file (`-F`)
 * New `clixon-autocli@2026-10-01.yang` revision
   * Added extension: `expand`
-* Updated to `ietf-list-pagination@2026-10-09` / `ietf-list-pagination-nc@2026-10-09` draft revisions
+* List-pagination
+  * Updated to 2026-10-09 versions: Primary draft: `draft-ietf-netconf-listdraft-ietf-netconf-list-pagination-15.txt`
   * `sort-by` (renamed from `sort`), `where`, and `offset` are now `if-feature`-gated by the draft
   * `cursor` for single-key list is now supported, (multi-key and leaf-list NYI)
   * `locale` validated but entries are not sorted accordingly
@@ -49,6 +50,8 @@ Expected: January 2027
 
 Developers may need to change their code
 
+* Added `wherensc` parameter to `clicon_rpc_get_pageable_list()`
+  * Change call: clixon_rpc_get_pageable_list(..., xt)` --> clixon_rpc_get_pageable_list(..., NULL, xt)`
 * Added `db` parameter to `clixon_rpc_config_path_info()`
   * Change call: clixon_rpc_config_path_info(,,,,,, ...)` --> clixon_rpc_config_path_info(,,,,,,NULL, ...)`
 

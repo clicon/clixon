@@ -100,12 +100,6 @@
  */
 #define HTTP_DATA_INTERNAL_REDIRECT "index.html"
 
-/*! Enable "remaining" attribute (sub-feature of list pagination)
- *
- * See "remaining" annotation defined in module ietf-list-pagination.yang
- */
-#undef LIST_PAGINATION_REMAINING
-
 /*! If backend is restarted, clients will retry (once) and reconnect
  *
  * But only if the socket is cached, ie was created in the prior message,

@@ -63,7 +63,7 @@ int clicon_rpc_get_pageable_list(clixon_handle h, const char *datastore, const c
                                  cvec *nsc, netconf_content content, int32_t depth, const char *defaults,
                                  uint32_t offset, uint32_t limit,
                                  const char *direction, const char *sort, const char *where,
-                                 cxobj **xt);
+                                 cvec *wherensc, cxobj **xt);
 int clicon_rpc_close_session(clixon_handle h);
 int clicon_rpc_kill_session(clixon_handle h, uint32_t session_id);
 int clicon_rpc_validate(clixon_handle h, const char *db);

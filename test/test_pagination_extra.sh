@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# List pagination tests according to draft-ietf-netconf-list-pagination-04
-# sort-by and where in Appendix A.3.5
-# Also feature
-# Only NETCONF, see more extensive testng in _draft test
+# List pagination tests according to draft-ietf-netconf-list-pagination-15
+# direction, sort-by, where and combinations in Appendix A.3.4, A.3.5, A.3.6 and A.3.9
+# Only NETCONF, see RESTCONF variants in test_pagination_draft.sh
 
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -41,7 +40,7 @@ cat <<EOF > $cfg
 </clixon-config>
 EOF
 
-# See draft-netconf-list-pagination-04.txt A.2 (except stats and audit-log)
+# See draft-ietf-netconf-list-pagination-15 A.2 (except stats and audit-log)
 cat <<'EOF' > $dir/startup_db
 {"config":
    {
@@ -158,7 +157,7 @@ cat <<'EOF' > $dir/startup_db
 }
 EOF
 
-# See draft-netconf-list-pagination-04.txt A.2 (only stats and audit-log)
+# See draft-ietf-netconf-list-pagination-15 A.2 (only stats and audit-log)
 cat<<EOF > $fstate
 <members xmlns="https://example.com/ns/example-social">
    <member>
@@ -263,19 +262,45 @@ new "A.3.5.1.3.  sort-by type is a list and sort-by node is an indirect descende
 # alice, lin, bob, eric, joe
 expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><sort-by>stats/joined</sort-by></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id>.*<member-id>lin</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>"
 
-new "A.3.6.2.  where, match on descendent string containing a substring"
+# where tests: where is parsed and evaluated separately per entry (draft-15 Sec 3.1.1)
+# Prefixes are declared on the where element (-nc Sec 4.1.7), unprefixed names have the
+# namespace of the target node (RFC 7950 6.4.1)
+GETMEMBERS="<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\">"
+MEMBERSREPLY="<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\">"
+WHEREERR="<rpc-reply $DEFAULTNS><rpc-error><error-type>protocol</error-type><error-tag>invalid-value</error-tag><error-severity>error</error-severity><error-message>"
+
+new "A.3.6.1.  where, match of leaf-list's values"
+# NOTE: the draft's where "uint8-numbers[. > 7]" evaluates to false with a leaf-list
+# entry as context node, ". > 7" is used instead
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member[es:member-id='alice']/es:favorites/es:uint8-numbers\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where>. &gt; 7</where></list-pagination></get></rpc>" "" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id><favorites><uint8-numbers>17</uint8-numbers><uint8-numbers>13</uint8-numbers><uint8-numbers>11</uint8-numbers></favorites></member></members></data></rpc-reply>"
+
+new "A.3.6.2.  where, match on descendant string containing a substring"
 # alice, bob, eric, joe, lin (member is ordered-by system: canonicalized by key.
 # DEVIATION: the draft's own dataset order is bob, eric, alice, lin, joe
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">.[contains (es:email-address,'@example.com')]</where></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>.*<member-id>lin</member-id>"
+# All match since lin is lin@example.com in this data set
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where>.[contains(email-address,'@example.com')]</where></list-pagination></get></rpc>" "${MEMBERSREPLY}<member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>.*<member-id>lin</member-id>"
 
-new "A.3.6.3.  where, match on decendent timestamp starting with a substring"
-# alice, bob, eric, joe (member is ordered-by system: canonicalized by key;
-# posts//post[starts-with(timestamp,'2020')]
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">es:posts/es:post[contains(es:timestamp,'2020')]</where></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>"
+new "A.3.6.2.  where, prefixed, prefix declared on where element"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where xmlns:es=\"https://example.com/ns/example-social\">.[contains(es:email-address,'@example.com')]</where></list-pagination></get></rpc>" "${MEMBERSREPLY}<member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>.*<member-id>lin</member-id>"
+
+new "A.3.6.3.  where, match on descendant timestamp starting with a substring"
+# alice, bob, eric, joe (member is ordered-by system: canonicalized by key), not lin (no posts)
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where>posts/post[starts-with(timestamp,'2020')]</where></list-pagination></get></rpc>" "${MEMBERSREPLY}<member><member-id>alice</member-id>.*<member-id>bob</member-id>.*<member-id>eric</member-id>.*<member-id>joe</member-id>" "" --not-- "<member-id>lin</member-id>"
+
+new "where, undefined prefix -> invalid-value"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where>.[contains(ex:email-address,'x')]</where></list-pagination></get></rpc>" "${WHEREERR}Undefined prefix"
+
+new "where, invalid XPath -> invalid-value"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where>.[contains(</where></list-pagination></get></rpc>" "${WHEREERR}Invalid XPath"
+
+new "where, attempt to break out of predicate -> invalid-value"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where xmlns:es=\"https://example.com/ns/example-social\">true()] | /es:members/es:member[false()</where></list-pagination></get></rpc>" "${WHEREERR}Invalid XPath"
 
 new "A.3.9.1.  All six parameters at once"
 # eric, bob
-expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "<rpc $DEFAULTNS><get><filter type=\"xpath\" select=\"/es:members/es:member\" xmlns:es=\"https://example.com/ns/example-social\"/><list-pagination xmlns=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination-nc\"><where xmlns:ex=\"https://example.com/ns/example-social\">//es:post[contains(es:timestamp,'2020')]</where><sort-by>member-id</sort-by><direction>backwards</direction><offset>2</offset><limit>2</limit></list-pagination></get></rpc>" "<rpc-reply $DEFAULTNS><data><members xmlns=\"https://example.com/ns/example-social\"><member><member-id>eric</member-id>.*<member-id>bob</member-id>"
+# NOTE: the draft's where "stats/joined[starts-with(timestamp,'2020')]" is invalid (joined
+# is a leaf), "starts-with(stats/joined,'2020')" is used instead. sublist-limit is NYI
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" "$GETMEMBERS<where>starts-with(stats/joined,'2020')</where><sort-by>member-id</sort-by><direction>backwards</direction><offset>2</offset><limit>2</limit></list-pagination></get></rpc>" "${MEMBERSREPLY}<member lpg:remaining=\"1\" xmlns:lpg=\"urn:ietf:params:xml:ns:yang:ietf-list-pagination\"><member-id>eric</member-id>.*<member-id>bob</member-id>"
 
 if [ $BE -ne 0 ]; then
     new "Kill backend"

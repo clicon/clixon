@@ -671,6 +671,92 @@ xpath_vec_ctx(cxobj      *xcur,
     return retval;
 }
 
+/*! Evaluate an already parsed XPath tree as a boolean with a given context node
+ *
+ * The XPath is parsed separately (eg with xpath_parse), which means the expression
+ * cannot change the structure of any surrounding XPath, as opposed to string
+ * concatenation of XPath expressions.
+ * @param[in]  xcur   Context node
+ * @param[in]  nsc    External XML namespace context, or NULL
+ * @param[in]  xptree Parsed XPath tree, see xpath_parse
+ * @retval     1      XPath evaluates to true, see XPath 1.0 boolean()
+ * @retval     0      XPath evaluates to false
+ * @retval    -1      Error
+ * @code
+ *   xpath_tree *xpt = NULL;
+ *   if (xpath_parse(expr, &xpt) < 0)
+ *     err;
+ *   if ((ret = xpath_tree_bool(x, nsc, xpt)) < 0)
+ *     err;
+ *   xpath_tree_free(xpt);
+ * @endcode
+ * @see xpath_vec_bool  Similar but parses an XPath format string
+ */
+int
+xpath_tree_bool(cxobj      *xcur,
+                cvec       *nsc,
+                xpath_tree *xptree)
+{
+    int     retval = -1;
+    xp_ctx  xc = {0,};
+    xp_ctx *xr = NULL;
+
+    if (xptree == NULL){
+        clixon_err(OE_XML, EINVAL, "xptree is NULL");
+        goto done;
+    }
+    xc.xc_type = XT_NODESET;
+    xc.xc_node = xcur;
+    xc.xc_initial = xcur;
+    if (cxvec_append(xcur, &xc.xc_nodeset, &xc.xc_size) < 0)
+        goto done;
+    if (xp_eval(&xc, xptree, nsc, 0, &xr) < 0)
+        goto done;
+    if (xr)
+        retval = ctx2boolean(xr);
+    else
+        retval = 0;
+ done:
+    if (xc.xc_nodeset)
+        free(xc.xc_nodeset);
+    if (xr)
+        ctx_free(xr);
+    return retval;
+}
+
+/*! Check that all prefixes in node tests of a parsed XPath are bound in a namespace context
+ *
+ * Only XPath node tests (eg "pfx:name" or "pfx:*") are checked, not prefixes in
+ * string literals.
+ * @param[in]  xptree Parsed XPath tree, see xpath_parse
+ * @param[in]  nsc    XML namespace context
+ * @param[out] prefix First unbound prefix (points into xptree, do not free), or NULL
+ * @retval     1      All prefixes are bound
+ * @retval     0      An unbound prefix was found, see prefix
+ */
+int
+xpath_tree_prefix_check(xpath_tree *xptree,
+                        cvec       *nsc,
+                        char      **prefix)
+{
+    int ret;
+
+    if (prefix)
+        *prefix = NULL;
+    if (xptree == NULL)
+        return 1;
+    if (xptree->xs_type == XP_NODE &&
+        xptree->xs_s0 != NULL &&
+        (nsc == NULL || xml_nsctx_get(nsc, xptree->xs_s0) == NULL)){
+        if (prefix)
+            *prefix = xptree->xs_s0;
+        return 0;
+    }
+    if ((ret = xpath_tree_prefix_check(xptree->xs_c0, nsc, prefix)) == 0)
+        return 0;
+    return xpath_tree_prefix_check(xptree->xs_c1, nsc, prefix);
+}
+
 /*! XPath nodeset function where only the first matching entry is returned
  *
  * @param[in]  xcur      XML tree where to search

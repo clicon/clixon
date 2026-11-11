@@ -338,14 +338,15 @@ get_pagination_state_partial(clixon_handle h,
     goto done;
 }
 
-/*! Check if a locale name has a recognized POSIX locale format
+/*! Check if a locale name has a recognized locale format
  *
- * Per Section 3.1.3 Allowed Values: "A server MUST accept a known encoding
- * with or without trailing '.UTF-8'", eg both "sv_SE" and "sv_SE.UTF-8" must
- * be accepted.
- * This is a portable syntax check, ie "language[_TERRITORY][.encoding]"
+ * Per Section 3.1.3 Allowed Values: the format SHOULD follow the RFC 5646 language
+ * sub-tag format, eg "sv-SE", and "A server MUST accept a known encoding
+ * with or without trailing '.UTF-8'", eg both "sv-SE" and "sv-SE.UTF-8" must
+ * be accepted. The POSIX form "sv_SE" is also accepted for compatibility.
+ * This is a portable syntax check, ie "language[-REGION|_TERRITORY][.encoding]"
  * (or the special names "C"/"POSIX"), instead of a check against installed locale database.
- * @param[in]  loc  Locale name, eg "sv_SE" or "sv_SE.UTF-8"
+ * @param[in]  loc  Locale name, eg "sv-SE", "sv-SE.UTF-8" or "sv_SE"
  * @retval     1    Locale name is recognized
  * @retval     0    Locale name is not recognized
  */
@@ -363,7 +364,7 @@ locale_is_available(const char *loc)
         p++;
     if (islower((unsigned char)*p))
         p++;
-    if (*p == '_'){
+    if (*p == '-' || *p == '_'){
         p++;
         if (!isupper((unsigned char)*p++))
             return 0;
@@ -461,12 +462,10 @@ get_list_pagination(clixon_handle     h,
     int        j;
     dispatcher_entry_t *htable = NULL;
     cvec      *wherens = NULL;
-    //    int        extflag = 0;
-#ifdef LIST_PAGINATION_REMAINING
-    cxobj     *xcache;
-    uint32_t   total;
+    xpath_tree *wherexpt = NULL;
+    char      *pfx;
+    char      *ns;
     uint32_t   remaining = 0;
-#endif
     int        ret;
 
     clixon_debug(CLIXON_DBG_BACKEND | CLIXON_DBG_DETAIL, "");
@@ -519,8 +518,37 @@ get_list_pagination(clixon_handle     h,
     /* first processes the "where" parameter (see Section 3.1.1) */
     if ((x = xml_find_type(xe, NULL, "where", CX_ELMNT)) != NULL &&
         (where = xml_body(x)) != NULL){
+        /* -nc Sec 4.1.7: prefixes are declared as XML namespaces of the where element */
         if (xml_nsctx_node(x, &wherens) < 0)
             goto done;
+        /* Sec 3.1.1, RFC 7950 6.4.1: unprefixed names have the namespace of the context node */
+        if ((ns = yang_find_mynamespace(ylist)) != NULL &&
+            xml_nsctx_add(wherens, NULL, ns) < 0)
+            goto done;
+        /* Parse where separately, it cannot change the structure of the target xpath */
+        if (xpath_parse(where, &wherexpt) < 0){
+            if ((cbmsg = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cbmsg, "Invalid XPath in \"where\" parameter: %s", clixon_err_reason());
+            clixon_err_reset();
+            if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbmsg)) < 0)
+                goto done;
+            goto ok;
+        }
+        /* Sec 3.1.1: "If an XPath expression uses an undefined prefix, the server MUST
+         * return an invalid-value error." */
+        if (xpath_tree_prefix_check(wherexpt, wherens, &pfx) == 0){
+            if ((cbmsg = cbuf_new()) == NULL){
+                clixon_err(OE_UNIX, errno, "cbuf_new");
+                goto done;
+            }
+            cprintf(cbmsg, "Undefined prefix \"%s\" in \"where\" parameter", pfx);
+            if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbmsg)) < 0)
+                goto done;
+            goto ok;
+        }
     }
     /* then the "sort-by" parameter (see Section 3.1.2) */
     if ((x = xml_find_type(xe, NULL, "sort-by", CX_ELMNT)) != NULL){
@@ -534,14 +562,14 @@ get_list_pagination(clixon_handle     h,
     if ((x = xml_find_type(xe, NULL, "locale", CX_ELMNT)) != NULL &&
         (locale = xml_body(x)) != NULL){
         if (yang_is_ordered_by_user(ylist)){
-            if (netconf_invalid_value(cbret, "application",
+            if (netconf_invalid_value(cbret, "protocol",
                                       "The \"locale\" parameter is not relevant for an "
                                       "\"ordered-by user\" list or leaf-list") < 0)
                 goto done;
             goto ok;
         }
         if (!locale_is_available(locale)){
-            if (netconf_invalid_value_apptag(cbret, "application", "locale-unavailable",
+            if (netconf_invalid_value_apptag(cbret, "protocol", "locale-unavailable",
                                              "The \"locale\" parameter value is not a valid or "
                                              "available locale") < 0)
                 goto done;
@@ -553,7 +581,7 @@ get_list_pagination(clixon_handle     h,
     if ((x = xml_find_type(xe, NULL, "direction", CX_ELMNT)) != NULL &&
         (direction = xml_body(x)) != NULL) {
         if (strcmp(direction, "forwards") != 0 && strcmp(direction, "backwards") != 0){
-            if (netconf_bad_attribute(cbret, "application",
+            if (netconf_bad_attribute(cbret, "protocol",
                                       "direction", "Unrecognized value of direction attribute") < 0)
                 goto done;
             goto ok;
@@ -627,13 +655,26 @@ get_list_pagination(clixon_handle     h,
                 goto done;
         }
         /* first processes the "where" parameter (see Section 3.1.1) */
-        if (where){
-            if (xpath_vec(xret, nsc, "%s[%s]", &xvec, &xlen, xpath?xpath:"/", where) < 0)
+        if (wherexpt){
+            /* Evaluate where as a boolean with each entry as context node */
+            if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
                 goto done;
             for (i=0; i<xlen; i++){
                 if ((x = xvec[i]) == NULL)
                     break;
-                xml_flag_set(x, XML_FLAG_MARK);
+                if ((ret = xpath_tree_bool(x, wherens, wherexpt)) < 0){
+                    if ((cbmsg = cbuf_new()) == NULL){
+                        clixon_err(OE_UNIX, errno, "cbuf_new");
+                        goto done;
+                    }
+                    cprintf(cbmsg, "Error evaluating \"where\" parameter: %s", clixon_err_reason());
+                    clixon_err_reset();
+                    if (netconf_invalid_value(cbret, "protocol", cbuf_get(cbmsg)) < 0)
+                        goto done;
+                    goto ok;
+                }
+                if (ret)
+                    xml_flag_set(x, XML_FLAG_MARK);
             }
             /* Remove everything that is not marked */
             if (xml_tree_prune_flagged_sub(xret, XML_FLAG_MARK, 1, NULL) < 0)
@@ -683,7 +724,7 @@ get_list_pagination(clixon_handle     h,
              * Sec 3.1.6 Conformance requires it MUST be supported on "config true" leaf-lists too */
             if (yang_keyword_get(ylist) != Y_LIST ||
                 (cvk = yang_cvec_get(ylist)) == NULL || cvec_len(cvk) == 0){
-                if (netconf_invalid_value(cbret, "application",
+                if (netconf_invalid_value(cbret, "protocol",
                                           "The \"cursor\" parameter is not supported on this target") < 0)
                     goto done;
                 goto ok;
@@ -692,7 +733,7 @@ get_list_pagination(clixon_handle     h,
             cvi = cvec_i(cvk, 0);
             keyname = cv_string_get(cvi);
             if (clixon_base64_decode(cursor, &curval) < 0){
-                if (netconf_invalid_value_apptag(cbret, "application", "cursor-not-found",
+                if (netconf_invalid_value_apptag(cbret, "protocol", "cursor-not-found",
                                                  "The \"cursor\" parameter value is not valid base64") < 0)
                     goto done;
                 goto ok;
@@ -710,7 +751,7 @@ get_list_pagination(clixon_handle     h,
             free(curval);
             curval = NULL;
             if (!found){
-                if (netconf_invalid_value_apptag(cbret, "application", "cursor-not-found",
+                if (netconf_invalid_value_apptag(cbret, "protocol", "cursor-not-found",
                                                  "The \"cursor\" parameter value does not match any entry "
                                                  "in the target list") < 0)
                     goto done;
@@ -720,7 +761,7 @@ get_list_pagination(clixon_handle     h,
         else if (offset > xlen){
             /* 3.1.5: If the offset value exceeds the number of entries in the result, the error also includes the
              * error-app-tag value 'offset-out-of-range'." */
-            if (netconf_invalid_value_apptag(cbret, "application", "offset-out-of-range",
+            if (netconf_invalid_value_apptag(cbret, "protocol", "offset-out-of-range",
                                              "The \"offset\" parameter value is greater than the number "
                                              "of instances in the target list or leaf-list resource") < 0)
                 goto done;
@@ -732,6 +773,11 @@ get_list_pagination(clixon_handle     h,
             if ((upper = offset+limit) > xlen)
                 upper = xlen;
         }
+        /* Sec 3.1.7: number of entries in the working result-set not returned due to "limit" */
+        if (limit != 0 && upper < xlen)
+            remaining = xlen - upper;
+        if (limit != 0 && offset < upper)
+            xfirst = xvec[offset]; /* metadata target: first entry actually returned */
         /* NYI: only the first key of a multi-key list is used */
         if (limit != 0 &&
             where == NULL && sort_by == NULL && direction == NULL && !has_offset_elem &&
@@ -739,26 +785,17 @@ get_list_pagination(clixon_handle     h,
             (cvk = yang_cvec_get(ylist)) != NULL && cvec_len(cvk) > 0){
             cvi = cvec_i(cvk, 0);
             keyname = cv_string_get(cvi);
+            /* Sec 3.4: "previous" is absent on the first page, "next" is absent on the last page */
             if (offset > 0 && (x = xvec[offset-1]) != NULL &&
                 (kval = xml_find_body(x, keyname)) != NULL){
                 if (clixon_base64_encode(kval, strlen(kval), &prev_val) < 0)
                     goto done;
-            }
-            else if ((prev_val = strdup("")) == NULL){
-                clixon_err(OE_UNIX, errno, "strdup");
-                goto done;
             }
             if (upper < xlen && (x = xvec[upper]) != NULL &&
                 (kval = xml_find_body(x, keyname)) != NULL){
                 if (clixon_base64_encode(kval, strlen(kval), &next_val) < 0)
                     goto done;
             }
-            else if ((next_val = strdup("")) == NULL){
-                clixon_err(OE_UNIX, errno, "strdup");
-                goto done;
-            }
-            if (offset < upper)
-                xfirst = xvec[offset]; /* attribute target: first entry actually returned */
         }
         for (i=offset; i<upper; i++){
             if ((x = xvec[i]) == NULL)
@@ -776,42 +813,21 @@ get_list_pagination(clixon_handle     h,
             free(xvec);
             xvec = NULL;
         }
-#ifdef LIST_PAGINATION_REMAINING
-        /* Get total/remaining
-         */
-        if ((xcache = xmldb_cache_get(h, db)) != NULL){
-            if (xpath_count(xcache, nsc, xpath, &total) < 0)
-                goto done;
-            if (total >= (offset + limit))
-                remaining = total - (offset + limit);
-        }
-#endif
     }
     if (xpath_vec(xret, nsc, "%s", &xvec, &xlen, xpath?xpath:"/") < 0)
         goto done;
     /* Help function to filter out anything that is outside of xpath */
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
         goto done;
-#ifdef LIST_PAGINATION_REMAINING
-    /* Add remaining attribute Sec 3.1.5:
-       Any list or leaf-list that is limited includes, on the first element in the result set,
-       a metadata value [RFC7952] called "remaining"*/
-    if (limit && x1){
-        cxobj *xa;
-        cbuf  *cba = NULL;
+    /* Sec 3.1.7, 3.4: "remaining" on the first entry returned, absent if no entries remain */
+    if (xfirst != NULL && remaining > 0){
+        char rstr[16];
 
-        /* Add remaining attribute */
-        if ((cba = cbuf_new()) == NULL){
-            clixon_err(OE_UNIX, errno, "cbuf_new");
+        snprintf(rstr, sizeof(rstr), "%u", remaining);
+        if (xml_add_attr(xfirst, "remaining", rstr, "lpg",
+                         "urn:ietf:params:xml:ns:yang:ietf-list-pagination") == NULL)
             goto done;
-        }
-        cprintf(cba, "%u", remaining);
-        if (xml_add_attr(x1, "remaining", cbuf_get(cba), "cp", "http://clicon.org/clixon-netconf-list-pagination") == NULL)
-        goto done;
-        if (cba)
-            cbuf_free(cba);
     }
-#endif /* LIST_PAGINATION_REMAINING */
     /* Add "previous"/"next" attributes on the first entry actually returned */
     if (xfirst != NULL){
         if (prev_val != NULL &&
@@ -828,6 +844,8 @@ get_list_pagination(clixon_handle     h,
  done:
     if (wherens)
         cvec_free(wherens);
+    if (wherexpt)
+        xpath_tree_free(wherexpt);
     if (xvec)
         free(xvec);
     if (cbmsg)

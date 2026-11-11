@@ -1161,6 +1161,7 @@ clixon_rpc_get1(clixon_handle   h,
  * @param[in]  direction Collection/clixon extension
  * @param[in]  sort      Collection/clixon extension
  * @param[in]  where     Collection/clixon extension
+ * @param[in]  wherensc  Namespace context (prefix bindings) for where, or NULL
  * @param[out] xt        XML tree. Free with xml_free.
  *                       Either <config> or <rpc-error>.
  * @retval     0         OK
@@ -1182,6 +1183,7 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
                              const char     *direction,
                              const char     *sort,
                              const char     *where,
+                             cvec           *wherensc,
                              cxobj         **xt)
 {
     int        retval = -1;
@@ -1255,9 +1257,12 @@ clicon_rpc_get_pageable_list(clixon_handle   h,
     if (direction)
         cprintf(cb, "<direction>%s</direction>", direction);
     if (sort)
-        cprintf(cb, "<sort>%s</sort>", sort);
+        cprintf(cb, "<sort-by>%s</sort-by>", sort);
     if (where) {
-        cprintf(cb, "<where>");
+        cprintf(cb, "<where");
+        if (wherensc && xml_nsctx_cbuf(cb, wherensc) < 0)
+            goto done;
+        cprintf(cb, ">");
         if (xml_chardata_cbuf_append(cb, 0, where) < 0)
             goto done;
         cprintf(cb, "</where>");
