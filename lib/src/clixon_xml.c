@@ -634,6 +634,14 @@ xml_prefix_set(cxobj      *xn,
     size_t namelen;
     int    retval = -1;
 
+    /* Prefix length is stored in uint8_t: reject before the name is freed */
+    if (prefix && *prefix){
+        prefixlen = strlen(prefix);
+        if (prefixlen > UINT8_MAX){
+            clixon_err(OE_XML, EINVAL, "xml prefix too long: %zu", prefixlen);
+            goto done;
+        }
+    }
     /* Save current name before freeing combined allocation */
     if ((name_copy = strdup(xml_name(xn) ? xml_name(xn) : "")) == NULL){
         clixon_err(OE_XML, errno, "strdup");
@@ -648,10 +656,6 @@ xml_prefix_set(cxobj      *xn,
         namelen = strlen(name_copy);
         if (prefix && *prefix){
             prefixlen = strlen(prefix);
-            if (prefixlen > UINT8_MAX){
-                clixon_err(OE_XML, EINVAL, "xml prefix too long: %zu", prefixlen);
-                goto done;
-            }
             if ((alloc = malloc(prefixlen + 1 + namelen + 1)) == NULL){
                 clixon_err(OE_XML, errno, "malloc");
                 goto done;
