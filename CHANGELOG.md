@@ -57,6 +57,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [CLI accepts unlimited values for a leaf of type union of leafrefs](https://github.com/clicon/clixon/issues/707): generate one token from the referred type instead of a rest variable
 * Fixed: [CLI parsing and completion of union leafrefs](https://github.com/clicon/clixon/pull/696): preserve child commands and resolve prefixes in imported leafref typedefs
 * Fixed: [edit-config of an anydata node breaks sibling order, causing duplicate list entries](https://github.com/clicon/clixon/pull/708)
 * Fixed: "xpath: bound recursion depth to prevent stack-overflow DoS", author: Pexa Rubinstein <pexaxep@gmail.com>
