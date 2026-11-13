@@ -918,6 +918,143 @@ yang2cli_leaf_var_sub(clixon_handle h,
     return retval;
 }
 
+/*! Check if a (resolved) Yang union has a leafref sub-type, also in recursive unions
+ *
+ * @param[in]  ys     Yang statement of original leaf
+ * @param[in]  yunion Resolved union type
+ * @retval     1      Union has at least one leafref
+ * @retval     0      No leafref (or error)
+ */
+static int
+yang2cli_union_has_leafref(yang_stmt *ys,
+                           yang_stmt *yunion)
+{
+    yang_stmt *ytsub;
+    yang_stmt *yrestype;
+    char      *restype;
+    int        inext = 0;
+
+    while ((ytsub = yn_iter(yunion, &inext)) != NULL){
+        if (yang_keyword_get(ytsub) != Y_TYPE)
+            continue;
+        yrestype = NULL;
+        if (yang_type_resolve(ys, ys, ytsub, &yrestype,
+                              NULL, NULL, NULL, NULL, NULL) < 0 ||
+            yrestype == NULL)
+            continue;
+        restype = yang_argument_get(yrestype);
+        if (strcmp(restype, "leafref") == 0)
+            return 1;
+        if (strcmp(restype, "union") == 0 &&
+            yang2cli_union_has_leafref(ys, yrestype))
+            return 1;
+    }
+    return 0;
+}
+
+/*! Generate CLIgen variable for a leafref sub-type of a union
+ *
+ * The cligen type of a leafref is CGV_REST ("replaced by actual type"), but a REST variable
+ * consumes the rest of the command line, so a leaf with a union of leafrefs would accept
+ * "a b c" as a single value and allow endless input. Therefore, as for a plain leafref
+ * (see yang2cli_leafref_var), replace it with the type of the referred node. If the referred
+ * node cannot be resolved (or has a type that cannot be expressed as one variable, such as
+ * a union), fall back to a single-token string.
+ * @param[in]  h         Clixon handle
+ * @param[in]  ys        Yang statement of original leaf
+ * @param[in]  yleafref  Resolved leafref type (has a path statement)
+ * @param[in]  helptext  CLI help text
+ * @param[out] patpref   Keep track of pattern preferences
+ * @param[out] cb        Buffer where cligen code is written
+ * @retval     0         OK
+ * @retval    -1         Error
+ */
+static int
+yang2cli_var_union_leafref(clixon_handle h,
+                           yang_stmt    *ys,
+                           yang_stmt    *yleafref,
+                           char         *helptext,
+                           uint32_t     *patpref,
+                           cbuf         *cb)
+{
+    int           retval = -1;
+    yang_stmt    *yscope = ys;     /* node that the leafref path is relative to */
+    yang_stmt    *ytype = yleafref;
+    yang_stmt    *ypath;
+    yang_stmt    *yref;
+    yang_stmt    *yrestype = NULL; /* resolved type of referred node, NULL: not resolved */
+    char         *path_arg;
+    char         *origtype = NULL;
+    char         *restype;
+    cvec         *cvv = NULL;
+    cvec         *patterns = NULL;
+    uint8_t       fraction_digits = 0;
+    int           options = 0;
+    enum cv_type  cvtype = CGV_STRING;
+    int           hops;
+
+    if ((patterns = cvec_new(0)) == NULL){
+        clixon_err(OE_UNIX, errno, "cvec_new");
+        goto done;
+    }
+    /* Follow chain of leafrefs to the first non-leafref type (limited to avoid loops) */
+    for (hops = 0; hops < 8; hops++){
+        if ((ypath = yang_find(ytype, Y_PATH, NULL)) == NULL ||
+            (path_arg = yang_argument_get(ypath)) == NULL)
+            break;
+        yref = NULL;
+        if (yang_path_arg(yscope, path_arg, &yref) < 0)
+            goto done;
+        if (yref == NULL || yref == yscope)
+            break; /* Not resolved */
+        if (origtype){
+            free(origtype);
+            origtype = NULL;
+        }
+        yrestype = NULL;
+        if (yang_type_get(yref, &origtype, &yrestype,
+                          &options, &cvv, patterns, NULL, &fraction_digits) < 0)
+            goto done;
+        if (yrestype == NULL)
+            break;
+        restype = yang_argument_get(yrestype);
+        if (strcmp(restype, "leafref") == 0){
+            yscope = yref;
+            ytype = yrestype;
+            yrestype = NULL;
+            continue;
+        }
+        if (strcmp(restype, "union") == 0 || strcmp(restype, "empty") == 0){
+            yrestype = NULL;
+            break;
+        }
+        if (clicon_type2cv(origtype, restype, yref, &cvtype) < 0)
+            goto done;
+        break;
+    }
+    if (yrestype == NULL){
+        /* Fallback: not resolved, use a single token */
+        cvtype = CGV_STRING;
+        options = 0;
+        cvv = NULL;
+        cvec_free(patterns);
+        if ((patterns = cvec_new(0)) == NULL){
+            clixon_err(OE_UNIX, errno, "cvec_new");
+            goto done;
+        }
+    }
+    if (yang2cli_leaf_var_sub(h, ys, yrestype, helptext, cvtype,
+                              options, cvv, patterns, fraction_digits, patpref, cb) < 0)
+        goto done;
+    retval = 0;
+ done:
+    if (origtype)
+        free(origtype);
+    if (patterns)
+        cvec_free(patterns);
+    return retval;
+}
+
 /*! Resolve a single Yang union and generate code
  *
  * Part of generating CLI code for Yang leaf statement to CLIgen variable
@@ -967,13 +1104,13 @@ yang2cli_var_union_one(clixon_handle h,
         if (yang2cli_var_union(h, ys, origtype, ytype, helptext, patpref, cb) < 0)
             goto done;
     }
+    else if (restype && strcmp(restype, "leafref") == 0){ /* leafref in union */
+        if (yang2cli_var_union_leafref(h, ys, ytype, helptext, patpref, cb) < 0)
+            goto done;
+    }
     else {
         if (clicon_type2cv(origtype, restype, ys, &cvtype) < 0)
             goto done;
-        /* Leafrefs in unions are single values, not the rest of the command.
-         * The backend validates the value against the referenced type. */
-        if (restype && strcmp(restype, "leafref") == 0)
-            cvtype = CGV_STRING;
         if ((retval = yang2cli_leaf_var_sub(h, ys, ytype, helptext, cvtype,
                                             options, cvv, patterns, fraction_digits, patpref, cb)) < 0)
             goto done;
@@ -1208,6 +1345,16 @@ yang2cli_leaf_var(clixon_handle h,
     }
     if (clicon_type2cv(origtype, restype, yreferred, &cvtype) < 0)
         goto done;
+    /* leafref (and union with leafrefs) map to CGV_REST ("replaced by actual type"). A REST
+     * variable consumes the rest of the command line which makes the leaf accept endless input
+     * ("a b c" is one value). Where the actual type is not determined (the completion variable),
+     * use a single token string instead.
+     * Note: unions without leafrefs are left as is.
+     */
+    if (cvtype == CGV_REST &&
+        (strcmp(restype, "leafref") == 0 ||
+         (strcmp(restype, "union") == 0 && yang2cli_union_has_leafref(ys, yrestype))))
+        cvtype = CGV_STRING;
     cvtypestr = cv_type2str(cvtype);
     if (autocli_completion(h, &completionp) < 0)
         goto done;
