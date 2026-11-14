@@ -163,26 +163,29 @@ restconf_fields_filter(cxobj *xdata,
  * depth+1 levels, ie depth levels below <data>.
  * @param[in]  x      Node; its element children are level 1
  * @param[in]  depth  Levels to keep; 0 removes all element children
+ * @retval     0        OK
+ * @retval    -1        Error
  */
 static int
 xml_depth_prune(cxobj *x,
                 int    depth)
 {
+    int    retval = -1;
     cxobj *xc;
-    cxobj *xn;
+    int    i = 0;
 
-    xc = xml_child_each(x, NULL, CX_ELMNT);
-    while (xc != NULL){
-        xn = xml_child_each(x, xc, CX_ELMNT);
+    while ((xc = xml_child_iter(x, &i, CX_ELMNT)) != NULL){
         if (depth <= 0){
             if (xml_purge(xc) < 0)
-                return -1;
+                goto done;
+            i--; /* xml_purge() shifted the remaining children down one */
         }
         else if (xml_depth_prune(xc, depth - 1) < 0)
-            return -1;
-        xc = xn;
+            goto done;
     }
-    return 0;
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Read the datastore a RESTCONF GET addresses
@@ -214,6 +217,7 @@ restconf_get_ds(clixon_handle   h,
                 char           *defaults,
                 cxobj         **xret)
 {
+    int         retval = -1;
     const char *db;
     cxobj      *xd;
 
@@ -228,22 +232,27 @@ restconf_get_ds(clixon_handle   h,
         db = "startup";
         break;
     default:
-        return clicon_rpc_get(h, xpath, nsc, content, depth, defaults, xret);
+        if (clicon_rpc_get(h, xpath, nsc, content, depth, defaults, xret) < 0)
+            goto done;
+        goto ok;
     }
     if (clicon_rpc_get_config(h, NULL, db, xpath, nsc, defaults, xret) < 0)
-        return -1;
+        goto done;
     /* Like clicon_rpc_get, the result is <data> or an <rpc-reply><rpc-error> */
     if ((xd = *xret) == NULL || strcmp(xml_name(xd), "data") != 0)
-        return 0;
+        goto ok;
     if (content == CONTENT_NONCONFIG){ /* conventional datastores have no state */
         if (xml_depth_prune(xd, 0) < 0)
-            return -1;
+            goto done;
     }
     else if (depth >= 0){
         if (xml_depth_prune(xd, depth) < 0)
-            return -1;
+            goto done;
     }
-    return 0;
+ ok:
+    retval = 0;
+ done:
+    return retval;
 }
 
 /*! Generic GET (both HEAD and GET)
@@ -257,6 +266,7 @@ restconf_get_ds(clixon_handle   h,
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
  * @param[in]  head     If 1 is HEAD, otherwise GET
+ * @param[in]  ds       RFC8527 datastore
  * @retval     0        OK
  * @retval    -1        Error
  * @code
@@ -818,7 +828,7 @@ api_data_pagination(clixon_handle  h,
  * @param[in]  qvec     Vector of query string (QUERY_STRING)
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0        OK
  * @retval    -1        Error
  */

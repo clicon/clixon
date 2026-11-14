@@ -24,7 +24,8 @@ Expected: January 2027
 
 ### Features
 
-* Added `timing` debug flag to combine with a subject-area to get instrumentation data (when implemented)
+* Improve RESTCONF NMDS datastore support according to RFC8527
+* Debug: Added `timing` debug flag to combine with a subject-area to get instrumentation data (when implemented)
 * Fixed text/curly LLVM libFuzzer and fixed leaks
 * Added RESTCONF `filter` query parameter for event streams
 * Added anthropic/OSS-scanner support

@@ -155,6 +155,9 @@ expectpart "$(curl $CURLOPTS -X PUT -H "$JSON" $DS:candidate/example:x/y=3 -d '{
 new "y=3 is in running"
 expectpart "$(curl $CURLOPTS -X GET $DS:running/example:x/y=3)" 0 "HTTP/$HVER 200"
 
+new "GET ds/running depth=1 prunes all three y entries"
+expectpart "$(curl $CURLOPTS -X GET "$DS:running?depth=1")" 0 "HTTP/$HVER 200" '"example:x"' --not-- '"a":"'
+
 stop
 
 # --------------------------------------------------------------------
