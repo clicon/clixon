@@ -223,13 +223,9 @@ restconf_get_ds(clixon_handle   h,
 
     switch (ds){
     case IETF_DS_RUNNING:
-        db = "running";
-        break;
     case IETF_DS_CANDIDATE:
-        db = "candidate";
-        break;
     case IETF_DS_STARTUP:
-        db = "startup";
+        db = restconf_ds_int2str(ds);
         break;
     default:
         if (clicon_rpc_get(h, xpath, nsc, content, depth, defaults, xret) < 0)

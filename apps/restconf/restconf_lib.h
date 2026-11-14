@@ -88,6 +88,8 @@ const restconf_media restconf_media_str2int(const char *media);
 int   restconf_media_in_list(const char *media, const char *list);
 const restconf_media restconf_media_list_str2int(const char *list);
 const char *restconf_media_int2str(restconf_media media);
+ietf_ds_t   restconf_ds_str2int(const char *str);
+const char *restconf_ds_int2str(ietf_ds_t ds);
 int   restconf_str2proto(const char *str);
 const char *restconf_proto2str(int proto);
 restconf_media restconf_content_type(clixon_handle h);

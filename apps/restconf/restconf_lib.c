@@ -214,6 +214,20 @@ static const map_str2int http_media_map[] = {
     {NULL,                              -1}
 };
 
+/* RFC 8342 datastore identities, ietf-datastores@2018-02-14.yang
+ * Names without the "ietf-datastores:" prefix, which are also the backend db names
+ * @see ietf_ds_t
+ */
+static const map_str2int ietf_ds_map[] = {
+    {"running",     IETF_DS_RUNNING},
+    {"candidate",   IETF_DS_CANDIDATE},
+    {"startup",     IETF_DS_STARTUP},
+    {"intended",    IETF_DS_INTENDED},
+    {"dynamic",     IETF_DS_DYNAMIC},
+    {"operational", IETF_DS_OPERATIONAL},
+    {NULL,          -1}
+};
+
 /* Mapping to http proto types */
 static const map_str2int http_proto_map[] = {
     {"http/1.0",  HTTP_10},
@@ -314,6 +328,34 @@ const char *
 restconf_media_int2str(restconf_media media)
 {
     return clicon_int2str(http_media_map, media);
+}
+
+/*! Datastore identity name to enum
+ *
+ * @param[in]  str           Identity name without prefix, eg "running"
+ * @retval     ds            Datastore
+ * @retval     IETF_DS_NONE  Not found
+ */
+ietf_ds_t
+restconf_ds_str2int(const char *str)
+{
+    int ds;
+
+    if ((ds = clicon_str2int(ietf_ds_map, str)) < 0)
+        return IETF_DS_NONE;
+    return ds;
+}
+
+/*! Datastore enum to identity name, eg "running", or NULL for IETF_DS_NONE
+ *
+ * @param[in]  ds    Datastore
+ * @retval     name  Identity name without prefix, also the backend db name
+ * @retval     NULL  Not found
+ */
+const char *
+restconf_ds_int2str(ietf_ds_t ds)
+{
+    return clicon_int2str(ietf_ds_map, ds);
 }
 
 int

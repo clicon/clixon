@@ -482,6 +482,8 @@ api_root_restconf(clixon_handle h,
     char          *username = NULL;
     cxobj         *xerr = NULL;
     ietf_ds_t      ds;
+    char          *ds_name = NULL;        /* RFC8527: "ietf-datastores:<datastore>" */
+    const char    *ds_prefix = "ietf-datastores:";
     int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -525,7 +527,7 @@ api_root_restconf(clixon_handle h,
             goto done;
         goto ok;
     }
-    if (strlen(pvec[0]) != 0){
+    if (path[0] != '/'){
         if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, restconf api root expected") < 0)
             goto done;
         if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -586,24 +588,31 @@ api_root_restconf(clixon_handle h,
             goto ok;
         }
 
-        /* Assign ds; See https://tools.ietf.org/html/rfc8342#section-7 */
-        if (strcmp(pvec[3], "ietf-datastores:running") == 0)
-            ds = IETF_DS_RUNNING;
-        else if (strcmp(pvec[3], "ietf-datastores:candidate") == 0)
-            ds = IETF_DS_CANDIDATE;
-        else if (strcmp(pvec[3], "ietf-datastores:startup") == 0 &&
-                 if_feature(h, "ietf-netconf", "startup"))
+        ds_name = pvec[3];
+        /* Assign ds; See https://tools.ietf.org/html/rfc8342#section-7
+         * RFC 8527 Sec 3.1: namespace-qualified form */
+        if (strncmp(ds_name, ds_prefix, strlen(ds_prefix)) == 0)
+            ds = restconf_ds_str2int(ds_name + strlen(ds_prefix));
+        switch (ds){
+        case IETF_DS_RUNNING:
+        case IETF_DS_CANDIDATE:
+            break;
+        case IETF_DS_STARTUP:
             /* RFC 8527 Sec 3.1: only datastores the server implements */
-            ds = IETF_DS_STARTUP;
-        else if (strcmp(pvec[3], "ietf-datastores:operational") == 0) {
+            if (!if_feature(h, "ietf-netconf", "startup"))
+                ds = IETF_DS_NONE;
+            break;
+        case IETF_DS_OPERATIONAL:
             /* See https://tools.ietf.org/html/rfc8527#section-3.1
              *     https://tools.ietf.org/html/rfc8342#section-5.3 */
-            if (0 > api_operational_state(h, req, request_method, pretty, media_out)) {
+            if (api_operational_state(h, req, request_method, pretty, media_out) < 0)
                 goto done;
-            }
             goto ok;
+        default: /* intended, dynamic: not implemented */
+            ds = IETF_DS_NONE;
+            break;
         }
-        else { /* Malformed request, unsupported datastore type */
+        if (ds == IETF_DS_NONE){ /* Malformed request, unsupported datastore type */
             if (netconf_invalid_value_xml(&xerr, "protocol", "Unsupported datastore type") < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
