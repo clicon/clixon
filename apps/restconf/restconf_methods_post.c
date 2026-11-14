@@ -24,14 +24,14 @@
   in which case the provisions of the GPL are applicable instead
   of those above. If you wish to allow use of your version of this file only
   under the terms of the GPL, and not to allow others to
-  use your version of this file under the terms of Apache License version 2, 
+  use your version of this file under the terms of Apache License version 2,
   indicate your decision by deleting the provisions above and replace them with
   the  notice and other provisions required by the GPL. If you do not delete
   the provisions above, a recipient may use your version of this file under
   the terms of any one of the Apache License version 2 or the GPL.
 
   ***** END LICENSE BLOCK *****
-  
+
   * Restconf method implementation for post: operation(rpc) and data
   * From RFC 8040 Section 4.4.  POST
  */
@@ -121,16 +121,16 @@ http_location_header(clixon_handle h,
 
 /*! Generic REST POST  method
  *
- * @param[in]  h        Clixon handle
- * @param[in]  req      Generic Www handle
- * @param[in]  api_path According to restconf (Sec 3.5.3.1 in rfc8040)
- * @param[in]  pcvec    Vector of path ie DOCUMENT_URI element
- * @param[in]  pi       Offset, where to start pcvec
- * @param[in]  qvec     Vector of query string (QUERY_STRING)
- * @param[in]  data     Stream input data
- * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle
+ * @param[in]  api_path  According to restconf (Sec 3.5.3.1 in rfc8040)
+ * @param[in]  pi        Offset, where to start pcvec
+ * @param[in]  qvec      Vector of query string (QUERY_STRING)
+ * @param[in]  data      Stream input data
+ * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
+ * @param[in]  media_in  Input media
  * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0         OK
  * @retval    -1         Error
  * restconf POST is mapped to edit-config create.
@@ -157,16 +157,16 @@ http_location_header(clixon_handle h,
  * @see api_data_put
  */
 int
-api_data_post(clixon_handle h,
-              void         *req,
-              char         *api_path,
-              int           pi,
-              cvec         *qvec,
-              char         *data,
-              int           pretty,
+api_data_post(clixon_handle  h,
+              void          *req,
+              char          *api_path,
+              int            pi,
+              cvec          *qvec,
+              char          *data,
+              int            pretty,
               restconf_media media_in,
               restconf_media media_out,
-              ietf_ds_t     ds)
+              ietf_ds_t      ds)
 {
     int            retval = -1;
     enum operation_type op = OP_CREATE;

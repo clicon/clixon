@@ -1313,6 +1313,7 @@ xml_child_order(cxobj *xp,
  * @see xml_child_index_each
  * @see xml_child_iter
  * @note  Wrapper over xml_child_iter, all calls should be replaced by that function.
+ * @note  This function is deprecated, use xml_child_iter instead.
  */
 cxobj *
 xml_child_each(cxobj          *xparent,

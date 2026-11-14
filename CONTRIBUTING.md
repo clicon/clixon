@@ -50,6 +50,31 @@ Function signatures are declared in include files or in forward declaration usin
 static int myfn(int par1, my_structure *par2);
 ```
 
+### Conditional blocks
+
+Boolean conditions are written as:
+```
+    if (xe->x_next + 1 < 0){
+        x = 0;
+    }
+    else {
+        x = 1;
+    }
+```
+
+Notes:
+1. Spaces between operand and operators
+2. If comparing a more complex expression or function call with a simple value, the value comes after the expression
+3. The else is on a separate row (not: "} else {"
+
+It is not necessary to have full brackets for single line, ie the following is OK (but be careful):
+```
+    if (x - 1 < 0)
+        x = 0;
+    else
+        x = 1;
+```
+
 ### Errors
 
 Error handling follows the "fail early and loud" principle. That is, unless a specific error-handling

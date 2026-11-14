@@ -194,9 +194,8 @@ match_list_keys(yang_stmt *y,
  *
  * @param[in]  h    Clixon handle
  * @param[in]  cbx  Buffer to print to
- * @param[in]  ds   Datastore resource of the request, IETF_DS_NONE for /data
+ * @param[in]  ds   RFC8527 datastore
  * @retval     0    OK
- * @retval    -1    Error
  */
 int
 restconf_edit_config_open(clixon_handle h,
@@ -237,26 +236,32 @@ restconf_edit_config_open(clixon_handle h,
  * Code checks if object exists.
  * PUT:   If it does not, set op to create, otherwise replace
  * PATCH: If it does not, fail, otherwise replace/merge
- * @param[in] plain_patch  fail if object does not exists AND merge (not replace)
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  h         Clixon handle
+ * @param[in]  req       Generic Www handle
+ * @param[in]  api_path0 According to restconf
+ * @param[in]  pi        Offset, where path starts
+ * @param[in]  qvec      Vector of query string (QUERY_STRING)
+ * @param[in]  data      Stream input data
  * @param[in]  pretty    Pretty-print
- * @param[in]  media_in  Restconf input media
- * @param[in]  media_out Restconf output media
+ * @param[in]  media_in  Input media
+ * @param[in]  media_out Output media
+ * @param[in]  plain     Fail if object does not exists AND merge (not replace)
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0         OK
  * @retval    -1         Error
  * @see api_data_post for POST
  */
 int
-api_data_write(clixon_handle h,
-               void         *req,
-               char         *api_path0,
-               int           pi,
-               cvec         *qvec,
-               char         *data,
-               int           pretty,
+api_data_write(clixon_handle  h,
+               void          *req,
+               char          *api_path0,
+               int            pi,
+               cvec          *qvec,
+               char          *data,
+               int            pretty,
                restconf_media media_in,
                restconf_media media_out,
-               int            plain_patch,
+               int            plain,
                ietf_ds_t      ds)
 {
     int            retval = -1;
@@ -336,7 +341,7 @@ api_data_write(clixon_handle h,
             goto ok;
         }
     }
-    if (plain_patch)
+    if (plain)
         op = OP_MERGE; /* bad request if it does not exist */
     else
         op = OP_REPLACE; /* OP_CREATE if it does not exist */
@@ -459,7 +464,7 @@ api_data_write(clixon_handle h,
     if (xml_add_attr(xdata, "operation", xml_operation2str(op), NETCONF_BASE_PREFIX, NULL) == NULL)
         goto done;
     if (xml_add_attr(xdata, "objectcreate",
-                     plain_patch?"false":"true",
+                     plain?"false":"true",
                      CLIXON_LIB_PREFIX, CLIXON_LIB_NS) == NULL)
         goto done;
     /* Top-of tree, no api-path
@@ -644,7 +649,7 @@ api_data_write(clixon_handle h,
  * @param[in]  data     Stream input data
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0        OK
  * @retval    -1        Error
  * @note restconf PUT is mapped to edit-config replace.
@@ -674,7 +679,7 @@ api_data_write(clixon_handle h,
 int
 api_data_put(clixon_handle h,
              void         *req,
-             char         *api_path0,
+             char         *api_path,
              int           pi,
              cvec         *qvec,
              char         *data,
@@ -685,7 +690,7 @@ api_data_put(clixon_handle h,
     restconf_media media_in;
 
     media_in = restconf_content_type(h);
-    return api_data_write(h, req, api_path0, pi, qvec, data, pretty,
+    return api_data_write(h, req, api_path, pi, qvec, data, pretty,
                           media_in, media_out, 0, ds);
 }
 
@@ -699,7 +704,7 @@ api_data_put(clixon_handle h,
  * @param[in]  data     Stream input data
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0        OK
  * @retval    -1        Error
  * Netconf:  <edit-config> (nc:operation="merge")
@@ -710,15 +715,15 @@ api_data_put(clixon_handle h,
  *   create it. (CANT BE DONE WITH NETCONF)
  */
 int
-api_data_patch(clixon_handle h,
-               void         *req,
-               char         *api_path0,
-               int           pi,
-               cvec         *qvec,
-               char         *data,
-               int           pretty,
+api_data_patch(clixon_handle  h,
+               void          *req,
+               char          *api_path0,
+               int            pi,
+               cvec          *qvec,
+               char          *data,
+               int            pretty,
                restconf_media media_out,
-               ietf_ds_t     ds)
+               ietf_ds_t      ds)
 {
     restconf_media media_in;
     int ret = -1;
@@ -755,7 +760,7 @@ api_data_patch(clixon_handle h,
  * @param[in]  pi       Offset, where path starts
  * @param[in]  pretty   Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Output media
- * @param[in]  ds       0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0        OK
  * @retval    -1        Error
  * See RFC 8040 Sec 4.7
@@ -764,13 +769,13 @@ api_data_patch(clixon_handle h,
  * Netconf:  <edit-config> (nc:operation="delete")
  */
 int
-api_data_delete(clixon_handle h,
-                void         *req,
-                char         *api_path,
-                int           pi,
-                int           pretty,
+api_data_delete(clixon_handle  h,
+                void          *req,
+                char          *api_path,
+                int            pi,
+                int            pretty,
                 restconf_media media_out,
-                ietf_ds_t     ds)
+                ietf_ds_t      ds)
 {
     int        retval = -1;
     int        i;

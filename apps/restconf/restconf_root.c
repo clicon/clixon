@@ -320,28 +320,28 @@ api_yang_library_version(clixon_handle h,
 /*! Generic REST method, GET, PUT, DELETE, etc
  *
  * @param[in]  h         CLIXON handle
- * @param[in]  r         Fastcgi request handle
+ * @param[in]  req       Generic Www handle
  * @param[in]  api_path  According to restconf (Sec 3.5.1.1 in [draft])
  * @param[in]  pcvec     Vector of path ie DOCUMENT_URI element
  * @param[in]  pi        Offset, where to start pcvec
  * @param[in]  qvec      Vector of query string (QUERY_STRING)
  * @param[in]  pretty    Set to 1 for pretty-printed xml/json output
  * @param[in]  media_out Restconf output media
- * @param[in]  ds        0 if "data" resource, 1 if rfc8527 "ds" resource
+ * @param[in]  ds        RFC8527 datastore
  * @retval     0         OK
  * @retval    -1         Error
  */
 static int
-api_data(clixon_handle h,
-         void         *req,
-         char         *api_path,
-         cvec         *pcvec,
-         int           pi,
-         cvec         *qvec,
-         char         *data,
-         int           pretty,
+api_data(clixon_handle  h,
+         void          *req,
+         char          *api_path,
+         cvec          *pcvec,
+         int            pi,
+         cvec          *qvec,
+         char          *data,
+         int            pretty,
          restconf_media media_out,
-         ietf_ds_t     ds)
+         ietf_ds_t      ds)
 {
     int     retval = -1;
     int     read_only = 0, dynamic = 0;
@@ -463,9 +463,9 @@ api_operations(clixon_handle h,
  * @see api_root_restconf_exact for accessing /restconf/ exact
  */
 int
-api_root_restconf(clixon_handle        h,
-                  void                *req,
-                  cvec                *qvec)
+api_root_restconf(clixon_handle h,
+                  void         *req,
+                  cvec         *qvec)
 {
     int            retval = -1;
     char          *request_method = NULL; /* GET,.. */
@@ -481,6 +481,7 @@ api_root_restconf(clixon_handle        h,
     char          *indata = NULL;
     char          *username = NULL;
     cxobj         *xerr = NULL;
+    ietf_ds_t      ds;
     int            ret;
 
     clixon_debug(CLIXON_DBG_RESTCONF, "");
@@ -575,9 +576,9 @@ api_root_restconf(clixon_handle        h,
         /* We should really be getting the supported datastore types from the
          * application model, but at this time the datastore model of startup/
          * running/cadidate is hardcoded into the clixon implementation. 20201104 */
-        ietf_ds_t ds = IETF_DS_NONE;
+        ds = IETF_DS_NONE;
 
-        if (4 > pn) { /* Malformed request, no "ietf-datastores:<datastore>" component */
+        if (pn < 4) { /* Malformed request, no "ietf-datastores:<datastore>" component */
             if (netconf_invalid_value_xml(&xerr, "protocol", "Invalid path, No ietf-datastores:<datastore> component") < 0)
                 goto done;
             if (api_return_err0(h, req, xerr, pretty, media_out, 0) < 0)
@@ -586,15 +587,15 @@ api_root_restconf(clixon_handle        h,
         }
 
         /* Assign ds; See https://tools.ietf.org/html/rfc8342#section-7 */
-        if (0 == strcmp(pvec[3], "ietf-datastores:running"))
+        if (strcmp(pvec[3], "ietf-datastores:running") == 0)
             ds = IETF_DS_RUNNING;
-        else if (0 == strcmp(pvec[3], "ietf-datastores:candidate"))
+        else if (strcmp(pvec[3], "ietf-datastores:candidate") == 0)
             ds = IETF_DS_CANDIDATE;
-        else if (0 == strcmp(pvec[3], "ietf-datastores:startup") &&
+        else if (strcmp(pvec[3], "ietf-datastores:startup") == 0 &&
                  if_feature(h, "ietf-netconf", "startup"))
             /* RFC 8527 Sec 3.1: only datastores the server implements */
             ds = IETF_DS_STARTUP;
-        else if (0 == strcmp(pvec[3], "ietf-datastores:operational")) {
+        else if (strcmp(pvec[3], "ietf-datastores:operational") == 0) {
             /* See https://tools.ietf.org/html/rfc8527#section-3.1
              *     https://tools.ietf.org/html/rfc8342#section-5.3 */
             if (0 > api_operational_state(h, req, request_method, pretty, media_out)) {
@@ -610,7 +611,7 @@ api_root_restconf(clixon_handle        h,
             goto ok;
         }
         /* ds is assigned at this point */
-        if (0 > api_data(h, req, path, pcvec, 3, qvec, indata, pretty, media_out, ds))
+        if (api_data(h, req, path, pcvec, 3, qvec, indata, pretty, media_out, ds) < 0)
             goto done;
     }
     else if (strcmp(api_resource, "operations") == 0){ /* rpc */
