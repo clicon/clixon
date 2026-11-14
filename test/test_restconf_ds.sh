@@ -5,6 +5,7 @@
 #   (content=nonconfig yields nothing, depth is honored)
 # - running and startup are read-only resources: PUT, PATCH, POST and DELETE
 #   fail with 405 (RFC 8527 Sec 3.2) and change nothing
+# - operational is config in use plus state, read-only
 # - startup is not a resource unless :startup is implemented
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -157,6 +158,24 @@ expectpart "$(curl $CURLOPTS -X GET $DS:running/example:x/y=3)" 0 "HTTP/$HVER 20
 
 new "GET ds/running depth=1 prunes all three y entries"
 expectpart "$(curl $CURLOPTS -X GET "$DS:running?depth=1")" 0 "HTTP/$HVER 200" '"example:x"' --not-- '"a":"'
+
+new "GET ds/operational includes config in use"
+expectpart "$(curl $CURLOPTS -X GET $DS:operational/example:x)" 0 "HTTP/$HVER 200" '"a":"1"' '"a":"3"'
+
+new "GET ds/operational includes state (yang-library)"
+expectpart "$(curl $CURLOPTS -X GET $DS:operational/ietf-yang-library:yang-library)" 0 "HTTP/$HVER 200" '"module-set"'
+
+new "GET ds/running has no state"
+expectpart "$(curl $CURLOPTS -X GET $DS:running/ietf-yang-library:yang-library)" 0 "HTTP/$HVER 404"
+
+new "HEAD ds/operational"
+expectpart "$(curl $CURLOPTS -I $DS:operational/example:x)" 0 "HTTP/$HVER 200"
+
+new "PUT ds/operational: 405"
+expectpart "$(curl $CURLOPTS -X PUT -H "$JSON" $DS:operational/example:x/y=1 -d '{"example:y":[{"a":"1"}]}')" 0 "HTTP/$HVER 405" "Allow: OPTIONS,HEAD,GET"
+
+new "POST ds/operational: 405"
+expectpart "$(curl $CURLOPTS -X POST -H "$JSON" $DS:operational/example:x -d '{"example:y":[{"a":"8"}]}')" 0 "HTTP/$HVER 405"
 
 stop
 

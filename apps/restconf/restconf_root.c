@@ -232,28 +232,6 @@ api_root_restconf_exact(clixon_handle  h,
     return retval;
 }
 
-/** A stub implementation of the operational state datastore. The full
- * implementation is required by https://tools.ietf.org/html/rfc8527#section-3.1
- * @param[in]  h         Clixon handle
- * @param[in]  req       Generic http handle
- * @param[in]  pretty    Pretty-print
- * @param[in]  media_out Restconf output media
- */
-static int
-api_operational_state(clixon_handle  h,
-                        void          *req,
-                        char          *request_method,
-                        int            pretty,
-                        restconf_media media_out)
-
-{
-    clixon_debug(CLIXON_DBG_RESTCONF, "request method:%s", request_method);
-
-    /* We are not implementing this method at this time, 20201105 despite it
-     * being mandatory https://tools.ietf.org/html/rfc8527#section-3.1 */
-    return restconf_notimplemented(h, req, pretty, media_out);
-}
-
 /*! get yang lib version
  *
  * See https://tools.ietf.org/html/rfc7895
@@ -603,11 +581,9 @@ api_root_restconf(clixon_handle h,
                 ds = IETF_DS_NONE;
             break;
         case IETF_DS_OPERATIONAL:
-            /* See https://tools.ietf.org/html/rfc8527#section-3.1
-             *     https://tools.ietf.org/html/rfc8342#section-5.3 */
-            if (api_operational_state(h, req, request_method, pretty, media_out) < 0)
-                goto done;
-            goto ok;
+            /* RFC 8527 Sec 3.1 (mandatory), RFC 8342 Sec 5.3: config in use
+             * plus state, read with <get>. Read-only, see api_data() */
+            break;
         default: /* intended, dynamic: not implemented */
             ds = IETF_DS_NONE;
             break;
