@@ -177,6 +177,9 @@ expectpart "$(curl $CURLOPTS -X PUT -H "$JSON" $DS:operational/example:x/y=1 -d 
 new "POST ds/operational: 405"
 expectpart "$(curl $CURLOPTS -X POST -H "$JSON" $DS:operational/example:x -d '{"example:y":[{"a":"8"}]}')" 0 "HTTP/$HVER 405"
 
+new "yang-library announces running, candidate, startup, operational"
+expectpart "$(curl $CURLOPTS -X GET $DS:operational/ietf-yang-library:yang-library)" 0 "HTTP/$HVER 200" '"name":"ietf-datastores:running"' '"name":"ietf-datastores:candidate"' '"name":"ietf-datastores:startup"' '"name":"ietf-datastores:operational"'
+
 stop
 
 # --------------------------------------------------------------------
@@ -184,6 +187,9 @@ start ""
 
 new "Without :startup, ds/startup is not a resource"
 expectpart "$(curl $CURLOPTS -X GET $DS:startup)" 0 "HTTP/$HVER 400" "Unsupported datastore type"
+
+new "Without :startup, yang-library does not announce startup"
+expectpart "$(curl $CURLOPTS -X GET $DS:operational/ietf-yang-library:yang-library)" 0 "HTTP/$HVER 200" '"name":"ietf-datastores:operational"' --not-- 'ietf-datastores:startup'
 
 stop
 

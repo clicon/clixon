@@ -218,6 +218,8 @@ yang_modules_state_build(clixon_handle    h,
     char      *name;
     int        inext;
     int        inext2;
+    const char *dsv[] = {"running", "candidate", "startup", "operational"};
+    int        i;
 
     /* In case of several mountpoints, this is always the top-level */
     if ((ylib = yang_find(yspec, Y_MODULE, module)) == NULL
@@ -285,7 +287,22 @@ yang_modules_state_build(clixon_handle    h,
         }
         cprintf(cb,"</module>");
     }
-    cprintf(cb,"</module-set></yang-library>");
+    cprintf(cb,"</module-set>");
+    if (!brief){
+        /* RFC 8525: one entry per datastore the server supports, all with
+         * the same schema. RFC 8527 Sec 2: how RESTCONF clients discover
+         * {+restconf}/ds/<datastore> */
+        cprintf(cb,"<schema><name>%s</name><module-set>%s</module-set></schema>",
+                msname, msname);
+        for (i = 0; i < (int)(sizeof(dsv)/sizeof(dsv[0])); i++){
+            if (strcmp(dsv[i], "startup") == 0 &&
+                !if_feature(h, "ietf-netconf", "startup"))
+                continue;
+            cprintf(cb,"<datastore><name xmlns:ds=\"%s\">ds:%s</name><schema>%s</schema></datastore>",
+                    NETCONF_DATASTORES_NAMESPACE, dsv[i], msname);
+        }
+    }
+    cprintf(cb,"</yang-library>");
     retval = 0;
  done:
     return retval;
