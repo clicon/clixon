@@ -3045,6 +3045,9 @@ ys_populate_leaf2(clixon_handle h,
      * For leaf: store single default in cv.
      */
     if (yang_keyword_get(ys) == Y_LEAF_LIST){
+        /* May be called more than once, eg augmented nodes (yang_augment_node and step 9
+         * in yang_parse_post), and deviations may change defaults in between. */
+        yang_cvec_set(ys, NULL);
         /* 3a. Iterate all local Y_DEFAULT children */
         inext2 = 0;
         while ((ydef2 = yn_iter(ys, &inext2)) != NULL){

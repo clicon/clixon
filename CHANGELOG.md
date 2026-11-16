@@ -62,6 +62,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Yang leaf-list default values get duplicated in augments](https://github.com/clicon/clixon/issues/712)
 * Fixed: [CLI parsing and completion of union leafrefs](https://github.com/clicon/clixon/pull/696): preserve child commands and resolve prefixes in imported leafref typedefs
 * Fixed: [edit-config of an anydata node breaks sibling order, causing duplicate list entries](https://github.com/clicon/clixon/pull/708)
 * Fixed: "xpath: bound recursion depth to prevent stack-overflow DoS", author: Pexa Rubinstein <pexaxep@gmail.com>

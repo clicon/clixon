@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # yang augment and default values
 # See https://github.com/clicon/clixon/issues/354
+# Also: https://github.com/clicon/clixon/issues/712
+#   leaf-list defaults in augmented nodes: ys_populate2 was called twice
 #
 # Magic line must be first in script (see README.md)
 s="$_" ; . ./lib.sh || if [ "$s" = $0 ]; then exit 0; else return 0; fi
@@ -37,6 +39,13 @@ module example {
   revision "2019-03-04";
   container table{
   }
+  grouping xpaths {
+    container xp {
+      leaf-list xpath {
+        type string;
+      }
+    }
+  }
 }
 EOF
 
@@ -58,6 +67,27 @@ module augment {
             type boolean;
             default true;
          }
+      }
+   }
+   augment "/ex:table" {
+      leaf-list ll {             /* Case 1: plain leaf-list with defaults in augment */
+         type string;
+         default a;
+         default b;
+      }
+      uses ex:xpaths {           /* Case 2: augment + uses + refine (controller case) */
+         refine xp/xpath {
+            default "/x/y";
+         }
+      }
+      leaf-list dl {             /* Case 3: deviation adds default after augment */
+         type string;
+         default c;
+      }
+   }
+   deviation "/ex:table/aug:dl" {
+      deviate add {
+         default d;
       }
    }
 }
@@ -88,6 +118,11 @@ fi
 
 new "wait backend"
 wait_backend
+
+new "netconf get-config report-all: augmented leaf-list defaults appear once"
+expecteof_netconf "$clixon_netconf -qf $cfg" 0 "$DEFAULTHELLO" \
+    "<rpc $DEFAULTNS><get-config><with-defaults xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">report-all</with-defaults><source><running/></source><filter type=\"subtree\"><table xmlns=\"urn:example:clixon\"/></filter></get-config></rpc>" "" \
+    "<rpc-reply $DEFAULTNS><data><table xmlns=\"urn:example:clixon\"><map xmlns=\"urn:example:augment\"><name>me</name><enable>true</enable></map><ll xmlns=\"urn:example:augment\">a</ll><ll xmlns=\"urn:example:augment\">b</ll><xp xmlns=\"urn:example:augment\"><xpath>/x/y</xpath></xp><dl xmlns=\"urn:example:augment\">c</dl><dl xmlns=\"urn:example:augment\">d</dl></table></data></rpc-reply>"
 
 new "cli show config startup"
 expectpart "$($clixon_cli -1 -f $cfg -l o show config default report-all)" 0 '<table xmlns="urn:example:clixon">' '<map xmlns="urn:example:augment">' '<enable>true</enable>'

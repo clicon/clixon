@@ -1645,9 +1645,12 @@ yang_parse_post(clixon_handle h,
             goto done;
 
     /* 9: Go through parse tree and do 2nd step populate (eg default)
-     *    Note that augments in step 7 are not covered here since they apply to
-     *    modules already loaded. Therefore the call to ys_populate2 is made inline in
-     *    yang_augment_node()
+     *    Note that augments (step 6 uses/augment and step 7) may target modules loaded
+     *    earlier, which are not covered here. Therefore ys_populate2 is also called
+     *    inline in yang_augment_node(). If the target module is in this batch, augmented
+     *    nodes are populated twice, so ys_populate2 must be idempotent.
+     *    XXX: Augmented nodes in earlier-loaded modules are populated before deviations
+     *    (step 8) are applied, and are not re-populated.
      */
     for (i=0; i<ylen; i++)
         if (yang_apply(ylist[i], -1, ys_populate2, 1, (void*)h) < 0)
