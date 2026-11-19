@@ -37,6 +37,9 @@ Expected: January 2027
   * Override the default `expand_dbvar()` CLI tab-completion callback with a custom callback
   * One or several customized expand callback functions called insted of the default
 * New `clixon_cli -e` option: exit with error on first failed command read from stdin or file (`-F`)
+* New `commit-info` rpc in clixon-lib returning a digest of the running datastore
+  * Intended for commit history and audit logging
+  * Digest computed on demand on compact XML of running, without default values, including XML attributes
 * New `clixon-autocli@2026-10-01.yang` revision
   * Added extension: `expand`
 * List-pagination
@@ -48,8 +51,9 @@ Expected: January 2027
 
 ### API changes on existing protocol/config features
 
-* New `clixon-lib@2026-06-01.yang` revision
+* New `clixon-lib@2026-10-01.yang` revision
    * Extended `config-path-info` rpc with `db` paramater
+   * Added `commit-info` rpc
 
 ### C/CLI-API changes on existing features
 

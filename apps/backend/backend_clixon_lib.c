@@ -169,6 +169,61 @@ from_client_stats(clixon_handle h,
     return retval;
 }
 
+/*! Get digest of running config, ie the configuration of the latest commit
+ *
+ * Computed on running as compact XML without default values, including XML attributes.
+ * @param[in]  h       Clixon handle
+ * @param[in]  xe      Request: <rpc><xn></rpc>
+ * @param[out] cbret   Return xml tree, eg <rpc-reply>..., <rpc-error..
+ * @param[in]  arg     client-entry
+ * @param[in]  regarg  User argument given at rpc_callback_register()
+ * @retval     0       OK
+ * @retval    -1       Error
+ */
+static int
+from_client_commit_info(clixon_handle h,
+                        cxobj        *xe,
+                        cbuf         *cbret,
+                        void         *arg,
+                        void         *regarg)
+{
+    int    retval = -1;
+    cxobj *xt = NULL;
+    cxobj *xerr = NULL;
+    cbuf  *cb = NULL;
+    char  *digest = NULL;
+    int    ret;
+
+    if ((ret = xmldb_get_cache(h, "running", &xt, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        if (clixon_xml2cbuf1(cbret, xerr, 0, 0, NULL, -1, 0, 0, WITHDEFAULTS_REPORT_ALL) < 0)
+            goto done;
+        goto ok;
+    }
+    if ((cb = cbuf_new()) == NULL){
+        clixon_err(OE_UNIX, errno, "cbuf_new");
+        goto done;
+    }
+    if (xt != NULL &&
+        clixon_xml2cbuf1(cb, xt, 0, 0, NULL, -1, 1, 0, WITHDEFAULTS_EXPLICIT) < 0)
+        goto done;
+    if (clixon_digest_hex(cbuf_get(cb), &digest) < 0)
+        goto done;
+    cprintf(cbret, "<rpc-reply xmlns=\"%s\"><digest xmlns=\"%s\">%s</digest></rpc-reply>",
+            NETCONF_BASE_NAMESPACE, CLIXON_LIB_NS, digest);
+ ok:
+    retval = 0;
+ done:
+    if (digest)
+        free(digest);
+    if (cb)
+        cbuf_free(cb);
+    if (xerr)
+        xml_free(xerr);
+    return retval;
+}
+
 /*! Control a specific process or daemon: start/stop, etc
  *
  * @param[in]  h       Clixon handle
@@ -1364,6 +1419,9 @@ backend_clixon_lib_init(clixon_handle h)
         goto done;
     if (rpc_callback_register(h, from_client_nacm_autocli_filter, NULL,
                               CLIXON_LIB_NS, "nacm-autocli-filter-get") < 0)
+        goto done;
+    if (rpc_callback_register(h, from_client_commit_info, NULL,
+                              CLIXON_LIB_NS, "commit-info") < 0)
         goto done;
 
     retval = 0;

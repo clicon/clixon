@@ -77,6 +77,7 @@ module clixon-lib {
         description
             "Extended config-path-info rpc with db paramater
              Debug flags: timing and trunc
+             Added commit-info rpc
              Released in Clixon 8.0";
     }
     revision 2026-06-01 {
@@ -972,6 +973,23 @@ module clixon-lib {
                          If deny-default=1: explicitly permitted paths.";
                     type string;
                 }
+            }
+        }
+    }
+    rpc commit-info {
+        description
+            "Digest of the running datastore, ie the configuration of the latest commit.
+             Intended for commit history and audit logging.
+             Computed when called; survives backend restart since it only depends on running.
+             Note this could be extended with more information but then needs to persist that data,
+             For now this could be done by a client for example";
+        output {
+            leaf digest {
+                description
+                    "Hex digest of the running configuration.
+                     Computed on compact XML without default values, including XML attributes.
+                     SHA-1, or SHA-256 if clixon is built with USE_SHA256";
+                type string;
             }
         }
     }
