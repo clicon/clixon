@@ -9,6 +9,14 @@
 # 7) Key leaf in grouping used with when (RFC 7950 Sec 7.21.5)
 # 8) Stacked regex quantifiers in YANG pattern
 # 9) Excessively long YANG pattern
+# 10) "path" substatement only valid for type leafref (RFC 7950 9.9.2)
+# 11) "fraction-digits" substatement only valid for type decimal64 (RFC 7950 9.3.3)
+# 12) "base" substatement only valid for type identityref (RFC 7950 9.10.1)
+# 13) "path" cannot be re-declared through a typedef indirection (leaf naming a
+#     leafref typedef, not "leafref" itself, still must not repeat "path")
+# 14) leafref type requires a "path" sub-statement (RFC 7950 9.9.2)
+# 15) identityref type requires a "base" sub-statement (RFC 7950 9.10.2)
+# 16) decimal64 type requires a "fraction-digits" sub-statement (RFC 7950 9.3.4)
 
 # circular inputs are ok
 
@@ -115,6 +123,7 @@ module import2 {
     }
 }
 EOF
+
 cat <<EOF > $clispec/example.cli
 CLICON_MODE="example";
 CLICON_PROMPT="cli> ";
@@ -278,6 +287,137 @@ EOF
 
 new "Excessively long YANG pattern"
 expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "exceeds max length"
+
+# "path" substatement is only valid directly under "type leafref" (RFC 7950 9.9.2).
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf target {
+        type string;
+    }
+    leaf import2{
+        type string {
+            path "../target";
+        }
+    }
+}
+EOF
+
+new "path statement only valid for type leafref"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "\"path\" statement is only valid for type \"leafref\""
+
+# "fraction-digits" substatement is only valid directly under "type decimal64"
+# (RFC 7950 9.3.3 "Restrictions" lists only "range" as restrictable for decimal64).
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type string {
+            fraction-digits 2;
+        }
+    }
+}
+EOF
+
+new "fraction-digits statement only valid for type decimal64"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "\"fraction-digits\" statement is only valid for type \"decimal64\""
+
+# "base" substatement is only valid directly under "type identityref"
+# (RFC 7950 9.10.1: "An identityref cannot be restricted").
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type string {
+            base mybase;
+        }
+    }
+}
+EOF
+
+new "base statement only valid for type identityref"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "\"base\" statement is only valid for type \"identityref\""
+
+# "path" cannot be re-declared one level removed through a typedef of leafref:
+# a leaf naming the typedef (not "leafref" literally) must not repeat "path".
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf target {
+        type string;
+    }
+    typedef my-leafref {
+        type leafref {
+            path "../target";
+        }
+    }
+    leaf import2{
+        type my-leafref {
+            path "../target";
+        }
+    }
+}
+EOF
+
+new "path cannot be re-declared through a typedef of leafref"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "\"path\" statement is only valid for type \"leafref\", not \"my-leafref\""
+
+# leafref type requires a "path" sub-statement (RFC 7950 9.9.2: "MUST be present
+# if the type is leafref"), checked unconditionally, not just when a value is
+# actually validated against the leafref.
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type leafref;
+    }
+}
+EOF
+
+new "leafref type requires path sub-statement"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "leafref type requires path sub-statement"
+
+# identityref type requires a "base" sub-statement (RFC 7950 9.10.2: "MUST be
+# present at least once if the type is identityref").
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type identityref;
+    }
+}
+EOF
+
+new "identityref type requires base sub-statement"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "identityref type requires base sub-statement"
+
+# decimal64 type requires a "fraction-digits" sub-statement (RFC 7950 9.3.4:
+# mandatory substatement of a decimal64 type).
+cat <<EOF > $fyimport2
+module import2 {
+    yang-version 1.1;
+    prefix imp2;
+    namespace "urn:example:import2";
+    leaf import2{
+        type decimal64;
+    }
+}
+EOF
+
+new "decimal64 type requires fraction-digits sub-statement"
+expectpart "$(sudo $clixon_backend -s init -1 -f $cfg -l o)" 255 "decimal64 type requires fraction-digits sub-statement"
 
 rm -rf "$dir"
 

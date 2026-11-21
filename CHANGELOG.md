@@ -66,6 +66,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [YANG path statement accepted in other types than leafref](https://github.com/clicon/clixon/issues/714)
 * Fixed: [Yang leaf-list default values get duplicated in augments](https://github.com/clicon/clixon/issues/712)
 * Fixed: [CLI parsing and completion of union leafrefs](https://github.com/clicon/clixon/pull/696): preserve child commands and resolve prefixes in imported leafref typedefs
 * Fixed: [edit-config of an anydata node breaks sibling order, causing duplicate list entries](https://github.com/clicon/clixon/pull/708)

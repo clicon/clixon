@@ -3390,7 +3390,6 @@ ys_populate_type_enum(clixon_handle h,
 
 /*! Sanity check yang type statement
  *
- * XXX: Replace with generic parent/child type-check
  * @param[in] h    Clixon handle
  * @param[in] ys   The yang statement (type) to populate.
  * @retval    0    OK
@@ -3403,27 +3402,57 @@ ys_populate_type(clixon_handle h,
 {
     int        retval = -1;
     yang_stmt *ybase;
+    char      *type;
 
-    if (strcmp(yang_argument_get(ys), "decimal64") == 0){
+    type = yang_argument_get(ys);
+    if (strcmp(type, "decimal64") == 0){
         if (yang_find(ys, Y_FRACTION_DIGITS, NULL) == NULL){
             clixon_err(OE_YANG, 0, "decimal64 type requires fraction-digits sub-statement");
             goto done;
         }
     }
-    else if (strcmp(yang_argument_get(ys), "identityref") == 0){
-        if ((ybase = yang_find(ys, Y_BASE, NULL)) == NULL){
-            clixon_err(OE_YANG, 0, "identityref type requires base sub-statement");
+    /* RFC 7950 9.3.3: fraction-digits is not a restriction, only valid for decimal64 */
+    else {
+        if (yang_find(ys, Y_FRACTION_DIGITS, NULL) != NULL){
+            clixon_err(OE_YANG, 0,
+                       "\"fraction-digits\" statement is only valid for type \"decimal64\", not \"%s\"", type);
             goto done;
         }
-        if ((yang_find_identity(ys, yang_argument_get(ybase))) == NULL){
-            clixon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
-                       yang_argument_get(ybase), yang_argument_get(ys));
-            goto done;
+        if (strcmp(type, "identityref") == 0){
+            if ((ybase = yang_find(ys, Y_BASE, NULL)) == NULL){
+                clixon_err(OE_YANG, 0, "identityref type requires base sub-statement");
+                goto done;
+            }
+            if ((yang_find_identity(ys, yang_argument_get(ybase))) == NULL){
+                clixon_err(OE_YANG, 0, "Identity %s not found (base type of %s)",
+                           yang_argument_get(ybase), yang_argument_get(ys));
+                goto done;
+            }
         }
-    }
-    else if (strcmp(yang_argument_get(ys), "enumeration") == 0){
-        if (ys_populate_type_enum(h, ys) < 0)
-            goto done;
+        /* RFC 7950 9.10.1: "An identityref cannot be restricted" */
+        else {
+            if (yang_find(ys, Y_BASE, NULL) != NULL){
+                clixon_err(OE_YANG, 0,
+                           "\"base\" statement is only valid for type \"identityref\", not \"%s\"", type);
+                goto done;
+            }
+            if (strcmp(type, "leafref") == 0){
+                if (yang_find(ys, Y_PATH, NULL) == NULL){
+                    clixon_err(OE_YANG, 0, "leafref type requires path sub-statement");
+                    goto done;
+                }
+            }
+            /* RFC 7950 9.9.1: leafref's only restriction is require-instance; path is not */
+            else if (yang_find(ys, Y_PATH, NULL) != NULL){
+                clixon_err(OE_YANG, 0,
+                           "\"path\" statement is only valid for type \"leafref\", not \"%s\"", type);
+                goto done;
+            }
+            else if (strcmp(type, "enumeration") == 0){
+                if (ys_populate_type_enum(h, ys) < 0)
+                    goto done;
+            }
+        }
     }
     retval = 0;
   done:
