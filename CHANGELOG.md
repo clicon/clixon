@@ -24,6 +24,7 @@ Expected: January 2027
 
 ### Features
 
+* Improved signal-safety by removing unsafe operations such as logging in signal handlers
 * Improve RESTCONF NMDA datastore support according to RFC8527
   * Handle all datastores as specified by {+restconf}/ds/<datastore> correctly
   * Implemented operational datastore resource
@@ -66,6 +67,8 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [clixon_backend crashes with SIGABRT in malloc due to non-async-signal-safe clixon_debug() call in SIGCHLD handler](https://github.com/clicon/clixon/issues/713)
+  * Also made SIGTERM/SIGINT handlers in backend, cli, restconf, snmp and grpc async-signal-safe
 * Fixed: [YANG path statement accepted in other types than leafref](https://github.com/clicon/clixon/issues/714)
 * Fixed: [Yang leaf-list default values get duplicated in augments](https://github.com/clicon/clixon/issues/712)
 * Fixed: [CLI parsing and completion of union leafrefs](https://github.com/clicon/clixon/pull/696): preserve child commands and resolve prefixes in imported leafref typedefs

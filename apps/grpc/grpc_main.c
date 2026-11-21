@@ -115,17 +115,20 @@ usage(clixon_handle h,
     exit(0);
 }
 
+/* Signal number causing termination, logged after event loop. Set in signal handler */
+static volatile sig_atomic_t _grpc_sig_term = 0;
+
 /*! Quit
+ *
+ * Only async-signal-safe operations here, see signal-safety(7).
+ * Signal is logged in main after event loop exit
  */
 static void
 grpc_sig_term(int arg)
 {
-    static int i=0;
-
-    clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-               __PROGRAM__, __func__, getpid(), arg);
-    if (i++ > 0) /* Allow one sigterm before proper exit */
-        exit(-1);
+    if (_grpc_sig_term != 0) /* Allow one sigterm before proper exit */
+        _exit(-1);
+    _grpc_sig_term = arg;
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
@@ -307,6 +310,8 @@ main(int    argc,
 
     retval = 0;
  done:
+    if (_grpc_sig_term)
+        clixon_log(h, LOG_NOTICE, "%s: Signal %d", __PROGRAM__, (int)_grpc_sig_term);
     clixon_log(h, LOG_NOTICE, "%s: gRPC/gNMI terminated", __PROGRAM__);
     if (h)
         grpc_terminate(h);

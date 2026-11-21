@@ -83,7 +83,7 @@
 #include "clixon_proto.h"
 #include "banned.h"
 
-static int _atomicio_sig = 0;
+static volatile sig_atomic_t _atomicio_sig = 0;
 
 /*! Reset the atomicio/msg_rcv user-interrupt (^C) sentinel
  *

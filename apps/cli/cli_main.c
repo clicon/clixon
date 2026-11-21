@@ -203,14 +203,14 @@ cli_terminate(clixon_handle h)
     return 0;
 }
 
-/*! Unlink pidfile and quit
+/*! Quit on signal
+ *
+ * Only async-signal-safe operations here, see signal-safety(7).
  */
 static void
 cli_sig_term(int arg)
 {
-    clixon_log(NULL, LOG_NOTICE, "%s: %u Terminated (killed by sig %d)",
-            __PROGRAM__, getpid(), arg);
-    exit(1);
+    _exit(1);
 }
 
 /*! Setup signal handlers

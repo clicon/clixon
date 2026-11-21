@@ -146,18 +146,20 @@ backend_terminate(clixon_handle h)
     return 0;
 }
 
+/* Signal number causing termination, logged after event loop. Set in signal handler */
+static volatile sig_atomic_t _backend_sig_term = 0;
+
 /*! Unlink pidfile and quit
+ *
+ * Only async-signal-safe operations here, see signal-safety(7).
+ * Signal is logged in main after event loop exit
  */
 static void
 backend_sig_term(int arg)
 {
-    static int i=0;
-
-    if (i++ == 0)
-        clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-                   __PROGRAM__, __func__, getpid(), arg);
-    else
-        exit(1);
+    if (_backend_sig_term != 0)
+        _exit(1);
+    _backend_sig_term = arg;
     clixon_exit_set(1); /* checked in clixon_event_loop() */
 }
 
@@ -169,7 +171,7 @@ backend_sig_term(int arg)
 static void
 backend_sig_child(int arg)
 {
-    clixon_debug(CLIXON_DBG_BACKEND, "");
+    /* Only async-signal-safe operations here, see signal-safety(7).*/
     clicon_sig_child_set(1);
 }
 
@@ -1103,6 +1105,8 @@ main(int    argc,
     if (cbret)
         cbuf_free(cbret);
     if (h){
+        if (_backend_sig_term)
+            clixon_log(h, LOG_NOTICE, "%s: %u Signal %d", __PROGRAM__, getpid(), (int)_backend_sig_term);
         clixon_log(h, LOG_NOTICE, "%s: %u Terminated retval:%d", __PROGRAM__, getpid(), retval);
         backend_terminate(h); /* Cannot use h after this */
     }

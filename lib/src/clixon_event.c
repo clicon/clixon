@@ -119,13 +119,13 @@ static struct event_data *_ee_timers = NULL;
 static int _ee_unreg = 0;
 
 /* If set (eg by signal handler) exit select loop on next run and return 0 */
-static int _clicon_exit = 0;
+static volatile sig_atomic_t _clicon_exit = 0;
 
 /* If set (eg by signal handler) call waitpid on waiting processes, ignore EINTR, continue select loop */
-static int _clicon_sig_child = 0;
+static volatile sig_atomic_t _clicon_sig_child = 0;
 
 /* If set (eg by signal handler) ignore EINTR and continue select loop */
-static int _clicon_sig_ignore = 0;
+static volatile sig_atomic_t _clicon_sig_ignore = 0;
 
 /*! For signal handlers: instead of doing exit, set a global variable to exit
  *

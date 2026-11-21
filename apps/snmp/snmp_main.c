@@ -86,15 +86,18 @@ clicon_snmp_pidfile(clixon_handle h)
     return "/var/tmp/clixon_snmp.pid";
 }
 
+/* Signal number causing termination, logged after event loop. Set in signal handler */
+static volatile sig_atomic_t _snmp_sig_term = 0;
+
 /*! Signal terminates process
  *
  * Just set exit flag for proper exit in event loop
+ * Only async-signal-safe operations here, see signal-safety(7).
  */
 static void
 clixon_snmp_sig_term(int arg)
 {
-    clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-               __PROGRAM__, __func__, getpid(), arg);
+    _snmp_sig_term = arg;
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
@@ -626,6 +629,8 @@ main(int    argc,
         free(buf);
     if (h){
         clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+        if (_snmp_sig_term)
+            clixon_log(h, LOG_NOTICE, "%s: %u Signal %d", __PROGRAM__, getpid(), (int)_snmp_sig_term);
         clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
         snmp_terminate(h);
     }

@@ -222,22 +222,19 @@ static clixon_handle _CLIXON_HANDLE = NULL;
  */
 static int _MYSOCK;
 
+/* Signal number causing termination, logged after accept loop. Set in signal handler */
+static volatile sig_atomic_t _restconf_sig_term = 0;
+
 /*! Signal terminates process
+ *
+ * Only async-signal-safe operations here, see signal-safety(7).
  */
 static void
 restconf_sig_term(int arg)
 {
-    static int i=0;
-
-    clixon_debug(CLIXON_DBG_RESTCONF, "");
-    if (i++ == 0)
-        clixon_log(NULL, LOG_NOTICE, "%s: %s: pid: %u Signal %d",
-                   __PROGRAM__, __func__, getpid(), arg);
-    else{
-        clixon_debug(CLIXON_DBG_RESTCONF, "done");
-        exit(-1);
-    }
-
+    if (_restconf_sig_term != 0)
+        _exit(-1);
+    _restconf_sig_term = arg;
     /* This should ensure no more accepts or incoming packets are processed because next time eventloop
      * is entered, it will terminate.
      * However there may be a case of sockets closing rather abruptly for clients
@@ -253,11 +250,12 @@ restconf_sig_term(int arg)
 static void
 restconf_sig_child(int arg)
 {
-    int status;
-    int pid;
+    int saved_errno = errno;
 
-    if ((pid = waitpid(-1, &status, 0)) != -1 && WIFEXITED(status))
-        stream_child_free(_CLIXON_HANDLE, pid);
+    /* Only async-signal-safe operations here, see signal-safety(7). */
+    while (waitpid(-1, NULL, WNOHANG) > 0)
+        ;
+    errno = saved_errno;
 }
 
 /*! Usage help routine
@@ -740,6 +738,8 @@ main(int    argc,
     if (h){
         stream_child_freeall(h);
         clixon_log_init(h, __PROGRAM__, LOG_INFO, 0); /* Log on syslog no stderr */
+        if (_restconf_sig_term)
+            clixon_log(h, LOG_NOTICE, "%s: %u Signal %d", __PROGRAM__, getpid(), (int)_restconf_sig_term);
         clixon_log(h, LOG_NOTICE, "%s: %u Terminated", __PROGRAM__, getpid());
         restconf_terminate(h);
     }
