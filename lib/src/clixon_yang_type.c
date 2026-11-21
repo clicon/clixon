@@ -1385,13 +1385,6 @@ yang_type_resolve(yang_stmt   *yorig,
         goto ok;
     if (nodeid_split(yang_argument_get(ytype), &prefix, &type) < 0)
         goto done;
-    /* RFC 7950 9.9.2: "path" is only valid directly under "type leafref" */
-    if ((prefix != NULL || strcmp(type, "leafref") != 0) &&
-        yang_find(ytype, Y_PATH, NULL) != NULL){
-        clixon_err(OE_YANG, 0, "\"path\" statement is only valid for type \"leafref\", not \"%s\"",
-                   yang_argument_get(ytype));
-        goto done;
-    }
     /* Check if type is basic type. If so, return that */
     if ((prefix == NULL && yang_builtin(type))){
         *yrestype = ytype;
