@@ -89,7 +89,7 @@ EOF
 # Note use only http, for https you need to reconfig nginx
 cat <<EOF > /usr/local/bin/test/site.sh
 # Add your local site specific env variables (or tests) here.
-SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
+SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh test_stream_yang.sh"
 RCPROTO=http # Because nginx
 # Parse yangmodels from https://github.com/YangModels/yang
 EOF

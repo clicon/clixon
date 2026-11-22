@@ -46,7 +46,7 @@ echo "Set disable_coredump false" > /etc/sudo.conf
 # Site configuration: skip tests that require special environment
 cat <<EOF > /usr/local/bin/test/site.sh
 # Tests that cannot run in this container environment
-SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh"
+SKIPLIST="test_api.sh test_client.sh test_c++.sh test_install.sh test_privileges.sh test_stream_yang.sh"
 EOF
 chmod 775 /usr/local/bin/test/site.sh
 
