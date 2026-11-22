@@ -67,6 +67,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [CLI completion fails with `No such type` for an unprefixed typedef inside a grouping used from another module](https://github.com/clicon/clixon/issues/685)
 * Fixed: [clixon_backend crashes with SIGABRT in malloc due to non-async-signal-safe clixon_debug() call in SIGCHLD handler](https://github.com/clicon/clixon/issues/713)
   * Also made SIGTERM/SIGINT handlers in backend, cli, restconf, snmp and grpc async-signal-safe
 * Fixed: [YANG path statement accepted in other types than leafref](https://github.com/clicon/clixon/issues/714)
