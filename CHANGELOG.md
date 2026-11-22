@@ -67,6 +67,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [Event notifications are accepted without a matching YANG definition](https://github.com/clicon/clixon/issues/577)
 * Fixed: [clixon_backend crashes with SIGABRT in malloc due to non-async-signal-safe clixon_debug() call in SIGCHLD handler](https://github.com/clicon/clixon/issues/713)
   * Also made SIGTERM/SIGINT handlers in backend, cli, restconf, snmp and grpc async-signal-safe
 * Fixed: [YANG path statement accepted in other types than leafref](https://github.com/clicon/clixon/issues/714)

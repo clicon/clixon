@@ -82,6 +82,7 @@
 #include "clixon_event.h"
 #include "clixon_netconf_lib.h"
 #include "clixon_xml_io.h"
+#include "clixon_xml_bind.h"
 #include "clixon_options.h"
 #include "clixon_data.h"
 #include "clixon_xpath_ctx.h"
@@ -555,6 +556,44 @@ stream_ss_delete(clixon_handle h,
     return retval;
 }
 
+/*! Bind notification event children to YANG definitions
+ *
+ * The notification wrapper and eventTime are protocol elements, not YANG data nodes.
+ * @param[in]  h       Clixon handle
+ * @param[in]  xev     Notification XML element
+ * @param[in]  yspec   Yang specification
+ * @param[out] xerr    Reason for failure
+ * @retval     1       OK
+ * @retval     0       Invalid notification
+ * @retval     -1      Error
+ */
+static int
+stream_notification_validate(clixon_handle h,
+                             cxobj        *xev,
+                             yang_stmt    *yspec,
+                             cxobj       **xerr)
+{
+    int    retval = -1;
+    int    ret;
+    int    ix = 0;
+    cxobj *xc;
+
+    while ((xc = xml_child_iter(xev, &ix, CX_ELMNT)) != NULL){
+        if (strcmp(xml_name(xc), "eventTime") == 0)
+            continue;
+        if ((ret = xml_bind_yang0(h, xc, YB_MODULE, yspec, 0, 0, xerr)) < 0)
+            goto done;
+        if (ret == 0)
+            goto fail;
+    }
+    retval = 1;
+ done:
+    return retval;
+ fail:
+    retval = 0;
+    goto done;
+}
+
 /*! Stream notify event and distribute to all registered callbacks
  *
  * @param[in]  h       Clixon handle
@@ -608,7 +647,7 @@ stream_notify1(clixon_handle   h,
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  event   Notification as format string according to printf(3)
  * @retval     0       OK
- * @retval    -1       Error
+ * @retval    -1       Error, including a notification without a matching YANG definition
  * @code
  *  if (stream_notify(h, "NETCONF", "<event><event-class>fault</event-class><reportingEntity><card>Ethernet0</card></reportingEntity><severity>major</severity></event>") < 0)
  *    err;
@@ -623,7 +662,9 @@ stream_notify(clixon_handle h,
     int             retval = -1;
     va_list         args;
     int             len;
+    int             ret;
     cxobj          *xev = NULL;
+    cxobj          *xerr = NULL;
     yang_stmt      *yspec = NULL;
     char           *str = NULL;
     cbuf           *cb = NULL;
@@ -661,10 +702,21 @@ stream_notify(clixon_handle h,
     /* From RFC5277 */
     cprintf(cb, "<notification xmlns=\"%s\"><eventTime>%s</eventTime>%s</notification>",
             NETCONF_NOTIFICATION_NAMESPACE, timestr, str);
-    if (clixon_xml_parse_string(cbuf_get(cb), YB_MODULE, yspec, &xev, NULL) < 0)
+    if ((ret = clixon_xml_parse_string(cbuf_get(cb), YB_NONE, yspec, &xev, &xerr)) < 0)
         goto done;
-    if (xml_rootchild(xev, 0, &xev) < 0)
+    if (ret > 0){
+        if (xml_rootchild(xev, 0, &xev) < 0)
+            goto done;
+        if ((ret = stream_notification_validate(h, xev, yspec, &xerr)) < 0)
+            goto done;
+    }
+    if (ret == 0){
+        cbuf_reset(cb);
+        if (xerr && clixon_xml2cbuf(cb, xerr, 0, 0, NULL, -1, 1) < 0)
+            goto done;
+        clixon_err(OE_XML, 0, "Invalid notification: %s", cbuf_get(cb));
         goto done;
+    }
     if (stream_notify1(h, es, &tv, xev) < 0)
         goto done;
     if (es->es_replay_enabled){
@@ -679,6 +731,8 @@ stream_notify(clixon_handle h,
         cbuf_free(cb);
     if (xev)
         xml_free(xev);
+    if (xerr)
+        xml_free(xerr);
     if (str)
         free(str);
     return retval;
@@ -690,7 +744,7 @@ stream_notify(clixon_handle h,
  * @param[in]  stream  Name of event stream. CLICON is predefined as LOG stream
  * @param[in]  xml     Notification as XML stream. Is copied.
  * @retval     0       OK
- * @retval    -1       Error
+ * @retval    -1       Error, including a notification without a matching YANG definition
  * @see  stream_notify  Should be merged with this
  */
 int
@@ -699,7 +753,9 @@ stream_notify_xml(clixon_handle h,
                   cxobj        *xml)
 {
     int        retval = -1;
+    int        ret;
     cxobj     *xev = NULL;
+    cxobj     *xerr = NULL;
     cxobj     *xml2; /* copy */
     yang_stmt *yspec = NULL;
     cbuf      *cb = NULL;
@@ -734,6 +790,15 @@ stream_notify_xml(clixon_handle h,
         goto done;
     if (xml_addsub(xev, xml2) < 0)
         goto done;
+    if ((ret = stream_notification_validate(h, xev, yspec, &xerr)) < 0)
+        goto done;
+    if (ret == 0){
+        cbuf_reset(cb);
+        if (xerr && clixon_xml2cbuf(cb, xerr, 0, 0, NULL, -1, 1) < 0)
+            goto done;
+        clixon_err(OE_XML, 0, "Invalid notification: %s", cbuf_get(cb));
+        goto done;
+    }
     if (stream_notify1(h, es, &tv, xev) < 0)
         goto done;
     if (es->es_replay_enabled){
@@ -748,6 +813,8 @@ stream_notify_xml(clixon_handle h,
         cbuf_free(cb);
     if (xev)
         xml_free(xev);
+    if (xerr)
+        xml_free(xerr);
     return retval;
 }
 
