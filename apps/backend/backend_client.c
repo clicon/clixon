@@ -151,9 +151,12 @@ ce_event_cb(clixon_handle h,
         if (ce_client_descr(ce, &cbce) < 0)
             goto done;
         if (send_msg_notify_xml(h, ce->ce_s, cbuf_get(cbce), event) < 0){
-            if (errno == ECONNRESET || errno == EPIPE){
-                clixon_log(h, LOG_WARNING, "client %d reset", ce->ce_nr);
-            }
+            /* Send timeout (stalled subscriber), or peer closed. The message may be partially
+             * sent, so the stream is corrupt: close the client.
+             * Call shutdown instead of close to make the event loop read EOF
+             * and remove the client in from_client() */
+            clixon_log(h, LOG_WARNING, "client %d: notification send failed, closing", ce->ce_nr);
+            shutdown(ce->ce_s, SHUT_RDWR);
             break;
         }
         /* note there may be other notifications than RFC5277 streams */

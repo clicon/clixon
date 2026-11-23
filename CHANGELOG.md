@@ -24,6 +24,8 @@ Expected: January 2027
 
 ### Features
 
+* Added server-side timeout for notifications to protect against slow, suspended or orphaned subscribers
+  * See [An idle clixon_cli session eventually blocks clixon_backend indefinitely](https://github.com/clicon/clixon-controller/issues/269)
 * Improved signal-safety by removing unsafe operations such as logging in signal handlers
 * Improve RESTCONF NMDA datastore support according to RFC8527
   * Handle all datastores as specified by {+restconf}/ds/<datastore> correctly

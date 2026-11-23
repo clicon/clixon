@@ -52,6 +52,8 @@
 #include <syslog.h>
 #include <signal.h>
 #include <ctype.h>
+#include <poll.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
@@ -474,6 +476,78 @@ clixon_msg_send(int         s,
     return retval;
 }
 
+/*! Send a message using NETCONF without encapsulation, with a timeout
+ *
+ * As clixon_msg_send but do not block indefinitely if the peer does not read and the
+ * socket send buffer is full. Intended for asynchronous messages, eg notifications.
+ * @param[in]  s       Socket (unix or inet)
+ * @param[in]  descr   Description of peer for logging
+ * @param[in]  cb      Data buffer including NETCONF framing
+ * @param[in]  timeout Max time to wait in ms
+ * @retval     0       OK, all data sent
+ * @retval    -1       Error, timeout (errno ETIMEDOUT) or peer closed.
+ * @note On error data may be partially sent, the stream is then corrupt and the caller should close the peer
+ * @see clixon_msg_send  Blocking variant
+ */
+int
+clixon_msg_send_timeout(int         s,
+                        const char *descr,
+                        cbuf       *cb,
+                        int         timeout)
+{
+    int             retval = -1;
+    char           *buf = cbuf_get(cb);
+    size_t          len = cbuf_len(cb);
+    size_t          pos = 0;
+    ssize_t         n;
+    int             flags = MSG_DONTWAIT;
+    struct timespec t0;
+    struct timespec t1;
+    int             elapsed;
+    struct pollfd   pfd;
+    int             ret;
+
+    /* MSG_NOSIGNAL: return EPIPE instead of raising SIGPIPE; not defined on all platforms (eg macOS) */
+#ifdef MSG_NOSIGNAL
+    flags |= MSG_NOSIGNAL;
+#endif
+    clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_TRUNC, "Send [%s] %s", descr?descr:"", buf);
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    while (pos < len){
+        if ((n = send(s, buf + pos, len - pos, flags)) >= 0){
+            pos += n;
+            continue;
+        }
+        if (errno == EINTR)
+            continue;
+        if (errno != EAGAIN && errno != EWOULDBLOCK){
+            clixon_err(OE_PROTO, errno, "send");
+            goto done;
+        }
+        /* Here n<0 and errno either EWOULDBLOCK or EAGAIN:
+         * Send buffer full: wait until writable or timeout */
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        elapsed = (t1.tv_sec - t0.tv_sec)*1000 + (t1.tv_nsec - t0.tv_nsec)/1000000;
+        if (elapsed >= timeout){
+            errno = ETIMEDOUT;
+            clixon_err(OE_PROTO, ETIMEDOUT, "send timeout after %d ms, sent %zu of %zu bytes",
+                       timeout, pos, len);
+            goto done;
+        }
+        pfd.fd = s;
+        pfd.events = POLLOUT;
+        pfd.revents = 0;
+        if ((ret = poll(&pfd, 1, timeout - elapsed)) < 0 && errno != EINTR){
+            clixon_err(OE_PROTO, errno, "poll");
+            goto done;
+        }
+        /* ret==0: timeout, detected at top of next iteration; POLLERR/POLLHUP: send fails */
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*================= NETCONF 1.0 EOM framing ================*/
 
 /*! Receive a message using NETCONF 1.0 end-of-message encoding
@@ -849,7 +923,9 @@ send_msg_notify(int         s,
         goto done;
     }
     cprintf(cb, "%s", msg);
-    if (clixon_msg_send11(s, descr, cb) < 0)
+    if (netconf_output_encap(NETCONF_SSH_CHUNKED, cb) < 0)
+        goto done;
+    if (clixon_msg_send_timeout(s, descr, cb, CLIXON_NOTIFY_SEND_TIMEOUT_MS) < 0)
         goto done;
     retval = 0;
  done:

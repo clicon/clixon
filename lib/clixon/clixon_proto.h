@@ -41,6 +41,17 @@
 #define _CLIXON_PROTO_H_
 
 /*
+ * Constants
+ */
+/*! Timeout in ms for sending a notification to a client, eg a stream subscriber
+ *
+ * If the client does not read and its socket buffer is full, the backend waits at most
+ * this long, then closes the client. Prevents a slow, suspended or orphaned subscriber
+ * from blocking the backend.
+ */
+#define CLIXON_NOTIFY_SEND_TIMEOUT_MS 5000
+
+/*
  * Prototypes
  */
 
@@ -70,6 +81,7 @@ int clixon_rpc11(int sock, const char *descr, cbuf *msg, cbuf **msgret, int *eof
 int clixon_msg_send11(int s, const char *descr, cbuf *msg);
 
 int clixon_msg_send(int s, const char *descr, cbuf *cb);
+int clixon_msg_send_timeout(int s, const char *descr, cbuf *cb, int timeout);
 int send_msg_reply(int s, const char *descr, char *data, uint32_t datalen);
 int send_msg_notify_xml(clixon_handle h, int s, const char *descr, cxobj *xev);
 
