@@ -548,7 +548,101 @@ clixon_msg_send_timeout(int         s,
     return retval;
 }
 
-/*================= NETCONF 1.0 EOM framing ================*/
+/***** NETCONF Common frame receive *****/
+
+/*! Peek at socket data without consuming it, read(2)-compatible for clixon_rw_retry
+ *
+ * @param[in]  s    Socket
+ * @param[out] buf  Buffer
+ * @param[in]  n    Buffer length
+ * @retval     n    Bytes available (not consumed)
+ * @retval     0    EOF
+ * @retval    -1    Error
+ */
+static ssize_t
+recv_peek(int    s,
+          void  *buf,
+          size_t n)
+{
+    return recv(s, buf, n, MSG_PEEK);
+}
+
+/*! Receive one NETCONF frame from a socket, consuming only the bytes of that frame
+ *
+ * Peek, parse, then consume only the bytes of the current frame.
+ * Data of a following frame stays in the socket, so it is not merged into this message
+ * and the fd stays readable for the event loop.
+ * @param[in]   s        Socket
+ * @param[in]   framing  NETCONF_SSH_EOM or NETCONF_SSH_CHUNKED
+ * @param[in]   cbmsg    Message buffer, frame data appended
+ * @param[out]  eof      Set if eof encountered or framing error
+ * @retval      0        OK (check eof)
+ * @retval     -1        Error
+ * @note With SOCK_DGRAM, data after the frame end in the same datagram is lost
+ */
+static int
+clixon_msg_rcv_frame(int                  s,
+                     netconf_framing_type framing,
+                     cbuf                *cbmsg,
+                     int                 *eof)
+{
+    int            retval = -1;
+    unsigned char  buf[BUFSIZ];
+    unsigned char *p;
+    size_t         plen;
+    ssize_t        len;
+    ssize_t        n;
+    size_t         used;
+    int            frame_state = 0;
+    size_t         frame_size = 0;
+    int            eom = 0;
+
+    while (*eof == 0 && eom == 0) {
+        if ((len = clixon_rw_retry(recv_peek, s, buf, sizeof(buf), 5)) < 0){
+            if (clixon_sig_atomic_get() != 0)
+                /* User-initiated interrupt (eg ^C) */
+                clixon_debug(CLIXON_DBG_DEFAULT | CLIXON_DBG_DETAIL, "%s: recv: interrupted", __func__);
+            else
+                clixon_log(NULL, LOG_ERR, "%s: recv: %s", __func__, strerror(errno));
+            goto done;
+        }
+        if (len == 0){ /* EOF */
+            *eof = 1;
+            break;
+        }
+        p = buf;
+        plen = len;
+        if (netconf_input_msg2(&p, &plen,
+                               cbmsg,
+                               framing,
+                               &frame_state,
+                               &frame_size,
+                               &eom) < 0){
+            /* Errors from input are only framing errors, non-fatal, return eof */
+            *eof = 1;
+            cbuf_reset(cbmsg);
+            break;
+        }
+        /* Consume what was parsed: always available since it was peeked */
+        used = len - plen;
+        while (used > 0){
+            if ((n = clixon_rw_retry(read, s, buf, used, 5)) < 0){
+                clixon_log(NULL, LOG_ERR, "%s: read: %s", __func__, strerror(errno));
+                goto done;
+            }
+            if (n == 0){
+                *eof = 1;
+                break;
+            }
+            used -= n;
+        }
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
+/*****  NETCONF 1.0 EOM framing *****/
 
 /*! Receive a message using NETCONF 1.0 end-of-message encoding
  *
@@ -558,6 +652,7 @@ clixon_msg_send_timeout(int         s,
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK
  * @retval     -1      Error
+ * @note s must be a socket (uses MSG_PEEK)
  * @see clixon_msg_rcv11  Chunked framing
  * @see netconf_input_msg2
  */
@@ -568,43 +663,16 @@ clixon_msg_rcv10(int         s,
                  int        *eof)
 {
     int           retval = -1;
-    unsigned char buf[BUFSIZ];
-    int           i;
-    int           len;
-    int           xml_state = 0;
-    int           poll;
     cbuf         *cbmsg = NULL;
 
     clixon_debug(CLIXON_DBG_MSG | CLIXON_DBG_DETAIL, "");
     *eof = 0;
-    memset(buf, 0, sizeof(buf));
     if ((cbmsg = cbuf_new()) == NULL){
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    while (1){
-        if ((len = netconf_input_read2(s, buf, sizeof(buf), eof)) < 0)
-            goto done;
-        for (i=0; i<len; i++){
-            if (buf[i] == 0)
-                continue; /* Skip NULL chars (eg from terminals) */
-            cprintf(cbmsg, "%c", buf[i]);
-            if (detect_endtag("]]>]]>",
-                              buf[i],
-                              &xml_state)) {
-                /* OK, we have an xml string from a client */
-                /* Remove trailer */
-                *(((char*)cbuf_get(cbmsg)) + cbuf_len(cbmsg) - strlen("]]>]]>")) = '\0';
-                goto ok;
-            }
-        }
-        /* poll==1 if more, poll==0 if none */
-        if ((poll = clixon_event_poll(s)) < 0)
-            goto done;
-        if (poll == 0)
-            break; /* No data to read */
-    } /* while */
- ok:
+    if (clixon_msg_rcv_frame(s, NETCONF_SSH_EOM, cbmsg, eof) < 0)
+        goto done;
     if (*eof){
         if (descr)
             clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: EOF", descr);
@@ -696,7 +764,7 @@ clixon_rpc10(int         sock,
     return retval;
 }
 
-/*================= NETCONF 1.1 Chunked framing ================*/
+/***** NETCONF 1.1 Chunked framing *****/
 
 /*! Send a message using NETCONF 1.1 w chunked framing
  *
@@ -724,6 +792,7 @@ clixon_msg_send11(int         s,
 
 /*! Receive a message using unified NETCONF w chunked framing
  *
+ * Only one frame is consumed from the socket, data of a following frame is left in the socket.
  * @param[in]   s      socket (unix or inet) to communicate with backend
  * @param[in]   descr  Description of peer for logging
  * @param[in]   intr   If set, make a ^C cause an error by ignoring SIGINT
@@ -731,6 +800,7 @@ clixon_msg_send11(int         s,
  * @param[out]  eof    Set if eof encountered
  * @retval      0      OK (check eof)
  * @retval     -1      Error
+ * @note s must be a socket (uses MSG_PEEK)
  * @see netconf_input_cb()
  * @see clixon_msg_rcv10  For EOM framing
  */
@@ -742,21 +812,12 @@ clixon_msg_rcv11(int         s,
                  int        *eof)
 {
     int              retval = -1;
-    unsigned char    buf[BUFSIZ];
-    ssize_t          buflen = sizeof(buf);
-    int              frame_state = 0;
-    size_t           frame_size = 0;
-    unsigned char   *p = buf;
-    size_t           plen;
     cbuf            *cbmsg = NULL;
-    ssize_t          len;
-    int              eom = 0;
     cxobj           *xtop = NULL;
     cxobj           *xerr = NULL;
     sigset_t         oldsigset = {{0,},};
     struct sigaction oldsigaction[32] = {{{0,},},};
 
-    eom = 0;
     *eof = 0;
     if (intr){
         if (clixon_signal_save(&oldsigset, oldsigaction) < 0)
@@ -771,28 +832,8 @@ clixon_msg_rcv11(int         s,
         clixon_err(OE_XML, errno, "cbuf_new");
         goto done;
     }
-    while (*eof == 0 && eom == 0) {
-        /* Read input data from socket and append to cbbuf */
-        if ((len = netconf_input_read2(s, buf, buflen, eof)) < 0)
-            goto done;
-        p = buf;
-        plen = len;
-        while (!(*eof)  && plen > 0){
-            if (netconf_input_msg2(&p, &plen,
-                                   cbmsg,
-                                   NETCONF_SSH_CHUNKED,
-                                   &frame_state,
-                                   &frame_size,
-                                   &eom) < 0){
-                /* Errors from input are only framing errors, non-fatal, return eof */
-                *eof = 1;
-                cbuf_reset(cbmsg);
-                break;
-            }
-            if (eom == 0)
-                continue;
-        }
-    }
+    if (clixon_msg_rcv_frame(s, NETCONF_SSH_CHUNKED, cbmsg, eof) < 0)
+        goto done;
     if (*eof ){
         if (descr)
             clixon_debug(CLIXON_DBG_MSG, "Recv [%s]: EOF", descr);
