@@ -796,6 +796,7 @@ leafref_append_path(yang_stmt *yn,
 {
     int        retval = -1;
     yang_stmt *ytype;
+    yang_stmt *yorig;
     yang_stmt *ypath;
     yang_stmt *yresolved;
     char      *resolved_name;
@@ -809,6 +810,13 @@ leafref_append_path(yang_stmt *yn,
 
     if ((ytype = yang_find(yn, Y_TYPE, NULL)) == NULL)
         goto ok;
+    /* Resolve unprefixed typedefs in the grouping's defining module */
+    if ((yorig = yang_orig_get(yn)) != NULL &&
+        yang_flag_get(ytype, YANG_FLAG_REFINE) == 0){
+        yn = yorig;
+        if ((ytype = yang_find(yn, Y_TYPE, NULL)) == NULL)
+            goto ok;
+    }
     /* Resolve through typedefs to get the built-in type */
     if (yang_type_resolve(yn, yn, ytype,
                           &yresolved, NULL, NULL, NULL, NULL, NULL) < 0)
