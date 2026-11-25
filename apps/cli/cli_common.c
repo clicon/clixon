@@ -1017,7 +1017,7 @@ compare_db_names(clixon_handle    h,
         xs = xml_find(xe, "source-value");
         op = yang_patch_op_str2int(xml_body(xop));
         dformat = clicon_option_str(h, "CLICON_CLI_DIFF_FORMAT");
-        context = strcmp(dformat, "context") == 0;
+        context = dformat != NULL && strcmp(dformat, "context") == 0;
         xtop = NULL;
         xbot = NULL;
         level = 0;
