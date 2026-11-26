@@ -190,8 +190,13 @@ expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCP
 # Maybe this is not correct w [null,null]but I have no good examples
 new 'B.3.2.  "depth" Parameter depth=3'
 expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox?depth=3)" 0 "HTTP/$HVER 200" '{"example-jukebox:jukebox":{"artist":\[null,null\]}}}
-
 '
+
+new 'depth on non-root path: library (nested 1 level below jukebox), depth=1'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library?depth=1)" 0 "HTTP/$HVER 200" '{"example-jukebox:library":{}}'
+
+new 'depth on non-root path: library depth=2 (artist children must appear)'
+expectpart "$(curl $CURLOPTS -X GET -H 'Accept: application/yang-data+json' $RCPROTO://localhost/restconf/data/example-jukebox:jukebox/library?depth=2)" 0 "HTTP/$HVER 200" '"artist"'
 
 new "restconf DELETE whole datastore"
 expectpart "$(curl $CURLOPTS -X DELETE $RCPROTO://localhost/restconf/data)" 0 "HTTP/$HVER 204"

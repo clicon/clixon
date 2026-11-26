@@ -69,6 +69,7 @@ Developers may need to change their code
 
 ### Corrected Bugs
 
+* Fixed: [RESTCONF depth query attribute broken](https://github.com/clicon/clixon/issues/718)
 * Fixed: [Intermittent Wrong NACM Decisions](https://github.com/clicon/clixon/issues/698)
 * Fixed: [NETCONF notifications: Internal socker receive could merge or lose NETCONF messages arriving back-to-back](https://github.com/clicon/clixon/issues/717)
 * Fixed: [clixon_backend crashes with SIGABRT in malloc due to non-async-signal-safe clixon_debug() call in SIGCHLD handler](https://github.com/clicon/clixon/issues/713)

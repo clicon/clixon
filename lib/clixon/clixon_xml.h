@@ -302,6 +302,7 @@ int       xml_purge(cxobj *xc);
 int       xml_child_rm(cxobj *xp, int i);
 int       xml_rm(cxobj *xc);
 int       xml_rm_children(cxobj *x, enum cxobj_type type);
+int       xml_depth_prune(cxobj *x, int depth);
 int       xml_rootchild(cxobj  *xp, int i, cxobj **xcp);
 int       xml_rootchild_node(cxobj  *xp, cxobj *xc);
 int       xml_enumerate_children(cxobj *xp);
@@ -332,6 +333,7 @@ int       xml_apply(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg
 int       xml_apply0(cxobj *xn, enum cxobj_type type, xml_applyfn_t fn, void *arg);
 int       xml_apply_ancestor(cxobj *xn, xml_applyfn_t fn, void *arg);
 int       xml_isancestor(cxobj *x, cxobj *xp);
+int32_t   xml_ancestor_level(cxobj *xroot, cxobj *x);
 cxobj    *xml_root(cxobj *xn);
 int       xml_operation(const char *opstr, enum operation_type *op);
 char     *xml_operation2str(enum operation_type op);

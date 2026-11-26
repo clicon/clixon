@@ -2104,6 +2104,35 @@ xml_rm_children(cxobj          *xp,
     return retval;
 }
 
+/*! Remove element children below a depth
+ *
+ * @param[in]  x      Node; its element children are level 1
+ * @param[in]  depth  Levels to keep; 0 removes all element children
+ * @retval     0      OK
+ * @retval    -1      Error
+ */
+int
+xml_depth_prune(cxobj *x,
+                int    depth)
+{
+    int    retval = -1;
+    cxobj *xc;
+    int    i = 0;
+
+    while ((xc = xml_child_iter(x, &i, CX_ELMNT)) != NULL){
+        if (depth <= 0){
+            if (xml_purge(xc) < 0)
+                goto done;
+            i--; /* xml_purge() shifted the remaining children down one */
+        }
+        else if (xml_depth_prune(xc, depth - 1) < 0)
+            goto done;
+    }
+    retval = 0;
+ done:
+    return retval;
+}
+
 /*! Remove top XML object and all children except a single child
  *
  * Given a root xml node, and the i:th child, remove the child from its parent
@@ -3061,16 +3090,30 @@ int
 xml_isancestor(cxobj *x,
                cxobj *xpp)
 {
-    cxobj     *xp = NULL;
-    cxobj     *xn = NULL;
+    return xml_ancestor_level(xpp, x) > 0;
+}
 
-    xn = x;
-    while ((xp = xml_parent(xn)) != NULL) {
-        if (xp == xpp)
-            return 1;
-        xn = xp;
+/*! Nr of hops from xroot down to x
+ *
+ * @param[in]   xroot  Ancestor (or equal) of x
+ * @param[in]   x      XML node to measure from
+ * @retval      level  Nr of hops, 0 if x==xroot
+ * @retval     -1      xroot is not an ancestor of (or equal to) x
+ */
+int32_t
+xml_ancestor_level(cxobj *xroot,
+                   cxobj *x)
+{
+    int32_t level = 0;
+    cxobj  *xn = x;
+
+    while (xn != xroot){
+        if (xn == NULL)
+            return -1;
+        xn = xml_parent(xn);
+        level++;
     }
-    return 0;
+    return level;
 }
 
 /*! Get ultimate root ancestor of an xml-node: top-level node without parent

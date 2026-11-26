@@ -157,37 +157,6 @@ restconf_fields_filter(cxobj *xdata,
     return retval;
 }
 
-/*! Remove element children below a depth, as the backend does for <get depth>
- *
- * Mirrors get_nacm_and_reply() in the backend, which prints <data> with
- * depth+1 levels, ie depth levels below <data>.
- * @param[in]  x      Node; its element children are level 1
- * @param[in]  depth  Levels to keep; 0 removes all element children
- * @retval     0        OK
- * @retval    -1        Error
- */
-static int
-xml_depth_prune(cxobj *x,
-                int    depth)
-{
-    int    retval = -1;
-    cxobj *xc;
-    int    i = 0;
-
-    while ((xc = xml_child_iter(x, &i, CX_ELMNT)) != NULL){
-        if (depth <= 0){
-            if (xml_purge(xc) < 0)
-                goto done;
-            i--; /* xml_purge() shifted the remaining children down one */
-        }
-        else if (xml_depth_prune(xc, depth - 1) < 0)
-            goto done;
-    }
-    retval = 0;
- done:
-    return retval;
-}
-
 /*! Read the datastore a RESTCONF GET addresses
  *
  * {+restconf}/data and {+restconf}/ds/ietf-datastores:operational are
@@ -220,6 +189,8 @@ restconf_get_ds(clixon_handle   h,
     int         retval = -1;
     const char *db;
     cxobj      *xd;
+    cxobj     **xv = NULL;
+    size_t      xvlen = 0;
 
     switch (ds){
     case IETF_DS_RUNNING:
@@ -242,12 +213,18 @@ restconf_get_ds(clixon_handle   h,
             goto done;
     }
     else if (depth >= 0){
-        if (xml_depth_prune(xd, depth) < 0)
+        if (xpath_vec(xd, nsc, "%s", &xv, &xvlen, xpath?xpath:"/") < 0)
             goto done;
+        for (size_t j = 0; j < xvlen; j++){
+            if (xml_depth_prune(xv[j], depth - 1) < 0)
+                goto done;
+        }
     }
  ok:
     retval = 0;
  done:
+    if (xv)
+        free(xv);
     return retval;
 }
 

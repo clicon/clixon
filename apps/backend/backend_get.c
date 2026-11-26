@@ -137,11 +137,13 @@ filter_xpath_again(clixon_handle h,
  * @param[in]  xpath    XPath point to object to get
  * @param[in]  nsc      Namespace context of xpath
  * @param[in]  username User name for NACM access
- * @param[in]  depth    Nr of levels to print, -1 is all, 0 is none
+ * @param[in]  depth    Nr of levels to print relative to the target resource, -1 is all, 0 is none
+ * @param[in]  target_level  Nr of hops from xret down to the xpath-matched target node(s) (>=1)
  * @param[in]  wdef     With-defaults parameter
  * @param[out] cbret    Return xml tree, eg <rpc-reply>..., <rpc-error..
  * @retval     0        OK
  * @retval    -1        Error
+ * @note depth is relative to the target resource (RFC 8040 Sec 4.8.2)
  */
 static int
 get_nacm_and_reply(clixon_handle     h,
@@ -150,11 +152,13 @@ get_nacm_and_reply(clixon_handle     h,
                    cvec             *nsc,
                    char             *username,
                    int32_t           depth,
+                   int32_t           target_level,
                    withdefaults_type wdef,
                    cbuf             *cbret)
 {
     int     retval = -1;
     cxobj  *xnacm = NULL;
+    int32_t d;
 
     /* Pre-NACM access step */
     xnacm = clicon_nacm_cache(h);
@@ -171,8 +175,11 @@ get_nacm_and_reply(clixon_handle     h,
     else{
         if (xml_name_set(xret, NETCONF_OUTPUT_DATA) < 0)
             goto done;
-        /* Top level is data, so add 1 to depth if significant */
-        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, depth>0?depth+1:depth, 0, 0, wdef) < 0)
+        if (depth > 0)
+            d = depth+target_level;
+        else
+            d = depth;
+        if (clixon_xml2cbuf1(cbret, xret, 0, 0, NULL, d, 0, 0, wdef) < 0)
             goto done;
     }
     cprintf(cbret, "</rpc-reply>");
@@ -460,6 +467,7 @@ get_list_pagination(clixon_handle     h,
     int        has_offset_elem = 0;
     int        i;
     int        j;
+    int32_t    target_level;
     dispatcher_entry_t *htable = NULL;
     cvec      *wherens = NULL;
     xpath_tree *wherexpt = NULL;
@@ -837,7 +845,10 @@ get_list_pagination(clixon_handle     h,
             xml_add_attr(xfirst, "next", next_val, "lpg", "urn:ietf:params:xml:ns:yang:ietf-list-pagination") == NULL)
             goto done;
     }
-    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, wdef, cbret) < 0)
+    /* Depth of xpath */
+    target_level = xlen > 0 ? xml_ancestor_level(xret, xvec[0]) : 1;
+    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth,
+                           target_level > 0 ? target_level : 1, wdef, cbret) < 0)
         goto done;
  ok:
     retval = 0;
@@ -894,6 +905,7 @@ get_common(clixon_handle   h,
     cvec             *nsc = NULL;
     char             *attr;
     int32_t           depth = -1; /* Nr of levels to print, -1 is all, 0 is none */
+    int32_t           target_level;
     yang_stmt        *yspec;
     cxobj            *xerr = NULL;
     char             *reason = NULL;
@@ -1103,7 +1115,10 @@ get_common(clixon_handle   h,
         goto done;
     if (filter_xpath_again(h, yspec, xret, xvec, xlen, xpath, nsc) < 0)
         goto done;
-    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth, wdef, cbret) < 0)
+    /* Depth of xpath */
+    target_level = xlen > 0 ? xml_ancestor_level(xret, xvec[0]) : 1;
+    if (get_nacm_and_reply(h, xret, xpath, nsc, username, depth,
+                           target_level > 0 ? target_level : 1, wdef, cbret) < 0)
         goto done;
  ok:
     retval = 0;

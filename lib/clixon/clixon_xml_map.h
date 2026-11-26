@@ -34,7 +34,7 @@
   ***** END LICENSE BLOCK *****
 
  *
- * Translation / mapping code between formats
+ * Translation / mapping code between formats and tree modifications
  */
 
 #ifndef _CLIXON_XML_MAP_H_
